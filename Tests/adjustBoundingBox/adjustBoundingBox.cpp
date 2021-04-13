@@ -1,9 +1,11 @@
 #include <rtGeometry.hpp>
+#include <rtBoundary.hpp>
+#include <rtBoundCondition.hpp>
+#include <rtTestAsserts.hpp>
 #include <lsDomain.hpp>
 #include <lsMakeGeometry.hpp>
-#include <lsToDiskMesh.hpp>
 #include <embree3/rtcore.h>
-#include <rtTestAsserts.hpp>
+
 
 int main()
 {
@@ -27,28 +29,14 @@ int main()
         lsMakeGeometry<NumericType, D>(levelSet, sphere).apply();
     }
 
+    rtTraceBoundary boundCons[D-1];
+    boundCons[0] = rtTraceBoundary::PERIODIC;
+    boundCons[1] = rtTraceBoundary::PERIODIC;
+
     auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device);
-    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
-    auto points = mesh->getNodes();
-    auto normals = *mesh->getVectorData("Normals");
+    auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(device, levelSet, gridDelta);
 
-    auto error = geometry.initGeometry(points, normals, gridDelta);
-
-    RAYTEST_ASSERT(error == RTC_ERROR_NONE)
-
-    auto boundingBox = geometry.getBoundingBox();
-
-    for (auto min : boundingBox[0])
-    {
-        RAYTEST_ASSERT_ISCLOSE(min, -1., 1e-6)
-    }
-
-    for (auto max : boundingBox[1])
-    {
-        RAYTEST_ASSERT_ISCLOSE(max, 1., 1e-6)
-    }
+    auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, geometry, boundCons, 0);
 
     rtcReleaseDevice(device);
     return 0;

@@ -5,6 +5,8 @@
 #include <lsDomain.hpp>
 #include <iostream>
 #include <rtGeometry.hpp>
+#include <rtBoundary.hpp>
+#include <rtBoundCondition.hpp>
 
 template <class NumericType, int D>
 class rtTrace
@@ -26,11 +28,14 @@ public:
 
     void apply()
     {
-        // create RTC device, which used to construct further RTC object
+        // create RTC device, which used to construct further RTC objects
         auto rtcDevice = rtcNewDevice("hugepages=1");
 
         // build RTC geometry from lsDomain
-        auto geometry = rtGeometry<NumericType,D>(rtcDevice, domain, discRadius);
+        auto geometry = lsSmartPointer<rtGeometry<NumericType,D>>::New(rtcDevice, domain, discRadius);
+
+        // build RTC boundary 
+        auto boundary = lsSmartPointer<rtBoundary<NumericType,D>>::New(rtcDevice, geometry);
 
         rtcReleaseDevice(rtcDevice);
     }

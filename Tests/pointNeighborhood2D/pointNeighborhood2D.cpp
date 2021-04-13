@@ -45,6 +45,7 @@ int main()
         } 
         else
         {
+            // inner point
             RAYTEST_ASSERT(neighbors.size() == 2)
         }
     }

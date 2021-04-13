@@ -5,9 +5,10 @@
 #include <lsDomain.hpp>
 #include <lsToDiskMesh.hpp>
 #include <rtUtil.hpp>
+#include <rtMetaGeometry.hpp>
 
 template <typename NumericType, int D>
-class rtGeometry
+class rtGeometry : public rtMetaGeometry<NumericType, D>
 {
 private:
     typedef lsSmartPointer<std::unordered_map<size_t, size_t>> translatorType;
@@ -106,14 +107,14 @@ public:
         }
     }
 
-    std::array<NumericType, D> getPoint(const size_t idx)
+    std::array<NumericType, D> getPoint(const size_t primID)
     {
-        if (idx >= numPoints)
+        if (primID >= numPoints)
         {
-            throw std::runtime_error("Index out of bounds in rtGeometry::getPoint(idx).");
+            throw std::runtime_error("Index out of bounds in rtGeometry::getPoint(primID).");
         }
 
-        auto const &pnt = pointBuffer[idx];
+        auto const &pnt = pointBuffer[primID];
         if constexpr (D == 2)
         {
             return {(NumericType)pnt.xx, (NumericType)pnt.yy};
@@ -134,12 +135,41 @@ public:
         return numPoints;
     }
 
+    NumericType getDiscRadius()
+    {
+        return pointBuffer[0].radius;
+    }
+
+    RTCDevice &getRTCDevice() override final
+    {
+        return rtcDevice;
+    }
+
+    RTCGeometry &getRTCGeometry() override final
+    {
+        return rtcGeometry;
+    }
+
+    std::array<NumericType, D> getPrimNormal(const size_t primID) override final
+    {
+        auto const &normal = normalVecBuffer[primID];
+        if constexpr (D == 2)
+        {
+            return {(NumericType)normal.xx, (NumericType)normal.yy};
+        }
+        else
+        {
+            return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
+        }
+    }
+
 private:
     void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points, const NumericType discRadii)
     {
         pointNeighborhood.clear();
         pointNeighborhood.resize(numPoints, std::vector<size_t>{});
 
+        // TODO: This could be further optizmized with a better algorithm
         for (size_t idx1 = 0; idx1 < numPoints; ++idx1)
         {
             for (size_t idx2 = idx1 + 1; idx2 < numPoints; ++idx2)
