@@ -1,8 +1,12 @@
 #include <iostream>
-#include <rtDummy.hpp>
+#include <lsToDiskMesh.hpp>
+#include <lsDomain.hpp>
+#include <lsMakeGeometry.hpp>
+#include <rtGeometry.hpp>
 
 int main()
 {
-    std::cout << "Dummy test" << std::endl;
+    
+
     return 0;
 }
