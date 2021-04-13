@@ -10,7 +10,8 @@ template <typename NumericType, int D>
 class rtGeometry
 {
 private:
-    typedef lsSmartPointer<std::unordered_map<unsigned long, unsigned long>> translatorType;
+    typedef lsSmartPointer<std::unordered_map<size_t, size_t>> translatorType;
+    typedef std::vector<std::vector<size_t>> pointNeighborhoodType;
 
 public:
     rtGeometry(RTCDevice &device) : rtcDevice(device) {}
@@ -25,6 +26,20 @@ public:
         auto normals = *mesh->getVectorData("Normals");
 
         initGeometry(points, normals, passedDiscRadii);
+        initPointNeighborhood(points, passedDiscRadii);
+    }
+
+    rtGeometry(RTCDevice &device, lsSmartPointer<lsDomain<NumericType, D>> passedlsDomain,
+               NumericType passedDiscRadii)
+        : rtcDevice(device)
+    {
+        auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+        lsToDiskMesh<NumericType, D>(passedlsDomain, mesh).apply();
+        auto points = mesh->getNodes();
+        auto normals = *mesh->getVectorData("Normals");
+
+        initGeometry(points, normals, passedDiscRadii);
+        initPointNeighborhood(points, passedDiscRadii);
     }
 
     RTCError initGeometry(std::vector<rtTriple<NumericType>> &points,
@@ -44,7 +59,7 @@ public:
         {
             pointBuffer[i].xx = (float)points[i][0];
             pointBuffer[i].yy = (float)points[i][1];
-            pointBuffer[i].yy = (float)points[i][2];
+            pointBuffer[i].zz = (float)points[i][2];
             pointBuffer[i].radius = (float)discRadii;
             if (points[i][0] < minCoords[0])
                 minCoords[0] = points[i][0];
@@ -79,13 +94,65 @@ public:
         return rtcGetDeviceError(rtcDevice);
     }
 
-    rtPair<rtTriple<NumericType>> getBoundingBox()
+    rtPair<std::array<NumericType, D>> getBoundingBox()
     {
-        return {minCoords, maxCoords};
+        if constexpr (D == 2)
+        {
+            return {{minCoords[0], minCoords[1]}, {maxCoords[0], maxCoords[1]}};
+        }
+        else
+        {
+            return {minCoords, maxCoords};
+        }
     }
 
+    std::array<NumericType, D> getPoint(const size_t idx)
+    {
+        if (idx >= numPoints)
+        {
+            throw std::runtime_error("Index out of bounds in rtGeometry::getPoint(idx).");
+        }
+
+        auto const &pnt = pointBuffer[idx];
+        if constexpr (D == 2)
+        {
+            return {(NumericType)pnt.xx, (NumericType)pnt.yy};
+        }
+        else
+        {
+            return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
+        }
+    }
+
+    std::vector<size_t> getNeighborIndicies(const size_t idx)
+    {
+        return pointNeighborhood[idx];
+    }
+
+    size_t getNumPoints()
+    {
+        return numPoints;
+    }
 
 private:
+    void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points, const NumericType discRadii)
+    {
+        pointNeighborhood.clear();
+        pointNeighborhood.resize(numPoints, std::vector<size_t>{});
+
+        for (size_t idx1 = 0; idx1 < numPoints; ++idx1)
+        {
+            for (size_t idx2 = idx1 + 1; idx2 < numPoints; ++idx2)
+            {
+                if (rtUtilDistance<NumericType>(points[idx1], points[idx2]) < discRadii)
+                {
+                    pointNeighborhood[idx1].push_back(idx2);
+                    pointNeighborhood[idx2].push_back(idx1);
+                }
+            }
+        }
+    }
+
     // "RTC_GEOMETRY_TYPE_POINT:
     // The vertex buffer stores each control vertex in the form of a single
     // precision position and radius stored in (x, y, z, r) order in memory
@@ -116,6 +183,7 @@ private:
     constexpr static NumericType nummin = std::numeric_limits<NumericType>::lowest();
     rtTriple<NumericType> minCoords{nummax, nummax, nummax};
     rtTriple<NumericType> maxCoords{nummin, nummin, nummin};
+    pointNeighborhoodType pointNeighborhood;
 };
 
 #endif // RT_GEOMETRY_HPP
