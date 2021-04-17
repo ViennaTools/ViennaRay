@@ -6,6 +6,7 @@
 #include <lsToDiskMesh.hpp>
 #include <rtUtil.hpp>
 #include <rtMetaGeometry.hpp>
+#include <type_traits>
 
 template <typename NumericType, int D>
 class rtGeometry : public rtMetaGeometry<NumericType, D>
@@ -43,11 +44,16 @@ public:
         initPointNeighborhood(points, passedDiscRadii);
     }
 
-    RTCError initGeometry(std::vector<rtTriple<NumericType>> &points,
-                          std::vector<rtTriple<NumericType>> &normals, NumericType discRadii)
+    RTCError initGeometry(std::vector<rtInternal::rtTriple<NumericType>> &points,
+                          std::vector<rtInternal::rtTriple<NumericType>> &normals, NumericType discRadii)
     {
         rtcGeometry = rtcNewGeometry(rtcDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
         numPoints = points.size();
+
+        if (!std::is_same<NumericType, float>::value)
+        {
+            // TODO: add warning for internal type conversion
+        }
 
         pointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(rtcGeometry,
                                                             RTC_BUFFER_TYPE_VERTEX,
@@ -95,16 +101,17 @@ public:
         return rtcGetDeviceError(rtcDevice);
     }
 
-    rtPair<std::array<NumericType, D>> getBoundingBox()
+    rtInternal::rtPair<rtInternal::rtTriple<NumericType>> getBoundingBox()
     {
-        if constexpr (D == 2)
-        {
-            return {{minCoords[0], minCoords[1]}, {maxCoords[0], maxCoords[1]}};
-        }
-        else
-        {
-            return {minCoords, maxCoords};
-        }
+        return {minCoords, maxCoords};
+        // if constexpr (D == 2)
+        // {
+        //     return {{minCoords[0], minCoords[1]}, {maxCoords[0], maxCoords[1]}};
+        // }
+        // else
+        // {
+        //     return {minCoords, maxCoords};
+        // }
     }
 
     std::array<NumericType, D> getPoint(const size_t primID)
@@ -150,21 +157,23 @@ public:
         return rtcGeometry;
     }
 
-    std::array<NumericType, D> getPrimNormal(const size_t primID) override final
+    rtInternal::rtTriple<NumericType> getPrimNormal(const size_t primID) override final
     {
         auto const &normal = normalVecBuffer[primID];
-        if constexpr (D == 2)
-        {
-            return {(NumericType)normal.xx, (NumericType)normal.yy};
-        }
-        else
-        {
-            return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
-        }
+        return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
+
+        // if constexpr (D == 2)
+        // {
+        //     return {(NumericType)normal.xx, (NumericType)normal.yy};
+        // }
+        // else
+        // {
+        //     return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
+        // }
     }
 
 private:
-    void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points, const NumericType discRadii)
+    void initPointNeighborhood(std::vector<rtInternal::rtTriple<NumericType>> &points, const NumericType discRadii)
     {
         pointNeighborhood.clear();
         pointNeighborhood.resize(numPoints, std::vector<size_t>{});
@@ -174,7 +183,7 @@ private:
         {
             for (size_t idx2 = idx1 + 1; idx2 < numPoints; ++idx2)
             {
-                if (rtUtilDistance<NumericType>(points[idx1], points[idx2]) < discRadii)
+                if (rtInternal::rtDistance<NumericType>(points[idx1], points[idx2]) < discRadii)
                 {
                     pointNeighborhood[idx1].push_back(idx2);
                     pointNeighborhood[idx2].push_back(idx1);
@@ -211,8 +220,8 @@ private:
     size_t numPoints;
     constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
     constexpr static NumericType nummin = std::numeric_limits<NumericType>::lowest();
-    rtTriple<NumericType> minCoords{nummax, nummax, nummax};
-    rtTriple<NumericType> maxCoords{nummin, nummin, nummin};
+    rtInternal::rtTriple<NumericType> minCoords{nummax, nummax, nummax};
+    rtInternal::rtTriple<NumericType> maxCoords{nummin, nummin, nummin};
     pointNeighborhoodType pointNeighborhood;
 };
 

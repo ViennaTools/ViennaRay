@@ -10,7 +10,7 @@ public:
     virtual ~rtMetaGeometry() {}
     virtual RTCDevice &getRTCDevice() = 0;
     virtual RTCGeometry &getRTCGeometry() = 0;
-    virtual std::array<NumericType, D> getPrimNormal(const size_t primID) = 0;
+    virtual std::array<NumericType, 3> getPrimNormal(const size_t primID) = 0;
     virtual std::array<NumericType, D> getNewOrigin(RTCRay &ray)
     {
         if constexpr (D == 2)
