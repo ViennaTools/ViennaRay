@@ -32,7 +32,7 @@
 
 #define RAYTEST_ASSERT_ISNORMAL( first, second, eps )                   \
 {                                                                       \
-  if( (std::fabs(rtInternal::rtDotProduct(first, second)) > eps) )      \
+  if( (std::fabs(rtInternal::DotProduct(first, second)) > eps) )      \
   {                                                                     \
     throw std::runtime_error(   std::string( __FILE__ )                 \
                               + std::string( ":" )                      \

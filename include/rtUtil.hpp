@@ -6,19 +6,19 @@
 #include <numeric>
 #include <algorithm>
 
+template <typename NumericType>
+using rtPair = std::array<NumericType, 2>;
+
+template <typename NumericType>
+using rtTriple = std::array<NumericType, 3>;
+
+template <typename NumericType>
+using rtQuadruple = std::array<NumericType, 4>;
+
 namespace rtInternal
 {
     template <typename NumericType>
-    using rtPair = std::array<NumericType, 2>;
-
-    template <typename NumericType>
-    using rtTriple = std::array<NumericType, 3>;
-
-    template <typename NumericType>
-    using rtQuadruple = std::array<NumericType, 4>;
-
-    template <typename NumericType>
-    NumericType rtDistance(const rtTriple<NumericType> &vec1, const rtTriple<NumericType> &vec2)
+    NumericType Distance(const rtTriple<NumericType> &vec1, const rtTriple<NumericType> &vec2)
     {
         NumericType d0 = vec1[0] - vec2[0];
         NumericType d1 = vec1[1] - vec2[1];
@@ -33,31 +33,31 @@ namespace rtInternal
     }
 
     template <typename NumericType>
-    rtTriple<NumericType> rtSum(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
+    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
     {
         return {pF[0] + pS[0], pF[1] + pS[1], pF[2] + pS[2]};
     }
 
-    // template<typename NumericType>
-    // rtTriple<NumericType> rtSum(const rtTriple<NumericType>& pF, const rtTriple<NumericType>& pS, const rtTriple<NumericType>& pT)
-    // {
-    //     return {pF[0] + pS[0] + pT[0], pF[1] + pS[1] + pT[1], pF[2] + pS[2] + pT[2]};
-    // }
+    template <typename NumericType>
+    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS, const rtTriple<NumericType> &pT)
+    {
+        return {pF[0] + pS[0] + pT[0], pF[1] + pS[1] + pT[1], pF[2] + pS[2] + pT[2]};
+    }
 
     template <typename NumericType>
-    rtTriple<NumericType> rtDiff(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
+    rtTriple<NumericType> Diff(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
     {
         return {pF[0] - pS[0], pF[1] - pS[1], pF[2] - pS[2]};
     }
 
     template <typename NumericType>
-    NumericType rtDotProduct(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
+    NumericType DotProduct(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
     {
         return pF[0] * pS[0] + pF[1] * pS[1] + pF[2] * pS[2];
     }
 
     template <typename NumericType>
-    rtTriple<NumericType> rtCrossProduct(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
+    rtTriple<NumericType> CrossProduct(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
     {
         rtTriple<NumericType> rr;
         rr[0] = pF[1] * pS[2] - pF[2] * pS[1];
@@ -67,25 +67,38 @@ namespace rtInternal
     }
 
     template <typename NumericType>
-    rtTriple<NumericType> rtComputeNormal(rtTriple<rtTriple<NumericType>> &planeCoords)
+    rtTriple<NumericType> ComputeNormal(rtTriple<rtTriple<NumericType>> &planeCoords)
     {
-        auto uu = rtDiff(planeCoords[1], planeCoords[0]);
-        auto vv = rtDiff(planeCoords[2], planeCoords[0]);
-        return rtCrossProduct(uu, vv);
+        auto uu = Diff(planeCoords[1], planeCoords[0]);
+        auto vv = Diff(planeCoords[2], planeCoords[0]);
+        return CrossProduct(uu, vv);
     }
 
     template <typename NumericType, size_t D>
-    void rtNormalize(std::array<NumericType, D> &vec)
+    NumericType Norm(std::array<NumericType, D> &vec)
     {
-        NumericType sum = 0;
-        std::for_each(vec.begin(), vec.end(), [&sum](NumericType entry) { sum += entry * entry; });
-        sum = 1. / std::sqrt(sum);
-        std::for_each(vec.begin(), vec.end(), [&sum](NumericType &entry) { entry *= sum; });
+        NumericType norm = 0;
+        std::for_each(vec.begin(), vec.end(), [&norm](NumericType entry) { norm += entry * entry; });
+        return std::sqrt(norm);
     }
 
-    void debug()
+    template <typename NumericType, size_t D>
+    void Normalize(std::array<NumericType, D> &vec)
     {
-        std::cout << "DEBUG POINT REACHED" << std::endl;
+        auto norm = 1. / Norm(vec);
+        std::for_each(vec.begin(), vec.end(), [&norm](NumericType &entry) { entry *= norm; });
+    }
+
+    template <typename NumericType>
+    rtTriple<NumericType> Inv(const rtTriple<NumericType> &vec)
+    {
+        return {-vec[0], -vec[1], -vec[2]};
+    }
+
+    template <typename NumericType>
+    rtTriple<NumericType> Scale(const NumericType fac, const rtTriple<NumericType> &vec)
+    {
+        return {vec[0] * fac, vec[1] * fac, vec[2] * fac};
     }
 }
 

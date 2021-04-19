@@ -44,8 +44,8 @@ public:
         initPointNeighborhood(points, passedDiscRadii);
     }
 
-    RTCError initGeometry(std::vector<rtInternal::rtTriple<NumericType>> &points,
-                          std::vector<rtInternal::rtTriple<NumericType>> &normals, NumericType discRadii)
+    RTCError initGeometry(std::vector<rtTriple<NumericType>> &points,
+                          std::vector<rtTriple<NumericType>> &normals, NumericType discRadii)
     {
         rtcGeometry = rtcNewGeometry(rtcDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
         numPoints = points.size();
@@ -61,7 +61,6 @@ public:
                                                             RTC_FORMAT_FLOAT4,
                                                             sizeof(point_4f_t),
                                                             numPoints);
-
         for (size_t i = 0; i < numPoints; ++i)
         {
             pointBuffer[i].xx = (float)points[i][0];
@@ -88,20 +87,18 @@ public:
                                                                      RTC_FORMAT_FLOAT3,
                                                                      sizeof(normal_vec_3f_t),
                                                                      numPoints);
-
         for (size_t i = 0; i < numPoints; ++i)
         {
-            normalVecBuffer[i].xx = normals[i][0];
-            normalVecBuffer[i].yy = normals[i][1];
-            normalVecBuffer[i].zz = normals[i][2];
+            normalVecBuffer[i].xx = (float)normals[i][0];
+            normalVecBuffer[i].yy = (float)normals[i][1];
+            normalVecBuffer[i].zz = (float)normals[i][2];
         }
 
         rtcCommitGeometry(rtcGeometry);
-
         return rtcGetDeviceError(rtcDevice);
     }
 
-    rtInternal::rtPair<rtInternal::rtTriple<NumericType>> getBoundingBox()
+    rtPair<rtTriple<NumericType>> getBoundingBox()
     {
         return {minCoords, maxCoords};
         // if constexpr (D == 2)
@@ -137,12 +134,12 @@ public:
         return pointNeighborhood[idx];
     }
 
-    size_t getNumPoints()
+    size_t getNumPoints() const
     {
         return numPoints;
     }
 
-    NumericType getDiscRadius()
+    NumericType getDiscRadius() const
     {
         return pointBuffer[0].radius;
     }
@@ -157,33 +154,23 @@ public:
         return rtcGeometry;
     }
 
-    rtInternal::rtTriple<NumericType> getPrimNormal(const size_t primID) override final
+    rtTriple<NumericType> getPrimNormal(const size_t primID) override final
     {
         auto const &normal = normalVecBuffer[primID];
         return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
-
-        // if constexpr (D == 2)
-        // {
-        //     return {(NumericType)normal.xx, (NumericType)normal.yy};
-        // }
-        // else
-        // {
-        //     return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
-        // }
     }
 
 private:
-    void initPointNeighborhood(std::vector<rtInternal::rtTriple<NumericType>> &points, const NumericType discRadii)
+    void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points, const NumericType discRadii)
     {
         pointNeighborhood.clear();
         pointNeighborhood.resize(numPoints, std::vector<size_t>{});
-
-        // TODO: This could be further optizmized with a better algorithm
+        // TODO: This SHOULD be further optizmized with a better algorithm!
         for (size_t idx1 = 0; idx1 < numPoints; ++idx1)
         {
             for (size_t idx2 = idx1 + 1; idx2 < numPoints; ++idx2)
             {
-                if (rtInternal::rtDistance<NumericType>(points[idx1], points[idx2]) < discRadii)
+                if (rtInternal::Distance<NumericType>(points[idx1], points[idx2]) < discRadii)
                 {
                     pointNeighborhood[idx1].push_back(idx2);
                     pointNeighborhood[idx2].push_back(idx1);
@@ -220,8 +207,8 @@ private:
     size_t numPoints;
     constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
     constexpr static NumericType nummin = std::numeric_limits<NumericType>::lowest();
-    rtInternal::rtTriple<NumericType> minCoords{nummax, nummax, nummax};
-    rtInternal::rtTriple<NumericType> maxCoords{nummin, nummin, nummin};
+    rtTriple<NumericType> minCoords{nummax, nummax, nummax};
+    rtTriple<NumericType> maxCoords{nummin, nummin, nummin};
     pointNeighborhoodType pointNeighborhood;
 };
 

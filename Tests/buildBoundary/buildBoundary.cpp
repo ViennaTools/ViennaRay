@@ -39,19 +39,15 @@ int main()
     // auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
     // lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
 
-    // rtTraceBoundary boundCons[D];
-    // boundCons[0] = rtTraceBoundary::PERIODIC;
-    // boundCons[1] = rtTraceBoundary::PERIODIC;
-    // boundCons[2] = rtTraceBoundary::PERIODIC;
-
     auto device = rtcNewDevice("");
     auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(device, levelSet, gridDelta);
 
     {
         // build boundary in y and z directions
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device);
-        auto error = boundary->initBoundary(geometry, 0);
-        auto boundingBox = boundary->getBoundingBox();
+        auto boundingBox = geometry->getBoundingBox();
+        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, 1, 2);
+        boundingBox[1][0] += gridDelta;
+        auto error = boundary->initBoundary(boundingBox);
 
         // assert no rtc error
         RAYTEST_ASSERT(error == RTC_ERROR_NONE)
@@ -65,7 +61,7 @@ int main()
         RAYTEST_ASSERT_ISCLOSE(boundingBox[1][0], (1 + gridDelta), eps)
 
         // assert boundary normal vectors are perpendicular to x direction
-        auto xplane = rtInternal::rtTriple<NumericType>{1., 0., 0.};
+        auto xplane = rtTriple<NumericType>{1., 0., 0.};
         for (size_t i = 0; i < 8; i++)
         {
             auto normal = boundary->getPrimNormal(i);
@@ -75,9 +71,10 @@ int main()
 
     {
         // build boundary in x and z directions
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device);
-        auto error = boundary->initBoundary(geometry, 1);
-        auto boundingBox = boundary->getBoundingBox();
+        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, 0, 2);
+        auto boundingBox = geometry->getBoundingBox();
+        boundingBox[1][1] += gridDelta;
+        auto error = boundary->initBoundary(boundingBox);
 
         // assert no rtc error
         RAYTEST_ASSERT(error == RTC_ERROR_NONE)
@@ -91,7 +88,7 @@ int main()
         RAYTEST_ASSERT_ISCLOSE(boundingBox[1][1], (1 + gridDelta), eps)
 
         // assert boundary normal vectors are perpendicular to y direction
-        auto yplane = rtInternal::rtTriple<NumericType>{0., 1., 0.};
+        auto yplane = rtTriple<NumericType>{0., 1., 0.};
         for (size_t i = 0; i < 8; i++)
         {
             auto normal = boundary->getPrimNormal(i);
@@ -101,9 +98,10 @@ int main()
 
     {
         // build boundary in x and y directions
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device);
-        auto error = boundary->initBoundary(geometry, 2);
-        auto boundingBox = boundary->getBoundingBox();
+        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, 0, 1);
+        auto boundingBox = geometry->getBoundingBox();
+        boundingBox[1][2] += gridDelta;
+        auto error = boundary->initBoundary(boundingBox);
 
         // assert no rtc error
         RAYTEST_ASSERT(error == RTC_ERROR_NONE)
@@ -117,7 +115,7 @@ int main()
         RAYTEST_ASSERT_ISCLOSE(boundingBox[1][2], (1 + gridDelta), eps)
 
         // assert boundary normal vectors are perpendicular to x direction
-        auto zplane = rtInternal::rtTriple<NumericType>{0., 0., 1.};
+        auto zplane = rtTriple<NumericType>{0., 0., 1.};
         for (size_t i = 0; i < 8; i++)
         {
             auto normal = boundary->getPrimNormal(i);
