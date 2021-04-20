@@ -9,7 +9,7 @@ class rtReflectionSpecular : public rtReflection<NumericType, D>
 public:
     rtPair<rtTriple<NumericType>>
     use(RTCRay &rayin, RTCHit &hitin, rtMetaGeometry<NumericType, D> &geometry,
-        rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::rtRNGState &RngState) override final
+        rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState) override final
     {
         return use(rayin, hitin, geometry);
     }

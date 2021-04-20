@@ -16,7 +16,7 @@ public:
     // false.
     virtual rtPair<rtTriple<NumericType>>
     use(RTCRay &rayin, RTCHit &hitin, rtMetaGeometry<NumericType, D> &geometry,
-        rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::rtRNGState &RngState) = 0;
+        rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState) = 0;
 };
 
 #endif // RT_REFLECTION_HPP
