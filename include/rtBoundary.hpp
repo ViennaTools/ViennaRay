@@ -15,10 +15,10 @@ public:
     rtBoundary(RTCDevice &device)
         : rtcDevice(device) {}
 
-    rtBoundary(RTCDevice &device, rtTraceDirection passedSourceDir)
+    rtBoundary(RTCDevice &device, rtTraceDirection sourceDirection)
         : rtcDevice(device)
     {
-        setBoundaryDirections(passedSourceDir);
+        setBoundaryDirections(sourceDirection);
     }
 
     rtBoundary(RTCDevice &device, boundingBoxType &passedBoundingBox,

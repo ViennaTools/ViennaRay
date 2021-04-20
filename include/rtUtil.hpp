@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <rtTraceDirection.hpp>
 
 template <typename NumericType>
 using rtPair = std::array<NumericType, 2>;
@@ -17,6 +18,8 @@ using rtQuadruple = std::array<NumericType, 4>;
 
 namespace rtInternal
 {
+    constexpr double pi = 3.14159265358979323846;
+
     template <typename NumericType>
     NumericType Distance(const rtTriple<NumericType> &vec1, const rtTriple<NumericType> &vec2)
     {
@@ -99,6 +102,37 @@ namespace rtInternal
     rtTriple<NumericType> Scale(const NumericType fac, const rtTriple<NumericType> &vec)
     {
         return {vec[0] * fac, vec[1] * fac, vec[2] * fac};
+    }
+
+    template <typename NumericType>
+    void adjustBoundingBox(rtPair<rtTriple<NumericType>> &bdBox, rtTraceDirection direction, NumericType eps)
+    {
+        switch (direction)
+        {
+        case rtTraceDirection::POS_X:
+            bdBox[1][0] += eps;
+            break;
+
+        case rtTraceDirection::NEG_X:
+            bdBox[0][0] -= eps;
+            break;
+
+        case rtTraceDirection::POS_Y:
+            bdBox[1][1] += eps;
+            break;
+
+        case rtTraceDirection::NEG_Y:
+            bdBox[0][1] -= eps;
+            break;
+
+        case rtTraceDirection::POS_Z:
+            bdBox[1][2] += eps;
+            break;
+
+        case rtTraceDirection::NEG_Z:
+            bdBox[0][2] -= eps;
+            break;
+        }
     }
 }
 
