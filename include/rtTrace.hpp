@@ -7,6 +7,7 @@
 #include <rtGeometry.hpp>
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
+#include <rtRaySource.hpp>
 
 template <class NumericType, int D>
 class rtTrace
@@ -15,6 +16,9 @@ private:
     lsSmartPointer<lsDomain<NumericType, D>> domain = nullptr;
     size_t numberOfRaysPerPoint = 1000;
     NumericType discRadius = 0;
+    rtTraceDirection sourceDirection = rtTraceDirection::POS_Z;
+    rtTraceBoundary boundaryConds[D] = {};
+    NumericType cosinePower = 1.;
 
 public:
     rtTrace() {}
@@ -32,10 +36,15 @@ public:
         auto rtcDevice = rtcNewDevice("hugepages=1");
 
         // build RTC geometry from lsDomain
-        auto geometry = lsSmartPointer<rtGeometry<NumericType,D>>::New(rtcDevice, domain, discRadius);
+        const auto geometry = lsSmartPointer<rtGeometry<NumericType,D>>::New(rtcDevice, domain, discRadius);
+        auto boundingBox = geometry->getBoundingBox();
 
-        // build RTC boundary 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType,D>>::New(rtcDevice, geometry);
+        rtInternal::adjustBoundingBox(boundingBox, sourceDirection, discRadius);
+        auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
+
+        const auto boundary = lsSmartPointer<rtBoundary<NumericType,D>>::New(rtcDevice, boundingBox, boundaryConds, traceSettings);
+        const auto raySource = lsSmartPointer<rtRaySource<NumericType, D>>::New(boundingBox, cosinePower, traceSettings);
+
 
         rtcReleaseDevice(rtcDevice);
     }
@@ -48,6 +57,11 @@ public:
     void setDiscRadii(const NumericType passedDiscRadius)
     {
         discRadius = passedDiscRadius;
+    }
+
+    void setBoundaryConditions(rtTraceBoundary passedBoundaryConds[D])
+    {
+        boundaryConds = passedBoundaryConds;
     }
 };
 

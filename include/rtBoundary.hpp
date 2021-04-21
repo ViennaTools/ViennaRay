@@ -20,9 +20,9 @@ public:
 
     rtBoundary(RTCDevice &device, boundingBoxType &passedBoundingBox,
                rtTraceBoundary passedBoundaryConds[D], std::array<int, 5> &traceSettings)
-        : rtcDevice(device), firstDir(traceSettings[1]), secondDir(traceSettings[2])
+        : rtcDevice(device), firstDir(traceSettings[1]), secondDir(traceSettings[2]),
+        boundaryConds(std::array<rtTraceBoundary, D-1>{passedBoundaryConds[firstDir], passedBoundaryConds[secondDir]})
     {
-        setBoundaryConditions(passedBoundaryConds);
         initBoundary(passedBoundingBox);
     }
 
@@ -208,12 +208,6 @@ public:
         }
     }
 
-    void setBoundaryConditions(rtTraceBoundary passedBoundaryConds[D])
-    {
-        boundaryConds[0] = passedBoundaryConds[firstDir];
-        boundaryConds[1] = passedBoundaryConds[secondDir];
-    }
-
     RTCDevice &getRTCDevice() override final
     {
         return rtcDevice;
@@ -267,7 +261,7 @@ private:
     static constexpr size_t numTriangles = 8;
     static constexpr size_t numVertices = 8;
     boundingBoxType bdBox;
-    std::array<rtTraceBoundary, D - 1> boundaryConds = {};
+    const std::array<rtTraceBoundary, D - 1> boundaryConds = {};
     std::array<rtTriple<NumericType>, numTriangles> primNormals;
 };
 
