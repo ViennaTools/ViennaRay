@@ -45,7 +45,8 @@ int main()
     {
         // build boundary in y and z directions
         auto boundingBox = geometry->getBoundingBox();
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, rtTraceDirection::POS_X);
+        auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_X);
+        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, traceSetting);
         boundingBox[1][0] += gridDelta;
         auto error = boundary->initBoundary(boundingBox);
 
@@ -71,7 +72,8 @@ int main()
 
     {
         // build boundary in x and z directions
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, rtTraceDirection::POS_Y);
+        auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Y);
+        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, traceSetting);
         auto boundingBox = geometry->getBoundingBox();
         boundingBox[1][1] += gridDelta;
         auto error = boundary->initBoundary(boundingBox);
@@ -98,7 +100,8 @@ int main()
 
     {
         // build boundary in x and y directions
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, rtTraceDirection::POS_Z);
+        auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
+        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, traceSetting);
         auto boundingBox = geometry->getBoundingBox();
         boundingBox[1][2] += gridDelta;
         auto error = boundary->initBoundary(boundingBox);

@@ -40,7 +40,8 @@ int main()
             boundCons[2] = rtTraceBoundary::PERIODIC;
             auto boundingBox = geometry->getBoundingBox();
             boundingBox[1][2] += gridDelta;
-            auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, rtTraceDirection::POS_Z);
+            auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
+            auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSetting);
 
             auto origin = rtTriple<NumericType>{0.5, 0.5, 0.5};
             auto direction = rtTriple<NumericType>{0.5, 0., -0.25};
@@ -95,7 +96,8 @@ int main()
             boundCons[2] = rtTraceBoundary::REFLECTIVE;
             auto boundingBox = geometry->getBoundingBox();
             boundingBox[1][1] += gridDelta;
-            auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, rtTraceDirection::POS_Y);
+            auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Y);
+            auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSetting);
 
             auto origin = rtTriple<NumericType>{0.5, 0.5, 0.5};
             auto direction = rtTriple<NumericType>{0., -0.25, 0.5};

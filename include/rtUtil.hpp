@@ -134,6 +134,70 @@ namespace rtInternal
             break;
         }
     }
+
+    std::array<int, 5> getTraceSettings(rtTraceDirection sourceDir)
+    {
+        std::array<int, 5> set{0, 0, 0, 0, 0};
+        switch (sourceDir)
+        {
+        case rtTraceDirection::POS_X:
+        {
+            set[0] = 0;
+            set[1] = 1;
+            set[2] = 2;
+            set[3] = 1;
+            set[4] = -1;
+            break;
+        }
+        case rtTraceDirection::NEG_X:
+        {
+            set[0] = 0;
+            set[1] = 1;
+            set[2] = 2;
+            set[3] = 0;
+            set[4] = 1;
+            break;
+        }
+        case rtTraceDirection::POS_Y:
+        {
+            set[0] = 1;
+            set[1] = 0;
+            set[2] = 2;
+            set[3] = 1;
+            set[4] = -1;
+            break;
+        }
+        case rtTraceDirection::NEG_Y:
+        {
+            set[0] = 1;
+            set[1] = 0;
+            set[2] = 2;
+            set[3] = 0;
+            set[4] = 1;
+            break;
+        }
+        case rtTraceDirection::POS_Z:
+        {
+            set[0] = 2;
+            set[1] = 0;
+            set[2] = 1;
+            set[3] = 1;
+            set[4] = -1;
+            break;
+        }
+        case rtTraceDirection::NEG_Z:
+        {
+            set[0] = 2;
+            set[1] = 0;
+            set[2] = 1;
+            set[3] = 0;
+            set[4] = 1;
+            break;
+        }
+        }
+
+        return set;
+    }
 }
 
 #endif // RT_UTIL_HPP

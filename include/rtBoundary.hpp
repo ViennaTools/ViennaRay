@@ -15,17 +15,13 @@ public:
     rtBoundary(RTCDevice &device)
         : rtcDevice(device) {}
 
-    rtBoundary(RTCDevice &device, rtTraceDirection sourceDirection)
-        : rtcDevice(device)
-    {
-        setBoundaryDirections(sourceDirection);
-    }
+    rtBoundary(RTCDevice &device, std::array<int, 5> &traceSettings)
+        : rtcDevice(device), firstDir(traceSettings[1]), secondDir(traceSettings[2]) {}
 
     rtBoundary(RTCDevice &device, boundingBoxType &passedBoundingBox,
-               rtTraceBoundary passedBoundaryConds[D], rtTraceDirection sourceDirection)
-        : rtcDevice(device)
+               rtTraceBoundary passedBoundaryConds[D], std::array<int, 5> &traceSettings)
+        : rtcDevice(device), firstDir(traceSettings[1]), secondDir(traceSettings[2])
     {
-        setBoundaryDirections(sourceDirection);
         setBoundaryConditions(passedBoundaryConds);
         initBoundary(passedBoundingBox);
     }
@@ -218,25 +214,6 @@ public:
         boundaryConds[1] = passedBoundaryConds[secondDir];
     }
 
-    void setBoundaryDirections(rtTraceDirection &passedSourceDir)
-    {
-        if (passedSourceDir == rtTraceDirection::POS_X || passedSourceDir == rtTraceDirection::NEG_X)
-        {
-            firstDir = 1;
-            secondDir = 2;
-        }
-        else if (passedSourceDir == rtTraceDirection::POS_Y || passedSourceDir == rtTraceDirection::NEG_Y)
-        {
-            firstDir = 0;
-            secondDir = 2;
-        }
-        else
-        {
-            firstDir = 0;
-            secondDir = 1;
-        }
-    }
-
     RTCDevice &getRTCDevice() override final
     {
         return rtcDevice;
@@ -285,8 +262,8 @@ private:
 
     RTCDevice &rtcDevice;
     RTCGeometry rtcBoundary;
-    int firstDir = 1;
-    int secondDir = 2;
+    const int firstDir = 1;
+    const int secondDir = 2;
     static constexpr size_t numTriangles = 8;
     static constexpr size_t numVertices = 8;
     boundingBoxType bdBox;

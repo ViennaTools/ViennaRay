@@ -13,68 +13,11 @@ class rtRaySource
     typedef rtPair<rtTriple<NumericType>> boundingBoxType;
 
 public:
-    rtRaySource(boundingBoxType passedBoundingBox, NumericType passedCosinePower, rtTraceDirection passedSourceDir)
-        : bdBox(passedBoundingBox), cosinePower(passedCosinePower), sourceDir(passedSourceDir),
-          ee(((NumericType)2) / (passedCosinePower + 1))
-    {
-        switch (sourceDir)
-        {
-        case rtTraceDirection::POS_X:
-        {
-            posNeg = -1;
-            minMax = 1;
-            rayDir = 0;
-            firstDir = 1;
-            secondDir = 2;
-            break;
-        }
-        case rtTraceDirection::NEG_X:
-        {
-            posNeg = 1;
-            minMax = 0;
-            rayDir = 0;
-            firstDir = 1;
-            secondDir = 2;
-            break;
-        }
-        case rtTraceDirection::POS_Y:
-        {
-            posNeg = -1;
-            minMax = 1;
-            rayDir = 1;
-            firstDir = 0;
-            secondDir = 2;
-            break;
-        }
-        case rtTraceDirection::NEG_Y:
-        {
-            posNeg = 1;
-            minMax = 0;
-            rayDir = 1;
-            firstDir = 0;
-            secondDir = 2;
-            break;
-        }
-        case rtTraceDirection::POS_Z:
-        {
-            posNeg = -1;
-            minMax = 1;
-            rayDir = 2;
-            firstDir = 0;
-            secondDir = 1;
-            break;
-        }
-        case rtTraceDirection::NEG_Z:
-        {
-            posNeg = 1;
-            minMax = 0;
-            rayDir = 2;
-            firstDir = 0;
-            secondDir = 1;
-            break;
-        }
-        }
-    }
+    rtRaySource(boundingBoxType passedBoundingBox, NumericType passedCosinePower, std::array<int, 5> &passedTraceSettings)
+        : bdBox(passedBoundingBox), cosinePower(passedCosinePower), rayDir(passedTraceSettings[0]),
+          firstDir(passedTraceSettings[1]), secondDir(passedTraceSettings[2]),
+          minMax(passedTraceSettings[3]), posNeg(passedTraceSettings[4]),
+          ee(((NumericType)2) / (passedCosinePower + 1)) {}
 
     void fillRay(RTCRay &ray, rtRandomNumberGenerator &RNG,
                  rtRandomNumberGenerator::RNGState &RngState1, rtRandomNumberGenerator::RNGState &RngState2,
@@ -99,9 +42,8 @@ public:
         reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
     }
 
-private:
     rtTriple<NumericType> getOrigin(rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState1,
-                                    rtRandomNumberGenerator::RNGState &RngState2)
+                                     rtRandomNumberGenerator::RNGState &RngState2)
     {
         rtTriple<NumericType> origin{0., 0., 0.};
         auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
@@ -123,7 +65,7 @@ private:
     }
 
     rtTriple<NumericType> getDirection(rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState1,
-                                       rtRandomNumberGenerator::RNGState &RngState2)
+                                        rtRandomNumberGenerator::RNGState &RngState2)
     {
         rtTriple<NumericType> direction{0., 0., 0.};
         auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
@@ -141,19 +83,20 @@ private:
         {
             direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
         }
-        
+
         rtInternal::Normalize(direction);
 
         return direction;
     }
 
-    boundingBoxType bdBox;
+private:
+    const boundingBoxType bdBox;
     const NumericType cosinePower;
-    rtTraceDirection sourceDir;
-    int firstDir, secondDir;
-    int rayDir;
-    int minMax;
-    NumericType posNeg;
+    const int rayDir;
+    const int firstDir;
+    const int secondDir;
+    const int minMax;
+    const NumericType posNeg;
     const NumericType ee;
     constexpr static NumericType two_pi = rtInternal::pi * 2;
 };

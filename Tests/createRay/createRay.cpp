@@ -45,7 +45,8 @@ int main()
         // build source in positive z direction;
         auto boundingBox = geometry->getBoundingBox();
         rtInternal::adjustBoundingBox(boundingBox, direction, gridDelta);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., direction);
+        auto traceSetting = rtInternal::getTraceSettings(direction);
+        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -60,7 +61,8 @@ int main()
         // build source in positive z direction;
         auto boundingBox = geometry->getBoundingBox();
         rtInternal::adjustBoundingBox(boundingBox, direction, gridDelta);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., direction);
+        auto traceSetting = rtInternal::getTraceSettings(direction);
+        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -75,7 +77,8 @@ int main()
         // build source in positive z direction;
         auto boundingBox = geometry->getBoundingBox();
         rtInternal::adjustBoundingBox(boundingBox, direction, gridDelta);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., direction);
+        auto traceSetting = rtInternal::getTraceSettings(direction);
+        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -90,7 +93,8 @@ int main()
         // build source in positive z direction;
         auto boundingBox = geometry->getBoundingBox();
         rtInternal::adjustBoundingBox(boundingBox, direction, gridDelta);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., direction);
+        auto traceSetting = rtInternal::getTraceSettings(direction);
+        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -105,7 +109,8 @@ int main()
         // build source in positive z direction;
         auto boundingBox = geometry->getBoundingBox();
         rtInternal::adjustBoundingBox(boundingBox, direction, gridDelta);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., direction);
+        auto traceSetting = rtInternal::getTraceSettings(direction);
+        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -120,7 +125,8 @@ int main()
         // build source in positive z direction;
         auto boundingBox = geometry->getBoundingBox();
         rtInternal::adjustBoundingBox(boundingBox, direction, gridDelta);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., direction);
+        auto traceSetting = rtInternal::getTraceSettings(direction);
+        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
