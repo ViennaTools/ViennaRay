@@ -198,6 +198,53 @@ namespace rtInternal
 
         return set;
     }
+
+    // Returns some orthonormal basis containing a the input vector pVector
+    // (possibly scaled) as the first element of the return value.
+    // This function is deterministic, i.e., for one input it will return always
+    // the same result.
+    template <typename NumericType>
+    static rtTriple<rtTriple<NumericType>>
+    getOrthonormalBasis(const rtTriple<NumericType> &pVector)
+    {
+        rtTriple<rtTriple<NumericType>> rr;
+        rr[0] = pVector;
+
+        // Calculate a vector (rr[1]) which is perpendicular to rr[0]
+        // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
+        rtTriple<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
+        rtTriple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
+        rtTriple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
+        // We choose the candidate which maximizes the sum of its components, because we
+        // want to avoid numeric errors and that the result is (0, 0, 0).
+        std::array<rtTriple<NumericType>, 3> cc = {candidate0, candidate1, candidate2};
+        auto sumFun = [](const rtTriple<NumericType> &oo) { return oo[0] + oo[1] + oo[2]; };
+        int maxIdx = 0;
+        for (size_t idx = 1; idx < cc.size(); ++idx)
+        {
+            if (sumFun(cc[idx]) > sumFun(cc[maxIdx]))
+            {
+                maxIdx = idx;
+            }
+        }
+        // assert(maxIdx < 3 && "Error in computation of perpenticular vector");
+        rr[1] = cc[maxIdx];
+
+        rr[2] = rtInternal::CrossProduct(rr[0], rr[1]);
+        rtInternal::Normalize(rr[0]);
+        rtInternal::Normalize(rr[1]);
+        rtInternal::Normalize(rr[2]);
+
+        // Sanity check
+        // NumericType epsilon = 1e-6;
+        // assert(std::abs(rtInternal::DotProduct(rr[0], rr[1])) < epsilon &&
+        //        "Error in orthonormal basis computation");
+        // assert(std::abs(rtInternal::DotProduct(rr[1], rr[2])) < epsilon &&
+        //        "Error in orthonormal basis computation");
+        // assert(std::abs(rtInternal::DotProduct(rr[2], rr[0])) < epsilon &&
+        //        "Error in orthonormal basis computation");
+        return rr;
+    }
 }
 
 #endif // RT_UTIL_HPP
