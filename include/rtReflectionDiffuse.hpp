@@ -6,6 +6,8 @@
 template <typename NumericType, int D>
 class rtReflectionDiffuse : public rtReflection<NumericType, D>
 {
+    static_assert(D == 3, "Diffuse reflection only implemented in 3D");
+
 public:
     rtPair<rtTriple<NumericType>>
     use(RTCRay &rayin, RTCHit &hitin, rtMetaGeometry<NumericType, D> &geometry,
@@ -36,11 +38,11 @@ private:
         NumericType cc2 = cos(two_pi * r1) * sqrt(1 - r2);
         NumericType cc3 = sin(two_pi * r1) * sqrt(1 - r2);
 
-        auto tt1 = pBasis[0];
+        auto tt1 = basis[0];
         rtInternal::Scale(cc1, tt1);
-        auto tt2 = pBasis[1];
+        auto tt2 = basis[1];
         rtInternal::Scale(cc2, tt2);
-        auto tt3 = pBasis[2];
+        auto tt3 = basis[2];
         rtInternal::Scale(cc3, tt3);
 
         return rtInternal::Sum(tt1, tt2, tt3);

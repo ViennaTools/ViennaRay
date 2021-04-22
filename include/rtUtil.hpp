@@ -6,6 +6,7 @@
 #include <numeric>
 #include <algorithm>
 #include <iostream>
+#include <chrono>
 #include <rtTraceDirection.hpp>
 
 template <typename NumericType>
@@ -246,6 +247,37 @@ namespace rtInternal
         //        "Error in orthonormal basis computation");
         return rr;
     }
+
+    class Timer
+    {
+    public:
+        Timer() : startTime(timeStampNow())
+        {
+        }
+
+        void restart()
+        {
+            startTime = timeStampNow();
+        }
+
+        double elapsedSeconds() const
+        {
+            return double(timeStampNow() - startTime) * 1e-9;
+        }
+
+        std::uint64_t elapsedNanoseconds() const
+        {
+            return timeStampNow() - startTime;
+        }
+
+    private:
+        static std::uint64_t timeStampNow()
+        {
+            return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        }
+
+        std::uint64_t startTime;
+    };
 }
 
 #endif // RT_UTIL_HPP

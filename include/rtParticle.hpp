@@ -1,7 +1,6 @@
 #ifndef RT_PARTICLE_HPP
 #define RT_PARTICLE_HPP
 
-#include <rtMetaGeometry.hpp>
 #include <rtRandomNumberGenerator.hpp>
 
 template <typename NumericType>
@@ -11,7 +10,6 @@ public:
     virtual void initNew() = 0;
     virtual NumericType
     getStickingProbability(RTCRay &rayin, RTCHit &hitin,
-                           rtMetaGeometry<NumericType> &geometry,
                            rtRandomNumberGenerator &RNG,
                            rtRandomNumberGenerator::RNGState &RngState) = 0;
 };
@@ -22,7 +20,6 @@ class rtParticle1 : public rtParticle<NumericType>
 public:
     NumericType
     getStickingProbability(RTCRay &rayin, RTCHit &hitin,
-                           rtMetaGeometry<NumericType> &geometry,
                            rtRandomNumberGenerator &RNG,
                            rtRandomNumberGenerator::RNGState &RngState) override final
     {
@@ -39,7 +36,6 @@ class rtParticle2 : public rtParticle<NumericType>
 public:
     NumericType
     getStickingProbability(RTCRay &rayin, RTCHit &hitin,
-                           rtMetaGeometry<NumericType> &geometry,
                            rtRandomNumberGenerator &RNG,
                            rtRandomNumberGenerator::RNGState &RngState) override final
     {

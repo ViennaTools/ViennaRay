@@ -8,6 +8,9 @@
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
 #include <rtRaySource.hpp>
+#include <rtRayTracer.hpp>
+#include <rtParticle.hpp>
+#include <rtReflectionSpecular.hpp>
 
 template <class NumericType, int D>
 class rtTrace
@@ -36,16 +39,18 @@ public:
         auto rtcDevice = rtcNewDevice("hugepages=1");
 
         // build RTC geometry from lsDomain
-        const auto geometry = lsSmartPointer<rtGeometry<NumericType,D>>::New(rtcDevice, domain, discRadius);
+        auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(rtcDevice, domain, discRadius);
         auto boundingBox = geometry->getBoundingBox();
 
         rtInternal::adjustBoundingBox(boundingBox, sourceDirection, discRadius);
         auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
 
-        const auto boundary = lsSmartPointer<rtBoundary<NumericType,D>>::New(rtcDevice, boundingBox, boundaryConds, traceSettings);
-        const auto raySource = lsSmartPointer<rtRaySource<NumericType, D>>::New(boundingBox, cosinePower, traceSettings);
+        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(rtcDevice, boundingBox, boundaryConds, traceSettings);
+        auto raySource = lsSmartPointer<rtRaySource<NumericType, D>>::New(boundingBox, cosinePower, traceSettings);
 
-
+        rtRayTracer<NumericType, rtParticle1<NumericType>, rtReflectionSpecular<NumericType, D>, D> tracer(geometry, boundary, raySource, numberOfRaysPerPoint);
+        auto traceResult = tracer.run();
+        traceResult.print();
         rtcReleaseDevice(rtcDevice);
     }
 
