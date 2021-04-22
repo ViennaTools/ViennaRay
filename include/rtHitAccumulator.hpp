@@ -128,6 +128,44 @@ public:
         mS4s[primID] += value * value * value * value;
     }
 
+    std::vector<NumericType> getValues()
+    {
+        return mAcc;
+    }
+
+    std::vector<size_t> getCounts() 
+    {
+        return mCnts;
+    }
+
+    size_t getTotalCounts() 
+    {
+        return mTotalCnts;
+    }
+
+    std::vector<NumericType> getRelativeError()
+    {
+        auto result = std::vector<NumericType>(mS1s.size(), std::numeric_limits<NumericType>::max()); // size, initial values
+        if (mTotalCnts == 0)
+        {
+            return result;
+        }
+        for (size_t idx = 0; idx < result.size(); ++idx)
+        {
+            auto s1square = mS1s[idx] * mS1s[idx];
+            if (s1square == 0)
+            {
+                continue;
+            }
+
+            // This is an approximation of the relative error assuming sqrt(N-1) =~ sqrt(N)
+            // For details and an exact formula see the book Exploring Monte Carlo Methods by Dunn and Shultis
+            // page 83 and 84.
+            result[idx] = (NumericType)(std::sqrt(mS2s[idx] / s1square - 1.0 / mTotalCnts));
+        }
+        return result;
+    }
+
 private:
     std::vector<NumericType> mAcc;
     std::vector<size_t> mCnts;

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <iostream>
 #include <rtTraceDirection.hpp>
 
 template <typename NumericType>
