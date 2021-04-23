@@ -20,7 +20,7 @@ using rtQuadruple = std::array<NumericType, 4>;
 
 namespace rtInternal
 {
-    constexpr double pi = 3.14159265358979323846;
+    constexpr double PI = 3.14159265358979323846;
 
     template <typename NumericType>
     NumericType Distance(const rtTriple<NumericType> &vec1, const rtTriple<NumericType> &vec2)

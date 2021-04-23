@@ -154,10 +154,20 @@ public:
         return rtcGeometry;
     }
 
-    rtTriple<NumericType> getPrimNormal(const size_t primID) override final
+    rtTriple<NumericType> getPrimNormal(const size_t pPrimID) override final
     {
-        auto const &normal = normalVecBuffer[primID];
+        auto const &normal = normalVecBuffer[pPrimID];
         return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
+    }
+
+    rtQuadruple<float> &getPrimRef(unsigned int pPrimID)
+    {
+        return *reinterpret_cast<rtQuadruple<float> *>(&pointBuffer[pPrimID]);
+    }
+
+    rtTriple<float> &getNormalRef(unsigned int pPrimID)
+    {
+        return *reinterpret_cast<rtTriple<float> *>(&normalVecBuffer[pPrimID]);
     }
 
 private:

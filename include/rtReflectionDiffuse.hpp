@@ -33,7 +33,7 @@ private:
         NumericType r1 = ((NumericType)RNG.get(RngState)) / ((NumericType)RNG.max() + 1);
         NumericType r2 = ((NumericType)RNG.get(RngState)) / ((NumericType)RNG.max() + 1);
 
-        constexpr NumericType two_pi = 2 * rtInternal::pi;
+        constexpr NumericType two_pi = 2 * rtInternal::PI;
         NumericType cc1 = sqrt(r2);
         NumericType cc2 = cos(two_pi * r1) * sqrt(1 - r2);
         NumericType cc3 = sin(two_pi * r1) * sqrt(1 - r2);

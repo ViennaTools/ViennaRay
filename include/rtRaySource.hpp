@@ -98,7 +98,7 @@ private:
     const int minMax;
     const NumericType posNeg;
     const NumericType ee;
-    constexpr static NumericType two_pi = rtInternal::pi * 2;
+    constexpr static NumericType two_pi = rtInternal::PI * 2;
 };
 
 #endif // RT_RAYSOURCE_HPP

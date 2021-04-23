@@ -9,10 +9,9 @@ class rtHitAccumulator
 {
 public:
     // elements initialized to 0.
-    rtHitAccumulator(size_t size) : mAcc(size, 0),
-                                    mCnts(size, 0),
+    rtHitAccumulator(size_t size) : mCnts(size, 0),
                                     mTotalCnts(0),
-                                    exposedareas(size, 0),
+                                    mExposedAreas(size, 0),
                                     mS1s(size, 0),
                                     mS2s(size, 0),
                                     mS3s(size, 0),
@@ -21,10 +20,9 @@ public:
     }
 
     // copy construct the vector member
-    rtHitAccumulator(rtHitAccumulator<NumericType> const &pA) : mAcc(pA.mAcc),
-                                                                mCnts(pA.mCnts),
+    rtHitAccumulator(rtHitAccumulator<NumericType> const &pA) : mCnts(pA.mCnts),
                                                                 mTotalCnts(pA.mTotalCnts),
-                                                                exposedareas(pA.exposedareas),
+                                                                mExposedAreas(pA.mExposedAreas),
                                                                 mS1s(pA.mS1s),
                                                                 mS2s(pA.mS2s),
                                                                 mS3s(pA.mS3s),
@@ -33,10 +31,9 @@ public:
     }
 
     // move the vector member
-    rtHitAccumulator(rtHitAccumulator<NumericType> const &&pA) : mAcc(std::move(pA.mAcc)),
-                                                                 mCnts(std::move(pA.mCnts)),
+    rtHitAccumulator(rtHitAccumulator<NumericType> const &&pA) : mCnts(std::move(pA.mCnts)),
                                                                  mTotalCnts(std::move(pA.mTotalCnts)),
-                                                                 exposedareas(std::move(exposedareas)),
+                                                                 mExposedAreas(std::move(mExposedAreas)),
                                                                  mS1s(std::move(pA.mS1s)),
                                                                  mS2s(std::move(pA.mS2s)),
                                                                  mS3s(std::move(pA.mS3s)),
@@ -49,9 +46,8 @@ public:
     rtHitAccumulator(rtHitAccumulator<NumericType> const &pA1,
                      rtHitAccumulator<NumericType> const &pA2) : rtHitAccumulator(pA1)
     { // copy construct from the first argument
-        for (size_t idx = 0; idx < mAcc.size(); ++idx)
+        for (size_t idx = 0; idx < mCnts.size(); ++idx)
         {
-            mAcc[idx] += pA2.mAcc[idx];
             mCnts[idx] += pA2.mCnts[idx];
             mS1s[idx] += pA2.mS1s[idx];
             mS2s[idx] += pA2.mS2s[idx];
@@ -60,10 +56,10 @@ public:
         }
 
         mTotalCnts = pA1.mTotalCnts + pA2.mTotalCnts;
-        for (size_t idx = 0; idx < pA1.exposedareas.size(); ++idx)
+        for (size_t idx = 0; idx < pA1.mExposedAreas.size(); ++idx)
         {
 
-            exposedareas[idx] = pA1.exposedareas[idx] > pA2.exposedareas[idx] ? pA1.exposedareas[idx] : pA2.exposedareas[idx];
+            mExposedAreas[idx] = pA1.mExposedAreas[idx] > pA2.mExposedAreas[idx] ? pA1.mExposedAreas[idx] : pA2.mExposedAreas[idx];
         }
     }
 
@@ -73,13 +69,11 @@ public:
         if (this != &pOther)
         {
             // copy from pOther to this
-            mAcc.clear();
-            mAcc = pOther.mAcc;
             mCnts.clear();
             mCnts = pOther.mCnts;
             mTotalCnts = pOther.mTotalCnts;
-            exposedareas.clear();
-            exposedareas = pOther.exposedareas;
+            mExposedAreas.clear();
+            mExposedAreas = pOther.mExposedAreas;
             mS1s.clear();
             mS1s = pOther.mS1s;
             mS2s.clear();
@@ -97,13 +91,11 @@ public:
         if (this != &pOther)
         {
             // move from pOther to this
-            mAcc.clear();
-            mAcc = std::move(pOther.mAcc);
             mCnts.clear();
             mCnts = std::move(pOther.mCnts);
             mTotalCnts = pOther.mTotalCnts;
-            exposedareas.clear();
-            exposedareas = std::move(pOther.exposedareas);
+            mExposedAreas.clear();
+            mExposedAreas = std::move(pOther.mExposedAreas);
             mS1s.clear();
             mS1s = std::move(pOther.mS1s);
             mS2s.clear();
@@ -118,7 +110,6 @@ public:
 
     void use(unsigned int primID, NumericType value)
     {
-        mAcc[primID] += value;
         mCnts[primID] += 1;
         mTotalCnts += 1;
 
@@ -130,15 +121,15 @@ public:
 
     std::vector<NumericType> getValues()
     {
-        return mAcc;
+        return mS1s;
     }
 
-    std::vector<size_t> getCounts() 
+    std::vector<size_t> getCounts()
     {
         return mCnts;
     }
 
-    size_t getTotalCounts() 
+    size_t getTotalCounts()
     {
         return mTotalCnts;
     }
@@ -166,14 +157,15 @@ public:
         return result;
     }
 
+    void setExposedAreas(std::vector<NumericType> &pExposedAreas)
+    {
+        mExposedAreas = pExposedAreas;
+    }
+
 private:
-    std::vector<NumericType> mAcc;
     std::vector<size_t> mCnts;
     size_t mTotalCnts;
-    std::vector<NumericType> exposedareas;
-
-    // actuall - for now - mAcc und mS1s do the same thing!
-    // We might want to remove one of them later.
+    std::vector<NumericType> mExposedAreas;
 
     // S1 denotes the sum of sample values
     std::vector<NumericType> mS1s;
