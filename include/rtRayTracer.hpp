@@ -12,6 +12,8 @@
 #include <rtUtil.hpp>
 #include <rtLocalIntersector.hpp>
 
+#define PRINT_PROGRESS true
+
 template <typename NumericType>
 class rtTracingResult
 {
@@ -133,7 +135,7 @@ public:
             auto rtccontext = RTCIntersectContext{};
             rtcInitIntersectContext(&rtccontext);
 
-            // size_t progresscnt = 0;
+            size_t progressCount = 0;
 
 #pragma omp for
             for (size_t idx = 0; idx < mNumRays; ++idx)
@@ -143,8 +145,10 @@ public:
                 auto lastInitRW = rayWeight;
                 mSource->fillRay(rayHit.ray, RNG, RngState1, RngState2, RngState3, RngState4); // fills also tnear
 
-                // TODO
-                // if_RLOG_PROGRESS_is_set_print_progress(progresscnt, mmNumRays);
+                if constexpr (PRINT_PROGRESS)
+                {
+                    printProgress(progressCount);
+                }
 
                 bool reflect = false;
                 bool hitFromBack = false;
@@ -293,7 +297,7 @@ private:
 
     std::vector<NumericType> computeDiscAreas()
     {
-        const NumericType eps = 1e-4;
+        constexpr NumericType eps = 1e-4;
         const auto bdBox = mGeometry->getBoundingBox();
         const auto numOfPrimitives = mGeometry->getNumPoints();
         const auto boundaryDirs = mBoundary->getDirs();
@@ -317,6 +321,39 @@ private:
             }
         }
         return areas;
+    }
+
+    void printProgress(size_t &progressCount)
+    {
+        if (omp_get_thread_num() != 0)
+        {
+            return;
+        }
+        auto barlength = 30u;
+        auto barstartsymbol = '[';
+        auto fillsymbol = '#';
+        auto emptysymbol = '-';
+        auto barendsymbol = ']';
+        auto percentagestringformatlength = 3; // 3 digits
+        if (progressCount % (int)std::ceil((float)mNumRays / omp_get_num_threads() / barlength) == 0)
+        {
+            auto filllength = (int)std::ceil(progressCount / ((float)mNumRays / omp_get_num_threads() / barlength));
+            auto percentagestring = std::to_string((filllength * 100) / barlength);
+            percentagestring =
+                std::string(percentagestringformatlength - percentagestring.length(), ' ') +
+                percentagestring + "%";
+            auto bar =
+                "" + std::string(1, barstartsymbol) +
+                std::string(filllength, fillsymbol) +
+                std::string(std::max(0, (int)barlength - (int)filllength), emptysymbol) +
+                std::string(1, barendsymbol) + " " + percentagestring;
+            std::cerr << "\r" << bar;
+            if (filllength >= barlength)
+            {
+                std::cerr << std::endl;
+            }
+        }
+        progressCount += 1;
     }
 
     void printRay(RTCRayHit &rayHit)
