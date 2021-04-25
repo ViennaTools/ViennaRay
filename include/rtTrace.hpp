@@ -11,6 +11,7 @@
 #include <rtRayTracer.hpp>
 #include <rtParticle.hpp>
 #include <rtReflectionSpecular.hpp>
+#include <rtHitAccumulator.hpp>
 
 template <class NumericType, int D>
 class rtTrace
@@ -22,6 +23,7 @@ private:
     rtTraceDirection sourceDirection = rtTraceDirection::POS_Z;
     rtTraceBoundary boundaryConds[D] = {};
     NumericType cosinePower = 1.;
+    lsSmartPointer<rtHitAccumulator<NumericType>> hitAcc = nullptr;
 
 public:
     rtTrace() {}
@@ -42,7 +44,7 @@ public:
         auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(rtcDevice, domain, discRadius);
         auto boundingBox = geometry->getBoundingBox();
 
-        rtInternal::adjustBoundingBox(boundingBox, sourceDirection, discRadius);
+        rtInternal::adjustBoundingBox(boundingBox, sourceDirection, 2 * discRadius);
         auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
 
         auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(rtcDevice, boundingBox, boundaryConds, traceSettings);
@@ -50,11 +52,12 @@ public:
 
         rtRayTracer<NumericType, rtParticle1<NumericType>, rtReflectionSpecular<NumericType, D>, D> tracer(geometry, boundary, raySource, numberOfRaysPerPoint);
         auto traceResult = tracer.run();
+        hitAcc = traceResult.hitAccumulator;
         traceResult.print();
         rtcReleaseDevice(rtcDevice);
     }
 
-    void setNumberOfRayPerPoint(const size_t num)
+    void setNumberOfRaysPerPoint(const size_t num)
     {
         numberOfRaysPerPoint = num;
     }
@@ -67,6 +70,16 @@ public:
     void setBoundaryConditions(rtTraceBoundary passedBoundaryConds[D])
     {
         boundaryConds = passedBoundaryConds;
+    }
+
+    std::vector<size_t> getCounts() const
+    {
+        return hitAcc->getCounts();
+    }
+
+    std::vector<NumericType> getExposedAreas() const
+    {
+        return hitAcc->getExposedAreas();
     }
 };
 

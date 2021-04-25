@@ -101,9 +101,12 @@ namespace rtInternal
     }
 
     template <typename NumericType>
-    rtTriple<NumericType> Scale(const NumericType fac, const rtTriple<NumericType> &vec)
+    rtTriple<NumericType> Scale(const NumericType pF, rtTriple<NumericType> &pT)
     {
-        return {vec[0] * fac, vec[1] * fac, vec[2] * fac};
+        pT[0] *= pF;
+        pT[1] *= pF;
+        pT[2] *= pF;
+        return pT;
     }
 
     template <typename NumericType>

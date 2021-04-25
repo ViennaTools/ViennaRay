@@ -16,7 +16,7 @@ template <typename NumericType>
 class rtTracingResult
 {
 public:
-    std::unique_ptr<rtHitAccumulator<NumericType>> hitAccumulator;
+    lsSmartPointer<rtHitAccumulator<NumericType>> hitAccumulator = nullptr;
     uint64_t timeNanoseconds = 0;
     size_t numRays;
     size_t hitc;
@@ -28,7 +28,8 @@ public:
         std::cout << "Elapsed time: " << timeNanoseconds / 1e6 << " ms" << std::endl
                   << "Number of rays: " << numRays << std::endl
                   << "Surface hits: " << hitc << std::endl
-                  << "Non-geometry hits: " << nonhitc << std::endl;
+                  << "Non-geometry hits: " << nonhitc << std::endl
+                  << "Total number of disc hits " << hitAccumulator->getTotalCounts() << std::endl;
     }
 };
 
@@ -132,7 +133,7 @@ public:
             auto rtccontext = RTCIntersectContext{};
             rtcInitIntersectContext(&rtccontext);
 
-            size_t progresscnt = 0;
+            // size_t progresscnt = 0;
 
 #pragma omp for
             for (size_t idx = 0; idx < mNumRays; ++idx)
@@ -204,7 +205,7 @@ public:
                     geohitc += 1;
                     auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit, RNG, RngState5);
                     auto valueToDrop = rayWeight * sticking;
-                    hitAccumulator.use(rayHit.hit.primID, valueToDrop);
+                    hitAccumulator.use(hit.primID, valueToDrop);
 
                     // Check for additional intersections
                     for (auto const &id : mGeometry->getNeighborIndicies(rayHit.hit.primID))
@@ -241,7 +242,7 @@ public:
         }
 
         result.timeNanoseconds = timer.elapsedNanoseconds();
-        result.hitAccumulator = std::make_unique<rtHitAccumulator<NumericType>>(hitAccumulator);
+        result.hitAccumulator = lsSmartPointer<rtHitAccumulator<NumericType>>::New(hitAccumulator);
         result.hitc = geohitc;
         result.nonhitc = nongeohitc;
 
@@ -292,23 +293,48 @@ private:
 
     std::vector<NumericType> computeDiscAreas()
     {
-        auto bdBox = mGeometry->getBoundingBox();
-        auto numOfPrimitives = mGeometry->getNumPoints();
+        const NumericType eps = 1e-4;
+        const auto bdBox = mGeometry->getBoundingBox();
+        const auto numOfPrimitives = mGeometry->getNumPoints();
+        const auto boundaryDirs = mBoundary->getDirs();
         auto areas = std::vector<NumericType>(numOfPrimitives, 0);
 
 #pragma omp for
         for (size_t idx = 0; idx < numOfPrimitives; ++idx)
         {
+            auto const &disc = mGeometry->getPrimRef(idx);
+            areas[idx] = disc[3] * disc[3] * (NumericType)rtInternal::PI;
+            if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
+                std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps)
+            {
+                areas[idx] /= 2;
+            }
 
-            // areas[idx] = dbbi.area_inside(geometry->getPrimRef(idx), geometry->getNormalRef(idx));
+            if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) < eps ||
+                std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < eps)
+            {
+                areas[idx] /= 2;
+            }
         }
         return areas;
     }
 
+    void printRay(RTCRayHit &rayHit)
+    {
+        std::cout << "Ray ID: " << rayHit.ray.id << std::endl;
+        std::cout << "Origin: ";
+        rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
+        std::cout << "Direction: ";
+        rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
+        std::cout << "Geometry hit ID: " << rayHit.hit.geomID << std::endl;
+        std::cout << "Geometry normal: ";
+        rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z});
+    }
+
     // TracingResult result;
-    lsSmartPointer<rtGeometry<NumericType, D>> mGeometry = nullptr;
-    lsSmartPointer<rtBoundary<NumericType, D>> mBoundary = nullptr;
-    lsSmartPointer<rtRaySource<NumericType, D>> mSource = nullptr;
+    const lsSmartPointer<rtGeometry<NumericType, D>> mGeometry = nullptr;
+    const lsSmartPointer<rtBoundary<NumericType, D>> mBoundary = nullptr;
+    const lsSmartPointer<rtRaySource<NumericType, D>> mSource = nullptr;
     const size_t mNumRays;
 };
 

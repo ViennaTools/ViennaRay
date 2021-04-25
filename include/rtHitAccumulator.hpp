@@ -119,22 +119,27 @@ public:
         mS4s[primID] += value * value * value * value;
     }
 
-    std::vector<NumericType> getValues()
+    std::vector<NumericType> getValues() const 
     {
         return mS1s;
     }
 
-    std::vector<size_t> getCounts()
+    std::vector<size_t> getCounts() const 
     {
         return mCnts;
     }
 
-    size_t getTotalCounts()
+    size_t getTotalCounts() const
     {
         return mTotalCnts;
     }
 
-    std::vector<NumericType> getRelativeError()
+    std::vector<NumericType> getExposedAreas() const
+    {
+        return mExposedAreas;
+    }
+
+    std::vector<NumericType> getRelativeError() 
     {
         auto result = std::vector<NumericType>(mS1s.size(), std::numeric_limits<NumericType>::max()); // size, initial values
         if (mTotalCnts == 0)

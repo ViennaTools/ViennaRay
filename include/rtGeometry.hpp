@@ -180,7 +180,7 @@ private:
         {
             for (size_t idx2 = idx1 + 1; idx2 < numPoints; ++idx2)
             {
-                if (rtInternal::Distance<NumericType>(points[idx1], points[idx2]) < discRadii)
+                if (rtInternal::Distance<NumericType>(points[idx1], points[idx2]) < 2*discRadii)
                 {
                     pointNeighborhood[idx1].push_back(idx2);
                     pointNeighborhood[idx2].push_back(idx1);

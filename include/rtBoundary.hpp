@@ -228,6 +228,11 @@ public:
         return bdBox;
     }
 
+    rtPair<int> getDirs() const 
+    {
+        return {firstDir, secondDir};
+    }
+
 private:
     rtTriple<rtTriple<NumericType>> getTriangleCoords(const size_t primID)
     {
@@ -256,8 +261,8 @@ private:
 
     RTCDevice &rtcDevice;
     RTCGeometry rtcBoundary;
-    const int firstDir = 1;
-    const int secondDir = 2;
+    const int firstDir = 0;
+    const int secondDir = 1;
     static constexpr size_t numTriangles = 8;
     static constexpr size_t numVertices = 8;
     boundingBoxType bdBox;
