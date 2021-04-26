@@ -27,7 +27,7 @@ int main()
     }
 
     auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device, levelSet, gridDelta + eps);
+    auto geometry = rtGeometry<NumericType, D>(device, levelSet, gridDelta);
     // setup simple 2D plane grid with normal in y-direction with discs only overlapping at adjecent grid points
     // x - x - x - x - x
 
@@ -38,11 +38,11 @@ int main()
     {
         auto point = geometry.getPoint(idx);
         auto neighbors = geometry.getNeighborIndicies(idx);
-        if(std::fabs(point[0]) > 1 - eps)
+        if (std::fabs(point[0]) > 1 - eps)
         {
             // corner point
             RAYTEST_ASSERT(neighbors.size() == 1)
-        } 
+        }
         else
         {
             // inner point

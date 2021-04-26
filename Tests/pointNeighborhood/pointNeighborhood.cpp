@@ -39,7 +39,7 @@ int main()
     // assert inner points have 4 neighbors
 
     auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device, levelSet, gridDelta + eps);
+    auto geometry = rtGeometry<NumericType, D>(device, levelSet, gridDelta);
 
     for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx)
     {
@@ -50,17 +50,17 @@ int main()
         if (sum >= 2 - eps)
         {
             // corner point
-            RAYTEST_ASSERT(neighbors.size() == 2)
+            RAYTEST_ASSERT(neighbors.size() == 3)
         }
         else if (std::any_of(point.begin(), point.end(), [eps](NumericType val) { return std::fabs(val) > 1 - eps; }))
         {
             // boundary point
-            RAYTEST_ASSERT(neighbors.size() == 3)
+            RAYTEST_ASSERT(neighbors.size() == 5)
         }
         else
         {
             // inner point
-            RAYTEST_ASSERT(neighbors.size() == 4)
+            RAYTEST_ASSERT(neighbors.size() == 8)
         }
     }
 
