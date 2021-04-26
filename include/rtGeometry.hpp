@@ -180,13 +180,27 @@ private:
         {
             for (size_t idx2 = idx1 + 1; idx2 < numPoints; ++idx2)
             {
-                if (rtInternal::Distance<NumericType>(points[idx1], points[idx2]) < 2*discRadii)
+                if (checkDistance(points[idx1], points[idx2], 2 * discRadii))
                 {
                     pointNeighborhood[idx1].push_back(idx2);
                     pointNeighborhood[idx2].push_back(idx1);
                 }
             }
         }
+    }
+
+    bool checkDistance(const rtTriple<NumericType> &p1, const rtTriple<NumericType> &p2, const NumericType &dist)
+    {
+        if (std::abs(p1[0] - p2[0]) >= dist)
+            return false;
+        if (std::abs(p1[1] - p2[1]) >= dist)
+            return false;
+        if (std::abs(p1[2] - p2[2]) >= dist)
+            return false;
+        if (rtInternal::Distance<NumericType>(p1, p2) < dist)
+            return true;
+
+        return false;
     }
 
     // "RTC_GEOMETRY_TYPE_POINT:
