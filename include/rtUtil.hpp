@@ -38,6 +38,12 @@ namespace rtInternal
     }
 
     template <typename NumericType>
+    void printPair(const rtPair<NumericType> &vec)
+    {
+        std::cout << "(" << vec[0] << ", " << vec[1] << ")" << std::endl;
+    }
+
+    template <typename NumericType>
     rtTriple<NumericType> Sum(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
     {
         return {pF[0] + pS[0], pF[1] + pS[1], pF[2] + pS[2]};
@@ -109,39 +115,61 @@ namespace rtInternal
         return pT;
     }
 
-    template <typename NumericType>
+    template <typename NumericType, int D>
     void adjustBoundingBox(rtPair<rtTriple<NumericType>> &bdBox, rtTraceDirection direction, NumericType eps)
     {
+        // For 2D geometries adjust bounding box in z-direction
+        if constexpr (D == 2)
+        {
+            bdBox[0][2] -= eps;
+            bdBox[1][2] += eps;
+
+            if (direction == rtTraceDirection::POS_Z || direction == rtTraceDirection::NEG_Z)
+            {
+                std::cerr << "Warning: Ray source is set in z-direction for 2D geometry" << std::endl;
+            }
+        }
+
         switch (direction)
         {
         case rtTraceDirection::POS_X:
-            bdBox[1][0] += eps;
+            bdBox[1][0] += 2 * eps;
             break;
 
         case rtTraceDirection::NEG_X:
-            bdBox[0][0] -= eps;
+            bdBox[0][0] -= 2 * eps;
             break;
 
         case rtTraceDirection::POS_Y:
-            bdBox[1][1] += eps;
+            bdBox[1][1] += 2 * eps;
             break;
 
         case rtTraceDirection::NEG_Y:
-            bdBox[0][1] -= eps;
+            bdBox[0][1] -= 2 * eps;
             break;
 
         case rtTraceDirection::POS_Z:
-            bdBox[1][2] += eps;
+            bdBox[1][2] += 2 * eps;
             break;
 
         case rtTraceDirection::NEG_Z:
-            bdBox[0][2] -= eps;
+            bdBox[0][2] -= 2 * eps;
             break;
         }
     }
 
+    template <typename NumericType>
+    void printBoundingBox(rtPair<rtTriple<NumericType>> &bdBox)
+    {
+        std::cout << "Bounding box min coords: ";
+        printTriple(bdBox[0]);
+        std::cout << "Bounding box max coords: ";
+        printTriple(bdBox[1]);
+    }
+
     std::array<int, 5> getTraceSettings(rtTraceDirection sourceDir)
     {
+        // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source, posNeg dir
         std::array<int, 5> set{0, 0, 0, 0, 0};
         switch (sourceDir)
         {

@@ -21,7 +21,7 @@ public:
     rtBoundary(RTCDevice &device, boundingBoxType &passedBoundingBox,
                rtTraceBoundary passedBoundaryConds[D], std::array<int, 5> &traceSettings)
         : rtcDevice(device), firstDir(traceSettings[1]), secondDir(traceSettings[2]),
-        boundaryConds(std::array<rtTraceBoundary, D-1>{passedBoundaryConds[firstDir], passedBoundaryConds[secondDir]})
+          boundaryConds(std::array<rtTraceBoundary, 2>{passedBoundaryConds[firstDir], passedBoundaryConds[secondDir]})
     {
         initBoundary(passedBoundingBox);
     }
@@ -121,18 +121,33 @@ public:
 
         if constexpr (D == 2)
         {
-            // not yet implemented
+            assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) && "Assumption");
             if (boundaryConds[0] == rtTraceBoundary::REFLECTIVE)
             {
-                // use specular reflection
+                reflect = true;
+                return rtReflectionSpecular<NumericType, D>::use(rayHit.ray, rayHit.hit, *this);
             }
             else if (boundaryConds[0] == rtTraceBoundary::PERIODIC)
             {
                 // periodically move ray origin
+                if (primID == 0 || primID == 1)
+                {
+                    // hit at x/y min boundary -> move to max x/y
+                    impactCoords[firstDir] = bdBox[1][firstDir];
+                }
+                else if (primID == 2 || primID == 3)
+                {
+                    // hit at x/y max boundary -> move to min x/y
+                    impactCoords[firstDir] = bdBox[0][firstDir];
+                }
+                reflect = true;
+                return {impactCoords, rtTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z}};
             }
             else
             {
                 // ignore ray
+                reflect = false;
+                return {0., 0., 0., 0., 0., 0.};
             }
 
             assert(false && "Correctness Assumption");
@@ -228,7 +243,7 @@ public:
         return bdBox;
     }
 
-    rtPair<int> getDirs() const 
+    rtPair<int> getDirs() const
     {
         return {firstDir, secondDir};
     }
@@ -266,7 +281,7 @@ private:
     static constexpr size_t numTriangles = 8;
     static constexpr size_t numVertices = 8;
     boundingBoxType bdBox;
-    const std::array<rtTraceBoundary, D - 1> boundaryConds = {};
+    const std::array<rtTraceBoundary, 2> boundaryConds = {};
     std::array<rtTriple<NumericType>, numTriangles> primNormals;
 };
 

@@ -174,6 +174,8 @@ public:
                     if (rayHit.hit.geomID == boundaryID)
                     {
                         auto orgdir = mBoundary->processHit(rayHit, reflect);
+
+                        // TODO: move this in processHit function
                         auto tnear = 1e-4f;
                         reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(tnear, (float)orgdir[0][2], (float)orgdir[0][1], (float)orgdir[0][0]);
                         auto time = 0.0f;
