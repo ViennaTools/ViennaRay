@@ -40,7 +40,7 @@ public:
 
     void apply()
     {
-        auto timer = rtInternal::Timer{};
+        // auto timer = rtInternal::Timer{};
         // create RTC device, which used to construct further RTC objects
         auto rtcDevice = rtcNewDevice("hugepages=1");
 
@@ -53,12 +53,12 @@ public:
         auto boundary = rtBoundary<NumericType, D>(rtcDevice, boundingBox, boundaryConds, traceSettings);
         auto raySource = rtRaySource<NumericType, D>(boundingBox, cosinePower, traceSettings);
 
-        std::cout << "Tracing preparation time " << timer.elapsedNanoseconds()/1e6 << std::endl;
+        // std::cout << "Tracing preparation time " << timer.elapsedNanoseconds()/1e6 << std::endl;
         auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(geometry, boundary, raySource, numberOfRaysPerPoint);
         auto traceResult = tracer.run();
         hitAcc = std::move(traceResult.hitAccumulator);
         extractMcEstimates(geometry);
-        traceResult.print();
+        // traceResult.print();
         rtcReleaseDevice(rtcDevice);
     }
 

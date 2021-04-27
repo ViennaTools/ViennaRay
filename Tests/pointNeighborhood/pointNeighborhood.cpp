@@ -26,6 +26,10 @@ int main()
         auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
         lsMakeGeometry<NumericType, D>(levelSet, plane).apply();
     }
+    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
+    auto points = mesh->getNodes();
+    auto normals = *mesh->getVectorData("Normals");
 
     // setup simple plane grid with normal in z-direction with discs only overlapping at adjecent grid points
     // x - x - x - x - x
@@ -39,7 +43,7 @@ int main()
     // assert inner points have 4 neighbors
 
     auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device, levelSet, gridDelta);
+    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
 
     for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx)
     {

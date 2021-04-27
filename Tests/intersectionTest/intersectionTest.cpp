@@ -80,8 +80,6 @@ int main()
     auto boundaryID = rtcAttachGeometry(rtcscene, rtcboundary);
     auto geometryID = rtcAttachGeometry(rtcscene, rtcgeometry);
     rtcJoinCommitScene(rtcscene);
-    std::cout << "boundary ID: " << boundaryID << std::endl;
-    std::cout << "geometry ID: " << geometryID << std::endl;
 
     auto rtccontext = RTCIntersectContext{};
     rtcInitIntersectContext(&rtccontext);
@@ -93,28 +91,19 @@ int main()
 
     alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    // alignas(128) auto rayhit = RTCRayHit{(float)origin[0], (float)origin[1], (float)origin[2], 1e-4f,   // Ray origin, tnear
-    //                                      (float)direction[0], (float)direction[1], (float)direction[2], // Ray direction
-    //                                      0, 0,                                                          // time, tfar
-    //                                      0, 0, 0,                                                       // mask, ID, flags
-    //                                      0, 0, 0,                                                       // geometry normal
-    //                                      0, 0,                                                          // barycentric coordinates
-    //                                      0, 0, 0};                                                      // primID, geomID, instanceID
-
-    auto tnear = 1e-4f; // float
+    auto tnear = 1e-4f; 
     reinterpret_cast<__m128 &>(rayhit.ray) = _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
-    auto time = 0.0f; // float
+    auto time = 0.0f; 
     reinterpret_cast<__m128 &>(rayhit.ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
 
-    rayhit.ray.tfar = std::numeric_limits<float>::max(); // Embree uses float
+    rayhit.ray.tfar = std::numeric_limits<float>::max(); 
     rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
     rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-
-    printRay(rayhit);
 
     rtcIntersect1(rtcscene, &rtccontext, &rayhit);
 
     RAYTEST_ASSERT(rayhit.hit.geomID == geometryID)
+    
 
     // direction = rtTriple<NumericType>{}
     // printRay(rayhit);

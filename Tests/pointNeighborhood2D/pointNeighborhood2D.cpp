@@ -25,9 +25,13 @@ int main()
         auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
         lsMakeGeometry<NumericType, D>(levelSet, plane).apply();
     }
+    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
+    auto points = mesh->getNodes();
+    auto normals = *mesh->getVectorData("Normals");
 
     auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device, levelSet, gridDelta);
+    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
     // setup simple 2D plane grid with normal in y-direction with discs only overlapping at adjecent grid points
     // x - x - x - x - x
 
