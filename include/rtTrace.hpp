@@ -13,50 +13,63 @@
 #include <rtReflectionSpecular.hpp>
 #include <rtHitAccumulator.hpp>
 
-template <class NumericType, int D>
+template <class NumericType, class ParticleType, class ReflectionType, int D>
 class rtTrace
 {
 private:
-    lsSmartPointer<lsDomain<NumericType, D>> domain = nullptr;
+    static constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
     size_t numberOfRaysPerPoint = 1000;
-    NumericType discRadius = 0;
+    NumericType mDiscRadius = 0;
     rtTraceDirection sourceDirection = rtTraceDirection::POS_Z;
     rtTraceBoundary boundaryConds[D] = {};
     NumericType cosinePower = 1.;
-    lsSmartPointer<rtHitAccumulator<NumericType>> hitAcc = nullptr;
+    rtHitAccumulator<NumericType> hitAcc = rtHitAccumulator<NumericType>(0);
     std::vector<NumericType> mMcEstimates;
+    std::vector<std::array<NumericType, 3>> mPoints;
+    std::vector<std::array<NumericType, 3>> mNormals;
 
 public:
     rtTrace() {}
 
-    rtTrace(lsSmartPointer<lsDomain<NumericType, D>> passedlsDomain)
-        : domain(passedlsDomain)
+    rtTrace(std::vector<rtTriple<NumericType>> &points,
+            std::vector<rtTriple<NumericType>> &normals,
+            const NumericType gridDelta)
+        : mPoints(points), mNormals(normals), mDiscRadius(discFactor * gridDelta)
     {
-        constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
-        discRadius = domain->getGrid().getGridDelta() * discFactor;
     }
 
     void apply()
     {
+        auto timer = rtInternal::Timer{};
         // create RTC device, which used to construct further RTC objects
         auto rtcDevice = rtcNewDevice("hugepages=1");
 
         // build RTC geometry from lsDomain
-        auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(rtcDevice, domain, discRadius);
-        auto boundingBox = geometry->getBoundingBox();
-
-        rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection, discRadius);
+        auto geometry = rtGeometry<NumericType, D>(rtcDevice, mPoints, mNormals, mDiscRadius);
+        auto boundingBox = geometry.getBoundingBox();
+        rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection, mDiscRadius);
         auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(rtcDevice, boundingBox, boundaryConds, traceSettings);
-        auto raySource = lsSmartPointer<rtRaySource<NumericType, D>>::New(boundingBox, cosinePower, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(rtcDevice, boundingBox, boundaryConds, traceSettings);
+        auto raySource = rtRaySource<NumericType, D>(boundingBox, cosinePower, traceSettings);
 
-        rtRayTracer<NumericType, rtParticle1<NumericType>, rtReflectionSpecular<NumericType, D>, D> tracer(geometry, boundary, raySource, numberOfRaysPerPoint);
+        std::cout << "Tracing preparation time " << timer.elapsedNanoseconds()/1e6 << std::endl;
+        auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(geometry, boundary, raySource, numberOfRaysPerPoint);
         auto traceResult = tracer.run();
-        hitAcc = traceResult.hitAccumulator;
+        hitAcc = std::move(traceResult.hitAccumulator);
         extractMcEstimates(geometry);
         traceResult.print();
         rtcReleaseDevice(rtcDevice);
+    }
+
+    void setPoints(const std::vector<std::array<NumericType, 3>> &pPoints)
+    {
+        mPoints = pPoints;
+    }
+
+    void setNormals(const std::vector<std::array<NumericType, 3>> &pNormals)
+    {
+        mNormals = pNormals;
     }
 
     void setNumberOfRaysPerPoint(const size_t num)
@@ -64,12 +77,17 @@ public:
         numberOfRaysPerPoint = num;
     }
 
-    void setDiscRadii(const NumericType passedDiscRadius)
+    void setGridDelta(const NumericType pGridDelta)
     {
-        discRadius = passedDiscRadius;
+        mDiscRadius = discFactor * pGridDelta;
     }
 
-    void setBoundaryConditions(rtTraceBoundary passedBoundaryConds[D])
+    void setDiscRadii(const NumericType passedDiscRadius)
+    {
+        mDiscRadius = passedDiscRadius;
+    }
+
+    void setBoundaryConditions(const rtTraceBoundary passedBoundaryConds[D])
     {
         boundaryConds = passedBoundaryConds;
     }
@@ -86,12 +104,12 @@ public:
 
     std::vector<size_t> getCounts() const
     {
-        return hitAcc->getCounts();
+        return hitAcc.getCounts();
     }
 
     std::vector<NumericType> getExposedAreas() const
     {
-        return hitAcc->getExposedAreas();
+        return hitAcc.getExposedAreas();
     }
 
     std::vector<NumericType> getMcEstimates() const
@@ -101,14 +119,14 @@ public:
 
     std::vector<NumericType> getRelativeError()
     {
-        return hitAcc->getRelativeError();
+        return hitAcc.getRelativeError();
     }
 
 private:
-    void extractMcEstimates(lsSmartPointer<rtGeometry<NumericType, D>> pGeometry)
+    void extractMcEstimates(rtGeometry<NumericType, D> &pGeometry)
     {
-        auto values = hitAcc->getValues();
-        auto discAreas = hitAcc->getExposedAreas();
+        auto values = hitAcc.getValues();
+        auto discAreas = hitAcc.getExposedAreas();
         mMcEstimates.clear();
         mMcEstimates.reserve(values.size());
 
@@ -118,7 +136,7 @@ private:
         {
             auto vv = values[idx] / discAreas[idx];
             { // Average over the neighborhood
-                auto neighborhood = pGeometry->getNeighborIndicies(idx);
+                auto neighborhood = pGeometry.getNeighborIndicies(idx);
                 for (auto const &nbi : neighborhood)
                 {
                     vv += values[nbi] / discAreas[nbi];

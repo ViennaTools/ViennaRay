@@ -2,10 +2,8 @@
 #define RT_RAYSOURCE_HPP
 
 #include <x86intrin.h> // vector instruction instrinsics
-
 #include <rtUtil.hpp>
 #include <rtRandomNumberGenerator.hpp>
-#include <rtTraceDirection.hpp>
 
 template <typename NumericType, int D>
 class rtRaySource
@@ -42,8 +40,9 @@ public:
         reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
     }
 
+private:
     rtTriple<NumericType> getOrigin(rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState1,
-                                     rtRandomNumberGenerator::RNGState &RngState2)
+                                    rtRandomNumberGenerator::RNGState &RngState2)
     {
         rtTriple<NumericType> origin{0., 0., 0.};
         auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
@@ -65,7 +64,7 @@ public:
     }
 
     rtTriple<NumericType> getDirection(rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState1,
-                                        rtRandomNumberGenerator::RNGState &RngState2)
+                                       rtRandomNumberGenerator::RNGState &RngState2)
     {
         rtTriple<NumericType> direction{0., 0., 0.};
         auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
@@ -89,7 +88,6 @@ public:
         return direction;
     }
 
-private:
     const boundingBoxType bdBox;
     const NumericType cosinePower;
     const int rayDir;

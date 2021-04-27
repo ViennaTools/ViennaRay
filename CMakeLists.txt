@@ -12,7 +12,7 @@ include(GNUInstallDirs)
 SET(CMAKE_CXX_STANDARD "17")
 
 # set default build type
-SET(DEFAULT_BUILD_TYPE "Release")
+SET(DEFAULT_BUILD_TYPE "Debug")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE

@@ -31,20 +31,18 @@ int main()
         auto sphere = lsSmartPointer<lsSphere<NumericType, D>>::New(origin, radius);
         lsMakeGeometry<NumericType, D>(levelSet, sphere).apply();
     }
-
-    // auto levelSet = lsSmartPointer<lsDomain<NumericType, D>>::New();
-    // lsReader<NumericType, D>(levelSet, "sphere-geo.lvst").apply();
-    // auto gridDelta = levelSet->getGrid().getGridDelta();
-
-    // auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-    // lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
-
     auto device = rtcNewDevice("");
-    auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(device, levelSet, gridDelta);
+
+    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
+    auto points = mesh->getNodes();
+    auto normals = *mesh->getVectorData("Normals");
+
+    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
 
     {
         // build boundary in y and z directions
-        auto boundingBox = geometry->getBoundingBox();
+        auto boundingBox = geometry.getBoundingBox();
         auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_X);
         auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, traceSetting);
         boundingBox[1][0] += gridDelta;
@@ -74,7 +72,7 @@ int main()
         // build boundary in x and z directions
         auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Y);
         auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, traceSetting);
-        auto boundingBox = geometry->getBoundingBox();
+        auto boundingBox = geometry.getBoundingBox();
         boundingBox[1][1] += gridDelta;
         auto error = boundary->initBoundary(boundingBox);
 
@@ -102,7 +100,7 @@ int main()
         // build boundary in x and y directions
         auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
         auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, traceSetting);
-        auto boundingBox = geometry->getBoundingBox();
+        auto boundingBox = geometry.getBoundingBox();
         boundingBox[1][2] += gridDelta;
         auto error = boundary->initBoundary(boundingBox);
 

@@ -12,61 +12,44 @@ template <typename NumericType, int D>
 class rtGeometry : public rtMetaGeometry<NumericType, D>
 {
 private:
-    typedef lsSmartPointer<std::unordered_map<size_t, size_t>> translatorType;
+    // typedef lsSmartPointer<std::unordered_map<size_t, size_t>> translatorType;
     typedef std::vector<std::vector<size_t>> pointNeighborhoodType;
 
 public:
-    rtGeometry(RTCDevice &device) : rtcDevice(device) {}
+    // default constructer (for testing)
+    rtGeometry(RTCDevice &pDevice) : rtcDevice(pDevice) {}
 
-    rtGeometry(RTCDevice &device, lsSmartPointer<lsDomain<NumericType, D>> passedlsDomain,
-               translatorType passedTranslator, NumericType passedDiscRadii)
-        : rtcDevice(device)
+    rtGeometry(RTCDevice &pDevice, std::vector<rtTriple<NumericType>> &pPoints,
+               std::vector<rtTriple<NumericType>> &pNormals, const NumericType pDiscRadii)
+        : rtcDevice(pDevice)
     {
-        auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-        lsToDiskMesh<NumericType, D>(passedlsDomain, mesh, passedTranslator).apply();
-        auto points = mesh->getNodes();
-        auto normals = *mesh->getVectorData("Normals");
-
-        initGeometry(points, normals, passedDiscRadii);
-        initPointNeighborhood(points, passedDiscRadii);
-    }
-
-    rtGeometry(RTCDevice &device, lsSmartPointer<lsDomain<NumericType, D>> passedlsDomain,
-               NumericType passedDiscRadii)
-        : rtcDevice(device)
-    {
-        auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-        lsToDiskMesh<NumericType, D>(passedlsDomain, mesh).apply();
-        auto points = mesh->getNodes();
-        auto normals = *mesh->getVectorData("Normals");
-
-        initGeometry(points, normals, passedDiscRadii);
-        initPointNeighborhood(points, passedDiscRadii);
+        initGeometry(pPoints, pNormals, pDiscRadii);
+        initPointNeighborhood(pPoints, pDiscRadii);
     }
 
     RTCError initGeometry(std::vector<rtTriple<NumericType>> &points,
                           std::vector<rtTriple<NumericType>> &normals, NumericType discRadii)
     {
         rtcGeometry = rtcNewGeometry(rtcDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
-        numPoints = points.size();
+        mNumPoints = points.size();
 
         if (!std::is_same<NumericType, float>::value)
         {
             // TODO: add warning for internal type conversion
         }
 
-        pointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(rtcGeometry,
-                                                            RTC_BUFFER_TYPE_VERTEX,
-                                                            0, // slot
-                                                            RTC_FORMAT_FLOAT4,
-                                                            sizeof(point_4f_t),
-                                                            numPoints);
-        for (size_t i = 0; i < numPoints; ++i)
+        mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(rtcGeometry,
+                                                             RTC_BUFFER_TYPE_VERTEX,
+                                                             0, // slot
+                                                             RTC_FORMAT_FLOAT4,
+                                                             sizeof(point_4f_t),
+                                                             mNumPoints);
+        for (size_t i = 0; i < mNumPoints; ++i)
         {
-            pointBuffer[i].xx = (float)points[i][0];
-            pointBuffer[i].yy = (float)points[i][1];
-            pointBuffer[i].zz = (float)points[i][2];
-            pointBuffer[i].radius = (float)discRadii;
+            mPointBuffer[i].xx = (float)points[i][0];
+            mPointBuffer[i].yy = (float)points[i][1];
+            mPointBuffer[i].zz = (float)points[i][2];
+            mPointBuffer[i].radius = (float)discRadii;
             if (points[i][0] < minCoords[0])
                 minCoords[0] = points[i][0];
             if (points[i][1] < minCoords[1])
@@ -81,67 +64,49 @@ public:
                 maxCoords[2] = points[i][2];
         }
 
-        normalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(rtcGeometry,
-                                                                     RTC_BUFFER_TYPE_NORMAL,
-                                                                     0, // slot
-                                                                     RTC_FORMAT_FLOAT3,
-                                                                     sizeof(normal_vec_3f_t),
-                                                                     numPoints);
-        for (size_t i = 0; i < numPoints; ++i)
+        mNormalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(rtcGeometry,
+                                                                      RTC_BUFFER_TYPE_NORMAL,
+                                                                      0, // slot
+                                                                      RTC_FORMAT_FLOAT3,
+                                                                      sizeof(normal_vec_3f_t),
+                                                                      mNumPoints);
+        for (size_t i = 0; i < mNumPoints; ++i)
         {
-            normalVecBuffer[i].xx = (float)normals[i][0];
-            normalVecBuffer[i].yy = (float)normals[i][1];
-            normalVecBuffer[i].zz = (float)normals[i][2];
+            mNormalVecBuffer[i].xx = (float)normals[i][0];
+            mNormalVecBuffer[i].yy = (float)normals[i][1];
+            mNormalVecBuffer[i].zz = (float)normals[i][2];
         }
 
         rtcCommitGeometry(rtcGeometry);
         return rtcGetDeviceError(rtcDevice);
     }
 
-    rtPair<rtTriple<NumericType>> getBoundingBox()
+    rtPair<rtTriple<NumericType>> getBoundingBox() const
     {
         return {minCoords, maxCoords};
-        // if constexpr (D == 2)
-        // {
-        //     return {{minCoords[0], minCoords[1]}, {maxCoords[0], maxCoords[1]}};
-        // }
-        // else
-        // {
-        //     return {minCoords, maxCoords};
-        // }
     }
 
-    std::array<NumericType, D> getPoint(const size_t primID)
+    rtTriple<NumericType> getPoint(const size_t primID) const
     {
-        if (primID >= numPoints)
-        {
-            throw std::runtime_error("Index out of bounds in rtGeometry::getPoint(primID).");
-        }
-
-        auto const &pnt = pointBuffer[primID];
-        if constexpr (D == 2)
-        {
-            return {(NumericType)pnt.xx, (NumericType)pnt.yy};
-        }
-        else
-        {
-            return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
-        }
+        assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+        auto const &pnt = mPointBuffer[primID];
+        return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
     }
 
-    std::vector<size_t> getNeighborIndicies(const size_t idx)
+    std::vector<size_t> getNeighborIndicies(const size_t idx) const
     {
+        assert(idx < mNumPoints && "rtGeometry: Index out of bounds");
         return pointNeighborhood[idx];
     }
 
     size_t getNumPoints() const
     {
-        return numPoints;
+        return mNumPoints;
     }
 
     NumericType getDiscRadius() const
     {
-        return pointBuffer[0].radius;
+        return mPointBuffer[0].radius;
     }
 
     RTCDevice &getRTCDevice() override final
@@ -156,29 +121,32 @@ public:
 
     rtTriple<NumericType> getPrimNormal(const size_t pPrimID) override final
     {
-        auto const &normal = normalVecBuffer[pPrimID];
+        assert(pPrimID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+        auto const &normal = mNormalVecBuffer[pPrimID];
         return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
     }
 
     rtQuadruple<float> &getPrimRef(unsigned int pPrimID)
     {
-        return *reinterpret_cast<rtQuadruple<float> *>(&pointBuffer[pPrimID]);
+        assert(pPrimID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+        return *reinterpret_cast<rtQuadruple<float> *>(&mPointBuffer[pPrimID]);
     }
 
     rtTriple<float> &getNormalRef(unsigned int pPrimID)
     {
-        return *reinterpret_cast<rtTriple<float> *>(&normalVecBuffer[pPrimID]);
+        assert(pPrimID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+        return *reinterpret_cast<rtTriple<float> *>(&mNormalVecBuffer[pPrimID]);
     }
 
 private:
     void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points, const NumericType discRadii)
     {
         pointNeighborhood.clear();
-        pointNeighborhood.resize(numPoints, std::vector<size_t>{});
+        pointNeighborhood.resize(mNumPoints, std::vector<size_t>{});
         // TODO: This SHOULD be further optizmized with a better algorithm!
-        for (size_t idx1 = 0; idx1 < numPoints; ++idx1)
+        for (size_t idx1 = 0; idx1 < mNumPoints; ++idx1)
         {
-            for (size_t idx2 = idx1 + 1; idx2 < numPoints; ++idx2)
+            for (size_t idx2 = idx1 + 1; idx2 < mNumPoints; ++idx2)
             {
                 if (checkDistance(points[idx1], points[idx2], 2 * discRadii))
                 {
@@ -213,7 +181,7 @@ private:
     {
         float xx, yy, zz, radius;
     };
-    point_4f_t *pointBuffer = nullptr;
+    point_4f_t *mPointBuffer = nullptr;
 
     // "RTC_GEOMETRY_TYPE_POINT:
     // [...] the normal buffer stores a single precision normal per control
@@ -223,12 +191,12 @@ private:
     {
         float xx, yy, zz;
     };
-    normal_vec_3f_t *normalVecBuffer = nullptr;
+    normal_vec_3f_t *mNormalVecBuffer = nullptr;
 
     RTCDevice &rtcDevice;
     RTCGeometry rtcGeometry;
 
-    size_t numPoints;
+    size_t mNumPoints;
     constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
     constexpr static NumericType nummin = std::numeric_limits<NumericType>::lowest();
     rtTriple<NumericType> minCoords{nummax, nummax, nummax};

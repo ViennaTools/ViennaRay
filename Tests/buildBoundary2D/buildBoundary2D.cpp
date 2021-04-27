@@ -27,19 +27,20 @@ int main()
         auto sphere = lsSmartPointer<lsSphere<NumericType, D>>::New(origin, radius);
         lsMakeGeometry<NumericType, D>(levelSet, sphere).apply();
     }
-
-    // rtTraceBoundary boundCons[D];
-    // boundCons[0] = rtTraceBoundary::PERIODIC;
-    // boundCons[1] = rtTraceBoundary::REFLECTIVE;
-
     auto device = rtcNewDevice("");
-    auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(device, levelSet, gridDelta);
+
+    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
+    auto points = mesh->getNodes();
+    auto normals = *mesh->getVectorData("Normals");
+
+    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
 
     {
         rtTraceBoundary boundaryConds[D] = {};
         // build boundary in y and z directions
         auto dir = rtTraceDirection::POS_X;
-        auto boundingBox = geometry->getBoundingBox();
+        auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 
@@ -66,7 +67,7 @@ int main()
         rtTraceBoundary boundaryConds[D] = {};
         // build boundary in x and z directions
         auto dir = rtTraceDirection::POS_Y;
-        auto boundingBox = geometry->getBoundingBox();
+        auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 

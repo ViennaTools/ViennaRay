@@ -10,7 +10,7 @@ class rtLocalIntersector
 
 public:
     static bool intersect(RTCRay const &ray, rtQuadruple<NumericType> const &disc,
-              rtTriple<NumericType> const &normal)
+                          rtTriple<NumericType> const &normal)
     {
         auto const &rayOrigin = *reinterpret_cast<rtTriple<NumericType> const *>(&ray.org_x);
         auto const &rayDirection = *reinterpret_cast<rtTriple<NumericType> const *>(&ray.dir_x);
@@ -31,11 +31,9 @@ public:
             return false;
         }
 
-        // TODO: Memoize ddneg 
+        // TODO: Memoize ddneg
         auto ddneg = rtInternal::DotProduct(discOrigin, normal);
-        // the nominator term of tt
-        auto ttnom = (-rtInternal::DotProduct(normal, rayOrigin)) + ddneg;
-        auto tt = ttnom / prodOfDirections;
+        auto tt = (ddneg - rtInternal::DotProduct(normal, rayOrigin)) / prodOfDirections;
         if (tt <= 0)
         {
             // Intersection point is behind or exactly on the ray origin.

@@ -5,8 +5,11 @@
 
 int main()
 {
-    using NumericType = double;
     constexpr int D = 3;
+    using NumericType = double;
+    using ParticleType = rtParticle2<NumericType>;
+    using ReflectionType = rtReflectionSpecular<NumericType, D>;
+
     NumericType extent = 5;
     NumericType gridDelta = 0.5;
 
@@ -24,8 +27,12 @@ int main()
         auto sphere = lsSmartPointer<lsSphere<NumericType, D>>::New(origin, radius);
         lsMakeGeometry<NumericType, D>(levelSet, sphere).apply();
     }
+    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
+    auto points = mesh->getNodes();
+    auto normals = *mesh->getVectorData("Normals");
 
-    rtTrace<NumericType, D> rayTracer(levelSet);
+    rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer(points, normals, gridDelta);
     rayTracer.apply();
 
     return 0;

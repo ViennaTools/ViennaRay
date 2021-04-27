@@ -8,7 +8,6 @@
 #include <rtRaySource.hpp>
 #include <rtReflection.hpp>
 #include <rtParticle.hpp>
-#include <lsSmartPointer.hpp>
 #include <rtUtil.hpp>
 #include <rtLocalIntersector.hpp>
 
@@ -18,7 +17,7 @@ template <typename NumericType>
 class rtTracingResult
 {
 public:
-    lsSmartPointer<rtHitAccumulator<NumericType>> hitAccumulator = nullptr;
+    rtHitAccumulator<NumericType> hitAccumulator = rtHitAccumulator<NumericType>(0);
     uint64_t timeNanoseconds = 0;
     size_t numRays;
     size_t hitc;
@@ -31,43 +30,32 @@ public:
                   << "Number of rays: " << numRays << std::endl
                   << "Surface hits: " << hitc << std::endl
                   << "Non-geometry hits: " << nonhitc << std::endl
-                  << "Total number of disc hits " << hitAccumulator->getTotalCounts() << std::endl;
+                  << "Total number of disc hits " << hitAccumulator.getTotalCounts() << std::endl;
     }
 };
 
 template <typename NumericType, typename ParticleType, typename ReflectionType, int D>
 class rtRayTracer
 {
-private:
-    // struct TracingResult
-    // {
-    //     std::unique_ptr<rtHitAccumulator<NumericType>> hitAccumulator;
-    //     uint64_t timeNanoseconds = 0;
-    //     size_t mNumRays = 0;
-    //     size_t hitc = 0;
-    //     size_t nonhitc = 0;
-    // };
 
 public:
-    rtRayTracer() {}
-
-    rtRayTracer(lsSmartPointer<rtGeometry<NumericType, D>> passedRTCGeometry,
-                lsSmartPointer<rtBoundary<NumericType, D>> passedRTCBoundary,
-                lsSmartPointer<rtRaySource<NumericType, D>> passedRTCSource,
+    rtRayTracer(rtGeometry<NumericType, D> &passedRTCGeometry,
+                rtBoundary<NumericType, D> &passedRTCBoundary,
+                rtRaySource<NumericType, D> &passedRTCSource,
                 const size_t numOfRayPerPoint)
         : mGeometry(passedRTCGeometry), mBoundary(passedRTCBoundary), mSource(passedRTCSource),
-          mNumRays(passedRTCGeometry->getNumPoints() * numOfRayPerPoint)
+          mNumRays(passedRTCGeometry.getNumPoints() * numOfRayPerPoint)
     {
-        assert(mGeometry->getRTCDevice() == mBoundary->getRTCDevice() &&
+        assert(mGeometry.getRTCDevice() == mBoundary.getRTCDevice() &&
                "the geometry and the boundary need to refer to the same Embree (rtc) device");
-        auto rtcdevice = mGeometry->getRTCDevice();
+        auto rtcdevice = mGeometry.getRTCDevice();
         assert(rtcGetDeviceProperty(rtcdevice, RTC_DEVICE_PROPERTY_VERSION) >= 30601 &&
                "Error: The minimum version of Embree is 3.6.1");
     }
 
     rtTracingResult<NumericType> run()
     {
-        auto rtcdevice = mGeometry->getRTCDevice();
+        auto rtcdevice = mGeometry.getRTCDevice();
         auto rtcscene = rtcNewScene(rtcdevice);
 
         // scene flags
@@ -77,19 +65,19 @@ public:
         // scene commit times. The default build quality for a scene is RTC_BUILD_QUALITY_MEDIUM.
         auto bbquality = RTC_BUILD_QUALITY_HIGH;
         rtcSetSceneBuildQuality(rtcscene, bbquality);
-        auto rtcgeometry = mGeometry->getRTCGeometry();
-        auto rtcboundary = mBoundary->getRTCGeometry();
+        auto rtcgeometry = mGeometry.getRTCGeometry();
+        auto rtcboundary = mBoundary.getRTCGeometry();
 
         auto boundaryID = rtcAttachGeometry(rtcscene, rtcboundary);
         auto geometryID = rtcAttachGeometry(rtcscene, rtcgeometry);
 
-        assert(rtcGetDeviceError(rtcdevice) == RTC_ERROR_NONE && "Error");
+        assert(rtcGetDeviceError(rtcdevice) == RTC_ERROR_NONE && "Embree device error");
 
         size_t geohitc = 0;
         size_t nongeohitc = 0;
-        rtHitAccumulator<NumericType> hitAccumulator(mGeometry->getNumPoints());
+        rtHitAccumulator<NumericType> hitAccumulator(mGeometry.getNumPoints());
 
-        auto result = rtTracingResult<NumericType>{};
+        rtTracingResult<NumericType> result;
         result.numRays = mNumRays;
 
 #pragma omp declare                                                        \
@@ -143,7 +131,7 @@ public:
                 particle.initNew();
                 rayWeight = 1;
                 auto lastInitRW = rayWeight;
-                mSource->fillRay(rayHit.ray, RNG, RngState1, RngState2, RngState3, RngState4); // fills also tnear
+                mSource.fillRay(rayHit.ray, RNG, RngState1, RngState2, RngState3, RngState4); // fills also tnear
 
                 if constexpr (PRINT_PROGRESS)
                 {
@@ -173,7 +161,7 @@ public:
                     // Boundary hit
                     if (rayHit.hit.geomID == boundaryID)
                     {
-                        auto orgdir = mBoundary->processHit(rayHit, reflect);
+                        auto orgdir = mBoundary.processHit(rayHit, reflect);
 
                         // TODO: move this in processHit function
                         auto tnear = 1e-4f;
@@ -188,7 +176,7 @@ public:
                     auto const &ray = rayHit.ray;
                     auto const &hit = rayHit.hit;
                     if (rtInternal::DotProduct(rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z},
-                                               mGeometry->getPrimNormal(hit.primID)) > 0)
+                                               mGeometry.getPrimNormal(hit.primID)) > 0)
                     {
                         // if hitFromback == true, then the ray hits the back of a disc the second time
                         // in this case we ignore the ray
@@ -208,16 +196,17 @@ public:
                     }
 
                     // Surface hit
+                    assert(rayHit.hit.geomID == geometryID && "Primitive hit ID invalid");
                     geohitc += 1;
                     auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit, RNG, RngState5);
                     auto valueToDrop = rayWeight * sticking;
                     hitAccumulator.use(hit.primID, valueToDrop);
 
                     // Check for additional intersections
-                    for (auto const &id : mGeometry->getNeighborIndicies(rayHit.hit.primID))
+                    for (auto const &id : mGeometry.getNeighborIndicies(rayHit.hit.primID))
                     {
-                        auto const &disc = mGeometry->getPrimRef(id);
-                        auto const &normal = mGeometry->getNormalRef(id);
+                        auto const &disc = mGeometry.getPrimRef(id);
+                        auto const &normal = mGeometry.getNormalRef(id);
                         if (rtLocalIntersector::intersect(rayHit.ray, disc, normal))
                         {
                             hitAccumulator.use(id, valueToDrop);
@@ -234,7 +223,7 @@ public:
                     {
                         break;
                     }
-                    auto orgdir = surfReflect.use(rayHit.ray, rayHit.hit, *mGeometry, RNG, RngState7);
+                    auto orgdir = surfReflect.use(rayHit.ray, rayHit.hit, mGeometry, RNG, RngState7);
 
                     auto tnear = 1e-4f;
                     reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(tnear, (float)orgdir[0][2], (float)orgdir[0][1], (float)orgdir[0][0]);
@@ -248,7 +237,7 @@ public:
         }
 
         result.timeNanoseconds = timer.elapsedNanoseconds();
-        result.hitAccumulator = lsSmartPointer<rtHitAccumulator<NumericType>>::New(hitAccumulator);
+        result.hitAccumulator = std::move(hitAccumulator);
         result.hitc = geohitc;
         result.nonhitc = nongeohitc;
 
@@ -257,11 +246,6 @@ public:
 
         return result;
     }
-
-    // TracingResult getTracingResult()
-    // {
-    //     return result;
-    // }
 
 private:
     bool rejectionControl(NumericType &rayWeight, NumericType const &initWeight,
@@ -300,15 +284,15 @@ private:
     std::vector<NumericType> computeDiscAreas()
     {
         constexpr NumericType eps = 1e-4;
-        const auto bdBox = mGeometry->getBoundingBox();
-        const auto numOfPrimitives = mGeometry->getNumPoints();
-        const auto boundaryDirs = mBoundary->getDirs();
+        const auto bdBox = mGeometry.getBoundingBox();
+        const auto numOfPrimitives = mGeometry.getNumPoints();
+        const auto boundaryDirs = mBoundary.getDirs();
         auto areas = std::vector<NumericType>(numOfPrimitives, 0);
 
 #pragma omp for
         for (size_t idx = 0; idx < numOfPrimitives; ++idx)
         {
-            auto const &disc = mGeometry->getPrimRef(idx);
+            auto const &disc = mGeometry.getPrimRef(idx);
             areas[idx] = disc[3] * disc[3] * (NumericType)rtInternal::PI;
             if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
                 std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps)
@@ -370,10 +354,9 @@ private:
         rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z});
     }
 
-    // TracingResult result;
-    const lsSmartPointer<rtGeometry<NumericType, D>> mGeometry = nullptr;
-    const lsSmartPointer<rtBoundary<NumericType, D>> mBoundary = nullptr;
-    const lsSmartPointer<rtRaySource<NumericType, D>> mSource = nullptr;
+    rtGeometry<NumericType, D> &mGeometry;
+    rtBoundary<NumericType, D> &mBoundary;
+    rtRaySource<NumericType, D> &mSource;
     const size_t mNumRays;
 };
 

@@ -31,14 +31,19 @@ int main()
             auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
             lsMakeGeometry<NumericType, D>(levelSet, plane).apply();
         }
+        auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+        lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
+        auto points = mesh->getNodes();
+        auto normals = *mesh->getVectorData("Normals");
+
         auto device = rtcNewDevice("");
-        auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(device, levelSet, gridDelta + eps);
+        auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
         rtTraceBoundary boundCons[D];
         {
             boundCons[0] = rtTraceBoundary::REFLECTIVE;
             boundCons[1] = rtTraceBoundary::PERIODIC;
             boundCons[2] = rtTraceBoundary::PERIODIC;
-            auto boundingBox = geometry->getBoundingBox();
+            auto boundingBox = geometry.getBoundingBox();
             boundingBox[1][2] += gridDelta;
             auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
             auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSetting);
@@ -86,15 +91,19 @@ int main()
             auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
             lsMakeGeometry<NumericType, D>(levelSet, plane).apply();
         }
+        auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+        lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
+        auto points = mesh->getNodes();
+        auto normals = *mesh->getVectorData("Normals");
 
         auto device = rtcNewDevice("");
-        auto geometry = lsSmartPointer<rtGeometry<NumericType, D>>::New(device, levelSet, gridDelta + eps);
+        auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
         rtTraceBoundary boundCons[D];
         {
             boundCons[0] = rtTraceBoundary::PERIODIC;
             boundCons[1] = rtTraceBoundary::PERIODIC;
             boundCons[2] = rtTraceBoundary::REFLECTIVE;
-            auto boundingBox = geometry->getBoundingBox();
+            auto boundingBox = geometry.getBoundingBox();
             boundingBox[1][1] += gridDelta;
             auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Y);
             auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSetting);
