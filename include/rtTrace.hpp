@@ -7,7 +7,7 @@
 #include <rtGeometry.hpp>
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
-#include <rtRaySource.hpp>
+#include <rtRaySourceRandom.hpp>
 #include <rtRayTracer.hpp>
 #include <rtParticle.hpp>
 #include <rtReflectionSpecular.hpp>
@@ -25,66 +25,57 @@ private:
     NumericType cosinePower = 1.;
     rtHitAccumulator<NumericType> hitAcc = rtHitAccumulator<NumericType>(0);
     std::vector<NumericType> mMcEstimates;
-    std::vector<std::array<NumericType, 3>> mPoints;
-    std::vector<std::array<NumericType, 3>> mNormals;
+    RTCDevice mDevice;
+    rtGeometry<NumericType, D> mGeometry;
 
 public:
-    rtTrace() {}
+    rtTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
 
     rtTrace(std::vector<rtTriple<NumericType>> &points,
             std::vector<rtTriple<NumericType>> &normals,
             const NumericType gridDelta)
-        : mPoints(points), mNormals(normals), mDiscRadius(discFactor * gridDelta)
+        : mDevice(rtcNewDevice("hugepages=1")),
+          mDiscRadius(discFactor * gridDelta)
     {
+        mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
+    }
+
+    // do I need this?
+    ~rtTrace()
+    {
+        rtcReleaseDevice(mDevice);
     }
 
     void apply()
     {
-        // auto timer = rtInternal::Timer{};
-        // create RTC device, which used to construct further RTC objects
-        auto rtcDevice = rtcNewDevice("hugepages=1");
-
-        // build RTC geometry from lsDomain
-        auto geometry = rtGeometry<NumericType, D>(rtcDevice, mPoints, mNormals, mDiscRadius);
-        auto boundingBox = geometry.getBoundingBox();
+        auto boundingBox = mGeometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection, mDiscRadius);
         auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
 
-        auto boundary = rtBoundary<NumericType, D>(rtcDevice, boundingBox, boundaryConds, traceSettings);
-        auto raySource = rtRaySource<NumericType, D>(boundingBox, cosinePower, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(mDevice, boundingBox, boundaryConds, traceSettings);
+        auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, cosinePower, traceSettings);
 
-        // std::cout << "Tracing preparation time " << timer.elapsedNanoseconds()/1e6 << std::endl;
-        auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(geometry, boundary, raySource, numberOfRaysPerPoint);
-        auto traceResult = tracer.run();
+        auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(mDevice, mGeometry, boundary, raySource, numberOfRaysPerPoint);
+        auto traceResult = tracer.apply();
         hitAcc = std::move(traceResult.hitAccumulator);
-        extractMcEstimates(geometry);
+        extractMcEstimates(mGeometry);
         // traceResult.print();
-        rtcReleaseDevice(rtcDevice);
     }
 
-    void setPoints(const std::vector<std::array<NumericType, 3>> &pPoints)
+    void setGeometry(std::vector<std::array<NumericType, 3>> &points, std::vector<std::array<NumericType, 3>> &normals,
+                     const NumericType gridDelta)
     {
-        mPoints = pPoints;
-    }
-
-    void setNormals(const std::vector<std::array<NumericType, 3>> &pNormals)
-    {
-        mNormals = pNormals;
+        // The internal embree buffer for the geometry object probably needs to be freed before creating a new buffer.
+        // The buffer is managed internally and automatically freed when the geometry is destroyed.
+        // The geometry is destroyed after a call to rtRayTracer::apply()
+        // So setting a geometry without calling apply() inbetween might lead to a memory leak?
+        mDiscRadius = gridDelta * discFactor;
+        mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
     }
 
     void setNumberOfRaysPerPoint(const size_t num)
     {
         numberOfRaysPerPoint = num;
-    }
-
-    void setGridDelta(const NumericType pGridDelta)
-    {
-        mDiscRadius = discFactor * pGridDelta;
-    }
-
-    void setDiscRadii(const NumericType passedDiscRadius)
-    {
-        mDiscRadius = passedDiscRadius;
     }
 
     void setBoundaryConditions(const rtTraceBoundary passedBoundaryConds[D])

@@ -33,11 +33,11 @@ int main()
     }
 
     rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
-    rayTracer.setNumberOfRaysPerPoint(10);
-    rayTracer.apply();
-    auto hitCounts = rayTracer.getCounts();
-    auto counts = rayTracer.getMcEstimates();
-    auto error = rayTracer.getRelativeError();
+    // rayTracer.setNumberOfRaysPerPoint(10);
+    // rayTracer.apply();
+    // auto hitCounts = rayTracer.getCounts();
+    // auto counts = rayTracer.getMcEstimates();
+    // auto error = rayTracer.getRelativeError();
     // auto discAreas = rayTracer.getExposedAreas();
     // std::vector<NumericType> fcounts(counts.size(), 0.);
     // for(size_t idx = 0; idx < counts.size(); ++idx)

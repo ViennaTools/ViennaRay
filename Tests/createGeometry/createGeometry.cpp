@@ -27,16 +27,14 @@ int main()
         lsMakeGeometry<NumericType, D>(levelSet, sphere).apply();
     }
 
-    auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device);
     auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
     lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
     auto points = mesh->getNodes();
     auto normals = *mesh->getVectorData("Normals");
 
-    auto error = geometry.initGeometry(points, normals, gridDelta);
-
-    RAYTEST_ASSERT(error == RTC_ERROR_NONE)
+    auto device = rtcNewDevice("");
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(device, points, normals, gridDelta);
 
     auto boundingBox = geometry.getBoundingBox();
 
@@ -50,6 +48,7 @@ int main()
         RAYTEST_ASSERT_ISCLOSE(max, 1., 1e-6)
     }
 
+    geometry.releaseGeometry();
     rtcReleaseDevice(device);
     return 0;
 }

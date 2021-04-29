@@ -4,6 +4,7 @@
 #include <rtTestAsserts.hpp>
 #include <lsDomain.hpp>
 #include <lsMakeGeometry.hpp>
+#include <lsToDiskMesh.hpp>
 #include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 
@@ -34,7 +35,8 @@ int main()
     auto points = mesh->getNodes();
     auto normals = *mesh->getVectorData("Normals");
 
-    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(device, points, normals, gridDelta);
 
     boundCons[1] = rtTraceBoundary::REFLECTIVE;
     {
@@ -122,7 +124,8 @@ int main()
     auto points2 = mesh2->getNodes();
     auto normals2 = *mesh2->getVectorData("Normals");
 
-    auto geometry2 = rtGeometry<NumericType, D>(device, points2, normals2, gridDelta);
+    rtGeometry<NumericType, D> geometry2;
+    geometry2.initGeometry(device, points2, normals2, gridDelta);
     boundCons[0] = rtTraceBoundary::REFLECTIVE;
     {
         // build periodic boundary in x and z directions

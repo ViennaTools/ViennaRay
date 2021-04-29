@@ -4,6 +4,7 @@
 #include <rtTestAsserts.hpp>
 #include <lsDomain.hpp>
 #include <lsMakeGeometry.hpp>
+#include <lsToDiskMesh.hpp>
 #include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 
@@ -34,7 +35,8 @@ int main()
     auto points = mesh->getNodes();
     auto normals = *mesh->getVectorData("Normals");
 
-    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(device, points, normals, gridDelta);
 
     {
         rtTraceBoundary boundaryConds[D] = {};

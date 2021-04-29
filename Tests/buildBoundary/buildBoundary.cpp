@@ -38,7 +38,8 @@ int main()
     auto points = mesh->getNodes();
     auto normals = *mesh->getVectorData("Normals");
 
-    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(device, points, normals, gridDelta);
 
     {
         // build boundary in y and z directions

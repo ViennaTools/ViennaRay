@@ -4,6 +4,7 @@
 #include <lsDomain.hpp>
 #include <lsMakeGeometry.hpp>
 #include <lsBooleanOperation.hpp>
+#include <lsToDiskMesh.hpp>
 #include <lsVTKWriter.hpp>
 #include <lsAdvect.hpp>
 #include <omp.h>
@@ -55,7 +56,6 @@ int main()
     rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
     rayTracer.setSourceDirection(rtTraceDirection::POS_Z);
     rayTracer.setCosinePower(5.);
-    rayTracer.setGridDelta(gridDelta);
 
     lsAdvect<NumericType, D> advectionKernel;
     advectionKernel.insertNextLevelSet(dom);
@@ -67,8 +67,9 @@ int main()
         auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
         auto translator = lsSmartPointer<std::unordered_map<unsigned long, unsigned long>>::New();
         lsToDiskMesh<NumericType, D>(dom, mesh, translator).apply();
-        rayTracer.setPoints(mesh->getNodes());
-        rayTracer.setNormals(*mesh->getVectorData("Normals"));
+        auto points = mesh->getNodes();
+        auto normals = *mesh->getVectorData("Normals");
+        rayTracer.setGeometry(points, normals, gridDelta);
 
         std::cout << "Ray tracing ... " << std::endl;
         rayTracer.apply();

@@ -37,7 +37,8 @@ int main()
         auto normals = *mesh->getVectorData("Normals");
 
         auto device = rtcNewDevice("");
-        auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+        rtGeometry<NumericType, D> geometry;
+        geometry.initGeometry(device, points, normals, gridDelta);
         rtTraceBoundary boundCons[D];
         {
             boundCons[0] = rtTraceBoundary::REFLECTIVE;
@@ -97,7 +98,8 @@ int main()
         auto normals = *mesh->getVectorData("Normals");
 
         auto device = rtcNewDevice("");
-        auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+        rtGeometry<NumericType, D> geometry;
+        geometry.initGeometry(device, points, normals, gridDelta);
         rtTraceBoundary boundCons[D];
         {
             boundCons[0] = rtTraceBoundary::PERIODIC;

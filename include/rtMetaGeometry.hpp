@@ -9,7 +9,7 @@ class rtMetaGeometry
 {
 public:
     virtual ~rtMetaGeometry() {}
-    virtual RTCDevice &getRTCDevice() = 0;
+    // virtual RTCDevice &getRTCDevice() = 0;
     virtual RTCGeometry &getRTCGeometry() = 0;
     virtual rtTriple<NumericType> getPrimNormal(const size_t primID) = 0;
     virtual rtTriple<NumericType> getNewOrigin(RTCRay &ray)

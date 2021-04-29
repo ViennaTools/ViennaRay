@@ -2,6 +2,7 @@
 #include <embree3/rtcore.h>
 #include <lsDomain.hpp>
 #include <lsMakeGeometry.hpp>
+#include <lsToDiskMesh.hpp>
 #include <rtTestAsserts.hpp>
 
 int main()
@@ -43,14 +44,15 @@ int main()
     // assert inner points have 4 neighbors
 
     auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(device, points, normals, gridDelta);
 
     for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx)
     {
         auto point = geometry.getPoint(idx);
         auto neighbors = geometry.getNeighborIndicies(idx);
         NumericType sum = 0;
-        std::for_each(point.begin(), point.end(), [&sum](NumericType val){ sum += std::fabs(val); });
+        std::for_each(point.begin(), point.end(), [&sum](NumericType val) { sum += std::fabs(val); });
         if (sum >= 2 - eps)
         {
             // corner point

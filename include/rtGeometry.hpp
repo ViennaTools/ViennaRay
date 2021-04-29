@@ -2,8 +2,6 @@
 #define RT_GEOMETRY_HPP
 
 #include <embree3/rtcore.h>
-#include <lsDomain.hpp>
-#include <lsToDiskMesh.hpp>
 #include <rtUtil.hpp>
 #include <rtMetaGeometry.hpp>
 #include <type_traits>
@@ -17,20 +15,21 @@ private:
 
 public:
     // default constructer (for testing)
-    rtGeometry(RTCDevice &pDevice) : rtcDevice(pDevice) {}
+    rtGeometry() {}
 
-    rtGeometry(RTCDevice &pDevice, std::vector<rtTriple<NumericType>> &pPoints,
-               std::vector<rtTriple<NumericType>> &pNormals, const NumericType pDiscRadii)
-        : rtcDevice(pDevice)
-    {
-        initGeometry(pPoints, pNormals, pDiscRadii);
-        initPointNeighborhood(pPoints, pDiscRadii);
-    }
+    // rtGeometry(RTCDevice &pDevice, std::vector<rtTriple<NumericType>> &pPoints,
+    //            std::vector<rtTriple<NumericType>> &pNormals, const NumericType pDiscRadii)
+    // {
+    //     initGeometry(pDevice, pPoints, pNormals, pDiscRadii);
+    //     initPointNeighborhood(pPoints, pDiscRadii);
+    // }
 
-    RTCError initGeometry(std::vector<rtTriple<NumericType>> &points,
-                          std::vector<rtTriple<NumericType>> &normals, NumericType discRadii)
+    void initGeometry(RTCDevice &pDevice, std::vector<rtTriple<NumericType>> &points,
+                      std::vector<rtTriple<NumericType>> &normals, NumericType discRadii)
     {
-        rtcGeometry = rtcNewGeometry(rtcDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
+        // what happens if existing geometry?
+        mRTCGeometry = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
+        assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcNewGeometry");
         mNumPoints = points.size();
 
         if (!std::is_same<NumericType, float>::value)
@@ -38,12 +37,15 @@ public:
             // TODO: add warning for internal type conversion
         }
 
-        mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(rtcGeometry,
+        // The buffer data is managed internally and automatically freed when the geometry is destroyed.
+        mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(mRTCGeometry,
                                                              RTC_BUFFER_TYPE_VERTEX,
                                                              0, // slot
                                                              RTC_FORMAT_FLOAT4,
                                                              sizeof(point_4f_t),
                                                              mNumPoints);
+        assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcSetNewGeometryBuffer points");
+
         for (size_t i = 0; i < mNumPoints; ++i)
         {
             mPointBuffer[i].xx = (float)points[i][0];
@@ -64,12 +66,14 @@ public:
                 maxCoords[2] = points[i][2];
         }
 
-        mNormalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(rtcGeometry,
+        mNormalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(mRTCGeometry,
                                                                       RTC_BUFFER_TYPE_NORMAL,
                                                                       0, // slot
                                                                       RTC_FORMAT_FLOAT3,
                                                                       sizeof(normal_vec_3f_t),
                                                                       mNumPoints);
+        assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcSetNewGeometryBuffer normals");
+
         for (size_t i = 0; i < mNumPoints; ++i)
         {
             mNormalVecBuffer[i].xx = (float)normals[i][0];
@@ -77,8 +81,10 @@ public:
             mNormalVecBuffer[i].zz = (float)normals[i][2];
         }
 
-        rtcCommitGeometry(rtcGeometry);
-        return rtcGetDeviceError(rtcDevice);
+        rtcCommitGeometry(mRTCGeometry);
+        assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcCommitGeometry");
+
+        initPointNeighborhood(points, discRadii);
     }
 
     rtPair<rtTriple<NumericType>> getBoundingBox() const
@@ -109,14 +115,14 @@ public:
         return mPointBuffer[0].radius;
     }
 
-    RTCDevice &getRTCDevice() override final
-    {
-        return rtcDevice;
-    }
-
     RTCGeometry &getRTCGeometry() override final
     {
-        return rtcGeometry;
+        return mRTCGeometry;
+    }
+
+    void releaseGeometry()
+    {
+        rtcReleaseGeometry(mRTCGeometry);
     }
 
     rtTriple<NumericType> getPrimNormal(const size_t pPrimID) override final
@@ -193,8 +199,7 @@ private:
     };
     normal_vec_3f_t *mNormalVecBuffer = nullptr;
 
-    RTCDevice &rtcDevice;
-    RTCGeometry rtcGeometry;
+    RTCGeometry mRTCGeometry;
 
     size_t mNumPoints;
     constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();

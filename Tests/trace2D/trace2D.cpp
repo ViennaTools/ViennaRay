@@ -4,6 +4,7 @@
 #include <lsMakeGeometry.hpp>
 #include <lsBooleanOperation.hpp>
 #include <lsVTKWriter.hpp>
+#include <lsToDiskMesh.hpp>
 #include <rtParticle.hpp>
 #include <rtReflectionSpecular.hpp>
 

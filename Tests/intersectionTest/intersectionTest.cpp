@@ -3,9 +3,10 @@
 #include <rtBoundary.hpp>
 #include <lsMakeGeometry.hpp>
 #include <lsDomain.hpp>
+#include <lsToDiskMesh.hpp>
 #include <rtUtil.hpp>
 #include <rtTestAsserts.hpp>
-#include <rtRaySource.hpp>
+#include <rtRaySourceRandom.hpp>
 #include <rtRandomNumberGenerator.hpp>
 
 void printRay(RTCRayHit &rayHit)
@@ -62,14 +63,15 @@ int main()
 
     constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
     auto discRadius = gridDelta * discFactor;
-    auto geometry = rtGeometry<NumericType, D>(rtcDevice, points, normals, gridDelta * discFactor);
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(rtcDevice, points, normals, gridDelta);
     auto boundingBox = geometry.getBoundingBox();
 
     rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection, discRadius);
     auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
     auto boundary = rtBoundary<NumericType, D>(rtcDevice, boundingBox, boundaryConds, traceSettings);
 
-    auto raySource = rtRaySource<NumericType, D>(boundingBox, 1, traceSettings);
+    auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, 1, traceSettings);
 
     auto rtcscene = rtcNewScene(rtcDevice);
     rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
@@ -91,19 +93,18 @@ int main()
 
     alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    auto tnear = 1e-4f; 
+    auto tnear = 1e-4f;
     reinterpret_cast<__m128 &>(rayhit.ray) = _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
-    auto time = 0.0f; 
+    auto time = 0.0f;
     reinterpret_cast<__m128 &>(rayhit.ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
 
-    rayhit.ray.tfar = std::numeric_limits<float>::max(); 
+    rayhit.ray.tfar = std::numeric_limits<float>::max();
     rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
     rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
 
     rtcIntersect1(rtcscene, &rtccontext, &rayhit);
 
     RAYTEST_ASSERT(rayhit.hit.geomID == geometryID)
-    
 
     // direction = rtTriple<NumericType>{}
     // printRay(rayhit);

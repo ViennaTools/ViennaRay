@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <iostream>
 #include <chrono>
+#include <cassert>
+#include <vector>
 #include <rtTraceDirection.hpp>
 
 template <typename NumericType>

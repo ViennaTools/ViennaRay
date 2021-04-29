@@ -33,7 +33,7 @@ public:
     // move the vector member
     rtHitAccumulator(rtHitAccumulator<NumericType> const &&pA) : mCnts(std::move(pA.mCnts)),
                                                                  mTotalCnts(std::move(pA.mTotalCnts)),
-                                                                 mExposedAreas(std::move(mExposedAreas)),
+                                                                 mExposedAreas(std::move(pA.mExposedAreas)),
                                                                  mS1s(std::move(pA.mS1s)),
                                                                  mS2s(std::move(pA.mS2s)),
                                                                  mS3s(std::move(pA.mS3s)),

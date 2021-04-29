@@ -5,7 +5,7 @@
 #include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 #include <lsToDiskMesh.hpp>
-#include <rtRaySource.hpp>
+#include <rtRaySourceRandom.hpp>
 #include <rtRandomNumberGenerator.hpp>
 
 int main()
@@ -35,7 +35,8 @@ int main()
     auto points = mesh->getNodes();
     auto normals = *mesh->getVectorData("Normals");
 
-    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(device, points, normals, gridDelta);
 
     auto rng = rtRandomNumberGenerator{};
 
@@ -51,11 +52,11 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
-            source.fillRay(rayhit.ray, rng, rngstate1, rngstate2, rngstate3, rngstate4);
+            source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3, rngstate4);
             RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
             RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
         }
@@ -67,11 +68,11 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
-            source.fillRay(rayhit.ray, rng, rngstate1, rngstate2, rngstate3, rngstate4);
+            source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3, rngstate4);
             RAYTEST_ASSERT(rayhit.ray.dir_z > 0.)
             RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (-1. - 2 * gridDelta), eps)
         }
@@ -83,11 +84,11 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
-            source.fillRay(rayhit.ray, rng, rngstate1, rngstate2, rngstate3, rngstate4);
+            source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3, rngstate4);
             RAYTEST_ASSERT(rayhit.ray.dir_x < 0.)
             RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (1. + 2 * gridDelta), eps)
         }
@@ -99,11 +100,11 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
-            source.fillRay(rayhit.ray, rng, rngstate1, rngstate2, rngstate3, rngstate4);
+            source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3, rngstate4);
             RAYTEST_ASSERT(rayhit.ray.dir_x > 0.)
             RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (-1. - 2 * gridDelta), eps)
         }
@@ -115,11 +116,11 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
-            source.fillRay(rayhit.ray, rng, rngstate1, rngstate2, rngstate3, rngstate4);
+            source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3, rngstate4);
             RAYTEST_ASSERT(rayhit.ray.dir_y < 0.)
             RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (1. + 2 * gridDelta), eps)
         }
@@ -131,11 +132,11 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySource<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
-            source.fillRay(rayhit.ray, rng, rngstate1, rngstate2, rngstate3, rngstate4);
+            source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3, rngstate4);
             RAYTEST_ASSERT(rayhit.ray.dir_y > 0.)
             RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (-1. - 2 * gridDelta), eps)
         }

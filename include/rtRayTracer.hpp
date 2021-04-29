@@ -5,7 +5,7 @@
 #include <rtGeometry.hpp>
 #include <rtHitAccumulator.hpp>
 #include <rtBoundary.hpp>
-#include <rtRaySource.hpp>
+#include <rtRaySourceRandom.hpp>
 #include <rtReflection.hpp>
 #include <rtParticle.hpp>
 #include <rtUtil.hpp>
@@ -39,24 +39,22 @@ class rtRayTracer
 {
 
 public:
-    rtRayTracer(rtGeometry<NumericType, D> &passedRTCGeometry,
+    rtRayTracer(RTCDevice &pDevice,
+                rtGeometry<NumericType, D> &passedRTCGeometry,
                 rtBoundary<NumericType, D> &passedRTCBoundary,
-                rtRaySource<NumericType, D> &passedRTCSource,
+                rtRaySourceRandom<NumericType, D> &passedRTCSource,
                 const size_t numOfRayPerPoint)
-        : mGeometry(passedRTCGeometry), mBoundary(passedRTCBoundary), mSource(passedRTCSource),
+        : mDevice(pDevice), mGeometry(passedRTCGeometry),
+          mBoundary(passedRTCBoundary), mSource(passedRTCSource),
           mNumRays(passedRTCGeometry.getNumPoints() * numOfRayPerPoint)
     {
-        assert(mGeometry.getRTCDevice() == mBoundary.getRTCDevice() &&
-               "the geometry and the boundary need to refer to the same Embree (rtc) device");
-        auto rtcdevice = mGeometry.getRTCDevice();
-        assert(rtcGetDeviceProperty(rtcdevice, RTC_DEVICE_PROPERTY_VERSION) >= 30601 &&
+        assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >= 30601 &&
                "Error: The minimum version of Embree is 3.6.1");
     }
 
-    rtTracingResult<NumericType> run()
+    rtTracingResult<NumericType> apply()
     {
-        auto rtcdevice = mGeometry.getRTCDevice();
-        auto rtcscene = rtcNewScene(rtcdevice);
+        auto rtcscene = rtcNewScene(mDevice);
 
         // scene flags
         rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
@@ -71,7 +69,7 @@ public:
         auto boundaryID = rtcAttachGeometry(rtcscene, rtcboundary);
         auto geometryID = rtcAttachGeometry(rtcscene, rtcgeometry);
 
-        assert(rtcGetDeviceError(rtcdevice) == RTC_ERROR_NONE && "Embree device error");
+        assert(rtcGetDeviceError(mDevice) == RTC_ERROR_NONE && "Embree device error");
 
         size_t geohitc = 0;
         size_t nongeohitc = 0;
@@ -131,7 +129,7 @@ public:
                 particle.initNew();
                 rayWeight = 1;
                 auto lastInitRW = rayWeight;
-                mSource.fillRay(rayHit.ray, RNG, RngState1, RngState2, RngState3, RngState4); // fills also tnear
+                mSource.fillRay(rayHit.ray, RNG, 0, RngState1, RngState2, RngState3, RngState4); // fills also tnear
 
                 if constexpr (PRINT_PROGRESS)
                 {
@@ -354,9 +352,10 @@ private:
         rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z});
     }
 
+    RTCDevice &mDevice;
     rtGeometry<NumericType, D> &mGeometry;
     rtBoundary<NumericType, D> &mBoundary;
-    rtRaySource<NumericType, D> &mSource;
+    rtRaySourceRandom<NumericType, D> &mSource;
     const size_t mNumRays;
 };
 

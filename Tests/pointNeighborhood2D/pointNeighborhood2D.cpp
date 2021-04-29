@@ -2,6 +2,7 @@
 #include <embree3/rtcore.h>
 #include <lsDomain.hpp>
 #include <lsMakeGeometry.hpp>
+#include <lsToDiskMesh.hpp>
 #include <rtTestAsserts.hpp>
 
 int main()
@@ -31,7 +32,8 @@ int main()
     auto normals = *mesh->getVectorData("Normals");
 
     auto device = rtcNewDevice("");
-    auto geometry = rtGeometry<NumericType, D>(device, points, normals, gridDelta);
+    rtGeometry<NumericType, D> geometry;
+    geometry.initGeometry(device, points, normals, gridDelta);
     // setup simple 2D plane grid with normal in y-direction with discs only overlapping at adjecent grid points
     // x - x - x - x - x
 

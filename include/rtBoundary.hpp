@@ -223,10 +223,10 @@ public:
         }
     }
 
-    RTCDevice &getRTCDevice() override final
-    {
-        return rtcDevice;
-    }
+    // RTCDevice &getRTCDevice() override final
+    // {
+    //     return rtcDevice;
+    // }
 
     RTCGeometry &getRTCGeometry() override final
     {

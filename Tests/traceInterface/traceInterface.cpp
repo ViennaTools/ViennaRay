@@ -1,5 +1,6 @@
 #include <lsDomain.hpp>
 #include <lsMakeGeometry.hpp>
+#include <lsToDiskMesh.hpp>
 #include <rtTestAsserts.hpp>
 #include <rtTrace.hpp>
 
@@ -32,7 +33,8 @@ int main()
     auto points = mesh->getNodes();
     auto normals = *mesh->getVectorData("Normals");
 
-    rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer(points, normals, gridDelta);
+    rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
+    rayTracer.setGeometry(points, normals, gridDelta);
     rayTracer.apply();
 
     return 0;
