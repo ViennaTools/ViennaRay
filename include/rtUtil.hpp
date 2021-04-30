@@ -281,6 +281,34 @@ namespace rtInternal
         return rr;
     }
 
+    template <typename T>
+    void createPlaneGrid(const T gridDelta, const T extent, const std::array<int, 3> direction,
+                         std::vector<std::array<T, 3>> &points, std::vector<std::array<T, 3>> &normals)
+    {
+        std::array<T, 3> point = {-extent, -extent, -extent};
+        std::array<T, 3> normal = {0., 0., 0.};
+        point[direction[2]] = 0;
+        normal[direction[2]] = 1.;
+
+        points.clear();
+        points.reserve(int(extent / gridDelta) * int(extent / gridDelta));
+        normals.clear();
+        normals.reserve(int(extent / gridDelta) * int(extent / gridDelta));
+        do
+        {
+            do
+            {
+                points.push_back(point);
+                normals.push_back(normal);
+                point[direction[1]] += gridDelta;
+            } while (point[direction[1]] <= extent);
+            point[direction[1]] = -extent;
+            point[direction[0]] += gridDelta;
+        } while (point[direction[0]] <= extent);
+        points.shrink_to_fit();
+        normals.shrink_to_fit();
+    }
+
     class Timer
     {
     public:

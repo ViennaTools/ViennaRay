@@ -65,10 +65,10 @@ public:
     void setGeometry(std::vector<std::array<NumericType, 3>> &points, std::vector<std::array<NumericType, 3>> &normals,
                      const NumericType gridDelta)
     {
-        // The internal embree buffer for the geometry object probably needs to be freed before creating a new buffer.
+        // The internal embree buffer for the geometry object needs to be freed before creating a new buffer.
         // The buffer is managed internally and automatically freed when the geometry is destroyed.
         // The geometry is destroyed after a call to rtRayTracer::apply()
-        // So setting a geometry without calling apply() inbetween might lead to a memory leak?
+        // Setting a geometry multiple times without calling apply() inbetween leads to a memory leak
         mDiscRadius = gridDelta * discFactor;
         mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
     }

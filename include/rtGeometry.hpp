@@ -10,24 +10,37 @@ template <typename NumericType, int D>
 class rtGeometry : public rtMetaGeometry<NumericType, D>
 {
 private:
-    // typedef lsSmartPointer<std::unordered_map<size_t, size_t>> translatorType;
     typedef std::vector<std::vector<size_t>> pointNeighborhoodType;
 
 public:
-    // default constructer (for testing)
     rtGeometry() {}
 
-    // rtGeometry(RTCDevice &pDevice, std::vector<rtTriple<NumericType>> &pPoints,
-    //            std::vector<rtTriple<NumericType>> &pNormals, const NumericType pDiscRadii)
-    // {
-    //     initGeometry(pDevice, pPoints, pNormals, pDiscRadii);
-    //     initPointNeighborhood(pPoints, pDiscRadii);
-    // }
-
-    void initGeometry(RTCDevice &pDevice, std::vector<rtTriple<NumericType>> &points,
-                      std::vector<rtTriple<NumericType>> &normals, NumericType discRadii)
+    void initGeometry(RTCDevice &pDevice, std::vector<std::array<NumericType, 2>> &points,
+                      std::vector<std::array<NumericType, 2>> &normals, NumericType discRadii)
     {
-        // what happens if existing geometry?
+        static_assert(D == 2 && "Setting 2D points in 3D geometry");
+        assert(points.size() == normals.size() && "rtGeometry: Points/Normals size missmatch");
+        std::vector<rtTriple<NumericType>> tempPoints;
+        std::vector<rtTriple<NumericType>> tempNormals;
+        tempPoints.reserve(points.size());
+        tempNormals.reserve(normals.size());
+        for (size_t i = 0; i < points.size(); ++i)
+        {
+            tempPoints.push_back({points[i][0], points[i][1], 0.});
+            tempNormals.push_back({normals[i][0], normals[i][1], 0.});
+        }
+        initGeometry(pDevice, tempPoints, tempNormals, discRadii);
+    }
+
+    void initGeometry(RTCDevice &pDevice, std::vector<std::array<NumericType, 3>> &points,
+                      std::vector<std::array<NumericType, 3>> &normals, NumericType discRadii)
+    {
+        assert(points.size() == normals.size() && "rtGeometry: Points/Normals size missmatch");
+
+        // overwriting the geometry without releasing it beforehand causes the old buffer to leak
+        // releasing an already released or empty geometry leads to seg vault
+        // TODO: find way to check if geometry is existing
+        // maybe do something with rtcSetDeviceMemoryMonitorFunction
         mRTCGeometry = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
         assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcNewGeometry");
         mNumPoints = points.size();
@@ -37,7 +50,7 @@ public:
             // TODO: add warning for internal type conversion
         }
 
-        // The buffer data is managed internally and automatically freed when the geometry is destroyed.
+        // The buffer data is managed internally (embree) and automatically freed when the geometry is destroyed.
         mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(mRTCGeometry,
                                                              RTC_BUFFER_TYPE_VERTEX,
                                                              0, // slot
@@ -84,7 +97,7 @@ public:
         rtcCommitGeometry(mRTCGeometry);
         assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcCommitGeometry");
 
-        initPointNeighborhood(points, discRadii);
+        // initPointNeighborhood(points, discRadii);
     }
 
     rtPair<rtTriple<NumericType>> getBoundingBox() const
