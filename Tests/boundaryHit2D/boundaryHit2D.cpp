@@ -2,9 +2,6 @@
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
 #include <rtTestAsserts.hpp>
-#include <lsDomain.hpp>
-#include <lsMakeGeometry.hpp>
-#include <lsToDiskMesh.hpp>
 #include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 
@@ -12,28 +9,25 @@ int main()
 {
     using NumericType = double;
     constexpr int D = 2;
-    NumericType extent = 2;
-    NumericType gridDelta = 0.5;
-    NumericType eps = 1e-6;
 
-    NumericType bounds[2 * D] = {-extent, extent, -extent, extent};
-    lsDomain<NumericType, D>::BoundaryType boundaryCons[D];
-    boundaryCons[0] = lsDomain<NumericType, D>::BoundaryType::INFINITE_BOUNDARY;
-    boundaryCons[1] = lsDomain<NumericType, D>::BoundaryType::REFLECTIVE_BOUNDARY;
     auto device = rtcNewDevice("");
     rtTraceBoundary boundCons[D] = {};
 
-    auto levelSetYPlane = lsSmartPointer<lsDomain<NumericType, D>>::New(bounds, boundaryCons, gridDelta);
+    NumericType extent = 2;
+    NumericType gridDelta = 0.5;
+    NumericType eps = 1e-6;
+    auto normal = std::array<NumericType, D>{1., 0.};
+    auto point = std::array<NumericType, D>{0., 0.};
+    std::vector<std::array<NumericType, D>> normals;
+    std::vector<std::array<NumericType, D>> points;
+    points.reserve(int(extent / gridDelta));
+    normals.reserve(int(extent / gridDelta));
+    for (NumericType yy = -extent; yy <= extent; yy += gridDelta)
     {
-        const hrleVectorType<NumericType, D> origin(0., 0.);
-        const hrleVectorType<NumericType, D> normal(1., 0.);
-        auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
-        lsMakeGeometry<NumericType, D>(levelSetYPlane, plane).apply();
+        point[1] = yy;
+        points.push_back(point);
+        normals.push_back(normal);
     }
-    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-    lsToDiskMesh<NumericType, D>(levelSetYPlane, mesh).apply();
-    auto points = mesh->getNodes();
-    auto normals = *mesh->getVectorData("Normals");
 
     rtGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
@@ -46,7 +40,7 @@ int main()
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
         auto origin = rtTriple<NumericType>{1., 1., 0.};
         auto direction = rtTriple<NumericType>{-0.5, 1., 0.};
@@ -62,7 +56,7 @@ int main()
                                              0, 0,                                                          // barycentric coordinates
                                              3, 0, 0};                                                      // primID, geomID, instanceID
 
-        auto newRay = boundary->processHit(rayhit, reflect);
+        auto newRay = boundary.processHit(rayhit, reflect);
 
         RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 0.5, eps)
         RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 2, eps)
@@ -81,7 +75,7 @@ int main()
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
         auto origin = rtTriple<NumericType>{1., 1., 0.};
         auto direction = rtTriple<NumericType>{-0.5, 1., 0.};
@@ -97,7 +91,7 @@ int main()
                                              0, 0,                                                          // barycentric coordinates
                                              3, 0, 0};                                                      // primID, geomID, instanceID
 
-        auto newRay = boundary->processHit(rayhit, reflect);
+        auto newRay = boundary.processHit(rayhit, reflect);
 
         RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 0.5, eps)
         RAYTEST_ASSERT_ISCLOSE(newRay[0][1], -2, eps)
@@ -108,24 +102,21 @@ int main()
         RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
     }
 
-    boundaryCons[1] = lsDomain<NumericType, D>::BoundaryType::INFINITE_BOUNDARY;
-    boundaryCons[0] = lsDomain<NumericType, D>::BoundaryType::REFLECTIVE_BOUNDARY;
-
-    auto levelSetXPlane = lsSmartPointer<lsDomain<NumericType, D>>::New(bounds, boundaryCons, gridDelta);
+    normal = std::array<NumericType, D>{0., 1.};
+    point = std::array<NumericType, D>{0., 0.};
+    points.clear();
+    normals.clear();
+    points.reserve(int(extent / gridDelta));
+    normals.reserve(int(extent / gridDelta));
+    for (NumericType xx = -extent; xx <= extent; xx += gridDelta)
     {
-        const hrleVectorType<NumericType, D> origin(0., 0.);
-        const hrleVectorType<NumericType, D> normal(0., 1.);
-        auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
-        lsMakeGeometry<NumericType, D>(levelSetXPlane, plane).apply();
+        point[0] = xx;
+        points.push_back(point);
+        normals.push_back(normal);
     }
 
-    auto mesh2 = lsSmartPointer<lsMesh<NumericType>>::New();
-    lsToDiskMesh<NumericType, D>(levelSetXPlane, mesh2).apply();
-    auto points2 = mesh2->getNodes();
-    auto normals2 = *mesh2->getVectorData("Normals");
-
     rtGeometry<NumericType, D> geometry2;
-    geometry2.initGeometry(device, points2, normals2, gridDelta);
+    geometry2.initGeometry(device, points, normals, gridDelta);
     boundCons[0] = rtTraceBoundary::REFLECTIVE;
     {
         // build periodic boundary in x and z directions
@@ -134,7 +125,7 @@ int main()
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
         auto origin = rtTriple<NumericType>{1., 1., 0.};
         auto direction = rtTriple<NumericType>{1., -0.5, 0.};
@@ -150,7 +141,7 @@ int main()
                                              0, 0,                                                          // barycentric coordinates
                                              3, 0, 0};                                                      // primID, geomID, instanceID
 
-        auto newRay = boundary->processHit(rayhit, reflect);
+        auto newRay = boundary.processHit(rayhit, reflect);
 
         RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 2, eps)
         RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.5, eps)
@@ -169,7 +160,7 @@ int main()
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundCons, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
         auto origin = rtTriple<NumericType>{1., 1., 0.};
         auto direction = rtTriple<NumericType>{1., -0.5, 0.};
@@ -185,7 +176,7 @@ int main()
                                              0, 0,                                                          // barycentric coordinates
                                              3, 0, 0};                                                      // primID, geomID, instanceID
 
-        auto newRay = boundary->processHit(rayhit, reflect);
+        auto newRay = boundary.processHit(rayhit, reflect);
 
         RAYTEST_ASSERT_ISCLOSE(newRay[0][0], -2, eps)
         RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.5, eps)

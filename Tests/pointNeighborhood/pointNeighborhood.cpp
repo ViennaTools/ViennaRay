@@ -1,9 +1,7 @@
 #include <rtGeometry.hpp>
-#include <embree3/rtcore.h>
-#include <lsDomain.hpp>
-#include <lsMakeGeometry.hpp>
-#include <lsToDiskMesh.hpp>
+#include <rtUtil.hpp>
 #include <rtTestAsserts.hpp>
+#include <embree3/rtcore.h>
 
 int main()
 {
@@ -12,25 +10,9 @@ int main()
     NumericType extent = 1;
     NumericType gridDelta = 0.5;
     NumericType eps = 1e-6;
-
-    double bounds[2 * D] = {-extent, extent, -extent, extent, -extent, extent};
-    lsDomain<NumericType, D>::BoundaryType boundaryCons[3];
-    for (unsigned i = 0; i < D - 1; ++i)
-        boundaryCons[i] = lsDomain<NumericType, D>::BoundaryType::REFLECTIVE_BOUNDARY;
-
-    boundaryCons[2] = lsDomain<NumericType, D>::BoundaryType::INFINITE_BOUNDARY;
-
-    auto levelSet = lsSmartPointer<lsDomain<NumericType, D>>::New(bounds, boundaryCons, gridDelta);
-    {
-        const hrleVectorType<NumericType, D> origin(0., 0., 0.);
-        const hrleVectorType<NumericType, D> normal(0., 0., 1.);
-        auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
-        lsMakeGeometry<NumericType, D>(levelSet, plane).apply();
-    }
-    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
-    auto points = mesh->getNodes();
-    auto normals = *mesh->getVectorData("Normals");
+    std::vector<std::array<NumericType, D>> points;
+    std::vector<std::array<NumericType, D>> normals;
+    rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
     // setup simple plane grid with normal in z-direction with discs only overlapping at adjecent grid points
     // x - x - x - x - x

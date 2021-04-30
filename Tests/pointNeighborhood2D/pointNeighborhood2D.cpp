@@ -1,9 +1,6 @@
 #include <rtGeometry.hpp>
-#include <embree3/rtcore.h>
-#include <lsDomain.hpp>
-#include <lsMakeGeometry.hpp>
-#include <lsToDiskMesh.hpp>
 #include <rtTestAsserts.hpp>
+#include <embree3/rtcore.h>
 
 int main()
 {
@@ -12,24 +9,18 @@ int main()
     NumericType extent = 1;
     NumericType gridDelta = 0.5;
     NumericType eps = 1e-6;
-
-    NumericType bounds[2 * D] = {-extent, extent, -extent, extent};
-    lsDomain<NumericType, D>::BoundaryType boundaryCons[3];
-
-    boundaryCons[0] = lsDomain<NumericType, D>::BoundaryType::REFLECTIVE_BOUNDARY;
-    boundaryCons[1] = lsDomain<NumericType, D>::BoundaryType::INFINITE_BOUNDARY;
-
-    auto levelSet = lsSmartPointer<lsDomain<NumericType, D>>::New(bounds, boundaryCons, gridDelta);
+    auto normal = std::array<NumericType, D>{0., 1.};
+    auto point = std::array<NumericType, D>{0., 0.};
+    std::vector<std::array<NumericType, D>> normals;
+    std::vector<std::array<NumericType, D>> points;
+    points.reserve(int(extent / gridDelta));
+    normals.reserve(int(extent / gridDelta));
+    for (NumericType xx = -extent; xx <= extent; xx += gridDelta)
     {
-        const hrleVectorType<NumericType, D> origin(0., 0.);
-        const hrleVectorType<NumericType, D> normal(0., 1.);
-        auto plane = lsSmartPointer<lsPlane<NumericType, D>>::New(origin, normal);
-        lsMakeGeometry<NumericType, D>(levelSet, plane).apply();
+        point[0] = xx;
+        points.push_back(point);
+        normals.push_back(normal);
     }
-    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
-    auto points = mesh->getNodes();
-    auto normals = *mesh->getVectorData("Normals");
 
     auto device = rtcNewDevice("");
     rtGeometry<NumericType, D> geometry;
