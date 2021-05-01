@@ -9,6 +9,8 @@
 #include <chrono>
 #include <cassert>
 #include <vector>
+#include <fstream>
+#include <omp.h>
 #include <rtTraceDirection.hpp>
 
 template <typename NumericType>
@@ -262,7 +264,7 @@ namespace rtInternal
                 maxIdx = idx;
             }
         }
-        // assert(maxIdx < 3 && "Error in computation of perpenticular vector");
+        assert(maxIdx < 3 && "Error in computation of perpendicular vector");
         rr[1] = cc[maxIdx];
 
         rr[2] = rtInternal::CrossProduct(rr[0], rr[1]);
@@ -271,13 +273,13 @@ namespace rtInternal
         rtInternal::Normalize(rr[2]);
 
         // Sanity check
-        // NumericType epsilon = 1e-6;
-        // assert(std::abs(rtInternal::DotProduct(rr[0], rr[1])) < epsilon &&
-        //        "Error in orthonormal basis computation");
-        // assert(std::abs(rtInternal::DotProduct(rr[1], rr[2])) < epsilon &&
-        //        "Error in orthonormal basis computation");
-        // assert(std::abs(rtInternal::DotProduct(rr[2], rr[0])) < epsilon &&
-        //        "Error in orthonormal basis computation");
+        NumericType eps = 1e-6;
+        assert(std::abs(rtInternal::DotProduct(rr[0], rr[1])) < eps &&
+               "Error in orthonormal basis computation");
+        assert(std::abs(rtInternal::DotProduct(rr[1], rr[2])) < eps &&
+               "Error in orthonormal basis computation");
+        assert(std::abs(rtInternal::DotProduct(rr[2], rr[0])) < eps &&
+               "Error in orthonormal basis computation");
         return rr;
     }
 
@@ -307,6 +309,24 @@ namespace rtInternal
         } while (point[direction[0]] <= extent);
         points.shrink_to_fit();
         normals.shrink_to_fit();
+    }
+
+    template <typename NumericType>
+    void readGridFromFile(std::string fileName, NumericType &gridDelta,
+                          std::vector<rtTriple<NumericType>> &points,
+                          std::vector<rtTriple<NumericType>> &normals)
+    {
+        std::ifstream dataFile(fileName);
+        size_t numPoints;
+        dataFile >> numPoints;
+        dataFile >> gridDelta;
+        points.resize(numPoints);
+        normals.resize(numPoints);
+        for (size_t i = 0; i < numPoints; ++i)
+            dataFile >> points[i][0] >> points[i][1] >> points[i][2];
+        for (size_t i = 0; i < numPoints; ++i)
+            dataFile >> normals[i][0] >> normals[i][1] >> normals[i][2];
+        dataFile.close();
     }
 
     class Timer

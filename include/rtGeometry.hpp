@@ -39,8 +39,8 @@ public:
 
         // overwriting the geometry without releasing it beforehand causes the old buffer to leak
         // releasing an already released or empty geometry leads to seg vault
-        // TODO: find way to check if geometry is existing
-        // maybe do something with rtcSetDeviceMemoryMonitorFunction
+        // TODO: find way to check if geometry is existing -> release
+        // maybe something with rtcSetDeviceMemoryMonitorFunction
         mRTCGeometry = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
         assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcNewGeometry");
         mNumPoints = points.size();
@@ -49,6 +49,16 @@ public:
         {
             // TODO: add warning for internal type conversion
         }
+
+        // if (mPointBuffer == nullptr)
+        // {
+        //     std::cout << "mPointBuffer is nullptr" << std::endl;
+        // }
+        // else
+        // {
+        //     std::cout << "mPointBuffer is NOT nullptr" << std::endl;
+        //     std::cout << mPointBuffer[0].radius << std::endl;
+        // }
 
         // The buffer data is managed internally (embree) and automatically freed when the geometry is destroyed.
         mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(mRTCGeometry,
@@ -97,7 +107,7 @@ public:
         rtcCommitGeometry(mRTCGeometry);
         assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcCommitGeometry");
 
-        // initPointNeighborhood(points, discRadii);
+        initPointNeighborhood(points, discRadii);
     }
 
     rtPair<rtTriple<NumericType>> getBoundingBox() const
@@ -135,7 +145,17 @@ public:
 
     void releaseGeometry()
     {
-        rtcReleaseGeometry(mRTCGeometry);
+        if (mPointBuffer == nullptr || mNormalVecBuffer == nullptr)
+        {
+            return;
+        }
+        else
+        {
+            rtcReleaseGeometry(mRTCGeometry);
+            // dangerous if ref count of RTCGeometry is > 1
+            mPointBuffer = nullptr;
+            mNormalVecBuffer = nullptr;
+        }
     }
 
     rtTriple<NumericType> getPrimNormal(const size_t pPrimID) override final

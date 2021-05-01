@@ -12,26 +12,25 @@ class rtBoundary : public rtMetaGeometry<NumericType, D>
     typedef rtPair<rtTriple<NumericType>> boundingBoxType;
 
 public:
-    rtBoundary(RTCDevice &device)
-        : rtcDevice(device) {}
+    rtBoundary() {}
 
-    rtBoundary(RTCDevice &device, std::array<int, 5> &traceSettings)
-        : rtcDevice(device), firstDir(traceSettings[1]), secondDir(traceSettings[2]) {}
+    rtBoundary(std::array<int, 5> &traceSettings)
+        : firstDir(traceSettings[1]), secondDir(traceSettings[2]) {}
 
-    rtBoundary(RTCDevice &device, boundingBoxType &passedBoundingBox,
+    rtBoundary(RTCDevice &pDevice, boundingBoxType &passedBoundingBox,
                rtTraceBoundary passedBoundaryConds[D], std::array<int, 5> &traceSettings)
-        : rtcDevice(device), firstDir(traceSettings[1]), secondDir(traceSettings[2]),
+        : firstDir(traceSettings[1]), secondDir(traceSettings[2]),
           boundaryConds(std::array<rtTraceBoundary, 2>{passedBoundaryConds[firstDir], passedBoundaryConds[secondDir]})
     {
-        initBoundary(passedBoundingBox);
+        initBoundary(pDevice, passedBoundingBox);
     }
 
-    RTCError initBoundary(boundingBoxType &boundingBox)
+    void initBoundary(RTCDevice &pDevice, boundingBoxType &boundingBox)
     {
         bdBox = boundingBox;
-        rtcBoundary = rtcNewGeometry(rtcDevice, RTC_GEOMETRY_TYPE_TRIANGLE);
+        rtcBoundary = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_TRIANGLE);
 
-        vertexBuffer = (vertex_f3_t *)rtcSetNewGeometryBuffer(rtcBoundary,
+        mVertexBuffer = (vertex_f3_t *)rtcSetNewGeometryBuffer(rtcBoundary,
                                                               RTC_BUFFER_TYPE_VERTEX,
                                                               0, // the slot
                                                               RTC_FORMAT_FLOAT3,
@@ -46,39 +45,39 @@ public:
         auto zmax = bdBox[1][2]; // std::max(mBdBox[0][2], mBdBox[1][2]);
 
         // Vertices
-        vertexBuffer[0].xx = (float)xmin;
-        vertexBuffer[0].yy = (float)ymin;
-        vertexBuffer[0].zz = (float)zmin;
+        mVertexBuffer[0].xx = (float)xmin;
+        mVertexBuffer[0].yy = (float)ymin;
+        mVertexBuffer[0].zz = (float)zmin;
 
-        vertexBuffer[1].xx = (float)xmax;
-        vertexBuffer[1].yy = (float)ymin;
-        vertexBuffer[1].zz = (float)zmin;
+        mVertexBuffer[1].xx = (float)xmax;
+        mVertexBuffer[1].yy = (float)ymin;
+        mVertexBuffer[1].zz = (float)zmin;
 
-        vertexBuffer[2].xx = (float)xmax;
-        vertexBuffer[2].yy = (float)ymax;
-        vertexBuffer[2].zz = (float)zmin;
+        mVertexBuffer[2].xx = (float)xmax;
+        mVertexBuffer[2].yy = (float)ymax;
+        mVertexBuffer[2].zz = (float)zmin;
 
-        vertexBuffer[3].xx = (float)xmin;
-        vertexBuffer[3].yy = (float)ymax;
-        vertexBuffer[3].zz = (float)zmin;
+        mVertexBuffer[3].xx = (float)xmin;
+        mVertexBuffer[3].yy = (float)ymax;
+        mVertexBuffer[3].zz = (float)zmin;
 
-        vertexBuffer[4].xx = (float)xmin;
-        vertexBuffer[4].yy = (float)ymin;
-        vertexBuffer[4].zz = (float)zmax;
+        mVertexBuffer[4].xx = (float)xmin;
+        mVertexBuffer[4].yy = (float)ymin;
+        mVertexBuffer[4].zz = (float)zmax;
 
-        vertexBuffer[5].xx = (float)xmax;
-        vertexBuffer[5].yy = (float)ymin;
-        vertexBuffer[5].zz = (float)zmax;
+        mVertexBuffer[5].xx = (float)xmax;
+        mVertexBuffer[5].yy = (float)ymin;
+        mVertexBuffer[5].zz = (float)zmax;
 
-        vertexBuffer[6].xx = (float)xmax;
-        vertexBuffer[6].yy = (float)ymax;
-        vertexBuffer[6].zz = (float)zmax;
+        mVertexBuffer[6].xx = (float)xmax;
+        mVertexBuffer[6].yy = (float)ymax;
+        mVertexBuffer[6].zz = (float)zmax;
 
-        vertexBuffer[7].xx = (float)xmin;
-        vertexBuffer[7].yy = (float)ymax;
-        vertexBuffer[7].zz = (float)zmax;
+        mVertexBuffer[7].xx = (float)xmin;
+        mVertexBuffer[7].yy = (float)ymax;
+        mVertexBuffer[7].zz = (float)zmax;
 
-        triangleBuffer = (triangle_t *)rtcSetNewGeometryBuffer(rtcBoundary,
+        mTriangleBuffer = (triangle_t *)rtcSetNewGeometryBuffer(rtcBoundary,
                                                                RTC_BUFFER_TYPE_INDEX,
                                                                0, //slot
                                                                RTC_FORMAT_UINT3,
@@ -92,13 +91,13 @@ public:
 
         for (size_t idx = 0; idx < 4; ++idx)
         {
-            triangleBuffer[idx].v0 = Planes[firstDir][idx][0];
-            triangleBuffer[idx].v1 = Planes[firstDir][idx][1];
-            triangleBuffer[idx].v2 = Planes[firstDir][idx][2];
+            mTriangleBuffer[idx].v0 = Planes[firstDir][idx][0];
+            mTriangleBuffer[idx].v1 = Planes[firstDir][idx][1];
+            mTriangleBuffer[idx].v2 = Planes[firstDir][idx][2];
 
-            triangleBuffer[idx + 4].v0 = Planes[secondDir][idx][0];
-            triangleBuffer[idx + 4].v1 = Planes[secondDir][idx][1];
-            triangleBuffer[idx + 4].v2 = Planes[secondDir][idx][2];
+            mTriangleBuffer[idx + 4].v0 = Planes[secondDir][idx][0];
+            mTriangleBuffer[idx + 4].v1 = Planes[secondDir][idx][1];
+            mTriangleBuffer[idx + 4].v2 = Planes[secondDir][idx][2];
         }
 
         for (size_t idx = 0; idx < numTriangles; ++idx)
@@ -110,8 +109,7 @@ public:
         }
 
         rtcCommitGeometry(rtcBoundary);
-
-        return rtcGetDeviceError(rtcDevice);
+        assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcCommitGeometry");
     }
 
     rtPair<rtTriple<NumericType>> processHit(RTCRayHit &rayHit, bool &reflect)
@@ -223,14 +221,24 @@ public:
         }
     }
 
-    // RTCDevice &getRTCDevice() override final
-    // {
-    //     return rtcDevice;
-    // }
-
     RTCGeometry &getRTCGeometry() override final
     {
         return rtcBoundary;
+    }
+
+    void releaseGeometry()
+    {
+        if (mTriangleBuffer == nullptr || mVertexBuffer == nullptr)
+        {
+            return;
+        }
+        else
+        {
+            rtcReleaseGeometry(rtcBoundary);
+            // dangerous if ref count of RTCGeometry is > 1
+            mTriangleBuffer = nullptr;
+            mVertexBuffer = nullptr;
+        }
     }
 
     rtTriple<NumericType> getPrimNormal(const size_t primID) override
@@ -251,10 +259,10 @@ public:
 private:
     rtTriple<rtTriple<NumericType>> getTriangleCoords(const size_t primID)
     {
-        auto tt = triangleBuffer[primID];
-        return {(NumericType)vertexBuffer[tt.v0].xx, (NumericType)vertexBuffer[tt.v0].yy, (NumericType)vertexBuffer[tt.v0].zz,
-                (NumericType)vertexBuffer[tt.v1].xx, (NumericType)vertexBuffer[tt.v1].yy, (NumericType)vertexBuffer[tt.v1].zz,
-                (NumericType)vertexBuffer[tt.v2].xx, (NumericType)vertexBuffer[tt.v2].yy, (NumericType)vertexBuffer[tt.v2].zz};
+        auto tt = mTriangleBuffer[primID];
+        return {(NumericType)mVertexBuffer[tt.v0].xx, (NumericType)mVertexBuffer[tt.v0].yy, (NumericType)mVertexBuffer[tt.v0].zz,
+                (NumericType)mVertexBuffer[tt.v1].xx, (NumericType)mVertexBuffer[tt.v1].yy, (NumericType)mVertexBuffer[tt.v1].zz,
+                (NumericType)mVertexBuffer[tt.v2].xx, (NumericType)mVertexBuffer[tt.v2].yy, (NumericType)mVertexBuffer[tt.v2].zz};
     }
 
     struct vertex_f3_t
@@ -264,7 +272,7 @@ private:
         // in single precision floating point types.
         float xx, yy, zz;
     };
-    vertex_f3_t *vertexBuffer = nullptr;
+    vertex_f3_t *mVertexBuffer = nullptr;
 
     struct triangle_t
     {
@@ -272,9 +280,8 @@ private:
         // of three 32-bit indices per triangle.
         uint32_t v0, v1, v2;
     };
-    triangle_t *triangleBuffer = nullptr;
+    triangle_t *mTriangleBuffer = nullptr;
 
-    RTCDevice &rtcDevice;
     RTCGeometry rtcBoundary;
     const int firstDir = 0;
     const int secondDir = 1;

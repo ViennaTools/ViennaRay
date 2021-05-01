@@ -1,8 +1,8 @@
+#include <embree3/rtcore.h>
 #include <rtGeometry.hpp>
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
 #include <rtTestAsserts.hpp>
-#include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 
 int main()

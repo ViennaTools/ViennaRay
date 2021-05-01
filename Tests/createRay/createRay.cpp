@@ -1,10 +1,7 @@
+#include <embree3/rtcore.h>
 #include <rtGeometry.hpp>
 #include <rtTestAsserts.hpp>
-#include <lsDomain.hpp>
-#include <lsMakeGeometry.hpp>
-#include <embree3/rtcore.h>
 #include <rtUtil.hpp>
-#include <lsToDiskMesh.hpp>
 #include <rtRaySourceRandom.hpp>
 #include <rtRandomNumberGenerator.hpp>
 
@@ -12,34 +9,18 @@ int main()
 {
     using NumericType = float;
     constexpr int D = 3;
-    NumericType extent = 1.5;
-    NumericType gridDelta = 0.1;
     NumericType eps = 1e-6;
 
-    double bounds[2 * D] = {-extent, extent, -extent, extent, -extent, extent};
+    NumericType gridDelta;
+    std::vector<rtTriple<NumericType>> points;
+    std::vector<rtTriple<NumericType>> normals;
+    rtInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta, points, normals);
 
-    lsDomain<NumericType, D>::BoundaryType boundaryCons[3];
-    for (unsigned i = 0; i < D; ++i)
-        boundaryCons[i] = lsDomain<NumericType, D>::BoundaryType::REFLECTIVE_BOUNDARY;
-
-    auto levelSet = lsSmartPointer<lsDomain<NumericType, D>>::New(bounds, boundaryCons, gridDelta);
-    {
-        const hrleVectorType<NumericType, D> origin(0., 0., 0.);
-        const NumericType radius = 1.0;
-        auto sphere = lsSmartPointer<lsSphere<NumericType, D>>::New(origin, radius);
-        lsMakeGeometry<NumericType, D>(levelSet, sphere).apply();
-    }
     auto device = rtcNewDevice("");
-    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
-    auto points = mesh->getNodes();
-    auto normals = *mesh->getVectorData("Normals");
-
     rtGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
 
     auto rng = rtRandomNumberGenerator{};
-
     unsigned seed = 31;
     auto rngstate1 = rtRandomNumberGenerator::RNGState{seed + 0};
     auto rngstate2 = rtRandomNumberGenerator::RNGState{seed + 1};
@@ -143,6 +124,6 @@ int main()
     }
 
     rtcReleaseDevice(device);
-
+    
     return 0;
 }

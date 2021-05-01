@@ -2,8 +2,6 @@
 #define RT_TRACE_HPP
 
 #include <embree3/rtcore.h>
-#include <lsDomain.hpp>
-#include <iostream>
 #include <rtGeometry.hpp>
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
@@ -31,13 +29,13 @@ private:
 public:
     rtTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
 
-    rtTrace(std::vector<rtTriple<NumericType>> &points,
-            std::vector<rtTriple<NumericType>> &normals,
+    rtTrace(std::vector<std::array<NumericType, D>> &points,
+            std::vector<std::array<NumericType, D>> &normals,
             const NumericType gridDelta)
         : mDevice(rtcNewDevice("hugepages=1")),
           mDiscRadius(discFactor * gridDelta)
     {
-        mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
+        setGeometry(mDevice, points, normals, mDiscRadius);
     }
 
     // do I need this?
@@ -57,9 +55,10 @@ public:
 
         auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(mDevice, mGeometry, boundary, raySource, numberOfRaysPerPoint);
         auto traceResult = tracer.apply();
+        boundary.releaseGeometry();
         hitAcc = std::move(traceResult.hitAccumulator);
-        extractMcEstimates(mGeometry);
-        // traceResult.print();
+        extractMcEstimates();
+        // mGeometry.releaseGeometry();
     }
 
     void setGeometry(std::vector<std::array<NumericType, 3>> &points, std::vector<std::array<NumericType, 3>> &normals,
@@ -67,20 +66,30 @@ public:
     {
         // The internal embree buffer for the geometry object needs to be freed before creating a new buffer.
         // The buffer is managed internally and automatically freed when the geometry is destroyed.
-        // The geometry is destroyed after a call to rtRayTracer::apply()
-        // Setting a geometry multiple times without calling apply() inbetween leads to a memory leak
+        mGeometry.releaseGeometry();
         mDiscRadius = gridDelta * discFactor;
         mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
     }
 
-    void setNumberOfRaysPerPoint(const size_t num)
+    void setGeometry(std::vector<std::array<NumericType, 2>> &points, std::vector<std::array<NumericType, 2>> &normals,
+                     const NumericType gridDelta)
     {
-        numberOfRaysPerPoint = num;
+        static_assert(D == 2 && "Setting 2D geometry in 3D trace object");
+        // The internal embree buffer for the geometry object needs to be freed before creating a new buffer.
+        // The buffer is managed internally and automatically freed when the geometry is destroyed.
+        mGeometry.releaseGeometry();
+        mDiscRadius = gridDelta * discFactor;
+        mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
     }
 
-    void setBoundaryConditions(const rtTraceBoundary passedBoundaryConds[D])
+    void setNumberOfRaysPerPoint(const size_t pNum)
     {
-        boundaryConds = passedBoundaryConds;
+        numberOfRaysPerPoint = pNum;
+    }
+
+    void setBoundaryConditions(const rtTraceBoundary pBoundaryConds[D])
+    {
+        boundaryConds = pBoundaryConds;
     }
 
     void setCosinePower(const NumericType pPower)
@@ -114,7 +123,7 @@ public:
     }
 
 private:
-    void extractMcEstimates(rtGeometry<NumericType, D> &pGeometry)
+    void extractMcEstimates()
     {
         auto values = hitAcc.getValues();
         auto discAreas = hitAcc.getExposedAreas();
@@ -127,7 +136,7 @@ private:
         {
             auto vv = values[idx] / discAreas[idx];
             { // Average over the neighborhood
-                auto neighborhood = pGeometry.getNeighborIndicies(idx);
+                auto neighborhood = mGeometry.getNeighborIndicies(idx);
                 for (auto const &nbi : neighborhood)
                 {
                     vv += values[nbi] / discAreas[nbi];

@@ -1,40 +1,23 @@
+#include <embree3/rtcore.h>
 #include <rtGeometry.hpp>
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
 #include <rtTestAsserts.hpp>
-#include <lsDomain.hpp>
-#include <lsMakeGeometry.hpp>
-#include <lsToDiskMesh.hpp>
-#include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 
 int main()
 {
     using NumericType = double;
     constexpr int D = 2;
-    NumericType extent = 5;
-    NumericType gridDelta = 0.5;
     NumericType eps = 1e-6;
 
-    NumericType bounds[2 * D] = {-extent, extent, -extent, extent};
-    lsDomain<NumericType, D>::BoundaryType boundaryCons[D];
-    boundaryCons[0] = lsDomain<NumericType, D>::BoundaryType::INFINITE_BOUNDARY;
-    boundaryCons[1] = lsDomain<NumericType, D>::BoundaryType::INFINITE_BOUNDARY;
+    NumericType gridDelta;
+    std::vector<rtTriple<NumericType>> points;
+    std::vector<rtTriple<NumericType>> normals;
 
-    auto levelSet = lsSmartPointer<lsDomain<NumericType, D>>::New(bounds, boundaryCons, gridDelta);
-    {
-        const hrleVectorType<NumericType, D> origin(0., 0.);
-        const NumericType radius = 1;
-        auto sphere = lsSmartPointer<lsSphere<NumericType, D>>::New(origin, radius);
-        lsMakeGeometry<NumericType, D>(levelSet, sphere).apply();
-    }
+    rtInternal::readGridFromFile("./../Resources/sphereGrid2D_R1.dat", gridDelta, points, normals);
+
     auto device = rtcNewDevice("");
-
-    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-    lsToDiskMesh<NumericType, D>(levelSet, mesh).apply();
-    auto points = mesh->getNodes();
-    auto normals = *mesh->getVectorData("Normals");
-
     rtGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
 
@@ -46,7 +29,7 @@ int main()
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundaryConds, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundaryConds, traceSettings);
 
         // assert bounding box is ordered
         RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
@@ -60,7 +43,7 @@ int main()
         auto xplane = rtTriple<NumericType>{1., 0., 0.};
         for (size_t i = 0; i < 8; i++)
         {
-            auto normal = boundary->getPrimNormal(i);
+            auto normal = boundary.getPrimNormal(i);
             RAYTEST_ASSERT_ISNORMAL(normal, xplane, eps)
         }
     }
@@ -73,7 +56,7 @@ int main()
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
         auto traceSettings = rtInternal::getTraceSettings(dir);
 
-        auto boundary = lsSmartPointer<rtBoundary<NumericType, D>>::New(device, boundingBox, boundaryConds, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundaryConds, traceSettings);
 
         // assert bounding box is ordered
         RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
@@ -87,7 +70,7 @@ int main()
         auto yplane = rtTriple<NumericType>{0., 1., 0.};
         for (size_t i = 0; i < 8; i++)
         {
-            auto normal = boundary->getPrimNormal(i);
+            auto normal = boundary.getPrimNormal(i);
             RAYTEST_ASSERT_ISNORMAL(normal, yplane, eps)
         }
     }
