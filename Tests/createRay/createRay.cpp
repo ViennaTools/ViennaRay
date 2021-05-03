@@ -3,7 +3,16 @@
 #include <rtTestAsserts.hpp>
 #include <rtUtil.hpp>
 #include <rtRaySourceRandom.hpp>
+#include <rtRaySourceGrid.hpp>
 #include <rtRandomNumberGenerator.hpp>
+
+void printRay(RTCRayHit &rayHit)
+{
+    std::cout << "Origin: ";
+    rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
+    std::cout << "Direction: ";
+    rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
+}
 
 int main()
 {
@@ -33,7 +42,7 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting, geometry.getNumPoints());
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -49,7 +58,7 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting, geometry.getNumPoints());
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -65,7 +74,7 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting, geometry.getNumPoints());
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -81,7 +90,7 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting, geometry.getNumPoints());
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -97,7 +106,7 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting, geometry.getNumPoints());
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -113,7 +122,7 @@ int main()
         auto boundingBox = geometry.getBoundingBox();
         rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction, gridDelta);
         auto traceSetting = rtInternal::getTraceSettings(direction);
-        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting);
+        auto source = rtRaySourceRandom<NumericType, D>(boundingBox, 2., traceSetting, geometry.getNumPoints());
         alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         for (size_t i = 0; i < 10; ++i)
         {
@@ -124,6 +133,6 @@ int main()
     }
 
     rtcReleaseDevice(device);
-    
+
     return 0;
 }

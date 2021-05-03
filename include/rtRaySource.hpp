@@ -15,6 +15,7 @@ public:
                          rtRandomNumberGenerator::RNGState &RngState3, rtRandomNumberGenerator::RNGState &RngState4)
     {
     }
+    virtual size_t getNumPoints() const { return 0; }
 };
 
 #endif // RT_RAYSOURCE_HPP

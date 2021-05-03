@@ -6,6 +6,7 @@
 #include <rtBoundary.hpp>
 #include <rtBoundCondition.hpp>
 #include <rtRaySourceRandom.hpp>
+#include <rtRaySourceGrid.hpp>
 #include <rtRayTracer.hpp>
 #include <rtParticle.hpp>
 #include <rtReflectionSpecular.hpp>
@@ -15,13 +16,14 @@ template <class NumericType, class ParticleType, class ReflectionType, int D>
 class rtTrace
 {
 private:
-    static constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
+    static constexpr NumericType mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
     size_t numberOfRaysPerPoint = 1000;
     NumericType mDiscRadius = 0;
-    rtTraceDirection sourceDirection = rtTraceDirection::POS_Z;
-    rtTraceBoundary boundaryConds[D] = {};
-    NumericType cosinePower = 1.;
-    rtHitAccumulator<NumericType> hitAcc = rtHitAccumulator<NumericType>(0);
+    NumericType mGridDelta = 0;
+    rtTraceDirection mSourceDirection = rtTraceDirection::POS_Z;
+    rtTraceBoundary mBoundaryConds[D] = {};
+    NumericType mCosinePower = 1.;
+    rtHitAccumulator<NumericType> mHitAcc = rtHitAccumulator<NumericType>(0);
     std::vector<NumericType> mMcEstimates;
     RTCDevice mDevice;
     rtGeometry<NumericType, D> mGeometry;
@@ -33,7 +35,8 @@ public:
             std::vector<std::array<NumericType, D>> &normals,
             const NumericType gridDelta)
         : mDevice(rtcNewDevice("hugepages=1")),
-          mDiscRadius(discFactor * gridDelta)
+          mDiscRadius(mDiscFactor * gridDelta),
+          mGridDelta(gridDelta)
     {
         setGeometry(mDevice, points, normals, mDiscRadius);
     }
@@ -47,16 +50,18 @@ public:
     void apply()
     {
         auto boundingBox = mGeometry.getBoundingBox();
-        rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection, mDiscRadius);
-        auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
+        rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, mSourceDirection, mDiscRadius);
+        auto traceSettings = rtInternal::getTraceSettings(mSourceDirection);
 
-        auto boundary = rtBoundary<NumericType, D>(mDevice, boundingBox, boundaryConds, traceSettings);
-        auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, cosinePower, traceSettings);
+        auto boundary = rtBoundary<NumericType, D>(mDevice, boundingBox, mBoundaryConds, traceSettings);
+        // auto sourceGrid = rtInternal::createSourceGrid<NumericType, D>(boundingBox, mGeometry.getNumPoints(), mGridDelta, traceSettings);
+        // auto raySource = rtRaySourceGrid<NumericType, D>(sourceGrid, mCosinePower, traceSettings);
+        auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, mCosinePower, traceSettings);
 
         auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(mDevice, mGeometry, boundary, raySource, numberOfRaysPerPoint);
         auto traceResult = tracer.apply();
         boundary.releaseGeometry();
-        hitAcc = std::move(traceResult.hitAccumulator);
+        mHitAcc = std::move(traceResult.hitAccumulator);
         extractMcEstimates();
         // mGeometry.releaseGeometry();
     }
@@ -67,7 +72,8 @@ public:
         // The internal embree buffer for the geometry object needs to be freed before creating a new buffer.
         // The buffer is managed internally and automatically freed when the geometry is destroyed.
         mGeometry.releaseGeometry();
-        mDiscRadius = gridDelta * discFactor;
+        mDiscRadius = gridDelta * mDiscFactor;
+        mGridDelta = gridDelta;
         mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
     }
 
@@ -78,7 +84,8 @@ public:
         // The internal embree buffer for the geometry object needs to be freed before creating a new buffer.
         // The buffer is managed internally and automatically freed when the geometry is destroyed.
         mGeometry.releaseGeometry();
-        mDiscRadius = gridDelta * discFactor;
+        mDiscRadius = gridDelta * mDiscFactor;
+        mGridDelta = gridDelta;
         mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
     }
 
@@ -87,29 +94,32 @@ public:
         numberOfRaysPerPoint = pNum;
     }
 
-    void setBoundaryConditions(const rtTraceBoundary pBoundaryConds[D])
+    void setBoundaryConditions(rtTraceBoundary pBoundaryConds[D])
     {
-        boundaryConds = pBoundaryConds;
+        for (size_t i = 0; i < D; ++i)
+        {
+            mBoundaryConds[i] = pBoundaryConds[i];
+        }
     }
 
     void setCosinePower(const NumericType pPower)
     {
-        cosinePower = pPower;
+        mCosinePower = pPower;
     }
 
     void setSourceDirection(const rtTraceDirection pDirection)
     {
-        sourceDirection = pDirection;
+        mSourceDirection = pDirection;
     }
 
     std::vector<size_t> getCounts() const
     {
-        return hitAcc.getCounts();
+        return mHitAcc.getCounts();
     }
 
     std::vector<NumericType> getExposedAreas() const
     {
-        return hitAcc.getExposedAreas();
+        return mHitAcc.getExposedAreas();
     }
 
     std::vector<NumericType> getMcEstimates() const
@@ -119,14 +129,14 @@ public:
 
     std::vector<NumericType> getRelativeError()
     {
-        return hitAcc.getRelativeError();
+        return mHitAcc.getRelativeError();
     }
 
 private:
     void extractMcEstimates()
     {
-        auto values = hitAcc.getValues();
-        auto discAreas = hitAcc.getExposedAreas();
+        auto values = mHitAcc.getValues();
+        auto discAreas = mHitAcc.getExposedAreas();
         mMcEstimates.clear();
         mMcEstimates.reserve(values.size());
 

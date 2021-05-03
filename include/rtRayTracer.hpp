@@ -5,13 +5,13 @@
 #include <rtGeometry.hpp>
 #include <rtHitAccumulator.hpp>
 #include <rtBoundary.hpp>
-#include <rtRaySourceRandom.hpp>
+#include <rtRaySource.hpp>
 #include <rtReflection.hpp>
 #include <rtParticle.hpp>
 #include <rtUtil.hpp>
 #include <rtLocalIntersector.hpp>
 
-#define PRINT_PROGRESS true
+#define PRINT_PROGRESS false
 
 template <typename NumericType>
 class rtTracingResult
@@ -42,11 +42,11 @@ public:
     rtRayTracer(RTCDevice &pDevice,
                 rtGeometry<NumericType, D> &passedRTCGeometry,
                 rtBoundary<NumericType, D> &passedRTCBoundary,
-                rtRaySourceRandom<NumericType, D> &passedRTCSource,
+                rtRaySource<NumericType, D> &passedSource,
                 const size_t numOfRayPerPoint)
         : mDevice(pDevice), mGeometry(passedRTCGeometry),
-          mBoundary(passedRTCBoundary), mSource(passedRTCSource),
-          mNumRays(passedRTCGeometry.getNumPoints() * numOfRayPerPoint)
+          mBoundary(passedRTCBoundary), mSource(passedSource),
+          mNumRays(passedSource.getNumPoints() * numOfRayPerPoint)
     {
         assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >= 30601 &&
                "Error: The minimum version of Embree is 3.6.1");
@@ -129,8 +129,8 @@ public:
                 particle.initNew();
                 rayWeight = 1;
                 auto lastInitRW = rayWeight;
-                mSource.fillRay(rayHit.ray, RNG, 0, RngState1, RngState2, RngState3, RngState4); // fills also tnear
-
+                mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3, RngState4); // fills also tnear
+                // printRay(rayHit);
                 if constexpr (PRINT_PROGRESS)
                 {
                     printProgress(progressCount);
@@ -355,7 +355,7 @@ private:
     RTCDevice &mDevice;
     rtGeometry<NumericType, D> &mGeometry;
     rtBoundary<NumericType, D> &mBoundary;
-    rtRaySourceRandom<NumericType, D> &mSource;
+    rtRaySource<NumericType, D> &mSource;
     const size_t mNumRays;
 };
 

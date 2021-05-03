@@ -11,18 +11,24 @@ class rtRaySourceGrid : public rtRaySource<NumericType, D>
     typedef rtPair<rtTriple<NumericType>> boundingBoxType;
 
 public:
-    rtRaySourceGrid(std::shared_ptr<rtGeometry<NumericType, D>> passedGeometry,
-                    NumericType passedCosinePower, std::array<int, 5> &passedTraceSettings)
-        : mGeometry(passedGeometry), cosinePower(passedCosinePower), rayDir(passedTraceSettings[0]),
-          firstDir(passedTraceSettings[1]), secondDir(passedTraceSettings[2]),
-          minMax(passedTraceSettings[3]), posNeg(passedTraceSettings[4]),
+    rtRaySourceGrid(std::vector<rtTriple<NumericType>> &sourceGrid,
+                    NumericType passedCosinePower,
+                    const std::array<int, 5> &passedTraceSettings)
+        : mSourceGrid(sourceGrid),
+          mNumPoints(sourceGrid.size()),
+          cosinePower(passedCosinePower),
+          rayDir(passedTraceSettings[0]),
+          firstDir(passedTraceSettings[1]),
+          secondDir(passedTraceSettings[2]),
+          minMax(passedTraceSettings[3]),
+          posNeg(passedTraceSettings[4]),
           ee(((NumericType)2) / (passedCosinePower + 1)) {}
 
     void fillRay(RTCRay &ray, rtRandomNumberGenerator &RNG, const size_t idx,
                  rtRandomNumberGenerator::RNGState &RngState1, rtRandomNumberGenerator::RNGState &RngState2,
                  rtRandomNumberGenerator::RNGState &RngState3, rtRandomNumberGenerator::RNGState &RngState4) override final
     {
-        auto origin = mGeometry->getPoint(idx);
+        auto origin = mSourceGrid[idx % mNumPoints];
         auto direction = getDirection(RNG, RngState3, RngState4);
 
         auto tnear = 1e-4f; // float
@@ -39,6 +45,11 @@ public:
         // float varb[4] = {(float) direction[0], (float) direction[1], (float) direction[2], time};
         // reinterpret_cast<__m128&>(ray.dir_x) = _mm_load_ps(varb);
         reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
+    }
+
+    size_t getNumPoints() const override final
+    {
+        return mNumPoints;
     }
 
 private:
@@ -67,7 +78,8 @@ private:
         return direction;
     }
 
-    const std::shared_ptr<rtGeometry<NumericType, D>> mGeometry = nullptr;
+    const std::vector<rtTriple<NumericType>> &mSourceGrid;
+    const size_t mNumPoints;
     const NumericType cosinePower;
     const int rayDir;
     const int firstDir;

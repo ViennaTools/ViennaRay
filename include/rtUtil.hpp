@@ -82,7 +82,7 @@ namespace rtInternal
     }
 
     template <typename NumericType>
-    rtTriple<NumericType> ComputeNormal(rtTriple<rtTriple<NumericType>> &planeCoords)
+    rtTriple<NumericType> ComputeNormal(const rtTriple<rtTriple<NumericType>> &planeCoords)
     {
         auto uu = Diff(planeCoords[1], planeCoords[0]);
         auto vv = Diff(planeCoords[2], planeCoords[0]);
@@ -90,7 +90,7 @@ namespace rtInternal
     }
 
     template <typename NumericType, size_t D>
-    NumericType Norm(std::array<NumericType, D> &vec)
+    NumericType Norm(const std::array<NumericType, D> &vec)
     {
         NumericType norm = 0;
         std::for_each(vec.begin(), vec.end(), [&norm](NumericType entry) { norm += entry * entry; });
@@ -327,6 +327,66 @@ namespace rtInternal
         for (size_t i = 0; i < numPoints; ++i)
             dataFile >> normals[i][0] >> normals[i][1] >> normals[i][2];
         dataFile.close();
+    }
+
+    template <typename NumericType, int D>
+    std::vector<rtTriple<NumericType>>
+    createSourceGrid(const rtPair<rtTriple<NumericType>> &pBdBox, const size_t pNumPoints,
+                     const NumericType pGridDelta, const std::array<int, 5> &pTraceSettings)
+    {
+        std::vector<rtTriple<NumericType>> sourceGrid;
+        sourceGrid.reserve(pNumPoints);
+        constexpr NumericType eps = 1e-4;
+        // Trace settings
+        // sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source, posNeg dir
+        auto rayDir = pTraceSettings[0];
+        auto firstDir = pTraceSettings[1];
+        auto secondDir = pTraceSettings[2];
+        auto minMax = pTraceSettings[3];
+        assert(!(D == 2) || rayDir != 2 && "Source direction z in 2D geometry");
+
+        auto planeHeight = pBdBox[minMax][rayDir];
+        auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
+        auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];
+        size_t numPointsInFirstDir = round(len1 / pGridDelta);
+        size_t numPointsInSecondDir = round(len2 / pGridDelta);
+        auto ratio = numPointsInFirstDir / numPointsInSecondDir;
+        numPointsInFirstDir = std::sqrt(pNumPoints * ratio);
+        numPointsInSecondDir = std::sqrt(pNumPoints / ratio);
+        std::cout << "num points " << pNumPoints << std::endl;
+        std::cout << "1 " << numPointsInFirstDir << std::endl;
+        std::cout << "2 " << numPointsInSecondDir << std::endl;
+        std::cout << "total " << numPointsInSecondDir * numPointsInFirstDir << std::endl;
+
+        auto firstGridDelta = (len1 - 2 * eps) / (NumericType)(numPointsInFirstDir - 1);
+        auto secondGridDelta = (len2 - 2 * eps) / (NumericType)(numPointsInSecondDir - 1);
+        std::cout << "first gd " << firstGridDelta << std::endl;
+        std::cout << "second gd " << secondGridDelta << std::endl;
+
+        rtTriple<NumericType> point;
+        // point[firstDir] = pBdBox[0][firstDir];
+        // point[secondDir] = pBdBox[0][secondDir];
+        point[rayDir] = pBdBox[minMax][rayDir];
+        for (auto uu = pBdBox[0][secondDir] + eps; uu <= pBdBox[1][secondDir] - eps; uu += secondGridDelta)
+        {
+            if constexpr (D == 2)
+            {
+                point[secondDir] = 0.;
+            }
+            else
+            {
+                point[secondDir] = uu;
+            }
+
+            for (auto vv = pBdBox[0][firstDir] + eps; vv <= pBdBox[1][firstDir] - eps; vv += firstGridDelta)
+            {
+                point[firstDir] = vv;
+                sourceGrid.push_back(point);
+            }
+        }
+        sourceGrid.shrink_to_fit();
+        // assert(sourceGrid.size() == pNumPoints && "Assumption");
+        return sourceGrid;
     }
 
     class Timer

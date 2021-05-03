@@ -145,6 +145,9 @@ public:
 
     void releaseGeometry()
     {
+        // Attention: 
+        // This function must not be called when the RTCGeometry reference count is > 1
+        // Doing so leads to leaked memory buffers
         if (mPointBuffer == nullptr || mNormalVecBuffer == nullptr)
         {
             return;
@@ -152,7 +155,6 @@ public:
         else
         {
             rtcReleaseGeometry(mRTCGeometry);
-            // dangerous if ref count of RTCGeometry is > 1
             mPointBuffer = nullptr;
             mNormalVecBuffer = nullptr;
         }

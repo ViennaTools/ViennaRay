@@ -10,11 +10,13 @@ class rtRaySourceRandom : public rtRaySource<NumericType, D>
     typedef rtPair<rtTriple<NumericType>> boundingBoxType;
 
 public:
-    rtRaySourceRandom(boundingBoxType passedBoundingBox, NumericType passedCosinePower, std::array<int, 5> &passedTraceSettings)
-        : bdBox(passedBoundingBox), cosinePower(passedCosinePower), rayDir(passedTraceSettings[0]),
-          firstDir(passedTraceSettings[1]), secondDir(passedTraceSettings[2]),
-          minMax(passedTraceSettings[3]), posNeg(passedTraceSettings[4]),
-          ee(((NumericType)2) / (passedCosinePower + 1)) {}
+    rtRaySourceRandom(boundingBoxType pBoundingBox, NumericType pCosinePower,
+                      std::array<int, 5> &pTraceSettings, const size_t pNumPoints)
+        : bdBox(pBoundingBox), rayDir(pTraceSettings[0]),
+          firstDir(pTraceSettings[1]), secondDir(pTraceSettings[2]),
+          minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
+          ee(((NumericType)2) / (pCosinePower + 1)),
+          mNumPoints(pNumPoints) {}
 
     void fillRay(RTCRay &ray, rtRandomNumberGenerator &RNG, const size_t idx,
                  rtRandomNumberGenerator::RNGState &RngState1, rtRandomNumberGenerator::RNGState &RngState2,
@@ -37,6 +39,11 @@ public:
         // float varb[4] = {(float) direction[0], (float) direction[1], (float) direction[2], time};
         // reinterpret_cast<__m128&>(ray.dir_x) = _mm_load_ps(varb);
         reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
+    }
+
+    size_t getNumPoints() const override final
+    {
+        return mNumPoints;
     }
 
 private:
@@ -88,13 +95,13 @@ private:
     }
 
     const boundingBoxType bdBox;
-    const NumericType cosinePower;
     const int rayDir;
     const int firstDir;
     const int secondDir;
     const int minMax;
     const NumericType posNeg;
     const NumericType ee;
+    const size_t mNumPoints;
     constexpr static NumericType two_pi = rtInternal::PI * 2;
 };
 
