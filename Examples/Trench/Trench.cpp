@@ -6,10 +6,7 @@
 #include <lsBooleanOperation.hpp>
 #include <lsToDiskMesh.hpp>
 #include <lsVTKWriter.hpp>
-#include <lsAdvect.hpp>
 #include <omp.h>
-#include "velocityField.hpp"
-#include <lsToSurfaceMesh.hpp>
 
 int main()
 {
@@ -40,53 +37,47 @@ int main()
         lsMakeGeometry<NumericType, D>(dom, plane).apply();
     }
 
-    // Create trench geometry
-    {
-        auto trench = lsSmartPointer<lsDomain<NumericType, D>>::New(
-            bounds, boundaryCons, gridDelta);
-        NumericType minCorner[D] = {-extent - 1, -extent / 4.f, -30.};
-        NumericType maxCorner[D] = {extent + 1, extent / 4.f, 1.};
-        auto box = lsSmartPointer<lsBox<NumericType, D>>::New(minCorner, maxCorner);
-        lsMakeGeometry<NumericType, D>(trench, box).apply();
-        lsBooleanOperation<NumericType, D>(
-            dom, trench, lsBooleanOperationEnum::RELATIVE_COMPLEMENT)
-            .apply();
-    }
+    // // Create trench geometry
+    // {
+    //     auto trench = lsSmartPointer<lsDomain<NumericType, D>>::New(
+    //         bounds, boundaryCons, gridDelta);
+    //     NumericType minCorner[D] = {-extent - 1, -extent / 4.f, -30.};
+    //     NumericType maxCorner[D] = {extent + 1, extent / 4.f, 1.};
+    //     auto box = lsSmartPointer<lsBox<NumericType, D>>::New(minCorner, maxCorner);
+    //     lsMakeGeometry<NumericType, D>(trench, box).apply();
+    //     lsBooleanOperation<NumericType, D>(
+    //         dom, trench, lsBooleanOperationEnum::RELATIVE_COMPLEMENT)
+    //         .apply();
+    // }
+
+    rtTraceBoundary bC[D];
+    bC[0] = rtTraceBoundary::PERIODIC;
+    bC[1] = rtTraceBoundary::PERIODIC;
+    bC[2] = rtTraceBoundary::PERIODIC;
+
 
     rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
     rayTracer.setSourceDirection(rtTraceDirection::POS_Z);
+    rayTracer.setNumberOfRaysPerPoint(1000);
     rayTracer.setCosinePower(5.);
+    rayTracer.setBoundaryConditions(bC);
 
-    lsAdvect<NumericType, D> advectionKernel;
-    advectionKernel.insertNextLevelSet(dom);
+    auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
+    lsToDiskMesh<NumericType, D>(dom, mesh).apply();
+    auto points = mesh->getNodes();
+    auto normals = *mesh->getVectorData("Normals");
 
-    size_t counter = 0;
-    for (NumericType time = 0; time < 7.;
-         time += advectionKernel.getAdvectedTime())
-    {
-        auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
-        auto translator = lsSmartPointer<std::unordered_map<unsigned long, unsigned long>>::New();
-        lsToDiskMesh<NumericType, D>(dom, mesh, translator).apply();
-        auto points = mesh->getNodes();
-        auto normals = *mesh->getVectorData("Normals");
-        rayTracer.setGeometry(points, normals, gridDelta);
+    rayTracer.setGeometry(points, normals, gridDelta);
 
-        std::cout << "Ray tracing ... " << std::endl;
-        rayTracer.apply();
+    std::cout << "Ray tracing ... " << std::endl;
+    rayTracer.apply();
+    auto mcestimates = rayTracer.getMcEstimates();
+    auto error = rayTracer.getRelativeError();
 
-        auto mcestimates = lsSmartPointer<std::vector<NumericType>>::New(rayTracer.getMcEstimates());
+    mesh->insertNextScalarData(mcestimates, "mc-estimates");
+    mesh->insertNextScalarData(error, "rel-error");
 
-        auto velField = lsSmartPointer<velocityField<NumericType, D>>::New(mcestimates, translator);
-        advectionKernel.setVelocityField(velField);
-
-        std::cout << "Advecting ... " << std::endl;
-        advectionKernel.apply();
-
-        std::cout << "Time: " << time << std::endl;
-        lsToSurfaceMesh<NumericType, D>(dom, mesh).apply();
-        std::string surfName = "TrenchAdvect_" + std::to_string(counter++) + ".vtk";
-        lsVTKWriter<NumericType>(mesh, surfName).apply();
-    }
+    lsVTKWriter<NumericType>(mesh, "trench_grid_plane_periodicBC.vtk").apply();
 
     return 0;
 }
