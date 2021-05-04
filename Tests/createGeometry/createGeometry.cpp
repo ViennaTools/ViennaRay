@@ -18,6 +18,11 @@ int main()
 
     auto boundingBox = geometry.getBoundingBox();
 
+    // assert bounding box is ordered
+    RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
+    RAYTEST_ASSERT(boundingBox[0][1] < boundingBox[1][1])
+    RAYTEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
+    
     for (auto min : boundingBox[0])
     {
         RAYTEST_ASSERT_ISCLOSE(min, -1., 1e-6)

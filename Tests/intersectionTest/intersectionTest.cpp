@@ -53,7 +53,7 @@ int main()
     auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
     auto boundary = rtBoundary<NumericType, D>(rtcDevice, boundingBox, boundaryConds, traceSettings);
 
-    auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, 1, traceSettings);
+    auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, 1, traceSettings, geometry.getNumPoints());
 
     auto rtcscene = rtcNewScene(rtcDevice);
     rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
