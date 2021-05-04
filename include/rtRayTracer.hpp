@@ -40,13 +40,13 @@ class rtRayTracer
 
 public:
     rtRayTracer(RTCDevice &pDevice,
-                rtGeometry<NumericType, D> &passedRTCGeometry,
-                rtBoundary<NumericType, D> &passedRTCBoundary,
-                rtRaySource<NumericType, D> &passedSource,
-                const size_t numOfRayPerPoint)
-        : mDevice(pDevice), mGeometry(passedRTCGeometry),
-          mBoundary(passedRTCBoundary), mSource(passedSource),
-          mNumRays(passedSource.getNumPoints() * numOfRayPerPoint)
+                rtGeometry<NumericType, D> &pRTCGeometry,
+                rtBoundary<NumericType, D> &pRTCBoundary,
+                rtRaySource<NumericType, D> &pSource,
+                const size_t pNumOfRayPerPoint)
+        : mDevice(pDevice), mGeometry(pRTCGeometry),
+          mBoundary(pRTCBoundary), mSource(pSource),
+          mNumRays(pSource.getNumPoints() * pNumOfRayPerPoint)
     {
         assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >= 30601 &&
                "Error: The minimum version of Embree is 3.6.1");
@@ -54,20 +54,20 @@ public:
 
     rtTracingResult<NumericType> apply()
     {
-        auto rtcscene = rtcNewScene(mDevice);
+        auto rtcScene = rtcNewScene(mDevice);
 
         // scene flags
-        rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
+        rtcSetSceneFlags(rtcScene, RTC_SCENE_FLAG_NONE);
 
         // Selecting higher build quality results in better rendering performance but slower
         // scene commit times. The default build quality for a scene is RTC_BUILD_QUALITY_MEDIUM.
         auto bbquality = RTC_BUILD_QUALITY_HIGH;
-        rtcSetSceneBuildQuality(rtcscene, bbquality);
-        auto rtcgeometry = mGeometry.getRTCGeometry();
-        auto rtcboundary = mBoundary.getRTCGeometry();
+        rtcSetSceneBuildQuality(rtcScene, bbquality);
+        auto rtcGeometry = mGeometry.getRTCGeometry();
+        auto rtcBoundary = mBoundary.getRTCGeometry();
 
-        auto boundaryID = rtcAttachGeometry(rtcscene, rtcboundary);
-        auto geometryID = rtcAttachGeometry(rtcscene, rtcgeometry);
+        auto boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
+        auto geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
 
         assert(rtcGetDeviceError(mDevice) == RTC_ERROR_NONE && "Embree device error");
 
@@ -79,7 +79,7 @@ public:
         result.numRays = mNumRays;
 
 #pragma omp declare                                                        \
-    reduction(hit_accumulator_combine                                      \
+    reduction(hitAccumulatorCombine                                      \
               : rtHitAccumulator <NumericType>                             \
               : omp_out = rtHitAccumulator <NumericType>(omp_out, omp_in)) \
         initializer(omp_priv = rtHitAccumulator <NumericType>(omp_orig))
@@ -93,10 +93,10 @@ public:
 #pragma omp parallel                      \
     reduction(+                           \
               : geohitc, nongeohitc)      \
-        reduction(hit_accumulator_combine \
+        reduction(hitAccumulatorCombine \
                   : hitAccumulator)
         {
-            rtcJoinCommitScene(rtcscene);
+            rtcJoinCommitScene(rtcScene);
 
             // Thread local data goes here, if it is not needed anymore after the execution
             // of the parallel region.
@@ -118,8 +118,8 @@ public:
             // probabilistic weight
             NumericType rayWeight = 1;
 
-            auto rtccontext = RTCIntersectContext{};
-            rtcInitIntersectContext(&rtccontext);
+            auto rtcContext = RTCIntersectContext{};
+            rtcInitIntersectContext(&rtcContext);
 
             size_t progressCount = 0;
 
@@ -130,7 +130,7 @@ public:
                 rayWeight = 1;
                 auto lastInitRW = rayWeight;
                 mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3, RngState4); // fills also tnear
-                // printRay(rayHit);
+
                 if constexpr (PRINT_PROGRESS)
                 {
                     printProgress(progressCount);
@@ -146,14 +146,14 @@ public:
                     rayHit.ray.tnear = 1e-4; // tnear is also set in the particle source
 
                     // Run the intersection
-                    rtcIntersect1(rtcscene, &rtccontext, &rayHit);
+                    rtcIntersect1(rtcScene, &rtcContext, &rayHit);
 
                     // No hit
                     if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID)
                     {
                         nongeohitc += 1;
                         reflect = false;
-                        break; // break do-while loop
+                        break;
                     }
 
                     // Boundary hit
@@ -194,7 +194,7 @@ public:
                     }
 
                     // Surface hit
-                    assert(rayHit.hit.geomID == geometryID && "Primitive hit ID invalid");
+                    assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
                     geohitc += 1;
                     auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit, RNG, RngState5);
                     auto valueToDrop = rayWeight * sticking;
@@ -239,8 +239,8 @@ public:
         result.hitc = geohitc;
         result.nonhitc = nongeohitc;
 
-        rtcReleaseGeometry(rtcgeometry);
-        rtcReleaseGeometry(rtcboundary);
+        rtcReleaseGeometry(rtcGeometry);
+        rtcReleaseGeometry(rtcBoundary);
 
         return result;
     }

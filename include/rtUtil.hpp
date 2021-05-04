@@ -353,19 +353,11 @@ namespace rtInternal
         auto ratio = numPointsInFirstDir / numPointsInSecondDir;
         numPointsInFirstDir = std::sqrt(pNumPoints * ratio);
         numPointsInSecondDir = std::sqrt(pNumPoints / ratio);
-        std::cout << "num points " << pNumPoints << std::endl;
-        std::cout << "1 " << numPointsInFirstDir << std::endl;
-        std::cout << "2 " << numPointsInSecondDir << std::endl;
-        std::cout << "total " << numPointsInSecondDir * numPointsInFirstDir << std::endl;
 
         auto firstGridDelta = (len1 - 2 * eps) / (NumericType)(numPointsInFirstDir - 1);
         auto secondGridDelta = (len2 - 2 * eps) / (NumericType)(numPointsInSecondDir - 1);
-        std::cout << "first gd " << firstGridDelta << std::endl;
-        std::cout << "second gd " << secondGridDelta << std::endl;
 
         rtTriple<NumericType> point;
-        // point[firstDir] = pBdBox[0][firstDir];
-        // point[secondDir] = pBdBox[0][secondDir];
         point[rayDir] = pBdBox[minMax][rayDir];
         for (auto uu = pBdBox[0][secondDir] + eps; uu <= pBdBox[1][secondDir] - eps; uu += secondGridDelta)
         {
@@ -385,7 +377,6 @@ namespace rtInternal
             }
         }
         sourceGrid.shrink_to_fit();
-        // assert(sourceGrid.size() == pNumPoints && "Assumption");
         return sourceGrid;
     }
 

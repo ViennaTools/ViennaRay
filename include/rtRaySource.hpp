@@ -2,6 +2,7 @@
 #define RT_RAYSOURCE_HPP
 
 #include <x86intrin.h> // vector instruction instrinsics
+#include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 #include <rtRandomNumberGenerator.hpp>
 
