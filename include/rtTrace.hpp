@@ -5,12 +5,12 @@
 #include <rtBoundCondition.hpp>
 #include <rtBoundary.hpp>
 #include <rtGeometry.hpp>
-#include <rtHitAccumulator.hpp>
 #include <rtParticle.hpp>
 #include <rtRaySourceGrid.hpp>
 #include <rtRaySourceRandom.hpp>
 #include <rtRayTracer.hpp>
 #include <rtReflectionSpecular.hpp>
+#include <rtHitCounter.hpp>
 
 template <class NumericType, class ParticleType, class ReflectionType, int D>
 class rtTrace
@@ -24,7 +24,7 @@ private:
     rtTraceBoundary mBoundaryConds[D] = {};
     rtTraceDirection mSourceDirection = rtTraceDirection::POS_Z;
     NumericType mCosinePower = 1.;
-    rtHitAccumulator<NumericType> mHitAcc = rtHitAccumulator<NumericType>(0);
+    rtHitCounter<NumericType> mHitCounter = rtHitCounter<NumericType>(0);
     std::vector<NumericType> mMcEstimates;
     static constexpr NumericType mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
@@ -61,11 +61,9 @@ public:
 
         auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
             mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint);
-        auto traceResult = tracer.apply();
+        mHitCounter = tracer.apply();
         boundary.releaseGeometry();
-        mHitAcc = std::move(traceResult.hitAccumulator);
         extractMcEstimates();
-        // mGeometry.releaseGeometry();
     }
 
     void setGeometry(std::vector<std::array<NumericType, 3>> &points,
@@ -115,25 +113,26 @@ public:
         mSourceDirection = pDirection;
     }
 
-    std::vector<size_t> getCounts() const { return mHitAcc.getCounts(); }
+    std::vector<size_t> getCounts() const { return mHitCounter.getCounts(); }
 
-    std::vector<NumericType> getExposedAreas() const
+    std::vector<NumericType> getDiscAreas() const
     {
-        return mHitAcc.getExposedAreas();
+        return mHitCounter.getDiscAreas();
     }
 
     std::vector<NumericType> getMcEstimates() const { return mMcEstimates; }
 
     std::vector<NumericType> getRelativeError()
     {
-        return mHitAcc.getRelativeError();
+        return mHitCounter.getRelativeError();
     }
 
 private:
     void extractMcEstimates()
     {
-        auto values = mHitAcc.getValues();
-        auto discAreas = mHitAcc.getExposedAreas();
+        assert(mHitCounter.getTotalCounts() > 0 && "Invalid trace result");
+        auto values = mHitCounter.getValues();
+        auto discAreas = mHitCounter.getDiscAreas();
         mMcEstimates.clear();
         mMcEstimates.reserve(values.size());
 
@@ -142,7 +141,8 @@ private:
         for (size_t idx = 0; idx < values.size(); ++idx)
         {
             auto vv = values[idx] / discAreas[idx];
-            { // Average over the neighborhood
+            {
+                // Average over the neighborhood
                 auto neighborhood = mGeometry.getNeighborIndicies(idx);
                 for (auto const &nbi : neighborhood)
                 {

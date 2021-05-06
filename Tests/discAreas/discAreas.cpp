@@ -36,8 +36,8 @@ int main()
     auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, 1., traceSettings, geometry.getNumPoints());
 
     auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(device, geometry, boundary, raySource, 1);
-    auto traceResult = tracer.apply();
-    auto discAreas = traceResult.hitAccumulator.getExposedAreas();
+    auto hitCounter = tracer.apply();
+    auto discAreas = hitCounter.getDiscAreas();
 
     auto boundaryDirs = boundary.getDirs();
     auto wholeDiscArea = discRadius * discRadius * rtInternal::PI;

@@ -3,7 +3,6 @@
 
 #include <array>
 #include <cmath>
-#include <numeric>
 #include <algorithm>
 #include <iostream>
 #include <chrono>
@@ -27,67 +26,39 @@ namespace rtInternal
 {
     constexpr double PI = 3.14159265358979323846;
 
+    /* ------------- Vector operation functions ------------- */
     template <typename NumericType>
-    NumericType Distance(const rtTriple<NumericType> &vec1, const rtTriple<NumericType> &vec2)
+    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
     {
-        NumericType d0 = vec1[0] - vec2[0];
-        NumericType d1 = vec1[1] - vec2[1];
-        NumericType d2 = vec1[2] - vec2[2];
-        return std::sqrt(d0 * d0 + d1 * d1 + d2 * d2);
+        return {pVecA[0] + pVecB[0], pVecA[1] + pVecB[1], pVecA[2] + pVecB[2]};
     }
 
     template <typename NumericType>
-    void printTriple(const rtTriple<NumericType> &vec)
+    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB, const rtTriple<NumericType> &pT)
     {
-        std::cout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")" << std::endl;
+        return {pVecA[0] + pVecB[0] + pT[0], pVecA[1] + pVecB[1] + pT[1], pVecA[2] + pVecB[2] + pT[2]};
     }
 
     template <typename NumericType>
-    void printPair(const rtPair<NumericType> &vec)
+    rtTriple<NumericType> Diff(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
     {
-        std::cout << "(" << vec[0] << ", " << vec[1] << ")" << std::endl;
+        return {pVecA[0] - pVecB[0], pVecA[1] - pVecB[1], pVecA[2] - pVecB[2]};
     }
 
     template <typename NumericType>
-    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
+    NumericType DotProduct(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
     {
-        return {pF[0] + pS[0], pF[1] + pS[1], pF[2] + pS[2]};
+        return pVecA[0] * pVecB[0] + pVecA[1] * pVecB[1] + pVecA[2] * pVecB[2];
     }
 
     template <typename NumericType>
-    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS, const rtTriple<NumericType> &pT)
-    {
-        return {pF[0] + pS[0] + pT[0], pF[1] + pS[1] + pT[1], pF[2] + pS[2] + pT[2]};
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> Diff(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
-    {
-        return {pF[0] - pS[0], pF[1] - pS[1], pF[2] - pS[2]};
-    }
-
-    template <typename NumericType>
-    NumericType DotProduct(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
-    {
-        return pF[0] * pS[0] + pF[1] * pS[1] + pF[2] * pS[2];
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> CrossProduct(const rtTriple<NumericType> &pF, const rtTriple<NumericType> &pS)
+    rtTriple<NumericType> CrossProduct(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
     {
         rtTriple<NumericType> rr;
-        rr[0] = pF[1] * pS[2] - pF[2] * pS[1];
-        rr[1] = pF[2] * pS[0] - pF[0] * pS[2];
-        rr[2] = pF[0] * pS[1] - pF[1] * pS[0];
+        rr[0] = pVecA[1] * pVecB[2] - pVecA[2] * pVecB[1];
+        rr[1] = pVecA[2] * pVecB[0] - pVecA[0] * pVecB[2];
+        rr[2] = pVecA[0] * pVecB[1] - pVecA[1] * pVecB[0];
         return rr;
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> ComputeNormal(const rtTriple<rtTriple<NumericType>> &planeCoords)
-    {
-        auto uu = Diff(planeCoords[1], planeCoords[0]);
-        auto vv = Diff(planeCoords[2], planeCoords[0]);
-        return CrossProduct(uu, vv);
     }
 
     template <typename NumericType, size_t D>
@@ -121,21 +92,38 @@ namespace rtInternal
     }
 
     template <typename NumericType>
+    NumericType Distance(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
+    {
+        auto diff = Diff(pVecA, pVecB);
+        return Norm(diff);
+    }
+
+    template <typename NumericType>
+    rtTriple<NumericType> ComputeNormal(const rtTriple<rtTriple<NumericType>> &planeCoords)
+    {
+        auto uu = Diff(planeCoords[1], planeCoords[0]);
+        auto vv = Diff(planeCoords[2], planeCoords[0]);
+        return CrossProduct(uu, vv);
+    }
+
+    template <typename NumericType>
     bool IsNormalized(const rtTriple<NumericType> &vec)
     {
         constexpr NumericType eps = 1e-4;
         auto norm = Norm(vec);
         return std::fabs(norm - 1) < eps;
     }
+    /* ------------------------------------------------------ */
 
+    /* -------------- Ray tracing preparation -------------- */
     template <typename NumericType, int D>
-    void adjustBoundingBox(rtPair<rtTriple<NumericType>> &bdBox, rtTraceDirection direction, NumericType eps)
+    void adjustBoundingBox(rtPair<rtTriple<NumericType>> &bdBox, rtTraceDirection direction, NumericType discRadius)
     {
         // For 2D geometries adjust bounding box in z-direction
         if constexpr (D == 2)
         {
-            bdBox[0][2] -= eps;
-            bdBox[1][2] += eps;
+            bdBox[0][2] -= discRadius;
+            bdBox[1][2] += discRadius;
 
             if (direction == rtTraceDirection::POS_Z || direction == rtTraceDirection::NEG_Z)
             {
@@ -146,38 +134,29 @@ namespace rtInternal
         switch (direction)
         {
         case rtTraceDirection::POS_X:
-            bdBox[1][0] += 2 * eps;
+            bdBox[1][0] += 2 * discRadius;
             break;
 
         case rtTraceDirection::NEG_X:
-            bdBox[0][0] -= 2 * eps;
+            bdBox[0][0] -= 2 * discRadius;
             break;
 
         case rtTraceDirection::POS_Y:
-            bdBox[1][1] += 2 * eps;
+            bdBox[1][1] += 2 * discRadius;
             break;
 
         case rtTraceDirection::NEG_Y:
-            bdBox[0][1] -= 2 * eps;
+            bdBox[0][1] -= 2 * discRadius;
             break;
 
         case rtTraceDirection::POS_Z:
-            bdBox[1][2] += 2 * eps;
+            bdBox[1][2] += 2 * discRadius;
             break;
 
         case rtTraceDirection::NEG_Z:
-            bdBox[0][2] -= 2 * eps;
+            bdBox[0][2] -= 2 * discRadius;
             break;
         }
-    }
-
-    template <typename NumericType>
-    void printBoundingBox(rtPair<rtTriple<NumericType>> &bdBox)
-    {
-        std::cout << "Bounding box min coords: ";
-        printTriple(bdBox[0]);
-        std::cout << "Bounding box max coords: ";
-        printTriple(bdBox[1]);
     }
 
     std::array<int, 5> getTraceSettings(rtTraceDirection sourceDir)
@@ -244,14 +223,14 @@ namespace rtInternal
 
         return set;
     }
+    /* ------------------------------------------------------ */
 
     // Returns some orthonormal basis containing a the input vector pVector
     // (possibly scaled) as the first element of the return value.
     // This function is deterministic, i.e., for one input it will return always
     // the same result.
     template <typename NumericType>
-    static rtTriple<rtTriple<NumericType>>
-    getOrthonormalBasis(const rtTriple<NumericType> &pVector)
+    rtTriple<rtTriple<NumericType>> getOrthonormalBasis(const rtTriple<NumericType> &pVector)
     {
         rtTriple<rtTriple<NumericType>> rr;
         rr[0] = pVector;
@@ -292,30 +271,31 @@ namespace rtInternal
         return rr;
     }
 
-    template <typename T>
-    void createPlaneGrid(const T gridDelta, const T extent, const std::array<int, 3> direction,
-                         std::vector<std::array<T, 3>> &points, std::vector<std::array<T, 3>> &normals)
+    /* -------- Create or read simple geometries for testing -------- */
+    template <typename NumericType>
+    void createPlaneGrid(const NumericType gridDelta, const NumericType extent, const std::array<int, 3> direction,
+                         std::vector<std::array<NumericType, 3>> &points, std::vector<std::array<NumericType, 3>> &normals)
     {
-        std::array<T, 3> point = {-extent, -extent, -extent};
-        std::array<T, 3> normal = {0., 0., 0.};
+        std::array<NumericType, 3> point = {-extent, -extent, -extent};
+        std::array<NumericType, 3> normal = {0., 0., 0.};
         point[direction[2]] = 0;
         normal[direction[2]] = 1.;
 
         points.clear();
-        points.reserve(int(extent / gridDelta) * int(extent / gridDelta));
         normals.clear();
+        points.reserve(int(extent / gridDelta) * int(extent / gridDelta));
         normals.reserve(int(extent / gridDelta) * int(extent / gridDelta));
-        do
+        while (point[direction[0]] <= extent)
         {
-            do
+            while (point[direction[1]] <= extent)
             {
                 points.push_back(point);
                 normals.push_back(normal);
                 point[direction[1]] += gridDelta;
-            } while (point[direction[1]] <= extent);
+            }
             point[direction[1]] = -extent;
             point[direction[0]] += gridDelta;
-        } while (point[direction[0]] <= extent);
+        }
         points.shrink_to_fit();
         normals.shrink_to_fit();
     }
@@ -337,6 +317,7 @@ namespace rtInternal
             dataFile >> normals[i][0] >> normals[i][1] >> normals[i][2];
         dataFile.close();
     }
+    /* -------------------------------------------------------------- */
 
     template <typename NumericType, int D>
     std::vector<rtTriple<NumericType>>
@@ -354,7 +335,6 @@ namespace rtInternal
         auto minMax = pTraceSettings[3];
         assert((!(D == 2) || rayDir != 2) && "Source direction z in 2D geometry");
 
-        // auto planeHeight = pBdBox[minMax][rayDir];
         auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
         auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];
         size_t numPointsInFirstDir = round(len1 / pGridDelta);
@@ -389,36 +369,34 @@ namespace rtInternal
         return sourceGrid;
     }
 
-    class Timer
+    template <typename TimeUnit>
+    const static uint64_t timeStampNow()
     {
-    public:
-        Timer() : startTime(timeStampNow())
-        {
-        }
+        return std::chrono::duration_cast<TimeUnit>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
 
-        void restart()
-        {
-            startTime = timeStampNow();
-        }
+    /* ------------- Debug convenience functions ------------- */
+    template <typename NumericType>
+    void printTriple(const rtTriple<NumericType> &vec)
+    {
+        std::cout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")" << std::endl;
+    }
 
-        double elapsedSeconds() const
-        {
-            return double(timeStampNow() - startTime) * 1e-9;
-        }
+    template <typename NumericType>
+    void printPair(const rtPair<NumericType> &vec)
+    {
+        std::cout << "(" << vec[0] << ", " << vec[1] << ")" << std::endl;
+    }
 
-        std::uint64_t elapsedNanoseconds() const
-        {
-            return timeStampNow() - startTime;
-        }
-
-    private:
-        static std::uint64_t timeStampNow()
-        {
-            return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        }
-
-        std::uint64_t startTime;
-    };
+    template <typename NumericType>
+    void printBoundingBox(rtPair<rtTriple<NumericType>> &bdBox)
+    {
+        std::cout << "Bounding box min coords: ";
+        printTriple(bdBox[0]);
+        std::cout << "Bounding box max coords: ";
+        printTriple(bdBox[1]);
+    }
+    /* ------------------------------------------------------- */
 }
 
 #endif // RT_UTIL_HPP

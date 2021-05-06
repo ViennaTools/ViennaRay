@@ -3,36 +3,16 @@
 
 #include <rtRandomNumberGenerator.hpp>
 #include <rtGeometry.hpp>
-#include <rtHitAccumulator.hpp>
 #include <rtBoundary.hpp>
 #include <rtRaySource.hpp>
 #include <rtReflection.hpp>
 #include <rtParticle.hpp>
 #include <rtUtil.hpp>
 #include <rtLocalIntersector.hpp>
+#include <rtHitCounter.hpp>
 
-#define PRINT_PROGRESS false
-
-template <typename NumericType>
-class rtTracingResult
-{
-public:
-    rtHitAccumulator<NumericType> hitAccumulator = rtHitAccumulator<NumericType>(0);
-    uint64_t timeNanoseconds = 0;
-    size_t numRays;
-    size_t hitc;
-    size_t nonhitc;
-
-    void print()
-    {
-        std::cout << "==== Ray tracing result ====" << std::endl;
-        std::cout << "Elapsed time: " << timeNanoseconds / 1e6 << " ms" << std::endl
-                  << "Number of rays: " << numRays << std::endl
-                  << "Surface hits: " << hitc << std::endl
-                  << "Non-geometry hits: " << nonhitc << std::endl
-                  << "Total number of disc hits " << hitAccumulator.getTotalCounts() << std::endl;
-    }
-};
+#define PRINT_PROGRESS true
+#define PRINT_RESULT true
 
 template <typename NumericType, typename ParticleType, typename ReflectionType, int D>
 class rtRayTracer
@@ -52,7 +32,7 @@ public:
                "Error: The minimum version of Embree is 3.6.1");
     }
 
-    rtTracingResult<NumericType> apply()
+    rtHitCounter<NumericType> apply()
     {
         auto rtcScene = rtcNewScene(mDevice);
 
@@ -68,38 +48,32 @@ public:
 
         auto boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
         auto geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
-
         assert(rtcGetDeviceError(mDevice) == RTC_ERROR_NONE && "Embree device error");
 
+        rtHitCounter<NumericType> hitCounter(mGeometry.getNumPoints());
         size_t geohitc = 0;
         size_t nongeohitc = 0;
-        rtHitAccumulator<NumericType> hitAccumulator(mGeometry.getNumPoints());
-
-        rtTracingResult<NumericType> result;
-        result.numRays = mNumRays;
-
-#pragma omp declare                                                        \
-    reduction(hitAccumulatorCombine                                        \
-              : rtHitAccumulator <NumericType>                             \
-              : omp_out = rtHitAccumulator <NumericType>(omp_out, omp_in)) \
-        initializer(omp_priv = rtHitAccumulator <NumericType>(omp_orig))
 
         // The random number generator itself is stateless (has no members which
         // are modified). Hence, it may be shared by threads.
-        // auto rng = std::make_unique<rng::cstdlib_rng>();
         rtRandomNumberGenerator RNG;
-        auto timer = rtInternal::Timer{};
 
-#pragma omp parallel                    \
-    reduction(+                         \
-              : geohitc, nongeohitc)    \
-        reduction(hitAccumulatorCombine \
-                  : hitAccumulator)
+#pragma omp declare                                                    \
+    reduction(hitCounterCombine                                        \
+              : rtHitCounter <NumericType>                             \
+              : omp_out = rtHitCounter <NumericType>(omp_out, omp_in)) \
+        initializer(omp_priv = rtHitCounter <NumericType>(omp_orig))
+
+        auto time = rtInternal::timeStampNow<std::chrono::milliseconds>();
+
+#pragma omp parallel                 \
+    reduction(+                      \
+              : geohitc, nongeohitc) \
+        reduction(hitCounterCombine  \
+                  : hitCounter)
         {
             rtcJoinCommitScene(rtcScene);
 
-            // Thread local data goes here, if it is not needed anymore after the execution
-            // of the parallel region.
             alignas(128) auto rayHit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
             auto seed = (unsigned int)((omp_get_thread_num() + 1) * 31); // multiply by magic number (prime)
@@ -113,7 +87,7 @@ public:
 
             // thread-local particle and reflection object
             auto particle = ParticleType{};
-            auto surfReflect = ReflectionType{};
+            auto surfaceReflect = ReflectionType{};
 
             // probabilistic weight
             NumericType rayWeight = 1;
@@ -128,7 +102,7 @@ public:
             {
                 particle.initNew();
                 rayWeight = 1;
-                auto lastInitRW = rayWeight;
+                auto initialRayWeight = rayWeight;
                 mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3, RngState4); // fills also tnear
 
                 if constexpr (PRINT_PROGRESS)
@@ -140,15 +114,15 @@ public:
                 bool hitFromBack = false;
                 do
                 {
-                    rayHit.ray.tfar = std::numeric_limits<float>::max(); // Embree uses float
+                    rayHit.ray.tfar = std::numeric_limits<float>::max();
                     rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
                     rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-                    rayHit.ray.tnear = 1e-4; // tnear is also set in the particle source
+                    rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle source
 
                     // Run the intersection
                     rtcIntersect1(rtcScene, &rtcContext, &rayHit);
 
-                    // No hit
+                    /* -------- No hit -------- */
                     if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID)
                     {
                         nongeohitc += 1;
@@ -156,36 +130,33 @@ public:
                         break;
                     }
 
-                    // Boundary hit
+                    /* -------- Boundary hit -------- */
                     if (rayHit.hit.geomID == boundaryID)
                     {
-                        auto orgdir = mBoundary.processHit(rayHit, reflect);
+                        auto newRay = mBoundary.processHit(rayHit, reflect);
 
-                        // TODO: move this in processHit function
-                        auto tnear = 1e-4f;
-                        reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(tnear, (float)orgdir[0][2], (float)orgdir[0][1], (float)orgdir[0][0]);
-                        auto time = 0.0f;
-                        reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(time, (float)orgdir[1][2], (float)orgdir[1][1], (float)orgdir[1][0]);
+                        // Update ray
+                        reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1], (float)newRay[0][0]);
+                        reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(0.0f, (float)newRay[1][2], (float)newRay[1][1], (float)newRay[1][0]);
                         continue;
                     }
 
-                    // If the dot product of the ray direction and the surface normal is greater than zero, then
-                    // we hit the back face of the disc.
+                    /* -------- Hit from back -------- */
                     const auto &ray = rayHit.ray;
-                    const auto &hit = rayHit.hit;
                     if (rtInternal::DotProduct(rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z},
-                                               mGeometry.getPrimNormal(hit.primID)) > 0)
+                                               mGeometry.getPrimNormal(rayHit.hit.primID)) > 0)
                     {
-                        // if hitFromback == true, then the ray hits the back of a disc the second time
-                        // in this case we ignore the ray
+                        // If the dot product of the ray direction and the surface normal is greater than zero, then
+                        // we hit the back face of the disc.
                         if (hitFromBack)
                         {
+                            // if hitFromback == true, then the ray hits the back of a disc the second time.
+                            // In this case we ignore the ray.
                             break;
                         }
                         hitFromBack = true;
-                        // Hit from the back
                         // Let ray through, i.e., continue.
-                        reflect = true; // reflect means continue
+                        reflect = true;
                         rayHit.ray.org_x = ray.org_x + ray.dir_x * ray.tfar;
                         rayHit.ray.org_y = ray.org_y + ray.dir_y * ray.tfar;
                         rayHit.ray.org_z = ray.org_z + ray.dir_z * ray.tfar;
@@ -193,12 +164,12 @@ public:
                         continue;
                     }
 
-                    // Surface hit
+                    /* -------- Surface hit -------- */
                     assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
                     geohitc += 1;
                     auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit, RNG, RngState5);
                     auto valueToDrop = rayWeight * sticking;
-                    hitAccumulator.use(hit.primID, valueToDrop);
+                    hitCounter.use(rayHit.hit.primID, valueToDrop);
 
                     // Check for additional intersections
                     for (const auto &id : mGeometry.getNeighborIndicies(rayHit.hit.primID))
@@ -207,42 +178,47 @@ public:
                         const auto &normal = mGeometry.getNormalRef(id);
                         if (rtLocalIntersector::intersect(rayHit.ray, disc, normal))
                         {
-                            hitAccumulator.use(id, valueToDrop);
+                            hitCounter.use(id, valueToDrop);
                         }
                     }
 
+                    // Update ray weight
                     rayWeight -= valueToDrop;
                     if (rayWeight <= 0)
                     {
                         break;
                     }
-                    reflect = rejectionControl(rayWeight, lastInitRW, RNG, RngState6);
+                    reflect = rejectionControl(rayWeight, initialRayWeight, RNG, RngState6);
                     if (!reflect)
                     {
                         break;
                     }
-                    auto orgdir = surfReflect.use(rayHit.ray, rayHit.hit, mGeometry, RNG, RngState7);
+                    auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit, mGeometry, RNG, RngState7);
 
-                    auto tnear = 1e-4f;
-                    reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(tnear, (float)orgdir[0][2], (float)orgdir[0][1], (float)orgdir[0][0]);
-                    auto time = 0.0f;
-                    reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(time, (float)orgdir[1][2], (float)orgdir[1][1], (float)orgdir[1][0]);
+                    // Update ray
+                    reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1], (float)newRay[0][0]);
+                    reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(0.0f, (float)newRay[1][2], (float)newRay[1][1], (float)newRay[1][0]);
                 } while (reflect);
             }
 
             auto discAreas = computeDiscAreas();
-            hitAccumulator.setExposedAreas(discAreas);
+            hitCounter.setDiscAreas(discAreas);
         }
 
-        result.timeNanoseconds = timer.elapsedNanoseconds();
-        result.hitAccumulator = std::move(hitAccumulator);
-        result.hitc = geohitc;
-        result.nonhitc = nongeohitc;
+        if constexpr (PRINT_RESULT)
+        {
+            std::cout << "==== Ray tracing result ====\n"
+                      << "Elapsed time: " << (rtInternal::timeStampNow<std::chrono::milliseconds>() - time) * 1e-3 << " s\n"
+                      << "Number of rays: " << mNumRays << std::endl
+                      << "Surface hits: " << geohitc << std::endl
+                      << "Non-geometry hits: " << nongeohitc << std::endl
+                      << "Total number of disc hits " << hitCounter.getTotalCounts() << std::endl;
+        }
 
         rtcReleaseGeometry(rtcGeometry);
         rtcReleaseGeometry(rtcBoundary);
 
-        return result;
+        return hitCounter;
     }
 
 private:
@@ -254,18 +230,16 @@ private:
         NumericType renewWeight = 0.3 * initWeight;
 
         // We do what is sometimes called Roulette in MC literatur.
-        // Jun Liu calls it "rejection controll" in his book.
+        // Jun Liu calls it "rejection control" in his book.
         // If the weight of the ray is above a certain threshold, we always reflect.
         // If the weight of the ray is below the threshold, we randomly decide to either kill the
         // ray or increase its weight (in an unbiased way).
         if (rayWeight >= lowerThreshold)
         {
-            // continue the ray without any modification
             return true;
         }
         // We want to set the weight of (the reflection of) the ray to the value of renewWeight.
-        // In order to stay  unbiased we kill the reflection with a probability of
-        // (1 - current.rayWeight / renewWeight).
+        // In order to stay  unbiased we kill the reflection with a probability of (1 - rayWeight / renewWeight).
         auto rndm = RNG.get(RngState);
         auto killProbability = 1.0 - rayWeight / renewWeight;
         if (rndm < (killProbability * RNG.max()))
@@ -313,12 +287,12 @@ private:
         {
             return;
         }
-        auto barlength = 30;
-        auto barstartsymbol = '[';
-        auto fillsymbol = '#';
-        auto emptysymbol = '-';
-        auto barendsymbol = ']';
-        auto percentagestringformatlength = 3; // 3 digits
+        constexpr auto barlength = 30;
+        constexpr auto barstartsymbol = '[';
+        constexpr auto fillsymbol = '#';
+        constexpr auto emptysymbol = '-';
+        constexpr auto barendsymbol = ']';
+        constexpr auto percentagestringformatlength = 3; // 3 digits
         if (progressCount % (int)std::ceil((float)mNumRays / omp_get_num_threads() / barlength) == 0)
         {
             auto filllength = (int)std::ceil(progressCount / ((float)mNumRays / omp_get_num_threads() / barlength));

@@ -1,4 +1,4 @@
-#include <rtHitAccumulator.hpp>
+#include <rtHitCounter.hpp>
 #include <rtTestAsserts.hpp>
 #include <omp.h>
 
@@ -11,15 +11,15 @@ int main()
     size_t primID = 10;
     size_t numRuns = 10000;
 
-    rtHitAccumulator<NumericType> hitAcc(numPrims);
+    rtHitCounter<NumericType> hitAcc(numPrims);
 
     omp_set_num_threads(4);
 
 #pragma omp declare                                                        \
     reduction(hit_accumulator_combine                                      \
-              : rtHitAccumulator <NumericType>                             \
-              : omp_out = rtHitAccumulator <NumericType>(omp_out, omp_in)) \
-        initializer(omp_priv = rtHitAccumulator <NumericType>(omp_orig))
+              : rtHitCounter <NumericType>                             \
+              : omp_out = rtHitCounter <NumericType>(omp_out, omp_in)) \
+        initializer(omp_priv = rtHitCounter <NumericType>(omp_orig))
 
 #pragma omp parallel                  \
     reduction(hit_accumulator_combine \
