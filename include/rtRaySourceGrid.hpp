@@ -8,8 +8,6 @@
 template <typename NumericType, int D>
 class rtRaySourceGrid : public rtRaySource<NumericType, D>
 {
-    typedef rtPair<rtTriple<NumericType>> boundingBoxType;
-
 public:
     rtRaySourceGrid(std::vector<rtTriple<NumericType>> &sourceGrid,
                     NumericType passedCosinePower,

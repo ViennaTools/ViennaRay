@@ -4,7 +4,7 @@
 #include <memory>
 #include <random>
 
-// Realization of the i_rng interface is intended to be a random number
+// Realization of the rng interface is intended to be a random number
 // generator together with the definition of a struct which holds all the
 // state (e.g. seeds) which the random number generator needs. That is,
 // this interface defines how a stateless random number generator relates
@@ -27,8 +27,6 @@ public:
         std::mt19937_64 MT;
     };
 
-    // A definition of this function will most likely alter the content of its
-    // argument.
     uint64_t get(RNGState &pState)
     {
       return (uint64_t) pState.MT();

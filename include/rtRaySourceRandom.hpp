@@ -52,7 +52,6 @@ private:
     {
         rtTriple<NumericType> origin{0., 0., 0.};
         auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
-        auto r2 = ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
 
         origin[rayDir] = bdBox[minMax][rayDir];
         origin[firstDir] = bdBox[0][firstDir] + (bdBox[1][firstDir] - bdBox[0][firstDir]) * r1;
@@ -63,6 +62,7 @@ private:
         }
         else
         {
+            auto r2 = ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
             origin[secondDir] = bdBox[0][secondDir] + (bdBox[1][secondDir] - bdBox[0][secondDir]) * r2;
         }
 

@@ -4,7 +4,7 @@
 int main()
 {
     constexpr int D = 3;
-    using NumericType = double;
+    using NumericType = float;
     using ParticleType = rtParticle2<NumericType>;
     using ReflectionType = rtReflectionSpecular<NumericType, D>;
 

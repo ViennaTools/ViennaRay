@@ -12,6 +12,7 @@
 #include <fstream>
 #include <omp.h>
 #include <rtTraceDirection.hpp>
+#include <rtMessage.hpp>
 
 template <typename NumericType>
 using rtPair = std::array<NumericType, 2>;
@@ -119,6 +120,14 @@ namespace rtInternal
         return pT;
     }
 
+    template <typename NumericType>
+    bool IsNormalized(const rtTriple<NumericType> &vec)
+    {
+        constexpr NumericType eps = 1e-4;
+        auto norm = Norm(vec);
+        return std::fabs(norm - 1) < eps;
+    }
+
     template <typename NumericType, int D>
     void adjustBoundingBox(rtPair<rtTriple<NumericType>> &bdBox, rtTraceDirection direction, NumericType eps)
     {
@@ -130,7 +139,7 @@ namespace rtInternal
 
             if (direction == rtTraceDirection::POS_Z || direction == rtTraceDirection::NEG_Z)
             {
-                std::cerr << "Warning: Ray source is set in z-direction for 2D geometry" << std::endl;
+                rtMessage::getInstance().addError("Ray source is set in z-direction for 2D geometry");
             }
         }
 
@@ -343,9 +352,9 @@ namespace rtInternal
         auto firstDir = pTraceSettings[1];
         auto secondDir = pTraceSettings[2];
         auto minMax = pTraceSettings[3];
-        assert(!(D == 2) || rayDir != 2 && "Source direction z in 2D geometry");
+        assert((!(D == 2) || rayDir != 2) && "Source direction z in 2D geometry");
 
-        auto planeHeight = pBdBox[minMax][rayDir];
+        // auto planeHeight = pBdBox[minMax][rayDir];
         auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
         auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];
         size_t numPointsInFirstDir = round(len1 / pGridDelta);

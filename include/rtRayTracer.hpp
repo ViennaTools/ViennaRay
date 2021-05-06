@@ -79,7 +79,7 @@ public:
         result.numRays = mNumRays;
 
 #pragma omp declare                                                        \
-    reduction(hitAccumulatorCombine                                      \
+    reduction(hitAccumulatorCombine                                        \
               : rtHitAccumulator <NumericType>                             \
               : omp_out = rtHitAccumulator <NumericType>(omp_out, omp_in)) \
         initializer(omp_priv = rtHitAccumulator <NumericType>(omp_orig))
@@ -90,9 +90,9 @@ public:
         rtRandomNumberGenerator RNG;
         auto timer = rtInternal::Timer{};
 
-#pragma omp parallel                      \
-    reduction(+                           \
-              : geohitc, nongeohitc)      \
+#pragma omp parallel                    \
+    reduction(+                         \
+              : geohitc, nongeohitc)    \
         reduction(hitAccumulatorCombine \
                   : hitAccumulator)
         {
@@ -121,7 +121,7 @@ public:
             auto rtcContext = RTCIntersectContext{};
             rtcInitIntersectContext(&rtcContext);
 
-            size_t progressCount = 0;
+            [[maybe_unused]] size_t progressCount = 0;
 
 #pragma omp for
             for (size_t idx = 0; idx < mNumRays; ++idx)
@@ -171,8 +171,8 @@ public:
 
                     // If the dot product of the ray direction and the surface normal is greater than zero, then
                     // we hit the back face of the disc.
-                    auto const &ray = rayHit.ray;
-                    auto const &hit = rayHit.hit;
+                    const auto &ray = rayHit.ray;
+                    const auto &hit = rayHit.hit;
                     if (rtInternal::DotProduct(rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z},
                                                mGeometry.getPrimNormal(hit.primID)) > 0)
                     {
@@ -201,10 +201,10 @@ public:
                     hitAccumulator.use(hit.primID, valueToDrop);
 
                     // Check for additional intersections
-                    for (auto const &id : mGeometry.getNeighborIndicies(rayHit.hit.primID))
+                    for (const auto &id : mGeometry.getNeighborIndicies(rayHit.hit.primID))
                     {
-                        auto const &disc = mGeometry.getPrimRef(id);
-                        auto const &normal = mGeometry.getNormalRef(id);
+                        const auto &disc = mGeometry.getPrimRef(id);
+                        const auto &normal = mGeometry.getNormalRef(id);
                         if (rtLocalIntersector::intersect(rayHit.ray, disc, normal))
                         {
                             hitAccumulator.use(id, valueToDrop);
@@ -313,7 +313,7 @@ private:
         {
             return;
         }
-        auto barlength = 30u;
+        auto barlength = 30;
         auto barstartsymbol = '[';
         auto fillsymbol = '#';
         auto emptysymbol = '-';

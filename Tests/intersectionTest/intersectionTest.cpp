@@ -1,20 +1,21 @@
 #include <embree3/rtcore.h>
+#include <x86intrin.h>
 #include <rtGeometry.hpp>
 #include <rtBoundary.hpp>
 #include <rtUtil.hpp>
 #include <rtTestAsserts.hpp>
-#include <rtRaySourceRandom.hpp>
-#include <rtRandomNumberGenerator.hpp>
 
-void printRay(RTCRayHit &rayHit)
-{
-    std::cout << "Origin: ";
-    rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
-    std::cout << "Direction: ";
-    rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
-    std::cout << "Geometry normal: ";
-    rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z});
-}
+// void printRay(RTCRayHit &rayHit)
+// {
+//     std::cout << "Origin: ";
+//     rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
+//     std::cout << "Direction: ";
+//     rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
+//     std::cout << "Geometry normal: ";
+//     rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z});
+//     std::cout << "Primitive ID: ";
+//     std::cout << rayHit.hit.primID << std::endl;
+// }
 
 int main()
 {
@@ -23,37 +24,23 @@ int main()
 
     NumericType extent = 10;
     NumericType gridDelta = 0.5;
-    NumericType eps = 1e-6;
     std::vector<std::array<NumericType, D>> points;
     std::vector<std::array<NumericType, D>> normals;
     rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    auto rtcDevice = rtcNewDevice("hugepages=1");
+    auto rtcDevice = rtcNewDevice("");
     auto sourceDirection = rtTraceDirection::POS_Z;
-    rtTraceBoundary boundaryConds[D];
-    boundaryConds[0] = rtTraceBoundary::REFLECTIVE;
-    boundaryConds[1] = rtTraceBoundary::REFLECTIVE;
-    boundaryConds[2] = rtTraceBoundary::IGNORE;
-
-    auto RNG = rtRandomNumberGenerator{};
-
-    auto seed = 121u;
-    auto RngState1 = rtRandomNumberGenerator::RNGState{seed + 0};
-    auto RngState2 = rtRandomNumberGenerator::RNGState{seed + 1};
-    auto RngState3 = rtRandomNumberGenerator::RNGState{seed + 2};
-    auto RngState4 = rtRandomNumberGenerator::RNGState{seed + 3};
+    rtTraceBoundary boundaryConds[D] = {};
 
     constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
     auto discRadius = gridDelta * discFactor;
     rtGeometry<NumericType, D> geometry;
-    geometry.initGeometry(rtcDevice, points, normals, gridDelta);
+    geometry.initGeometry(rtcDevice, points, normals, discRadius);
     auto boundingBox = geometry.getBoundingBox();
 
     rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection, discRadius);
     auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
     auto boundary = rtBoundary<NumericType, D>(rtcDevice, boundingBox, boundaryConds, traceSettings);
-
-    auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, 1, traceSettings, geometry.getNumPoints());
 
     auto rtcscene = rtcNewScene(rtcDevice);
     rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
@@ -67,40 +54,50 @@ int main()
 
     auto rtccontext = RTCIntersectContext{};
     rtcInitIntersectContext(&rtccontext);
+    RAYTEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
-    assert(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE && "Error");
+    {
+        auto origin = rtTriple<NumericType>{0., 0., 2 * discRadius};
+        auto direction = rtTriple<NumericType>{0., 0., -1.};
 
-    auto origin = rtTriple<NumericType>{0., 0., .3f};
-    auto direction = rtTriple<NumericType>{0., 0., -1.};
+        alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        auto tnear = 1e-4f;
+        reinterpret_cast<__m128 &>(rayhit.ray) = _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
+        auto time = 0.0f;
+        reinterpret_cast<__m128 &>(rayhit.ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
 
-    auto tnear = 1e-4f;
-    reinterpret_cast<__m128 &>(rayhit.ray) = _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
-    auto time = 0.0f;
-    reinterpret_cast<__m128 &>(rayhit.ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
+        rayhit.ray.tfar = std::numeric_limits<float>::max();
+        rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+        rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
 
-    rayhit.ray.tfar = std::numeric_limits<float>::max();
-    rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
-    rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+        rtcIntersect1(rtcscene, &rtccontext, &rayhit);
 
-    rtcIntersect1(rtcscene, &rtccontext, &rayhit);
+        RAYTEST_ASSERT(rayhit.hit.geomID == geometryID)
+        RAYTEST_ASSERT(rayhit.hit.primID == 840)
+    }
 
-    RAYTEST_ASSERT(rayhit.hit.geomID == geometryID)
+    {
+        auto origin = rtTriple<NumericType>{0., 9., 2 * discRadius};
+        auto direction = rtTriple<NumericType>{0., 2., -1.};
+        rtInternal::Normalize(direction);
 
-    // direction = rtTriple<NumericType>{}
-    // printRay(rayhit);
-    // std::cout << "Geom hit ID: " << rayhit.hit.geomID << std::endl;
+        alignas(128) auto rayhit = RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    // for (size_t i = 0; i < 10; i++)
-    // {
-    //     raySource->fillRay(rayhit.ray, RNG, RngState1, RngState2, RngState3, RngState4);
-    //     rtcIntersect1(rtcscene, &rtccontext, &rayhit);
-    //     std::cout << "Geom hit ID: " << rayhit.hit.geomID << std::endl;
-    //     std::cout << "Tfar: " << rayhit.ray.tfar << std::endl;
+        auto tnear = 1e-4f;
+        reinterpret_cast<__m128 &>(rayhit.ray) = _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
+        auto time = 0.0f;
+        reinterpret_cast<__m128 &>(rayhit.ray.dir_x) = _mm_set_ps(time, (float)direction[2], (float)direction[1], (float)direction[0]);
 
-    //     printRay(rayhit);
-    // }
+        rayhit.ray.tfar = std::numeric_limits<float>::max();
+        rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+        rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+
+        rtcIntersect1(rtcscene, &rtccontext, &rayhit);
+        
+        RAYTEST_ASSERT(rayhit.hit.geomID == boundaryID)
+        RAYTEST_ASSERT(rayhit.hit.primID == 7)
+    }
 
     rtcReleaseScene(rtcscene);
     rtcReleaseGeometry(rtcgeometry);

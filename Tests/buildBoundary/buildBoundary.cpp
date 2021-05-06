@@ -7,7 +7,7 @@
 
 int main()
 {
-    using NumericType = double;
+    using NumericType = float;
     constexpr int D = 3;
     NumericType eps = 1e-6;
 
@@ -21,13 +21,14 @@ int main()
     rtGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
 
+    rtTraceBoundary mBoundaryConds[D] = {};
+
     {
         // build boundary in y and z directions
         auto boundingBox = geometry.getBoundingBox();
         auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_X);
-        auto boundary = rtBoundary<NumericType, D>(traceSetting);
-        boundingBox[1][0] += gridDelta;
-        boundary.initBoundary(device, boundingBox);
+        rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, rtTraceDirection::POS_X, gridDelta);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, mBoundaryConds, traceSetting);
 
         // assert bounding box is ordered
         RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
@@ -35,7 +36,7 @@ int main()
         RAYTEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
 
         // assert boundary is extended in x direction
-        RAYTEST_ASSERT_ISCLOSE(boundingBox[1][0], (1 + gridDelta), eps)
+        RAYTEST_ASSERT_ISCLOSE(boundingBox[1][0], (1 + 2 * gridDelta), eps)
 
         // assert boundary normal vectors are perpendicular to x direction
         auto xplane = rtTriple<NumericType>{1., 0., 0.};
@@ -49,11 +50,10 @@ int main()
 
     {
         // build boundary in x and z directions
-        auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Y);
-        auto boundary = rtBoundary<NumericType, D>(traceSetting);
         auto boundingBox = geometry.getBoundingBox();
-        boundingBox[1][1] += gridDelta;
-        boundary.initBoundary(device, boundingBox);
+        auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Y);
+        rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, rtTraceDirection::POS_Y, gridDelta);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, mBoundaryConds, traceSetting);
 
         // assert bounding box is ordered
         RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
@@ -61,7 +61,7 @@ int main()
         RAYTEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
 
         // assert boundary is extended in y direction
-        RAYTEST_ASSERT_ISCLOSE(boundingBox[1][1], (1 + gridDelta), eps)
+        RAYTEST_ASSERT_ISCLOSE(boundingBox[1][1], (1 + 2 * gridDelta), eps)
 
         // assert boundary normal vectors are perpendicular to y direction
         auto yplane = rtTriple<NumericType>{0., 1., 0.};
@@ -75,11 +75,10 @@ int main()
 
     {
         // build boundary in x and y directions
-        auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
-        auto boundary = rtBoundary<NumericType, D>(traceSetting);
         auto boundingBox = geometry.getBoundingBox();
-        boundingBox[1][2] += gridDelta;
-        boundary.initBoundary(device, boundingBox);
+        auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
+        rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, rtTraceDirection::POS_Z, gridDelta);
+        auto boundary = rtBoundary<NumericType, D>(device, boundingBox, mBoundaryConds, traceSetting);
 
         // assert bounding box is ordered
         RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
@@ -87,7 +86,7 @@ int main()
         RAYTEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
 
         // assert boundary is extended in x direction
-        RAYTEST_ASSERT_ISCLOSE(boundingBox[1][2], (1 + gridDelta), eps)
+        RAYTEST_ASSERT_ISCLOSE(boundingBox[1][2], (1 + 2 * gridDelta), eps)
 
         // assert boundary normal vectors are perpendicular to x direction
         auto zplane = rtTriple<NumericType>{0., 0., 1.};

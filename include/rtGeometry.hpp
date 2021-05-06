@@ -4,6 +4,7 @@
 #include <embree3/rtcore.h>
 #include <rtUtil.hpp>
 #include <rtMetaGeometry.hpp>
+#include <rtMessage.hpp>
 #include <type_traits>
 
 template <typename NumericType, int D>
@@ -38,27 +39,14 @@ public:
         assert(points.size() == normals.size() && "rtGeometry: Points/Normals size missmatch");
 
         // overwriting the geometry without releasing it beforehand causes the old buffer to leak
-        // releasing an already released or empty geometry leads to seg vault
-        // TODO: find way to check if geometry is existing -> release
-        // maybe something with rtcSetDeviceMemoryMonitorFunction
         mRTCGeometry = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
         assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcNewGeometry");
         mNumPoints = points.size();
 
         if (!std::is_same<NumericType, float>::value)
         {
-            // TODO: add warning for internal type conversion
+            rtMessage::getInstance().addWarning("Internal type conversion to type float.").print();
         }
-
-        // if (mPointBuffer == nullptr)
-        // {
-        //     std::cout << "mPointBuffer is nullptr" << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << "mPointBuffer is NOT nullptr" << std::endl;
-        //     std::cout << mPointBuffer[0].radius << std::endl;
-        // }
 
         // The buffer data is managed internally (embree) and automatically freed when the geometry is destroyed.
         mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(mRTCGeometry,
@@ -75,18 +63,18 @@ public:
             mPointBuffer[i].yy = (float)points[i][1];
             mPointBuffer[i].zz = (float)points[i][2];
             mPointBuffer[i].radius = (float)discRadii;
-            if (points[i][0] < minCoords[0])
-                minCoords[0] = points[i][0];
-            if (points[i][1] < minCoords[1])
-                minCoords[1] = points[i][1];
-            if (points[i][2] < minCoords[2])
-                minCoords[2] = points[i][2];
-            if (points[i][0] > maxCoords[0])
-                maxCoords[0] = points[i][0];
-            if (points[i][1] > maxCoords[1])
-                maxCoords[1] = points[i][1];
-            if (points[i][2] > maxCoords[2])
-                maxCoords[2] = points[i][2];
+            if (points[i][0] < mMinCoords[0])
+                mMinCoords[0] = points[i][0];
+            if (points[i][1] < mMinCoords[1])
+                mMinCoords[1] = points[i][1];
+            if (points[i][2] < mMinCoords[2])
+                mMinCoords[2] = points[i][2];
+            if (points[i][0] > mMaxCoords[0])
+                mMaxCoords[0] = points[i][0];
+            if (points[i][1] > mMaxCoords[1])
+                mMaxCoords[1] = points[i][1];
+            if (points[i][2] > mMaxCoords[2])
+                mMaxCoords[2] = points[i][2];
         }
 
         mNormalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(mRTCGeometry,
@@ -112,7 +100,7 @@ public:
 
     rtPair<rtTriple<NumericType>> getBoundingBox() const
     {
-        return {minCoords, maxCoords};
+        return {mMinCoords, mMaxCoords};
     }
 
     rtTriple<NumericType> getPoint(const size_t primID) const
@@ -125,7 +113,7 @@ public:
     std::vector<size_t> getNeighborIndicies(const size_t idx) const
     {
         assert(idx < mNumPoints && "rtGeometry: Index out of bounds");
-        return pointNeighborhood[idx];
+        return mPointNeighborhood[idx];
     }
 
     size_t getNumPoints() const
@@ -182,8 +170,8 @@ public:
 private:
     void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points, const NumericType discRadii)
     {
-        pointNeighborhood.clear();
-        pointNeighborhood.resize(mNumPoints, std::vector<size_t>{});
+        mPointNeighborhood.clear();
+        mPointNeighborhood.resize(mNumPoints, std::vector<size_t>{});
         // TODO: This SHOULD be further optizmized with a better algorithm!
         for (size_t idx1 = 0; idx1 < mNumPoints; ++idx1)
         {
@@ -191,8 +179,8 @@ private:
             {
                 if (checkDistance(points[idx1], points[idx2], 2 * discRadii))
                 {
-                    pointNeighborhood[idx1].push_back(idx2);
-                    pointNeighborhood[idx2].push_back(idx1);
+                    mPointNeighborhood[idx1].push_back(idx2);
+                    mPointNeighborhood[idx2].push_back(idx1);
                 }
             }
         }
@@ -239,9 +227,9 @@ private:
     size_t mNumPoints;
     constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
     constexpr static NumericType nummin = std::numeric_limits<NumericType>::lowest();
-    rtTriple<NumericType> minCoords{nummax, nummax, nummax};
-    rtTriple<NumericType> maxCoords{nummin, nummin, nummin};
-    pointNeighborhoodType pointNeighborhood;
+    rtTriple<NumericType> mMinCoords{nummax, nummax, nummax};
+    rtTriple<NumericType> mMaxCoords{nummin, nummin, nummin};
+    pointNeighborhoodType mPointNeighborhood;
 };
 
 #endif // RT_GEOMETRY_HPP
