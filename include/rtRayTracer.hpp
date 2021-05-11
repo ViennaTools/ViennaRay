@@ -167,7 +167,9 @@ public:
                     /* -------- Surface hit -------- */
                     assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
                     geohitc += 1;
-                    auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit, RNG, RngState5);
+                    auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit,
+                                                                    mGeometry.getMaterialId(rayHit.hit.primID),
+                                                                    RNG, RngState5);
                     auto valueToDrop = rayWeight * sticking;
                     hitCounter.use(rayHit.hit.primID, valueToDrop);
 
@@ -193,7 +195,9 @@ public:
                     {
                         break;
                     }
-                    auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit, mGeometry, RNG, RngState7);
+                    auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit,
+                                                     mGeometry.getMaterialId(rayHit.hit.primID),
+                                                     RNG, RngState7);
 
                     // Update ray
                     reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1], (float)newRay[0][0]);

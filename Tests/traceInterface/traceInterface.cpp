@@ -1,16 +1,18 @@
 #include <rtTestAsserts.hpp>
 #include <rtTrace.hpp>
+#include <rtReflectionCustom.hpp>
 
 int main()
 {
     constexpr int D = 3;
     using NumericType = float;
     using ParticleType = rtParticle2<NumericType>;
-    using ReflectionType = rtReflectionSpecular<NumericType, D>;
+    using ReflectionType = rtReflectionCustom<NumericType, D>;
     // NumericType gridDelta;
     // std::vector<rtTriple<NumericType>> points;
     // std::vector<rtTriple<NumericType>> normals;
     // rtInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta, points, normals);
+    omp_set_num_threads(4);
 
     NumericType extent = 10;
     NumericType gridDelta = 0.5;

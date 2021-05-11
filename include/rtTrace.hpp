@@ -40,8 +40,11 @@ public:
         setGeometry(mDevice, points, normals, mDiscRadius);
     }
 
-    // do I need this?
-    ~rtTrace() { rtcReleaseDevice(mDevice); }
+    ~rtTrace()
+    {
+        mGeometry.releaseGeometry();
+        rtcReleaseDevice(mDevice);
+    }
 
     void apply()
     {
@@ -52,12 +55,9 @@ public:
 
         auto boundary = rtBoundary<NumericType, D>(mDevice, boundingBox,
                                                    mBoundaryConds, traceSettings);
-        // auto sourceGrid = rtInternal::createSourceGrid<NumericType,
-        // D>(boundingBox, mGeometry.getNumPoints(), mGridDelta, traceSettings);
-        // auto raySource = rtRaySourceGrid<NumericType, D>(sourceGrid,
-        // mCosinePower, traceSettings);
-        auto raySource = rtRaySourceRandom<NumericType, D>(
-            boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
+        // auto sourceGrid = rtInternal::createSourceGrid<NumericType, D>(boundingBox, mGeometry.getNumPoints(), mGridDelta, traceSettings);
+        // auto raySource = rtRaySourceGrid<NumericType, D>(sourceGrid, mCosinePower, traceSettings);
+        auto raySource = rtRaySourceRandom<NumericType, D>(boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
 
         auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
             mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint);
@@ -70,10 +70,6 @@ public:
                      std::vector<std::array<NumericType, 3>> &normals,
                      const NumericType gridDelta)
     {
-        // The internal embree buffer for the geometry object needs to be freed
-        // before creating a new buffer. The buffer is managed internally and
-        // automatically freed when the geometry is destroyed.
-        mGeometry.releaseGeometry();
         mGridDelta = gridDelta;
         mDiscRadius = gridDelta * mDiscFactor;
         mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
@@ -84,10 +80,7 @@ public:
                      const NumericType gridDelta)
     {
         static_assert(D == 2 && "Setting 2D geometry in 3D trace object");
-        // The internal embree buffer for the geometry object needs to be freed
-        // before creating a new buffer. The buffer is managed internally and
-        // automatically freed when the geometry is destroyed.
-        mGeometry.releaseGeometry();
+
         mGridDelta = gridDelta;
         mDiscRadius = gridDelta * mDiscFactor;
         mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
@@ -127,6 +120,30 @@ public:
         return mHitCounter.getRelativeError();
     }
 
+    std::vector<NumericType> getMcEstimatesNorm()
+    {
+        std::vector<NumericType> estimates;
+        auto values = mHitCounter.getValues();
+        auto discAreas = mHitCounter.getDiscAreas();
+        estimates.reserve(values.size());
+        auto maxv = 0.0;
+        // Account for area and find max value
+        for (size_t idx = 0; idx < values.size(); ++idx)
+        {
+            auto vv = values[idx] / discAreas[idx];
+            estimates.push_back(vv);
+            if (maxv < vv)
+            {
+                maxv = vv;
+            }
+        }
+        std::for_each(estimates.begin(), estimates.end(),
+                      [&maxv](NumericType &ee)
+                      { ee /= maxv; });
+
+        return estimates;
+    }
+
 private:
     void extractMcEstimates()
     {
@@ -157,7 +174,8 @@ private:
             }
         }
         std::for_each(mMcEstimates.begin(), mMcEstimates.end(),
-                      [&maxv](NumericType &ee) { ee /= maxv; });
+                      [&maxv](NumericType &ee)
+                      { ee /= maxv; });
     }
 };
 

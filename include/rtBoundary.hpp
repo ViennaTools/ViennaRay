@@ -31,7 +31,7 @@ public:
             if (mBoundaryConds[0] == rtTraceBoundary::REFLECTIVE)
             {
                 reflect = true;
-                return rtReflectionSpecular<NumericType, D>::use(rayHit.ray, rayHit.hit, *this);
+                return rtReflectionSpecular<NumericType, D>::use(rayHit.ray, rayHit.hit);
             }
             else if (mBoundaryConds[0] == rtTraceBoundary::PERIODIC)
             {
@@ -67,7 +67,7 @@ public:
                 {
                     // use specular reflection
                     reflect = true;
-                    return rtReflectionSpecular<NumericType, D>::use(rayHit.ray, rayHit.hit, *this);
+                    return rtReflectionSpecular<NumericType, D>::use(rayHit.ray, rayHit.hit);
                 }
                 else if (mBoundaryConds[0] == rtTraceBoundary::PERIODIC)
                 {
@@ -98,7 +98,7 @@ public:
                 {
                     // use specular reflection
                     reflect = true;
-                    return rtReflectionSpecular<NumericType, D>::use(rayHit.ray, rayHit.hit, *this);
+                    return rtReflectionSpecular<NumericType, D>::use(rayHit.ray, rayHit.hit);
                 }
                 else if (mBoundaryConds[1] == rtTraceBoundary::PERIODIC)
                 {
@@ -139,13 +139,14 @@ public:
         // Attention:
         // This function must not be called when the RTCGeometry reference count is > 1
         // Doing so leads to leaked memory buffers
-        if (mTriangleBuffer == nullptr || mVertexBuffer == nullptr)
+        if (mTriangleBuffer == nullptr || mVertexBuffer == nullptr || mRtcBoundary == nullptr)
         {
             return;
         }
         else
         {
             rtcReleaseGeometry(mRtcBoundary);
+            mRtcBoundary = nullptr;
             mTriangleBuffer = nullptr;
             mVertexBuffer = nullptr;
         }
@@ -281,7 +282,7 @@ private:
     };
     triangle_t *mTriangleBuffer = nullptr;
 
-    RTCGeometry mRtcBoundary;
+    RTCGeometry mRtcBoundary = nullptr;
     const boundingBoxType mbdBox;
     const int firstDir = 0;
     const int secondDir = 1;

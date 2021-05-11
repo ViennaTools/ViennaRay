@@ -47,6 +47,15 @@ public:
         return *this;
     }
 
+    rtMessage &addDebug(std::string s)
+    {
+#pragma omp critical
+        {
+            message += std::string(tabWidth, ' ') + "DEBUG: " + s + "\n";
+        }
+        return *this;
+    }
+    
     void print(std::ostream &out = std::cout)
     {
         out << message;

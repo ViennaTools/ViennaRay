@@ -19,6 +19,7 @@ public:
         auto zz = ray.org_z + ray.dir_z * ray.tfar;
         return {xx, yy, zz};
     }
+    virtual int getMaterialId(const size_t primID) const { return 0; };
 };
 
 #endif // RT_METAGEOMETRY_HPP

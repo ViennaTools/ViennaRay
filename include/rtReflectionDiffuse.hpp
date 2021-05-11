@@ -10,20 +10,23 @@ class rtReflectionDiffuse : public rtReflection<NumericType, D>
 
 public:
     rtPair<rtTriple<NumericType>>
-    use(RTCRay &rayin, RTCHit &hitin, rtMetaGeometry<NumericType, D> &geometry,
+    use(RTCRay &rayin, RTCHit &hitin,
+        const int materialId,
         rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState) override final
     {
+        auto normal = rtTriple<NumericType>{(NumericType)hitin.Ng_x, (NumericType)hitin.Ng_y, (NumericType)hitin.Ng_z};
+        assert(rtInternal::IsNormalized(normal) && "rtReflectionDiffuse: Surface normal is not normalized");
 
-        auto primID = pHitIn.primID;
-        auto normal = geometry.getPrimNormal(primID);
-
-        /* Compute lambertian reflection with respect to surface normal */
+        // Compute lambertian reflection with respect to surface normal
         auto orthonormalBasis = rtInternal::getOrthonormalBasis(normal);
         auto newDirection = getCosineHemi(orthonormalBasis, RNG, RngState);
 
-        auto newOrigin = geometry.getNewOrigin(rayin);
+        // Compute new origin
+        auto xx = rayin.org_x + rayin.dir_x * rayin.tfar;
+        auto yy = rayin.org_y + rayin.dir_y * rayin.tfar;
+        auto zz = rayin.org_z + rayin.dir_z * rayin.tfar;
 
-        return {newOrigin, newDirection};
+        return {xx, yy, zz, newDirection};
     }
 
 private:

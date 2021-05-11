@@ -16,6 +16,15 @@ private:
 public:
     rtGeometry() {}
 
+    void initGeometry(RTCDevice &pDevice, std::vector<std::array<NumericType, 3>> &points,
+                      std::vector<std::array<NumericType, 3>> &normals, NumericType discRadii,
+                      std::vector<int> &materialIds)
+    {
+        assert(materialIds.size() == points.size() && "rtGeometry: MaterialIds/Points size missmatch");
+        mMaterialIds = materialIds;
+        initGeometry(pDevice, points, normals, discRadii);
+    }
+
     void initGeometry(RTCDevice &pDevice, std::vector<std::array<NumericType, 2>> &points,
                       std::vector<std::array<NumericType, 2>> &normals, NumericType discRadii)
     {
@@ -39,6 +48,7 @@ public:
         assert(points.size() == normals.size() && "rtGeometry: Points/Normals size missmatch");
 
         // overwriting the geometry without releasing it beforehand causes the old buffer to leak
+        releaseGeometry();
         mRTCGeometry = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
         assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcNewGeometry");
         mNumPoints = points.size();
@@ -96,6 +106,11 @@ public:
         assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE && "RTC Error: rtcCommitGeometry");
 
         initPointNeighborhood(points, discRadii);
+        if (mMaterialIds.empty())
+        {
+            rtMessage::getInstance().addDebug("Assigning materialIds 0").print();
+            mMaterialIds.resize(mNumPoints, 0);
+        }
     }
 
     rtPair<rtTriple<NumericType>> getBoundingBox() const
@@ -133,10 +148,10 @@ public:
 
     void releaseGeometry()
     {
-        // Attention: 
+        // Attention:
         // This function must not be called when the RTCGeometry reference count is > 1
         // Doing so leads to leaked memory buffers
-        if (mPointBuffer == nullptr || mNormalVecBuffer == nullptr)
+        if (mPointBuffer == nullptr || mNormalVecBuffer == nullptr || mRTCGeometry == nullptr)
         {
             return;
         }
@@ -145,6 +160,7 @@ public:
             rtcReleaseGeometry(mRTCGeometry);
             mPointBuffer = nullptr;
             mNormalVecBuffer = nullptr;
+            mRTCGeometry = nullptr;
         }
     }
 
@@ -165,6 +181,16 @@ public:
     {
         assert(pPrimID < mNumPoints && "rtGeometry: Prim ID out of bounds");
         return *reinterpret_cast<rtTriple<float> *>(&mNormalVecBuffer[pPrimID]);
+    }
+
+    std::vector<int> &getMaterialIds()
+    {
+        return mMaterialIds;
+    }
+
+    int getMaterialId(const size_t primID) const override final
+    {
+        return mMaterialIds[primID];
     }
 
 private:
@@ -222,7 +248,7 @@ private:
     };
     normal_vec_3f_t *mNormalVecBuffer = nullptr;
 
-    RTCGeometry mRTCGeometry;
+    RTCGeometry mRTCGeometry = nullptr;
 
     size_t mNumPoints;
     constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
@@ -230,6 +256,7 @@ private:
     rtTriple<NumericType> mMinCoords{nummax, nummax, nummax};
     rtTriple<NumericType> mMaxCoords{nummin, nummin, nummin};
     pointNeighborhoodType mPointNeighborhood;
+    std::vector<int> mMaterialIds;
 };
 
 #endif // RT_GEOMETRY_HPP

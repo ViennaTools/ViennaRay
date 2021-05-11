@@ -17,6 +17,7 @@ public:
     {
     }
     virtual size_t getNumPoints() const { return 0; }
+    virtual void printIndexCounter() {};
 };
 
 #endif // RT_RAYSOURCE_HPP

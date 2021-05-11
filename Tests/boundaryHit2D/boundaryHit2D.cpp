@@ -7,7 +7,7 @@
 
 int main()
 {
-    using NumericType = double;
+    using NumericType = float;
     constexpr int D = 2;
 
     auto device = rtcNewDevice("");
@@ -52,7 +52,7 @@ int main()
                                              (float)direction[0], (float)direction[1], (float)direction[2], // Ray direction
                                              0, (float)distanceToHit,                                       // time, tfar
                                              0, 0, 0,                                                       // mask, ID, flags
-                                             -1, 0, 0,                                                      // geometry normal
+                                             0, -1, 0,                                                      // geometry normal
                                              0, 0,                                                          // barycentric coordinates
                                              3, 0, 0};                                                      // primID, geomID, instanceID
 
@@ -87,7 +87,7 @@ int main()
                                              (float)direction[0], (float)direction[1], (float)direction[2], // Ray direction
                                              0, (float)distanceToHit,                                       // time, tfar
                                              0, 0, 0,                                                       // mask, ID, flags
-                                             -1, 0, 0,                                                      // geometry normal
+                                             0, -1, 0,                                                      // geometry normal
                                              0, 0,                                                          // barycentric coordinates
                                              3, 0, 0};                                                      // primID, geomID, instanceID
 

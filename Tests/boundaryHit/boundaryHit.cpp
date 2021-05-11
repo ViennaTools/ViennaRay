@@ -88,7 +88,7 @@ int main()
                                                  (float)direction[0], (float)direction[1], (float)direction[2], // Ray direction
                                                  0, (float)distanceToHit,                                       // time, tfar
                                                  0, 0, 0,                                                       // mask, ID, flags
-                                                 -1, 0, 0,                                                      // geometry normal
+                                                 0, 0, -1,                                                      // geometry normal
                                                  0, 0,                                                          // barycentric coordinates
                                                  6, 0, 0};                                                      // primID, geomID, instanceID
 
@@ -97,7 +97,7 @@ int main()
             RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 0.5, eps)
             RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.25, eps)
             RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 1.0, eps)
-
+            
             RAYTEST_ASSERT_ISCLOSE(newRay[1][0], direction[0], eps)
             RAYTEST_ASSERT_ISCLOSE(newRay[1][1], direction[1], eps)
             RAYTEST_ASSERT_ISCLOSE(-newRay[1][2], direction[2], eps)

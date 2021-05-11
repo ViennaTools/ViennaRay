@@ -20,12 +20,15 @@ public:
           secondDir(passedTraceSettings[2]),
           minMax(passedTraceSettings[3]),
           posNeg(passedTraceSettings[4]),
-          ee(((NumericType)2) / (passedCosinePower + 1)) {}
+          ee(((NumericType)2) / (passedCosinePower + 1)),
+          indexCounter(sourceGrid.size(), 0) {}
 
     void fillRay(RTCRay &ray, rtRandomNumberGenerator &RNG, const size_t idx,
                  rtRandomNumberGenerator::RNGState &RngState1, rtRandomNumberGenerator::RNGState &RngState2,
                  rtRandomNumberGenerator::RNGState &RngState3, rtRandomNumberGenerator::RNGState &RngState4) override final
     {
+        auto index = idx % mNumPoints;
+        indexCounter[index]++;
         auto origin = mSourceGrid[idx % mNumPoints];
         auto direction = getDirection(RNG, RngState3, RngState4);
 
@@ -48,6 +51,14 @@ public:
     size_t getNumPoints() const override final
     {
         return mNumPoints;
+    }
+
+    void printIndexCounter() override final
+    {
+        for (const auto &idx : indexCounter)
+        {
+            std::cout << idx << std::endl;
+        }
     }
 
 private:
@@ -85,6 +96,7 @@ private:
     const int minMax;
     const NumericType posNeg;
     const NumericType ee;
+    std::vector<size_t> indexCounter;
     constexpr static NumericType two_pi = rtInternal::PI * 2;
 };
 

@@ -10,6 +10,7 @@ public:
     virtual void initNew() = 0;
     virtual NumericType
     getStickingProbability(RTCRay &rayin, RTCHit &hitin,
+                           const int materialId,
                            rtRandomNumberGenerator &RNG,
                            rtRandomNumberGenerator::RNGState &RngState) = 0;
 };
@@ -20,6 +21,7 @@ class rtParticle1 : public rtParticle<NumericType>
 public:
     NumericType
     getStickingProbability(RTCRay &rayin, RTCHit &hitin,
+                           const int materialId,
                            rtRandomNumberGenerator &RNG,
                            rtRandomNumberGenerator::RNGState &RngState) override final
     {
@@ -36,6 +38,7 @@ class rtParticle2 : public rtParticle<NumericType>
 public:
     NumericType
     getStickingProbability(RTCRay &rayin, RTCHit &hitin,
+                           const int materialId,
                            rtRandomNumberGenerator &RNG,
                            rtRandomNumberGenerator::RNGState &RngState) override final
     {
