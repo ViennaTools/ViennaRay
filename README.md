@@ -34,7 +34,7 @@ Since [Embree](https://www.embree.org/) is optimized for CPU's using SSE, AVX, A
 
 ## Using ViennaRay in your project
 
-TODO: set up example repo
+TODO: Set up example repo.
 
 ## Installing 
 
@@ -45,15 +45,15 @@ git clone github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/
-make # this will install embree the first time it is called and might take a while
+make # this will install Embree the first time it is called and might take a while
 make install
 ```
 
 This will install the necessary headers and CMake files to the specified path. If DCMAKE_INSTALL_PREFIX is not specified, it will be installed to the standard path for your system, usually /usr/local/ .
 
-## Installing with embree already installed on the system
+## Installing with Embree already installed on the system
 
-If you want to use your own install of embree, just specify the directory in CMake:
+If you want to use your own install of Embree, just specify the directory in CMake:
 
 ```
 git clone github.com/ViennaTools/ViennaRay.git
@@ -85,7 +85,7 @@ cmake .. -DVIENNARAY_BUILD_EXAMPLES=ON
 make
 ```
 
-## Running the Tests
+### Running the Tests
 
 ViennaRay uses CTest to run its tests.
 In order to check whether ViennaRay runs without issues on your system, you can run:
