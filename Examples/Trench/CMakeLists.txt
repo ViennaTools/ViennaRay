@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.4)
 
 project("Trench")
 
-find_package(ViennaHRLE REQUIRED)
-find_package(ViennaLS REQUIRED)
 find_package(embree 3.0 REQUIRED)
 
 add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)

@@ -1,7 +1,7 @@
 *a.out
 build*
 install*
-depencies*
+dependencies*
 *.vtk
 *.vtu
 *.vtp

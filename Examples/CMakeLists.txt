@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.4)
 
 project(ViennaRayExamples)
 
-set(ViennaHRLE_DIR $ENV{VIENNAHRLE_DIR})
-set(ViennaLS_DIR $ENV{VIENNALS_DIR})
-
 ## Enable Clang sanitizer for debug builds
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -fsanitize=thread -fsanitize=memory" CACHE STRING "")

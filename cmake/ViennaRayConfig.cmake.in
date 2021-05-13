@@ -1,0 +1,31 @@
+@PACKAGE_INIT@
+
+# ViennaRay requires C++17
+SET(CMAKE_CXX_STANDARD "17")
+
+###############################################
+#  compiler dependent settings for ViennaRay
+###############################################
+find_package(OpenMP REQUIRED)
+list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)  
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  # disable-new-dtags sets RPATH which searches for libs recursively, instead
+  # of RUNPATH which does not
+  # needed for g++ to link correctly
+  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd\"4267\" /wd\"4244\"")
+endif()
+
+if(ViennaRay_COMMON_TARGET)
+  SET(VIENNARAY_INCLUDE_DIRS "@VIENNARAY_BUILD_INCLUDE_DIRS@")
+else(ViennaRay_COMMON_TARGET)
+  SET(VIENNARAY_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@@CMAKE_INSTALL_INCLUDEDIR@")
+endif()
+
+set(embree_DIR @embree_DIR@)
+find_package(embree 3.0 PATHS ${embree_DIR} REQUIRED)
+list(APPEND VIENNARAY_LIBRARIES embree)
+
+check_required_components("@PROJECT_NAME@")

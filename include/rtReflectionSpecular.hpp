@@ -28,7 +28,7 @@ public:
         // Compute new direction
         auto direction = rtInternal::Diff(rtInternal::Scale(2 * rtInternal::DotProduct(normal, dirOldInv), normal), dirOldInv);
 
-        // Coompute new origin
+        // Compute new origin
         auto xx = rayin.org_x + rayin.dir_x * rayin.tfar;
         auto yy = rayin.org_y + rayin.dir_y * rayin.tfar;
         auto zz = rayin.org_z + rayin.dir_z * rayin.tfar;

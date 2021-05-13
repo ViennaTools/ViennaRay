@@ -26,32 +26,46 @@ None - yet.
 
 * C++17 Compiler with OpenMP support
 
+### Dependencies (installed automatically)
+
 * [Embree](https://github.com/embree/embree)
 
 Since [Embree](https://www.embree.org/) is optimized for CPU's using SSE, AVX, AVX2, and AVX-512 instructions, it requires at least a CPU with support for SSE2.
 
 ## Using ViennaRay in your project
 
-## Installing (with dependencies already installed)
+TODO: set up example repo
 
-Since this is a header only project, it does not require any installation.
-However, we recommend the following procedure.
+## Installing 
 
-Make sure you have [Embree](https://github.com/embree/embree) installed on your system and run:
+Since this is a header only project, it does not require any installation. However, we recommend the following procedure in order to set up all dependencies correctly:
 
 ```
 git clone github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/
+make # this will install embree the first time it is called and might take a while
 make install
 ```
 
 This will install the necessary headers and CMake files to the specified path. If DCMAKE_INSTALL_PREFIX is not specified, it will be installed to the standard path for your system, usually /usr/local/ .
 
+## Installing with embree already installed on the system
+
+If you want to use your own install of embree, just specify the directory in CMake:
+
+```
+git clone github.com/ViennaTools/ViennaRay.git
+cd ViennaRay
+mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ -Dembree_DIR=/path/to/embree/install
+make install
+```
+
 ## Integration in CMake projects
 
-<!-- In order to use this library in your CMake project, add the following lines to the CMakeLists.txt of your project:
+In order to use this library in your CMake project, add the following lines to the CMakeLists.txt of your project:
 
 ```
 set(ViennaRay_DIR "/path/to/your/custom/install/")
@@ -59,7 +73,7 @@ find_package(ViennaRay REQUIRED)
 add_executable(...)
 target_include_directories(${PROJECT_NAME} PUBLIC ${VIENNARAY_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${VIENNARAY_LIBRARIES})
-``` -->
+```
 
 ### Building examples
 
@@ -69,6 +83,20 @@ The examples can be built using CMake:
 mkdir build && cd build
 cmake .. -DVIENNARAY_BUILD_EXAMPLES=ON
 make
+```
+
+## Running the Tests
+
+ViennaRay uses CTest to run its tests.
+In order to check whether ViennaRay runs without issues on your system, you can run:
+
+```
+git clone github.com/ViennaTools/ViennaRay.git
+cd ViennaRay
+mkdir build && cd build
+cmake .. -DVIENNARAY_BUILD_TESTS=ON
+make buildTests # build all tests
+make test # run all tests
 ```
 
 ## Contributing

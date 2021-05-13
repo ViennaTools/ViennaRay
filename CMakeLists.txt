@@ -31,22 +31,29 @@ endif()
 find_package(OpenMP REQUIRED)
 list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
 
-# ViennaLS and ViennaHRLE
-set(ViennaHRLE_DIR $ENV{VIENNAHRLE_DIR})
-set(ViennaLS_DIR $ENV{VIENNALS_DIR})
-find_package(ViennaHRLE REQUIRED)
-find_package(ViennaLS REQUIRED)
+
+## build dependencies
+set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/dependencies)
+# if using external embree build because it takes long to rebuild
+# move value of embree_DIR to cache so it is not overwritten
+# by external project
+if(DEFINED ${embree_DIR})
+  set(embree_DIR ${embree_DIR} CACHE PATH "Path to embree installation")
+endif()
+
+# Include all external dependencies
+include(ExternalProject)
+add_subdirectory(external/upstream)
 
 set(
     VIENNARAY_INCLUDE_DIRS 
-    "${VIENNALS_INCLUDE_DIRS}" 
     "${${PROJECT_NAME}_SOURCE_DIR}/include" 
     )
 
-# embree
-if(NOT embree_DIR)
-    set(embree_DIR $ENV{embree_DIR})
-endif(NOT embree_DIR)
+# # embree
+# if(NOT embree_DIR)
+#     set(embree_DIR $ENV{embree_DIR})
+# endif(NOT embree_DIR)
 
 find_package(embree 3.0 REQUIRED)
 if(embree_FOUND)
@@ -55,23 +62,6 @@ if(embree_FOUND)
 else(embree_FOUND)
     message(FATAL_ERROR "No embree isntall found.")
 endif(embree_FOUND)
-
-# VTK
-if(NOT VTK_DIR)
-    set(VTK_DIR $ENV{VTK_DIR})
-endif(NOT VTK_DIR)
-
-find_package(VTK REQUIRED)
-if(VTK_FOUND)
-    message(STATUS "Found VTK")
-    add_definitions(-DVIENNARAY_USE_VTK)
-    include(${VTK_USE_FILE})
-    # only link needed vtk libraries
-    set(VTK_LIBRARIES vtksys;vtkIOCore;vtkexpat;vtklz4;vtkzlib;vtklzma;vtkdoubleconversion;vtkCommonMisc;vtkCommonSystem;vtkIOXML)
-    list(APPEND VIENNARAY_LIBRARIES ${VTK_LIBRARIES})
-else(VTK_FOUND)
-  message(FATAL_ERROR "No VTK install found.")
-endif(VTK_FOUND)
 
 
 #################################################
@@ -100,12 +90,11 @@ add_library(${PROJECT_NAME} INTERFACE)
 
 # set the correct paths for installation
 set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/")
-# set(LOCAL_CONFIG_DIR "lib/cmake/${PROJECT_NAME}")
+set(LOCAL_CONFIG_DIR "lib/cmake/${PROJECT_NAME}")
 
 # Adding the install interface generator expression makes sure that the include
 # files are installed to the proper location (provided by GNUInstallDirs)
 set(VIENNARAY_BUILD_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
-message(STATUS ${VIENNARAY_BUILD_INCLUDE_DIRS})
 target_include_directories(
   ${PROJECT_NAME}
   INTERFACE $<BUILD_INTERFACE:${VIENNARAY_BUILD_INCLUDE_DIRS}>
@@ -113,33 +102,33 @@ target_include_directories(
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_11)
 
-# include(CMakePackageConfigHelpers)
-# write_basic_package_version_file("${PROJECT_NAME}ConfigVersion.cmake"
-#                                  VERSION ${PROJECT_VERSION}
-#                                COMPATIBILITY AnyNewerVersion)
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file("${PROJECT_NAME}ConfigVersion.cmake"
+                                 VERSION ${PROJECT_VERSION}
+                               COMPATIBILITY AnyNewerVersion)
 
-# configure_package_config_file(
-#   "${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
-#   "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-#   INSTALL_DESTINATION
-#   ${LOCAL_CONFIG_DIR})
+configure_package_config_file(
+  "${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
+  "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION
+  ${LOCAL_CONFIG_DIR})
 
 # install config files
 # locations are provided by GNUInstallDirs
 install(TARGETS ${PROJECT_NAME}
-        EXPORT ${PROJECT_NAME}_Targets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+EXPORT ${PROJECT_NAME}_Targets
+ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-# install(EXPORT ${PROJECT_NAME}_Targets
-#         FILE ${PROJECT_NAME}Targets.cmake
-#         DESTINATION ${LOCAL_CONFIG_DIR})
+install(EXPORT ${PROJECT_NAME}_Targets
+FILE ${PROJECT_NAME}Targets.cmake
+DESTINATION ${LOCAL_CONFIG_DIR})
 
 
-# install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-#               "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-#         DESTINATION ${LOCAL_CONFIG_DIR})
+install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+      "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+DESTINATION ${LOCAL_CONFIG_DIR})
 
 # install include files
 file(GLOB_RECURSE HEADER_FILES "${PROJECT_SOURCE_DIR}/include/*.hpp")
