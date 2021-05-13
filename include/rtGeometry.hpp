@@ -16,15 +16,6 @@ private:
 public:
     rtGeometry() {}
 
-    void initGeometry(RTCDevice &pDevice, std::vector<std::array<NumericType, 3>> &points,
-                      std::vector<std::array<NumericType, 3>> &normals, NumericType discRadii,
-                      std::vector<int> &materialIds)
-    {
-        assert(materialIds.size() == points.size() && "rtGeometry: MaterialIds/Points size missmatch");
-        mMaterialIds = materialIds;
-        initGeometry(pDevice, points, normals, discRadii);
-    }
-
     void initGeometry(RTCDevice &pDevice, std::vector<std::array<NumericType, 2>> &points,
                       std::vector<std::array<NumericType, 2>> &normals, NumericType discRadii)
     {
@@ -113,6 +104,18 @@ public:
         }
     }
 
+    template<typename MatIdType>
+    void setMaterialIds(std::vector<MatIdType> &pMaterialIds)
+    {
+        assert(pMaterialIds.size() == mNumPoints && "rtGeometry: Material IDs size missmatch");
+        mMaterialIds.clear();
+        mMaterialIds.reserve(pMaterialIds.size());
+        for(const auto id : pMaterialIds)
+        {
+            mMaterialIds.push_back(static_cast<int>(id));
+        }
+    }
+
     rtPair<rtTriple<NumericType>> getBoundingBox() const
     {
         return {mMinCoords, mMaxCoords};
@@ -146,6 +149,36 @@ public:
         return mRTCGeometry;
     }
 
+    rtTriple<NumericType> getPrimNormal(const size_t primID) override final
+    {
+        assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+        auto const &normal = mNormalVecBuffer[primID];
+        return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
+    }
+
+    rtQuadruple<float> &getPrimRef(unsigned int primID)
+    {
+        assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+        return *reinterpret_cast<rtQuadruple<float> *>(&mPointBuffer[primID]);
+    }
+
+    rtTriple<float> &getNormalRef(unsigned int primID)
+    {
+        assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+        return *reinterpret_cast<rtTriple<float> *>(&mNormalVecBuffer[primID]);
+    }
+
+    std::vector<int> &getMaterialIds()
+    {
+        return mMaterialIds;
+    }
+
+    int getMaterialId(const size_t primID) const override final
+    {
+        assert(primID < mNumPoints && "rtGeometry Prim ID out of bounds");
+        return mMaterialIds[primID];
+    }
+
     void releaseGeometry()
     {
         // Attention:
@@ -162,35 +195,6 @@ public:
             mNormalVecBuffer = nullptr;
             mRTCGeometry = nullptr;
         }
-    }
-
-    rtTriple<NumericType> getPrimNormal(const size_t pPrimID) override final
-    {
-        assert(pPrimID < mNumPoints && "rtGeometry: Prim ID out of bounds");
-        auto const &normal = mNormalVecBuffer[pPrimID];
-        return {(NumericType)normal.xx, (NumericType)normal.yy, (NumericType)normal.zz};
-    }
-
-    rtQuadruple<float> &getPrimRef(unsigned int pPrimID)
-    {
-        assert(pPrimID < mNumPoints && "rtGeometry: Prim ID out of bounds");
-        return *reinterpret_cast<rtQuadruple<float> *>(&mPointBuffer[pPrimID]);
-    }
-
-    rtTriple<float> &getNormalRef(unsigned int pPrimID)
-    {
-        assert(pPrimID < mNumPoints && "rtGeometry: Prim ID out of bounds");
-        return *reinterpret_cast<rtTriple<float> *>(&mNormalVecBuffer[pPrimID]);
-    }
-
-    std::vector<int> &getMaterialIds()
-    {
-        return mMaterialIds;
-    }
-
-    int getMaterialId(const size_t primID) const override final
-    {
-        return mMaterialIds[primID];
     }
 
 private:

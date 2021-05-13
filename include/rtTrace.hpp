@@ -31,14 +31,14 @@ private:
 public:
     rtTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
 
-    rtTrace(std::vector<std::array<NumericType, D>> &points,
-            std::vector<std::array<NumericType, D>> &normals,
-            const NumericType gridDelta)
-        : mDevice(rtcNewDevice("hugepages=1")),
-          mDiscRadius(mDiscFactor * gridDelta), mGridDelta(gridDelta)
-    {
-        setGeometry(mDevice, points, normals, mDiscRadius);
-    }
+    // rtTrace(std::vector<std::array<NumericType, D>> &points,
+    //         std::vector<std::array<NumericType, D>> &normals,
+    //         const NumericType gridDelta)
+    //     : mDevice(rtcNewDevice("hugepages=1")),
+    //       mDiscRadius(mDiscFactor * gridDelta), mGridDelta(gridDelta)
+    // {
+    //     setGeometry(mDevice, points, normals, mDiscRadius);
+    // }
 
     ~rtTrace()
     {
@@ -86,6 +86,12 @@ public:
         mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
     }
 
+    template <typename T>
+    void setMaterialIds(std::vector<T> &pMaterialIds)
+    {
+        mGeometry.setMaterialIds(pMaterialIds);
+    }
+
     void setNumberOfRaysPerPoint(const size_t pNum)
     {
         mNumberOfRaysPerPoint = pNum;
@@ -127,7 +133,6 @@ public:
         auto discAreas = mHitCounter.getDiscAreas();
         estimates.reserve(values.size());
         auto maxv = 0.0;
-        // Account for area and find max value
         for (size_t idx = 0; idx < values.size(); ++idx)
         {
             auto vv = values[idx] / discAreas[idx];

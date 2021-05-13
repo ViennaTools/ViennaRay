@@ -15,11 +15,13 @@ public:
         rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState) override final
     {
         auto normal = rtTriple<NumericType>{(NumericType)hitin.Ng_x, (NumericType)hitin.Ng_y, (NumericType)hitin.Ng_z};
+        rtInternal::Normalize(normal);
         assert(rtInternal::IsNormalized(normal) && "rtReflectionDiffuse: Surface normal is not normalized");
 
         // Compute lambertian reflection with respect to surface normal
         auto orthonormalBasis = rtInternal::getOrthonormalBasis(normal);
         auto newDirection = getCosineHemi(orthonormalBasis, RNG, RngState);
+        assert(rtInternal::IsNormalized(newDirection) && "rtReflectionDiffuse: New direction is not normalized");
 
         // Compute new origin
         auto xx = rayin.org_x + rayin.dir_x * rayin.tfar;

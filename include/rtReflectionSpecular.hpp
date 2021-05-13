@@ -23,7 +23,7 @@ public:
         assert(rtInternal::IsNormalized(normal) && "rtReflectionSpecular: Surface normal is not normalized");
 
         auto dirOldInv = rtInternal::Inv(rtTriple<NumericType>{rayin.dir_x, rayin.dir_y, rayin.dir_z});
-        // For computing the specular refelction direction we need the vectors to be normalized.
+        assert(rtInternal::IsNormalized(dirOldInv) && "rtReflectionSpecular: Surface normal is not normalized");
 
         // Compute new direction
         auto direction = rtInternal::Diff(rtInternal::Scale(2 * rtInternal::DotProduct(normal, dirOldInv), normal), dirOldInv);
