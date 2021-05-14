@@ -12,7 +12,7 @@
 #include <rtHitCounter.hpp>
 
 #define PRINT_PROGRESS true
-#define PRINT_RESULT true
+#define PRINT_RESULT false
 
 template <typename NumericType, typename ParticleType, typename ReflectionType, int D>
 class rtRayTracer
@@ -36,7 +36,7 @@ public:
     {
         auto rtcScene = rtcNewScene(mDevice);
 
-        // scene flags
+        // RTC scene flags
         rtcSetSceneFlags(rtcScene, RTC_SCENE_FLAG_NONE);
 
         // Selecting higher build quality results in better rendering performance but slower
@@ -102,7 +102,7 @@ public:
             {
                 particle.initNew();
                 rayWeight = 1;
-                auto initialRayWeight = rayWeight;
+                const auto initialRayWeight = rayWeight;
                 mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3, RngState4); // fills also tnear
 
                 if constexpr (PRINT_PROGRESS)
@@ -167,10 +167,9 @@ public:
                     /* -------- Surface hit -------- */
                     assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
                     geohitc += 1;
-                    auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit,
-                                                                    mGeometry.getMaterialId(rayHit.hit.primID),
-                                                                    RNG, RngState5);
-                    auto valueToDrop = rayWeight * sticking;
+                    const auto materialID = mGeometry.getMaterialId(rayHit.hit.primID);
+                    const auto sticking = particle.getStickingProbability(rayHit.ray, rayHit.hit, materialID, RNG, RngState5);
+                    const auto valueToDrop = rayWeight * sticking;
                     hitCounter.use(rayHit.hit.primID, valueToDrop);
 
                     // Check for additional intersections
@@ -195,9 +194,7 @@ public:
                     {
                         break;
                     }
-                    auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit,
-                                                     mGeometry.getMaterialId(rayHit.hit.primID),
-                                                     RNG, RngState7);
+                    auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit, materialID, RNG, RngState7);
 
                     // Update ray
                     reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1], (float)newRay[0][0]);
@@ -229,12 +226,10 @@ private:
     bool rejectionControl(NumericType &rayWeight, NumericType const &initWeight,
                           rtRandomNumberGenerator &RNG, rtRandomNumberGenerator::RNGState &RngState)
     {
-        // choosing a good value for the weight lower threshold is important
+        // Choosing a good value for the weight lower threshold is important
         NumericType lowerThreshold = 0.1 * initWeight;
         NumericType renewWeight = 0.3 * initWeight;
 
-        // We do what is sometimes called Roulette in MC literatur.
-        // Jun Liu calls it "rejection control" in his book.
         // If the weight of the ray is above a certain threshold, we always reflect.
         // If the weight of the ray is below the threshold, we randomly decide to either kill the
         // ray or increase its weight (in an unbiased way).
@@ -243,7 +238,7 @@ private:
             return true;
         }
         // We want to set the weight of (the reflection of) the ray to the value of renewWeight.
-        // In order to stay  unbiased we kill the reflection with a probability of (1 - rayWeight / renewWeight).
+        // In order to stay unbiased we kill the reflection with a probability of (1 - rayWeight / renewWeight).
         auto rndm = RNG.get(RngState);
         auto killProbability = 1.0 - rayWeight / renewWeight;
         if (rndm < (killProbability * RNG.max()))
@@ -291,26 +286,26 @@ private:
         {
             return;
         }
-        constexpr auto barlength = 30;
-        constexpr auto barstartsymbol = '[';
-        constexpr auto fillsymbol = '#';
-        constexpr auto emptysymbol = '-';
-        constexpr auto barendsymbol = ']';
-        constexpr auto percentagestringformatlength = 3; // 3 digits
-        if (progressCount % (int)std::ceil((float)mNumRays / omp_get_num_threads() / barlength) == 0)
+        constexpr auto barLength = 30;
+        constexpr auto barStartSymbol = '[';
+        constexpr auto fillSymbol = '#';
+        constexpr auto emptySymbol = '-';
+        constexpr auto barEndSymbol = ']';
+        constexpr auto percentageStringFormatLength = 3; // 3 digits
+        if (progressCount % (int)std::ceil((float)mNumRays / omp_get_num_threads() / barLength) == 0)
         {
-            auto filllength = (int)std::ceil(progressCount / ((float)mNumRays / omp_get_num_threads() / barlength));
-            auto percentagestring = std::to_string((filllength * 100) / barlength);
-            percentagestring =
-                std::string(percentagestringformatlength - percentagestring.length(), ' ') +
-                percentagestring + "%";
+            auto fillLength = (int)std::ceil(progressCount / ((float)mNumRays / omp_get_num_threads() / barLength));
+            auto percentageString = std::to_string((fillLength * 100) / barLength);
+            percentageString =
+                std::string(percentageStringFormatLength - percentageString.length(), ' ') +
+                percentageString + "%";
             auto bar =
-                "" + std::string(1, barstartsymbol) +
-                std::string(filllength, fillsymbol) +
-                std::string(std::max(0, (int)barlength - (int)filllength), emptysymbol) +
-                std::string(1, barendsymbol) + " " + percentagestring;
+                "" + std::string(1, barStartSymbol) +
+                std::string(fillLength, fillSymbol) +
+                std::string(std::max(0, (int)barLength - (int)fillLength), emptySymbol) +
+                std::string(1, barEndSymbol) + " " + percentageString;
             std::cerr << "\r" << bar;
-            if (filllength >= barlength)
+            if (fillLength >= barLength)
             {
                 std::cerr << std::endl;
             }
@@ -318,17 +313,17 @@ private:
         progressCount += 1;
     }
 
-    void printRay(RTCRayHit &rayHit)
-    {
-        std::cout << "Ray ID: " << rayHit.ray.id << std::endl;
-        std::cout << "Origin: ";
-        rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
-        std::cout << "Direction: ";
-        rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
-        std::cout << "Geometry hit ID: " << rayHit.hit.geomID << std::endl;
-        std::cout << "Geometry normal: ";
-        rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z});
-    }
+    // void printRay(RTCRayHit &rayHit)
+    // {
+    //     std::cout << "Ray ID: " << rayHit.ray.id << std::endl;
+    //     std::cout << "Origin: ";
+    //     rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
+    //     std::cout << "Direction: ";
+    //     rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
+    //     std::cout << "Geometry hit ID: " << rayHit.hit.geomID << std::endl;
+    //     std::cout << "Geometry normal: ";
+    //     rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z});
+    // }
 
     RTCDevice &mDevice;
     rtGeometry<NumericType, D> &mGeometry;
