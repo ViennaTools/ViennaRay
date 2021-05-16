@@ -32,7 +32,7 @@ find_package(OpenMP REQUIRED)
 list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
 
 
-## build dependencies
+# build dependencies
 set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/dependencies)
 # if using external embree build because it takes long to rebuild
 # move value of embree_DIR to cache so it is not overwritten
@@ -40,6 +40,12 @@ set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/dependencies)
 if(DEFINED ${embree_DIR})
   set(embree_DIR ${embree_DIR} CACHE PATH "Path to embree installation")
 endif()
+
+##########################################################################################
+### If one wants to uses an Intel SPMD Compiler, the one has to set that here
+##########################################################################################
+set(EMBREE_ISPC_SUPPORT OFF CACHE BOOL "Set whether or not you use Intel's SPMD Compiler")
+##########################################################################################
 
 # Include all external dependencies
 include(ExternalProject)
@@ -49,11 +55,6 @@ set(
     VIENNARAY_INCLUDE_DIRS 
     "${${PROJECT_NAME}_SOURCE_DIR}/include" 
     )
-
-# # embree
-# if(NOT embree_DIR)
-#     set(embree_DIR $ENV{embree_DIR})
-# endif(NOT embree_DIR)
 
 find_package(embree 3.0 REQUIRED)
 if(embree_FOUND)
@@ -100,7 +101,7 @@ target_include_directories(
   INTERFACE $<BUILD_INTERFACE:${VIENNARAY_BUILD_INCLUDE_DIRS}>
           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_11)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file("${PROJECT_NAME}ConfigVersion.cmake"
