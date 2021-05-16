@@ -6,7 +6,7 @@ IMPORTANT NOTE: ViennaRay is under heavy development and improved daily. If you 
 
 ## Support
 
-Documentation: coming soon(er or later)!
+[Exmaples](https://github.com/ViennaTools/ViennaRay/tree/main/Examples) can be found on Github. Bug reports and suggestions should be filed on GitHub.
 
 ## Releases
 
@@ -31,10 +31,6 @@ None - yet.
 * [Embree](https://github.com/embree/embree)
 
 Since [Embree](https://www.embree.org/) is optimized for CPU's using SSE, AVX, AVX2, and AVX-512 instructions, it requires at least a CPU with support for SSE2.
-
-## Using ViennaRay in your project
-
-TODO: Set up example repo.
 
 ## Installing 
 
@@ -105,9 +101,9 @@ If you want to contribute to ViennaRay, make sure to follow the [LLVM Coding gui
 
 ## Authors
 
-Current contributors: me
+Current contributors: Tobias Reiter, Xaver Klemenschits, Alexander Scharinger
 
-Contact us via: me@generic-mail-provider.com
+Contact us via: viennatools@iue.tuwien.ac.at
 
 ViennaRay was developed under the aegis of the 'Institute for Microelectronics' at the 'TU Wien'.
 http://www.iue.tuwien.ac.at/
