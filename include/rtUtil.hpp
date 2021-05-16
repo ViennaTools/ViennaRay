@@ -1,402 +1,388 @@
 #ifndef RT_UTIL_HPP
 #define RT_UTIL_HPP
 
-#include <array>
-#include <cmath>
 #include <algorithm>
-#include <iostream>
-#include <chrono>
+#include <array>
 #include <cassert>
-#include <vector>
+#include <chrono>
+#include <cmath>
 #include <fstream>
+#include <iostream>
 #include <omp.h>
-#include <rtTraceDirection.hpp>
 #include <rtMessage.hpp>
+#include <rtTraceDirection.hpp>
+#include <vector>
 
+template <typename NumericType> using rtPair = std::array<NumericType, 2>;
+
+template <typename NumericType> using rtTriple = std::array<NumericType, 3>;
+
+template <typename NumericType> using rtQuadruple = std::array<NumericType, 4>;
+
+namespace rtInternal {
+constexpr double PI = 3.14159265358979323846;
+
+/* ------------- Vector operation functions ------------- */
 template <typename NumericType>
-using rtPair = std::array<NumericType, 2>;
-
-template <typename NumericType>
-using rtTriple = std::array<NumericType, 3>;
-
-template <typename NumericType>
-using rtQuadruple = std::array<NumericType, 4>;
-
-namespace rtInternal
-{
-    constexpr double PI = 3.14159265358979323846;
-
-    /* ------------- Vector operation functions ------------- */
-    template <typename NumericType>
-    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
-    {
-        return {pVecA[0] + pVecB[0], pVecA[1] + pVecB[1], pVecA[2] + pVecB[2]};
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> Sum(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB, const rtTriple<NumericType> &pT)
-    {
-        return {pVecA[0] + pVecB[0] + pT[0], pVecA[1] + pVecB[1] + pT[1], pVecA[2] + pVecB[2] + pT[2]};
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> Diff(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
-    {
-        return {pVecA[0] - pVecB[0], pVecA[1] - pVecB[1], pVecA[2] - pVecB[2]};
-    }
-
-    template <typename NumericType>
-    NumericType DotProduct(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
-    {
-        return pVecA[0] * pVecB[0] + pVecA[1] * pVecB[1] + pVecA[2] * pVecB[2];
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> CrossProduct(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
-    {
-        rtTriple<NumericType> rr;
-        rr[0] = pVecA[1] * pVecB[2] - pVecA[2] * pVecB[1];
-        rr[1] = pVecA[2] * pVecB[0] - pVecA[0] * pVecB[2];
-        rr[2] = pVecA[0] * pVecB[1] - pVecA[1] * pVecB[0];
-        return rr;
-    }
-
-    template <typename NumericType, size_t D>
-    NumericType Norm(const std::array<NumericType, D> &vec)
-    {
-        NumericType norm = 0;
-        std::for_each(vec.begin(), vec.end(), [&norm](NumericType entry) { norm += entry * entry; });
-        return std::sqrt(norm);
-    }
-
-    template <typename NumericType, size_t D>
-    void Normalize(std::array<NumericType, D> &vec)
-    {
-        auto norm = 1. / Norm(vec);
-        std::for_each(vec.begin(), vec.end(), [&norm](NumericType &entry) { entry *= norm; });
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> Inv(const rtTriple<NumericType> &vec)
-    {
-        return {-vec[0], -vec[1], -vec[2]};
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> Scale(const NumericType pF, rtTriple<NumericType> &pT)
-    {
-        pT[0] *= pF;
-        pT[1] *= pF;
-        pT[2] *= pF;
-        return pT;
-    }
-
-    template <typename NumericType>
-    NumericType Distance(const rtTriple<NumericType> &pVecA, const rtTriple<NumericType> &pVecB)
-    {
-        auto diff = Diff(pVecA, pVecB);
-        return Norm(diff);
-    }
-
-    template <typename NumericType>
-    rtTriple<NumericType> ComputeNormal(const rtTriple<rtTriple<NumericType>> &planeCoords)
-    {
-        auto uu = Diff(planeCoords[1], planeCoords[0]);
-        auto vv = Diff(planeCoords[2], planeCoords[0]);
-        return CrossProduct(uu, vv);
-    }
-
-    template <typename NumericType>
-    bool IsNormalized(const rtTriple<NumericType> &vec)
-    {
-        constexpr NumericType eps = 1e-4;
-        auto norm = Norm(vec);
-        return std::fabs(norm - 1) < eps;
-    }
-    /* ------------------------------------------------------ */
-
-    /* -------------- Ray tracing preparation -------------- */
-    template <typename NumericType, int D>
-    void adjustBoundingBox(rtPair<rtTriple<NumericType>> &bdBox, rtTraceDirection direction, NumericType discRadius)
-    {
-        // For 2D geometries adjust bounding box in z-direction
-        if constexpr (D == 2)
-        {
-            bdBox[0][2] -= discRadius;
-            bdBox[1][2] += discRadius;
-
-            if (direction == rtTraceDirection::POS_Z || direction == rtTraceDirection::NEG_Z)
-            {
-                rtMessage::getInstance().addError("Ray source is set in z-direction for 2D geometry");
-            }
-        }
-
-        switch (direction)
-        {
-        case rtTraceDirection::POS_X:
-            bdBox[1][0] += 2 * discRadius;
-            break;
-
-        case rtTraceDirection::NEG_X:
-            bdBox[0][0] -= 2 * discRadius;
-            break;
-
-        case rtTraceDirection::POS_Y:
-            bdBox[1][1] += 2 * discRadius;
-            break;
-
-        case rtTraceDirection::NEG_Y:
-            bdBox[0][1] -= 2 * discRadius;
-            break;
-
-        case rtTraceDirection::POS_Z:
-            bdBox[1][2] += 2 * discRadius;
-            break;
-
-        case rtTraceDirection::NEG_Z:
-            bdBox[0][2] -= 2 * discRadius;
-            break;
-        }
-    }
-
-    std::array<int, 5> getTraceSettings(rtTraceDirection sourceDir)
-    {
-        // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source, posNeg dir
-        std::array<int, 5> set{0, 0, 0, 0, 0};
-        switch (sourceDir)
-        {
-        case rtTraceDirection::POS_X:
-        {
-            set[0] = 0;
-            set[1] = 1;
-            set[2] = 2;
-            set[3] = 1;
-            set[4] = -1;
-            break;
-        }
-        case rtTraceDirection::NEG_X:
-        {
-            set[0] = 0;
-            set[1] = 1;
-            set[2] = 2;
-            set[3] = 0;
-            set[4] = 1;
-            break;
-        }
-        case rtTraceDirection::POS_Y:
-        {
-            set[0] = 1;
-            set[1] = 0;
-            set[2] = 2;
-            set[3] = 1;
-            set[4] = -1;
-            break;
-        }
-        case rtTraceDirection::NEG_Y:
-        {
-            set[0] = 1;
-            set[1] = 0;
-            set[2] = 2;
-            set[3] = 0;
-            set[4] = 1;
-            break;
-        }
-        case rtTraceDirection::POS_Z:
-        {
-            set[0] = 2;
-            set[1] = 0;
-            set[2] = 1;
-            set[3] = 1;
-            set[4] = -1;
-            break;
-        }
-        case rtTraceDirection::NEG_Z:
-        {
-            set[0] = 2;
-            set[1] = 0;
-            set[2] = 1;
-            set[3] = 0;
-            set[4] = 1;
-            break;
-        }
-        }
-
-        return set;
-    }
-    /* ------------------------------------------------------ */
-
-    // Returns some orthonormal basis containing a the input vector pVector
-    // (possibly scaled) as the first element of the return value.
-    // This function is deterministic, i.e., for one input it will return always
-    // the same result.
-    template <typename NumericType>
-    rtTriple<rtTriple<NumericType>> getOrthonormalBasis(const rtTriple<NumericType> &pVector)
-    {
-        rtTriple<rtTriple<NumericType>> rr;
-        rr[0] = pVector;
-
-        // Calculate a vector (rr[1]) which is perpendicular to rr[0]
-        // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
-        rtTriple<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
-        rtTriple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
-        rtTriple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
-        // We choose the candidate which maximizes the sum of its components, because we
-        // want to avoid numeric errors and that the result is (0, 0, 0).
-        std::array<rtTriple<NumericType>, 3> cc = {candidate0, candidate1, candidate2};
-        auto sumFun = [](const rtTriple<NumericType> &oo) { return oo[0] + oo[1] + oo[2]; };
-        int maxIdx = 0;
-        for (size_t idx = 1; idx < cc.size(); ++idx)
-        {
-            if (sumFun(cc[idx]) > sumFun(cc[maxIdx]))
-            {
-                maxIdx = idx;
-            }
-        }
-        assert(maxIdx < 3 && "Error in computation of perpendicular vector");
-        rr[1] = cc[maxIdx];
-
-        rr[2] = rtInternal::CrossProduct(rr[0], rr[1]);
-        rtInternal::Normalize(rr[0]);
-        rtInternal::Normalize(rr[1]);
-        rtInternal::Normalize(rr[2]);
-
-        // Sanity check
-        NumericType eps = 1e-6;
-        assert(std::abs(rtInternal::DotProduct(rr[0], rr[1])) < eps &&
-               "Error in orthonormal basis computation");
-        assert(std::abs(rtInternal::DotProduct(rr[1], rr[2])) < eps &&
-               "Error in orthonormal basis computation");
-        assert(std::abs(rtInternal::DotProduct(rr[2], rr[0])) < eps &&
-               "Error in orthonormal basis computation");
-        return rr;
-    }
-
-    /* -------- Create or read simple geometries for testing -------- */
-    template <typename NumericType>
-    void createPlaneGrid(const NumericType gridDelta, const NumericType extent, const std::array<int, 3> direction,
-                         std::vector<std::array<NumericType, 3>> &points, std::vector<std::array<NumericType, 3>> &normals)
-    {
-        std::array<NumericType, 3> point = {-extent, -extent, -extent};
-        std::array<NumericType, 3> normal = {0., 0., 0.};
-        point[direction[2]] = 0;
-        normal[direction[2]] = 1.;
-
-        points.clear();
-        normals.clear();
-        points.reserve(int(extent / gridDelta) * int(extent / gridDelta));
-        normals.reserve(int(extent / gridDelta) * int(extent / gridDelta));
-        while (point[direction[0]] <= extent)
-        {
-            while (point[direction[1]] <= extent)
-            {
-                points.push_back(point);
-                normals.push_back(normal);
-                point[direction[1]] += gridDelta;
-            }
-            point[direction[1]] = -extent;
-            point[direction[0]] += gridDelta;
-        }
-        points.shrink_to_fit();
-        normals.shrink_to_fit();
-    }
-
-    template <typename NumericType>
-    void readGridFromFile(std::string fileName, NumericType &gridDelta,
-                          std::vector<rtTriple<NumericType>> &points,
-                          std::vector<rtTriple<NumericType>> &normals)
-    {
-        std::ifstream dataFile(fileName);
-        size_t numPoints;
-        dataFile >> numPoints;
-        dataFile >> gridDelta;
-        points.resize(numPoints);
-        normals.resize(numPoints);
-        for (size_t i = 0; i < numPoints; ++i)
-            dataFile >> points[i][0] >> points[i][1] >> points[i][2];
-        for (size_t i = 0; i < numPoints; ++i)
-            dataFile >> normals[i][0] >> normals[i][1] >> normals[i][2];
-        dataFile.close();
-    }
-    /* -------------------------------------------------------------- */
-
-    template <typename NumericType, int D>
-    std::vector<rtTriple<NumericType>>
-    createSourceGrid(const rtPair<rtTriple<NumericType>> &pBdBox, const size_t pNumPoints,
-                     const NumericType pGridDelta, const std::array<int, 5> &pTraceSettings)
-    {
-        std::vector<rtTriple<NumericType>> sourceGrid;
-        sourceGrid.reserve(pNumPoints);
-        constexpr NumericType eps = 1e-4;
-        // Trace settings
-        // sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source, posNeg dir
-        auto rayDir = pTraceSettings[0];
-        auto firstDir = pTraceSettings[1];
-        auto secondDir = pTraceSettings[2];
-        auto minMax = pTraceSettings[3];
-        assert((!(D == 2) || rayDir != 2) && "Source direction z in 2D geometry");
-
-        auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
-        auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];
-        size_t numPointsInFirstDir = round(len1 / pGridDelta);
-        size_t numPointsInSecondDir = round(len2 / pGridDelta);
-        auto ratio = numPointsInFirstDir / numPointsInSecondDir;
-        numPointsInFirstDir = std::sqrt(pNumPoints * ratio);
-        numPointsInSecondDir = std::sqrt(pNumPoints / ratio);
-
-        auto firstGridDelta = (len1 - 2 * eps) / (NumericType)(numPointsInFirstDir - 1);
-        auto secondGridDelta = (len2 - 2 * eps) / (NumericType)(numPointsInSecondDir - 1);
-
-        rtTriple<NumericType> point;
-        point[rayDir] = pBdBox[minMax][rayDir];
-        for (auto uu = pBdBox[0][secondDir] + eps; uu <= pBdBox[1][secondDir] - eps; uu += secondGridDelta)
-        {
-            if constexpr (D == 2)
-            {
-                point[secondDir] = 0.;
-            }
-            else
-            {
-                point[secondDir] = uu;
-            }
-
-            for (auto vv = pBdBox[0][firstDir] + eps; vv <= pBdBox[1][firstDir] - eps; vv += firstGridDelta)
-            {
-                point[firstDir] = vv;
-                sourceGrid.push_back(point);
-            }
-        }
-        sourceGrid.shrink_to_fit();
-        return sourceGrid;
-    }
-
-    template <typename TimeUnit>
-    const static uint64_t timeStampNow()
-    {
-        return std::chrono::duration_cast<TimeUnit>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    }
-
-    /* ------------- Debug convenience functions ------------- */
-    template <typename NumericType>
-    void printTriple(const rtTriple<NumericType> &vec)
-    {
-        std::cout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")" << std::endl;
-    }
-
-    template <typename NumericType>
-    void printPair(const rtPair<NumericType> &vec)
-    {
-        std::cout << "(" << vec[0] << ", " << vec[1] << ")" << std::endl;
-    }
-
-    template <typename NumericType>
-    void printBoundingBox(rtPair<rtTriple<NumericType>> &bdBox)
-    {
-        std::cout << "Bounding box min coords: ";
-        printTriple(bdBox[0]);
-        std::cout << "Bounding box max coords: ";
-        printTriple(bdBox[1]);
-    }
-    /* ------------------------------------------------------- */
+rtTriple<NumericType> Sum(const rtTriple<NumericType> &pVecA,
+                          const rtTriple<NumericType> &pVecB) {
+  return {pVecA[0] + pVecB[0], pVecA[1] + pVecB[1], pVecA[2] + pVecB[2]};
 }
+
+template <typename NumericType>
+rtTriple<NumericType> Sum(const rtTriple<NumericType> &pVecA,
+                          const rtTriple<NumericType> &pVecB,
+                          const rtTriple<NumericType> &pT) {
+  return {pVecA[0] + pVecB[0] + pT[0], pVecA[1] + pVecB[1] + pT[1],
+          pVecA[2] + pVecB[2] + pT[2]};
+}
+
+template <typename NumericType>
+rtTriple<NumericType> Diff(const rtTriple<NumericType> &pVecA,
+                           const rtTriple<NumericType> &pVecB) {
+  return {pVecA[0] - pVecB[0], pVecA[1] - pVecB[1], pVecA[2] - pVecB[2]};
+}
+
+template <typename NumericType>
+NumericType DotProduct(const rtTriple<NumericType> &pVecA,
+                       const rtTriple<NumericType> &pVecB) {
+  return pVecA[0] * pVecB[0] + pVecA[1] * pVecB[1] + pVecA[2] * pVecB[2];
+}
+
+template <typename NumericType>
+rtTriple<NumericType> CrossProduct(const rtTriple<NumericType> &pVecA,
+                                   const rtTriple<NumericType> &pVecB) {
+  rtTriple<NumericType> rr;
+  rr[0] = pVecA[1] * pVecB[2] - pVecA[2] * pVecB[1];
+  rr[1] = pVecA[2] * pVecB[0] - pVecA[0] * pVecB[2];
+  rr[2] = pVecA[0] * pVecB[1] - pVecA[1] * pVecB[0];
+  return rr;
+}
+
+template <typename NumericType, size_t D>
+NumericType Norm(const std::array<NumericType, D> &vec) {
+  NumericType norm = 0;
+  std::for_each(vec.begin(), vec.end(),
+                [&norm](NumericType entry) { norm += entry * entry; });
+  return std::sqrt(norm);
+}
+
+template <typename NumericType, size_t D>
+void Normalize(std::array<NumericType, D> &vec) {
+  auto norm = 1. / Norm(vec);
+  std::for_each(vec.begin(), vec.end(),
+                [&norm](NumericType &entry) { entry *= norm; });
+}
+
+template <typename NumericType>
+rtTriple<NumericType> Inv(const rtTriple<NumericType> &vec) {
+  return {-vec[0], -vec[1], -vec[2]};
+}
+
+template <typename NumericType>
+rtTriple<NumericType> Scale(const NumericType pF, rtTriple<NumericType> &pT) {
+  pT[0] *= pF;
+  pT[1] *= pF;
+  pT[2] *= pF;
+  return pT;
+}
+
+template <typename NumericType>
+NumericType Distance(const rtTriple<NumericType> &pVecA,
+                     const rtTriple<NumericType> &pVecB) {
+  auto diff = Diff(pVecA, pVecB);
+  return Norm(diff);
+}
+
+template <typename NumericType>
+rtTriple<NumericType>
+ComputeNormal(const rtTriple<rtTriple<NumericType>> &planeCoords) {
+  auto uu = Diff(planeCoords[1], planeCoords[0]);
+  auto vv = Diff(planeCoords[2], planeCoords[0]);
+  return CrossProduct(uu, vv);
+}
+
+template <typename NumericType>
+bool IsNormalized(const rtTriple<NumericType> &vec) {
+  constexpr NumericType eps = 1e-4;
+  auto norm = Norm(vec);
+  return std::fabs(norm - 1) < eps;
+}
+/* ------------------------------------------------------ */
+
+/* -------------- Ray tracing preparation -------------- */
+template <typename NumericType, int D>
+void adjustBoundingBox(rtPair<rtTriple<NumericType>> &bdBox,
+                       rtTraceDirection direction, NumericType discRadius) {
+  // For 2D geometries adjust bounding box in z-direction
+  if constexpr (D == 2) {
+    bdBox[0][2] -= discRadius;
+    bdBox[1][2] += discRadius;
+
+    if (direction == rtTraceDirection::POS_Z ||
+        direction == rtTraceDirection::NEG_Z) {
+      rtMessage::getInstance().addError(
+          "Ray source is set in z-direction for 2D geometry");
+    }
+  }
+
+  switch (direction) {
+  case rtTraceDirection::POS_X:
+    bdBox[1][0] += 2 * discRadius;
+    break;
+
+  case rtTraceDirection::NEG_X:
+    bdBox[0][0] -= 2 * discRadius;
+    break;
+
+  case rtTraceDirection::POS_Y:
+    bdBox[1][1] += 2 * discRadius;
+    break;
+
+  case rtTraceDirection::NEG_Y:
+    bdBox[0][1] -= 2 * discRadius;
+    break;
+
+  case rtTraceDirection::POS_Z:
+    bdBox[1][2] += 2 * discRadius;
+    break;
+
+  case rtTraceDirection::NEG_Z:
+    bdBox[0][2] -= 2 * discRadius;
+    break;
+  }
+}
+
+std::array<int, 5> getTraceSettings(rtTraceDirection sourceDir) {
+  // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source,
+  // posNeg dir
+  std::array<int, 5> set{0, 0, 0, 0, 0};
+  switch (sourceDir) {
+  case rtTraceDirection::POS_X: {
+    set[0] = 0;
+    set[1] = 1;
+    set[2] = 2;
+    set[3] = 1;
+    set[4] = -1;
+    break;
+  }
+  case rtTraceDirection::NEG_X: {
+    set[0] = 0;
+    set[1] = 1;
+    set[2] = 2;
+    set[3] = 0;
+    set[4] = 1;
+    break;
+  }
+  case rtTraceDirection::POS_Y: {
+    set[0] = 1;
+    set[1] = 0;
+    set[2] = 2;
+    set[3] = 1;
+    set[4] = -1;
+    break;
+  }
+  case rtTraceDirection::NEG_Y: {
+    set[0] = 1;
+    set[1] = 0;
+    set[2] = 2;
+    set[3] = 0;
+    set[4] = 1;
+    break;
+  }
+  case rtTraceDirection::POS_Z: {
+    set[0] = 2;
+    set[1] = 0;
+    set[2] = 1;
+    set[3] = 1;
+    set[4] = -1;
+    break;
+  }
+  case rtTraceDirection::NEG_Z: {
+    set[0] = 2;
+    set[1] = 0;
+    set[2] = 1;
+    set[3] = 0;
+    set[4] = 1;
+    break;
+  }
+  }
+
+  return set;
+}
+/* ------------------------------------------------------ */
+
+// Returns some orthonormal basis containing a the input vector pVector
+// (possibly scaled) as the first element of the return value.
+// This function is deterministic, i.e., for one input it will return always
+// the same result.
+template <typename NumericType>
+rtTriple<rtTriple<NumericType>>
+getOrthonormalBasis(const rtTriple<NumericType> &pVector) {
+  rtTriple<rtTriple<NumericType>> rr;
+  rr[0] = pVector;
+
+  // Calculate a vector (rr[1]) which is perpendicular to rr[0]
+  // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
+  rtTriple<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
+  rtTriple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
+  rtTriple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
+  // We choose the candidate which maximizes the sum of its components, because
+  // we want to avoid numeric errors and that the result is (0, 0, 0).
+  std::array<rtTriple<NumericType>, 3> cc = {candidate0, candidate1,
+                                             candidate2};
+  auto sumFun = [](const rtTriple<NumericType> &oo) {
+    return oo[0] + oo[1] + oo[2];
+  };
+  int maxIdx = 0;
+  for (size_t idx = 1; idx < cc.size(); ++idx) {
+    if (sumFun(cc[idx]) > sumFun(cc[maxIdx])) {
+      maxIdx = idx;
+    }
+  }
+  assert(maxIdx < 3 && "Error in computation of perpendicular vector");
+  rr[1] = cc[maxIdx];
+
+  rr[2] = rtInternal::CrossProduct(rr[0], rr[1]);
+  rtInternal::Normalize(rr[0]);
+  rtInternal::Normalize(rr[1]);
+  rtInternal::Normalize(rr[2]);
+
+  // Sanity check
+  NumericType eps = 1e-6;
+  assert(std::abs(rtInternal::DotProduct(rr[0], rr[1])) < eps &&
+         "Error in orthonormal basis computation");
+  assert(std::abs(rtInternal::DotProduct(rr[1], rr[2])) < eps &&
+         "Error in orthonormal basis computation");
+  assert(std::abs(rtInternal::DotProduct(rr[2], rr[0])) < eps &&
+         "Error in orthonormal basis computation");
+  return rr;
+}
+
+/* -------- Create or read simple geometries for testing -------- */
+template <typename NumericType>
+void createPlaneGrid(const NumericType gridDelta, const NumericType extent,
+                     const std::array<int, 3> direction,
+                     std::vector<std::array<NumericType, 3>> &points,
+                     std::vector<std::array<NumericType, 3>> &normals) {
+  std::array<NumericType, 3> point = {-extent, -extent, -extent};
+  std::array<NumericType, 3> normal = {0., 0., 0.};
+  point[direction[2]] = 0;
+  normal[direction[2]] = 1.;
+
+  points.clear();
+  normals.clear();
+  points.reserve(int(extent / gridDelta) * int(extent / gridDelta));
+  normals.reserve(int(extent / gridDelta) * int(extent / gridDelta));
+  while (point[direction[0]] <= extent) {
+    while (point[direction[1]] <= extent) {
+      points.push_back(point);
+      normals.push_back(normal);
+      point[direction[1]] += gridDelta;
+    }
+    point[direction[1]] = -extent;
+    point[direction[0]] += gridDelta;
+  }
+  points.shrink_to_fit();
+  normals.shrink_to_fit();
+}
+
+template <typename NumericType>
+void readGridFromFile(std::string fileName, NumericType &gridDelta,
+                      std::vector<rtTriple<NumericType>> &points,
+                      std::vector<rtTriple<NumericType>> &normals) {
+  std::ifstream dataFile(fileName);
+  if (!dataFile.is_open()) {
+    std::cout << "Cannot read file " << fileName << std::endl;
+    return;
+  }
+  size_t numPoints;
+  dataFile >> numPoints;
+  dataFile >> gridDelta;
+  points.resize(numPoints);
+  normals.resize(numPoints);
+  for (size_t i = 0; i < numPoints; ++i)
+    dataFile >> points[i][0] >> points[i][1] >> points[i][2];
+  for (size_t i = 0; i < numPoints; ++i)
+    dataFile >> normals[i][0] >> normals[i][1] >> normals[i][2];
+  dataFile.close();
+}
+/* -------------------------------------------------------------- */
+
+template <typename NumericType, int D>
+std::vector<rtTriple<NumericType>>
+createSourceGrid(const rtPair<rtTriple<NumericType>> &pBdBox,
+                 const size_t pNumPoints, const NumericType pGridDelta,
+                 const std::array<int, 5> &pTraceSettings) {
+  std::vector<rtTriple<NumericType>> sourceGrid;
+  sourceGrid.reserve(pNumPoints);
+  constexpr NumericType eps = 1e-4;
+  // Trace settings
+  // sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source, posNeg dir
+  auto rayDir = pTraceSettings[0];
+  auto firstDir = pTraceSettings[1];
+  auto secondDir = pTraceSettings[2];
+  auto minMax = pTraceSettings[3];
+  assert((!(D == 2) || rayDir != 2) && "Source direction z in 2D geometry");
+
+  auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
+  auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];
+  size_t numPointsInFirstDir = round(len1 / pGridDelta);
+  size_t numPointsInSecondDir = round(len2 / pGridDelta);
+  auto ratio = numPointsInFirstDir / numPointsInSecondDir;
+  numPointsInFirstDir = std::sqrt(pNumPoints * ratio);
+  numPointsInSecondDir = std::sqrt(pNumPoints / ratio);
+
+  auto firstGridDelta =
+      (len1 - 2 * eps) / (NumericType)(numPointsInFirstDir - 1);
+  auto secondGridDelta =
+      (len2 - 2 * eps) / (NumericType)(numPointsInSecondDir - 1);
+
+  rtTriple<NumericType> point;
+  point[rayDir] = pBdBox[minMax][rayDir];
+  for (auto uu = pBdBox[0][secondDir] + eps; uu <= pBdBox[1][secondDir] - eps;
+       uu += secondGridDelta) {
+    if constexpr (D == 2) {
+      point[secondDir] = 0.;
+    } else {
+      point[secondDir] = uu;
+    }
+
+    for (auto vv = pBdBox[0][firstDir] + eps; vv <= pBdBox[1][firstDir] - eps;
+         vv += firstGridDelta) {
+      point[firstDir] = vv;
+      sourceGrid.push_back(point);
+    }
+  }
+  sourceGrid.shrink_to_fit();
+  return sourceGrid;
+}
+
+template <typename TimeUnit> const static uint64_t timeStampNow() {
+  return std::chrono::duration_cast<TimeUnit>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+
+/* ------------- Debug convenience functions ------------- */
+template <typename NumericType>
+void printTriple(const rtTriple<NumericType> &vec) {
+  std::cout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")"
+            << std::endl;
+}
+
+template <typename NumericType> void printPair(const rtPair<NumericType> &vec) {
+  std::cout << "(" << vec[0] << ", " << vec[1] << ")" << std::endl;
+}
+
+template <typename NumericType>
+void printBoundingBox(rtPair<rtTriple<NumericType>> &bdBox) {
+  std::cout << "Bounding box min coords: ";
+  printTriple(bdBox[0]);
+  std::cout << "Bounding box max coords: ";
+  printTriple(bdBox[1]);
+}
+/* ------------------------------------------------------- */
+} // namespace rtInternal
 
 #endif // RT_UTIL_HPP

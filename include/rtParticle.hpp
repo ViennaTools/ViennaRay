@@ -1,58 +1,50 @@
 #ifndef RT_PARTICLE_HPP
 #define RT_PARTICLE_HPP
 
+#include <embree3/rtcore.h>
 #include <rtRandomNumberGenerator.hpp>
 
-template <typename NumericType>
-class rtParticle
-{
+template <typename NumericType> class rtParticle {
 public:
-    virtual void initNew() = 0;
-    virtual NumericType
-    getStickingProbability(RTCRay &rayin, RTCHit &hitin,
-                           const int materialId,
-                           rtRandomNumberGenerator &RNG,
-                           rtRandomNumberGenerator::RNGState &RngState) = 0;
+  virtual void initNew() = 0;
+  virtual NumericType
+  getStickingProbability(RTCRay &rayin, RTCHit &hitin, const int materialId,
+                         rtRandomNumberGenerator &RNG,
+                         rtRandomNumberGenerator::RNGState &RngState) = 0;
 };
 
 template <typename NumericType>
-class rtParticle1 : public rtParticle<NumericType>
-{
+class rtParticle1 : public rtParticle<NumericType> {
 public:
-    NumericType
-    getStickingProbability(RTCRay &rayin, RTCHit &hitin,
-                           const int materialId,
-                           rtRandomNumberGenerator &RNG,
-                           rtRandomNumberGenerator::RNGState &RngState) override final
-    {
-        // return the sticking probability for this hit
-        return 0.1;
-    }
+  NumericType getStickingProbability(
+      RTCRay &rayin, RTCHit &hitin, const int materialId,
+      rtRandomNumberGenerator &RNG,
+      rtRandomNumberGenerator::RNGState &RngState) override final {
+    // return the sticking probability for this hit
+    return 0.1;
+  }
 
-    void initNew() override final {}
+  void initNew() override final {}
 };
 
 template <typename NumericType>
-class rtParticle2 : public rtParticle<NumericType>
-{
+class rtParticle2 : public rtParticle<NumericType> {
 public:
-    NumericType
-    getStickingProbability(RTCRay &rayin, RTCHit &hitin,
-                           const int materialId,
-                           rtRandomNumberGenerator &RNG,
-                           rtRandomNumberGenerator::RNGState &RngState) override final
-    {
-        // return the sticking probability for this hit
+  NumericType getStickingProbability(
+      RTCRay &rayin, RTCHit &hitin, const int materialId,
+      rtRandomNumberGenerator &RNG,
+      rtRandomNumberGenerator::RNGState &RngState) override final {
+    // return the sticking probability for this hit
 
-        // do something with energy
-        totalEnergy += 0.1;
-        return totalEnergy;
-    }
+    // do something with energy
+    totalEnergy += 0.1;
+    return totalEnergy;
+  }
 
-    void initNew() override final { totalEnergy = 0.1; }
+  void initNew() override final { totalEnergy = 0.1; }
 
 private:
-    NumericType totalEnergy;
+  NumericType totalEnergy;
 };
 
 #endif // RT_PARTICLE_HPP

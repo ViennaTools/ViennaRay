@@ -9,38 +9,24 @@
 // state (e.g. seeds) which the random number generator needs. That is,
 // this interface defines how a stateless random number generator relates
 // to a state which is held by the user of this interface.
-class rtRandomNumberGenerator
-{
+class rtRandomNumberGenerator {
 public:
-    // A definition of the interface of a state
-    struct RNGState
-    {
-        RNGState() : RNGState(std::mt19937_64::default_seed) {}
-        RNGState(unsigned int seed) : MT(seed) {}
-        RNGState(std::mt19937_64 passedMT) : MT(passedMT) {}
+  // A definition of the interface of a state
+  struct RNGState {
+    RNGState() : RNGState(std::mt19937_64::default_seed) {}
+    RNGState(unsigned int seed) : MT(seed) {}
+    RNGState(std::mt19937_64 passedMT) : MT(passedMT) {}
 
-        std::unique_ptr<RNGState> clone()
-        {
-            return std::make_unique<RNGState>(MT);
-        }
+    std::unique_ptr<RNGState> clone() { return std::make_unique<RNGState>(MT); }
 
-        std::mt19937_64 MT;
-    };
+    std::mt19937_64 MT;
+  };
 
-    uint64_t get(RNGState &pState)
-    {
-      return (uint64_t) pState.MT();
-    }
+  uint64_t get(RNGState &pState) { return (uint64_t)pState.MT(); }
 
-    uint64_t min()
-    {
-        return std::mt19937_64::min();
-    }
+  uint64_t min() { return std::mt19937_64::min(); }
 
-    uint64_t max()
-    {
-        return std::mt19937_64::max();
-    }
+  uint64_t max() { return std::mt19937_64::max(); }
 };
 
 #endif // RT_RANDOMNUMBERGENERATOR_HPP

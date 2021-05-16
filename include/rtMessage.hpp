@@ -4,65 +4,53 @@
 #include <iostream>
 
 /// Singleton class for thread-safe logging.
-class rtMessage
-{
-    std::string message;
+class rtMessage {
+  std::string message;
 
-    bool error = false;
-    const unsigned tabWidth = 2;
+  bool error = false;
+  const unsigned tabWidth = 2;
 
-    rtMessage() {}
+  rtMessage() {}
 
 public:
-    // delete constructors to result in better error messages by compilers
-    rtMessage(const rtMessage &) = delete;
-    void operator=(const rtMessage &) = delete;
+  // delete constructors to result in better error messages by compilers
+  rtMessage(const rtMessage &) = delete;
+  void operator=(const rtMessage &) = delete;
 
-    static rtMessage &getInstance()
-    {
-        static rtMessage instance;
-        return instance;
-    }
+  static rtMessage &getInstance() {
+    static rtMessage instance;
+    return instance;
+  }
 
-    rtMessage &addWarning(std::string s)
-    {
+  rtMessage &addWarning(std::string s) {
 #pragma omp critical
-        {
-            message += "\n" + std::string(tabWidth, ' ') + "WARNING: " + s + "\n";
-        }
-        return *this;
-    }
+    { message += "\n" + std::string(tabWidth, ' ') + "WARNING: " + s + "\n"; }
+    return *this;
+  }
 
-    rtMessage &addError(std::string s, bool shouldAbort = true)
-    {
+  rtMessage &addError(std::string s, bool shouldAbort = true) {
 #pragma omp critical
-        {
-            message += "\n" + std::string(tabWidth, ' ') + "ERROR: " + s + "\n";
-        }
-        // always abort once error message should be printed
-        error = true;
-        // abort now if asked
-        if (shouldAbort)
-            print();
-        return *this;
-    }
+    { message += "\n" + std::string(tabWidth, ' ') + "ERROR: " + s + "\n"; }
+    // always abort once error message should be printed
+    error = true;
+    // abort now if asked
+    if (shouldAbort)
+      print();
+    return *this;
+  }
 
-    rtMessage &addDebug(std::string s)
-    {
+  rtMessage &addDebug(std::string s) {
 #pragma omp critical
-        {
-            message += std::string(tabWidth, ' ') + "DEBUG: " + s + "\n";
-        }
-        return *this;
-    }
-    
-    void print(std::ostream &out = std::cout)
-    {
-        out << message;
-        message.clear();
-        if (error)
-            abort();
-    }
+    { message += std::string(tabWidth, ' ') + "DEBUG: " + s + "\n"; }
+    return *this;
+  }
+
+  void print(std::ostream &out = std::cout) {
+    out << message;
+    message.clear();
+    if (error)
+      abort();
+  }
 };
 
 #endif // RT_MESSAGE_HPP

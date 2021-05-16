@@ -1,29 +1,23 @@
+#include <rtReflectionCustom.hpp>
 #include <rtTestAsserts.hpp>
 #include <rtTrace.hpp>
-#include <rtReflectionCustom.hpp>
 
-int main()
-{
-    constexpr int D = 3;
-    using NumericType = float;
-    using ParticleType = rtParticle2<NumericType>;
-    using ReflectionType = rtReflectionCustom<NumericType, D>;
-    // NumericType gridDelta;
-    // std::vector<rtTriple<NumericType>> points;
-    // std::vector<rtTriple<NumericType>> normals;
-    // rtInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta, points, normals);
-    omp_set_num_threads(4);
+int main() {
+  constexpr int D = 3;
+  using NumericType = float;
+  using ParticleType = rtParticle2<NumericType>;
+  using ReflectionType = rtReflectionCustom<NumericType, D>;
+  omp_set_num_threads(4);
 
-    NumericType extent = 10;
-    NumericType gridDelta = 0.5;
-    std::vector<std::array<NumericType, D>> points;
-    std::vector<std::array<NumericType, D>> normals;
-    rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
+  NumericType extent = 5;
+  NumericType gridDelta = 0.5;
+  std::vector<std::array<NumericType, D>> points;
+  std::vector<std::array<NumericType, D>> normals;
+  rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
-    rayTracer.setGeometry(points, normals, gridDelta);
-    rayTracer.apply();
-    // rayTracer.setGeometry(points, normals, gridDelta);
+  rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
+  rayTracer.setGeometry(points, normals, gridDelta);
+  rayTracer.apply();
 
-    return 0;
+  return 0;
 }
