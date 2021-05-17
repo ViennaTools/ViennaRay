@@ -2,76 +2,61 @@
 #include <rtBoundCondition.hpp>
 #include <rtReflectionDiffuse.hpp>
 #include <rtTrace.hpp>
-#include <rtTraceDirection.hpp>
-
-template <typename NumericType, int D = 3>
-void writeVTK(std::string filename,
-              const std::vector<rtTriple<NumericType>> &points,
-              const std::vector<NumericType> &mcestimates) {
-  std::ofstream f(filename.c_str());
-
-  f << "# vtk DataFile Version 2.0" << std::endl;
-  f << D << "D Surface" << std::endl;
-  f << "ASCII" << std::endl;
-  f << "DATASET UNSTRUCTURED_GRID" << std::endl;
-  f << "POINTS " << points.size() << " float" << std::endl;
-
-  for (unsigned int i = 0; i < points.size(); i++) {
-    for (int j = 0; j < 3; j++)
-      f << static_cast<float>(points[i][j]) << " ";
-    f << std::endl;
-  }
-
-  f << "CELLS " << points.size() << " " << points.size() * 2 << std::endl;
-  size_t c = 0;
-  for (unsigned int i = 0; i < points.size(); i++) {
-    f << 1 << " " << c++ << std::endl;
-  }
-
-  f << "CELL_TYPES " << points.size() << std::endl;
-  for (unsigned i = 0; i < points.size(); ++i)
-    f << 1 << std::endl;
-
-  f << "CELL_DATA " << mcestimates.size() << std::endl;
-  f << "SCALARS mc-estimates float" << std::endl;
-  f << "LOOKUP_TABLE default" << std::endl;
-  for (unsigned j = 0; j < mcestimates.size(); ++j) {
-    f << ((std::abs(mcestimates[j]) < 1e-6) ? 0.0 : mcestimates[j])
-      << std::endl;
-  }
-
-  f.close();
-}
 
 int main() {
+  // Geometry space dimension
   constexpr int D = 3;
 
+  // Static settings for the ray tracer:
+  // NumericType: The used floating point precision type. It is possible to use
+  // float or double, but keep in mind, that embree internally only works with
+  // float and thus any double precision geometry passed, will be converted
+  // internally to float. 
+  // ParticleType: The particle types provides the sticking probability for 
+  // each surface hit. This class can be user defined, but has to interface 
+  // the rtParticle<NumericType> class. 
+  // ReflectionType: This reflection will be used at each surface hit. 
+  // Already implented types are rtReflectionSpecular for specular reflections 
+  // and rtReflectionDiffuse for diffuse reflections. However, this class can 
+  // again be a user defined custom reflection, that has to interface the 
+  // rtReflection<NumericType, D> class.
   using NumericType = float;
   using ParticleType = rtParticle2<NumericType>;
   using ReflectionType = rtReflectionDiffuse<NumericType, D>;
 
+  // Set the number of threads to use in OpenMP parallelization
   omp_set_num_threads(12);
 
+  // Read stored geometry grid
   NumericType gridDelta;
-  std::vector<rtTriple<NumericType>> points;
-  std::vector<rtTriple<NumericType>> normals;
+  std::vector<std::array<NumericType, 3>> points;
+  std::vector<std::array<NumericType, 3>> normals;
   rtInternal::readGridFromFile("trenchGrid3D.dat", gridDelta, points, normals);
 
-  rtTraceBoundary bC[D];
-  bC[0] = rtTraceBoundary::PERIODIC;
-  bC[1] = rtTraceBoundary::PERIODIC;
-  bC[2] = rtTraceBoundary::PERIODIC;
+  // Ray tracer boundary conditions:
+  // There has to be a boundary condition defined for each space dimension,
+  // however the boundary condition in direction of the tracing direction will
+  // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
+  rtTraceBoundary boundaryConds[D];
+  boundaryConds[0] = rtTraceBoundary::PERIODIC; // x
+  boundaryConds[1] = rtTraceBoundary::PERIODIC; // y
+  boundaryConds[2] = rtTraceBoundary::PERIODIC; // z
 
   rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
-  rayTracer.setBoundaryConditions(bC);
+  rayTracer.setBoundaryConditions(boundaryConds);
+
+  // Ray settings
   rayTracer.setSourceDirection(rtTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(1000);
   rayTracer.setCosinePower(5.);
+
+  // Run the ray tracer
   rayTracer.apply();
 
+  // Extract the normalized hit counts for each geometry point
   auto mcEstimates = rayTracer.getMcEstimates();
-  writeVTK("trenchResult.vtk", points, mcEstimates);
+  rtInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, mcEstimates);
 
   return 0;
 }

@@ -9,6 +9,7 @@
 #include <rtMessage.hpp>
 #include <rtRaySourceRandom.hpp>
 #include <rtRayTracer.hpp>
+#include <rtTraceDirection.hpp>
 
 template <class NumericType, class ParticleType, class ReflectionType, int D>
 class rtTrace {
