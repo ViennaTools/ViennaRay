@@ -30,7 +30,7 @@ None - yet.
 
 * [Embree](https://github.com/embree/embree)
 
-Since [Embree](https://www.embree.org/) is optimized for CPU's using SSE, AVX, AVX2, and AVX-512 instructions, it requires at least a CPU with support for SSE2.
+Since [Embree](https://www.embree.org/) is optimized for CPU's using SSE, AVX, AVX2, and AVX-512 instructions, it requires at least a x86 CPU with support for SSE2 or an Apple M1 CPU.
 
 ## Installing 
 

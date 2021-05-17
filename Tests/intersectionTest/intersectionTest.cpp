@@ -3,8 +3,6 @@
 #include <rtGeometry.hpp>
 #include <rtTestAsserts.hpp>
 #include <rtUtil.hpp>
-#include <x86intrin.h>
-
 // void printRay(RTCRayHit &rayHit)
 // {
 //     std::cout << "Origin: ";
@@ -64,12 +62,15 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    auto tnear = 1e-4f;
-    reinterpret_cast<__m128 &>(rayhit.ray) =
-        _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
-    auto time = 0.0f;
-    reinterpret_cast<__m128 &>(rayhit.ray.dir_x) = _mm_set_ps(
-        time, (float)direction[2], (float)direction[1], (float)direction[0]);
+    rayhit.ray.org_x = (float)origin[0];
+    rayhit.ray.org_y = (float)origin[1];
+    rayhit.ray.org_z = (float)origin[2];
+    rayhit.ray.tnear = 1e-4f;
+
+    rayhit.ray.dir_x = (float)direction[0];
+    rayhit.ray.dir_y = (float)direction[1];
+    rayhit.ray.dir_z = (float)direction[2];
+    rayhit.ray.tnear = 0.0f;
 
     rayhit.ray.tfar = std::numeric_limits<float>::max();
     rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
@@ -89,12 +90,15 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    auto tnear = 1e-4f;
-    reinterpret_cast<__m128 &>(rayhit.ray) =
-        _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
-    auto time = 0.0f;
-    reinterpret_cast<__m128 &>(rayhit.ray.dir_x) = _mm_set_ps(
-        time, (float)direction[2], (float)direction[1], (float)direction[0]);
+    rayhit.ray.org_x = (float)origin[0];
+    rayhit.ray.org_y = (float)origin[1];
+    rayhit.ray.org_z = (float)origin[2];
+    rayhit.ray.tnear = 1e-4f;
+
+    rayhit.ray.dir_x = (float)direction[0];
+    rayhit.ray.dir_y = (float)direction[1];
+    rayhit.ray.dir_z = (float)direction[2];
+    rayhit.ray.tnear = 0.0f;
 
     rayhit.ray.tfar = std::numeric_limits<float>::max();
     rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;

@@ -3,7 +3,6 @@
 
 #include <rtGeometry.hpp>
 #include <rtRaySource.hpp>
-#include <x86intrin.h> // vector instruction instrinsics
 
 template <typename NumericType, int D>
 class rtRaySourceGrid : public rtRaySource<NumericType, D> {
@@ -28,23 +27,23 @@ public:
     auto origin = mSourceGrid[idx % mNumPoints];
     auto direction = getDirection(RNG, RngState3, RngState4);
 
-    auto tnear = 1e-4f; // float
-
-    // float vara[4] = {(float) origin[0], (float) origin[1], (float) origin[2],
-    // tnear}; reinterpret_cast<__m128&>(ray) = _mm_load_ps(vara);
-
-    // the following instruction would have the same result
-    // the intrinsic _mm_set_ps turns the ordering of the input around.
+#ifdef ARCH_X86
     reinterpret_cast<__m128 &>(ray) =
-        _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
+        _mm_set_ps(1e-4f, (float)origin[2], (float)origin[1], (float)origin[0]);
 
-    auto time = 0.0f; // float
-
-    // float varb[4] = {(float) direction[0], (float) direction[1], (float)
-    // direction[2], time}; reinterpret_cast<__m128&>(ray.dir_x) =
-    // _mm_load_ps(varb);
     reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(
-        time, (float)direction[2], (float)direction[1], (float)direction[0]);
+        0.0f, (float)direction[2], (float)direction[1], (float)direction[0]);
+#else
+    ray.org_x = (float)origin[0];
+    ray.org_y = (float)origin[1];
+    ray.org_z = (float)origin[2];
+    ray.tnear = 1e-4f;
+
+    ray.dir_x = (float)direction[0];
+    ray.dir_y = (float)direction[1];
+    ray.dir_z = (float)direction[2];
+    ray.tnear = 0.0f;
+#endif
   }
 
   size_t getNumPoints() const override final { return mNumPoints; }

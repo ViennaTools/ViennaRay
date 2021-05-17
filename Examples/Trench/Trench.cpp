@@ -11,14 +11,14 @@ int main() {
   // NumericType: The used floating point precision type. It is possible to use
   // float or double, but keep in mind, that embree internally only works with
   // float and thus any double precision geometry passed, will be converted
-  // internally to float. 
-  // ParticleType: The particle types provides the sticking probability for 
-  // each surface hit. This class can be user defined, but has to interface 
-  // the rtParticle<NumericType> class. 
-  // ReflectionType: This reflection will be used at each surface hit. 
-  // Already implented types are rtReflectionSpecular for specular reflections 
-  // and rtReflectionDiffuse for diffuse reflections. However, this class can 
-  // again be a user defined custom reflection, that has to interface the 
+  // internally to float.
+  // ParticleType: The particle types provides the sticking probability for
+  // each surface hit. This class can be user defined, but has to interface
+  // the rtParticle<NumericType> class.
+  // ReflectionType: This reflection will be used at each surface hit.
+  // Already implented types are rtReflectionSpecular for specular reflections
+  // and rtReflectionDiffuse for diffuse reflections. However, this class can
+  // again be a user defined custom reflection, that has to interface the
   // rtReflection<NumericType, D> class.
   using NumericType = float;
   using ParticleType = rtParticle2<NumericType>;

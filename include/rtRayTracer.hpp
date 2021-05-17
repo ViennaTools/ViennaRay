@@ -12,7 +12,7 @@
 #include <rtUtil.hpp>
 
 #define PRINT_PROGRESS true
-#define PRINT_RESULT false
+#define PRINT_RESULT true
 
 template <typename NumericType, typename ParticleType, typename ReflectionType,
           int D>
@@ -146,12 +146,24 @@ public:
             auto newRay = mBoundary.processHit(rayHit, reflect);
 
             // Update ray
+#ifdef ARCH_X86
             reinterpret_cast<__m128 &>(rayHit.ray) =
                 _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1],
                            (float)newRay[0][0]);
             reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
                 _mm_set_ps(0.0f, (float)newRay[1][2], (float)newRay[1][1],
                            (float)newRay[1][0]);
+#else
+            rayHit.ray.org_x = (float)newRay[0][0];
+            rayHit.ray.org_y = (float)newRay[0][1];
+            rayHit.ray.org_z = (float)newRay[0][2];
+            rayHit.ray.tnear = 1e-4f;
+
+            rayHit.ray.dir_x = (float)newRay[1][0];
+            rayHit.ray.dir_y = (float)newRay[1][1];
+            rayHit.ray.dir_z = (float)newRay[1][2];
+            rayHit.ray.tnear = 0.0f;
+#endif
             continue;
           }
 
@@ -210,12 +222,24 @@ public:
                                            RNG, RngState7);
 
           // Update ray
+#ifdef ARCH_X86
           reinterpret_cast<__m128 &>(rayHit.ray) =
               _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1],
                          (float)newRay[0][0]);
           reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
               _mm_set_ps(0.0f, (float)newRay[1][2], (float)newRay[1][1],
                          (float)newRay[1][0]);
+#else
+          rayHit.ray.org_x = (float)newRay[0][0];
+          rayHit.ray.org_y = (float)newRay[0][1];
+          rayHit.ray.org_z = (float)newRay[0][2];
+          rayHit.ray.tnear = 1e-4f;
+
+          rayHit.ray.dir_x = (float)newRay[1][0];
+          rayHit.ray.dir_y = (float)newRay[1][1];
+          rayHit.ray.dir_z = (float)newRay[1][2];
+          rayHit.ray.tnear = 0.0f;
+#endif
         } while (reflect);
       }
 

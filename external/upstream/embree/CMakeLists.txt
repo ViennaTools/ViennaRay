@@ -18,7 +18,10 @@ externalproject_add(embree-external
     #0e78b682dc631575b79f1cc43863931e8d411e3b
     #
     ## hash of tags/v3.11.0
-    cc8c3aac00cdb63fb1acb44bcd0fa89a17139533
+    #cc8c3aac00cdb63fb1acb44bcd0fa89a17139533
+    #
+    ## hash of tags/v3.13.0
+    7c53133eb21424f7f0ae1e25bf357e358feaf6ab
     #
   GIT_SHALLOW
     true
@@ -56,8 +59,6 @@ externalproject_add(embree-external
   GIT_PROGRESS
     1
 )
-
-# The following might be simplified, because we are not using TBB anymore.
 
 # Get install and build directory from external project
 externalproject_get_property(embree-external INSTALL_DIR BINARY_DIR)

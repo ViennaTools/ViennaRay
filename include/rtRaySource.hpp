@@ -2,9 +2,9 @@
 #define RT_RAYSOURCE_HPP
 
 #include <embree3/rtcore.h>
+#include <rtPreCompileMacros.hpp>
 #include <rtRandomNumberGenerator.hpp>
 #include <rtUtil.hpp>
-#include <x86intrin.h> // vector instruction instrinsics
 
 template <typename NumericType, int D> class rtRaySource {
 public:
