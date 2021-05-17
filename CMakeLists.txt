@@ -12,7 +12,7 @@ include(GNUInstallDirs)
 SET(CMAKE_CXX_STANDARD "17")
 
 # set default build type
-SET(DEFAULT_BUILD_TYPE "Debug")
+SET(DEFAULT_BUILD_TYPE "Release")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
@@ -30,7 +30,6 @@ endif()
 # OpenMP Support
 find_package(OpenMP REQUIRED)
 list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
-
 
 # build dependencies
 set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/dependencies)
@@ -51,18 +50,7 @@ set(EMBREE_ISPC_SUPPORT OFF CACHE BOOL "Set whether or not you use Intel's SPMD 
 include(ExternalProject)
 add_subdirectory(external/upstream)
 
-set(
-    VIENNARAY_INCLUDE_DIRS 
-    "${${PROJECT_NAME}_SOURCE_DIR}/include" 
-    )
-
-find_package(embree 3.0 REQUIRED)
-if(embree_FOUND)
-    message(STATUS "Found embree")
-    list(APPEND VIENNARAY_LIBRARIES embree)
-else(embree_FOUND)
-    message(FATAL_ERROR "No embree isntall found.")
-endif(embree_FOUND)
+set(VIENNARAY_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
 
 
 #################################################
