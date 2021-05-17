@@ -21,26 +21,19 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Download dependencies
+      # Download and inflate embree, which is need for testing
+      run: curl -L -O https://github.com/embree/embree/releases/download/v3.11.0/embree-3.11.0.x86_64.linux.tar.gz && tar -xf embree-3.11.0.x86_64.linux.tar.gz && mv embree-3.11.0.x86_64.linux embree
+
     - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-
-    - name: Install dependencies
-      # Install embree, which is need for testing
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-
-    - name: Activate tests
-      # Set the VIEANNARAY_BUILD_TESTS option 
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DVIENNARAY_BUILD_TESTS=ON
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -Dembree_DIR=${{github.workspace}}/embree -DVIENNARAY_BUILD_TESTS=ON
       
     - name: Build tests
-      # Build your program with the given configuration
+      # Build program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Test
       working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.  
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}}
       
