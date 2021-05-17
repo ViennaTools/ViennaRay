@@ -37,6 +37,7 @@ public:
 
   void apply() {
     checkSettings();
+    initMemoryFlags();
     auto boundingBox = mGeometry.getBoundingBox();
     rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, mSourceDirection,
                                                   mDiscRadius);
@@ -65,6 +66,18 @@ public:
 
     mGridDelta = gridDelta;
     mDiscRadius = gridDelta * mDiscFactor;
+    mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
+  }
+
+  template <std::size_t Dim>
+  void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
+                   std::vector<std::array<NumericType, Dim>> &normals,
+                   const NumericType gridDelta, const NumericType discRadii) {
+    static_assert((D != 3 || Dim != 2) &&
+                  "Setting 2D geometry in 3D trace object");
+
+    mGridDelta = gridDelta;
+    mDiscRadius = discRadii;
     mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
   }
 
@@ -143,6 +156,15 @@ private:
                       "count normalization not correct.")
           .print();
     }
+  }
+
+  void initMemoryFlags() {
+#ifdef ARCH_X86
+    /* for best performance set FTZ and DAZ flags in MXCSR control and status
+     * register */
+    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+#endif
   }
 };
 

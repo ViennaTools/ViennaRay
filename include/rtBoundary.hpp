@@ -21,7 +21,6 @@ public:
   }
 
   rtPair<rtTriple<NumericType>> processHit(RTCRayHit &rayHit, bool &reflect) {
-    auto impactCoords = this->getNewOrigin(rayHit.ray);
     const auto primID = rayHit.hit.primID;
 
     if constexpr (D == 2) {
@@ -32,6 +31,7 @@ public:
         return rtReflectionSpecular<NumericType, D>::use(rayHit.ray,
                                                          rayHit.hit);
       } else if (mBoundaryConds[0] == rtTraceBoundary::PERIODIC) {
+        auto impactCoords = this->getNewOrigin(rayHit.ray);
         // periodically move ray origin
         if (primID == 0 || primID == 1) {
           // hit at x/y min boundary -> move to max x/y
@@ -60,6 +60,7 @@ public:
           return rtReflectionSpecular<NumericType, D>::use(rayHit.ray,
                                                            rayHit.hit);
         } else if (mBoundaryConds[0] == rtTraceBoundary::PERIODIC) {
+          auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 0 || primID == 1) {
             // hit at firstDir min boundary -> move to max firstDir
@@ -84,6 +85,7 @@ public:
           return rtReflectionSpecular<NumericType, D>::use(rayHit.ray,
                                                            rayHit.hit);
         } else if (mBoundaryConds[1] == rtTraceBoundary::PERIODIC) {
+          auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 4 || primID == 5) {
             // hit at secondDir min boundary -> move to max secondDir

@@ -19,6 +19,9 @@ template <typename NumericType> using rtTriple = std::array<NumericType, 3>;
 
 template <typename NumericType> using rtQuadruple = std::array<NumericType, 4>;
 
+// embree uses float internally
+using rtcNumericType = float;
+
 namespace rtInternal {
 constexpr double PI = 3.14159265358979323846;
 
@@ -70,6 +73,8 @@ NumericType Norm(const std::array<NumericType, D> &vec) {
 template <typename NumericType, size_t D>
 void Normalize(std::array<NumericType, D> &vec) {
   auto norm = 1. / Norm(vec);
+  if (norm == 1.)
+    return;
   std::for_each(vec.begin(), vec.end(),
                 [&norm](NumericType &entry) { entry *= norm; });
 }
