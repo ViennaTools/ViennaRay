@@ -22,6 +22,7 @@ private:
   rtTraceBoundary mBoundaryConds[D] = {};
   rtTraceDirection mSourceDirection = rtTraceDirection::POS_Z;
   NumericType mCosinePower = 1.;
+  bool mUseRandomSeeds = false;
   rtHitCounter<NumericType> mHitCounter = rtHitCounter<NumericType>(0);
   std::vector<NumericType> mMcEstimates;
   static constexpr NumericType mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
@@ -49,6 +50,7 @@ public:
 
     auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
         mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint);
+    tracer.useRandomSeeds(mUseRandomSeeds);
     mHitCounter = tracer.apply();
     boundary.releaseGeometry();
     extractMcEstimates();
@@ -85,6 +87,8 @@ public:
   void setSourceDirection(const rtTraceDirection pDirection) {
     mSourceDirection = pDirection;
   }
+
+  void setUseRandomSeeds(const bool useRand) { mUseRandomSeeds = useRand; }
 
   std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
 

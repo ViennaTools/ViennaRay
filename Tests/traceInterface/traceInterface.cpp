@@ -15,8 +15,12 @@ int main() {
   std::vector<std::array<NumericType, D>> normals;
   rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
+  std::vector<NumericType> matIds(points.size(), 0);
+
   rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
+  rayTracer.setUseRandomSeeds(true);
+  rayTracer.setMaterialIds(matIds);
   rayTracer.apply();
 
   return 0;

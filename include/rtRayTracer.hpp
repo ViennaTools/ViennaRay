@@ -76,15 +76,28 @@ public:
       alignas(128) auto rayHit =
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-      auto seed = (unsigned int)((omp_get_thread_num() + 1) *
-                                 31); // multiply by magic number (prime)
-      auto RngState1 = rtRandomNumberGenerator::RNGState{seed + 0};
-      auto RngState2 = rtRandomNumberGenerator::RNGState{seed + 1};
-      auto RngState3 = rtRandomNumberGenerator::RNGState{seed + 2};
-      auto RngState4 = rtRandomNumberGenerator::RNGState{seed + 3};
-      auto RngState5 = rtRandomNumberGenerator::RNGState{seed + 4};
-      auto RngState6 = rtRandomNumberGenerator::RNGState{seed + 5};
-      auto RngState7 = rtRandomNumberGenerator::RNGState{seed + 6};
+      unsigned int seeds[7];
+      if (mUseRandomSeeds) {
+        for (size_t i = 0; i < 7; ++i) {
+          seeds[i] = static_cast<unsigned int>(
+              (omp_get_thread_num() + 1) * 31 *
+              std::chrono::high_resolution_clock::now()
+                  .time_since_epoch()
+                  .count());
+        }
+      } else {
+        for (size_t i = 0; i < 7; ++i) {
+          seeds[i] =
+              static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 + i);
+        }
+      }
+      auto RngState1 = rtRandomNumberGenerator::RNGState{seeds[0]};
+      auto RngState2 = rtRandomNumberGenerator::RNGState{seeds[1]};
+      auto RngState3 = rtRandomNumberGenerator::RNGState{seeds[2]};
+      auto RngState4 = rtRandomNumberGenerator::RNGState{seeds[3]};
+      auto RngState5 = rtRandomNumberGenerator::RNGState{seeds[4]};
+      auto RngState6 = rtRandomNumberGenerator::RNGState{seeds[5]};
+      auto RngState7 = rtRandomNumberGenerator::RNGState{seeds[6]};
 
       // thread-local particle and reflection object
       auto particle = ParticleType{};
@@ -230,6 +243,8 @@ public:
     return hitCounter;
   }
 
+  void useRandomSeeds(bool use) { mUseRandomSeeds = use; }
+
 private:
   bool rejectionControl(NumericType &rayWeight, NumericType const &initWeight,
                         rtRandomNumberGenerator &RNG,
@@ -335,6 +350,7 @@ private:
   rtBoundary<NumericType, D> &mBoundary;
   rtRaySource<NumericType, D> &mSource;
   const size_t mNumRays;
+  bool mUseRandomSeeds = false;
 };
 
 #endif // RT_RAYTRACER_HPP
