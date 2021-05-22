@@ -40,26 +40,26 @@ int main() {
       rtInternal::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
+      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
-                                           0, // Ray origin, tnear
-                                           (float)direction[0],
+                                           0,                   // tnear
+                                           (float)direction[0], // Ray direction
                                            (float)direction[1],
-                                           (float)direction[2], // Ray direction
+                                           (float)direction[2],
+                                           0,                    // time
+                                           (float)distanceToHit, // tfar
+                                           0,                    // mask
+                                           0,                    // ID
+                                           0,                    // flags
+                                           -1, // geometry normal
                                            0,
-                                           (float)distanceToHit, // time, tfar
-                                           0,
-                                           0,
-                                           0, // mask, ID, flags
-                                           -1,
-                                           0,
-                                           0, // geometry normal
                                            0,
                                            0, // barycentric coordinates
-                                           2,
                                            0,
-                                           0}; // primID, geomID, instanceID
+                                           2,  // primID
+                                           0,  // geomID
+                                           0}; // instanceID
 
       auto newRay = boundary.processHit(rayhit, reflect);
 
@@ -100,26 +100,26 @@ int main() {
       rtInternal::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
+      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
-                                           0, // Ray origin, tnear
-                                           (float)direction[0],
+                                           0,                   // tnear
+                                           (float)direction[0], // Ray direction
                                            (float)direction[1],
-                                           (float)direction[2], // Ray direction
+                                           (float)direction[2],
+                                           0,                    // time
+                                           (float)distanceToHit, // tfar
+                                           0,                    // mask
+                                           0,                    // ID
+                                           0,                    // flags
+                                           0, // geometry normal
                                            0,
-                                           (float)distanceToHit, // time, tfar
-                                           0,
-                                           0,
-                                           0, // mask, ID, flags
-                                           0,
-                                           0,
-                                           -1, // geometry normal
-                                           0,
+                                           -1,
                                            0, // barycentric coordinates
-                                           6,
                                            0,
-                                           0}; // primID, geomID, instanceID
+                                           6,  // primID
+                                           0,  // geomID
+                                           0}; // instanceID
 
       auto newRay = boundary.processHit(rayhit, reflect);
 
@@ -160,26 +160,26 @@ int main() {
       rtInternal::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
+      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
-                                           0, // Ray origin, tnear
-                                           (float)direction[0],
+                                           0,                   // tnear
+                                           (float)direction[0], // Ray direction
                                            (float)direction[1],
-                                           (float)direction[2], // Ray direction
+                                           (float)direction[2],
+                                           0,                    // time
+                                           (float)distanceToHit, // tfar
+                                           0,                    // mask
+                                           0,                    // ID
+                                           0,                    // flags
+                                           -1, // geometry normal
                                            0,
-                                           (float)distanceToHit, // time, tfar
-                                           0,
-                                           0,
-                                           0, // mask, ID, flags
-                                           -1,
-                                           0,
-                                           0, // geometry normal
                                            0,
                                            0, // barycentric coordinates
-                                           2,
                                            0,
-                                           0}; // primID, geomID, instanceID
+                                           2,  // primID
+                                           0,  // geomID
+                                           0}; // instanceID
 
       auto newRay = boundary.processHit(rayhit, reflect);
 

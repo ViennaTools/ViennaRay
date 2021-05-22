@@ -12,7 +12,7 @@
 #include <rtUtil.hpp>
 
 #define PRINT_PROGRESS true
-#define PRINT_RESULT true
+#define PRINT_RESULT false
 
 template <typename NumericType, typename ParticleType, typename ReflectionType,
           int D>
@@ -127,7 +127,7 @@ public:
         bool reflect = false;
         bool hitFromBack = false;
         do {
-          rayHit.ray.tfar = std::numeric_limits<float>::max();
+          rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
           rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle source
@@ -148,21 +148,21 @@ public:
 
             // Update ray
 #ifdef ARCH_X86
-            reinterpret_cast<__m128 &>(rayHit.ray) =
-                _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1],
-                           (float)newRay[0][0]);
-            reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
-                _mm_set_ps(0.0f, (float)newRay[1][2], (float)newRay[1][1],
-                           (float)newRay[1][0]);
+            reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(
+                1e-4f, (rtcNumericType)newRay[0][2],
+                (rtcNumericType)newRay[0][1], (rtcNumericType)newRay[0][0]);
+            reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
+                0.0f, (rtcNumericType)newRay[1][2],
+                (rtcNumericType)newRay[1][1], (rtcNumericType)newRay[1][0]);
 #else
-            rayHit.ray.org_x = (float)newRay[0][0];
-            rayHit.ray.org_y = (float)newRay[0][1];
-            rayHit.ray.org_z = (float)newRay[0][2];
+            rayHit.ray.org_x = (rtcNumericType)newRay[0][0];
+            rayHit.ray.org_y = (rtcNumericType)newRay[0][1];
+            rayHit.ray.org_z = (rtcNumericType)newRay[0][2];
             rayHit.ray.tnear = 1e-4f;
 
-            rayHit.ray.dir_x = (float)newRay[1][0];
-            rayHit.ray.dir_y = (float)newRay[1][1];
-            rayHit.ray.dir_z = (float)newRay[1][2];
+            rayHit.ray.dir_x = (rtcNumericType)newRay[1][0];
+            rayHit.ray.dir_y = (rtcNumericType)newRay[1][1];
+            rayHit.ray.dir_z = (rtcNumericType)newRay[1][2];
             rayHit.ray.tnear = 0.0f;
 #endif
             continue;
@@ -224,21 +224,21 @@ public:
 
           // Update ray
 #ifdef ARCH_X86
-          reinterpret_cast<__m128 &>(rayHit.ray) =
-              _mm_set_ps(1e-4f, (float)newRay[0][2], (float)newRay[0][1],
-                         (float)newRay[0][0]);
-          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
-              _mm_set_ps(0.0f, (float)newRay[1][2], (float)newRay[1][1],
-                         (float)newRay[1][0]);
+          reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(
+              1e-4f, (rtcNumericType)newRay[0][2], (rtcNumericType)newRay[0][1],
+              (rtcNumericType)newRay[0][0]);
+          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
+              0.0f, (rtcNumericType)newRay[1][2], (rtcNumericType)newRay[1][1],
+              (rtcNumericType)newRay[1][0]);
 #else
-          rayHit.ray.org_x = (float)newRay[0][0];
-          rayHit.ray.org_y = (float)newRay[0][1];
-          rayHit.ray.org_z = (float)newRay[0][2];
+          rayHit.ray.org_x = (rtcNumericType)newRay[0][0];
+          rayHit.ray.org_y = (rtcNumericType)newRay[0][1];
+          rayHit.ray.org_z = (rtcNumericType)newRay[0][2];
           rayHit.ray.tnear = 1e-4f;
 
-          rayHit.ray.dir_x = (float)newRay[1][0];
-          rayHit.ray.dir_y = (float)newRay[1][1];
-          rayHit.ray.dir_z = (float)newRay[1][2];
+          rayHit.ray.dir_x = (rtcNumericType)newRay[1][0];
+          rayHit.ray.dir_y = (rtcNumericType)newRay[1][1];
+          rayHit.ray.dir_z = (rtcNumericType)newRay[1][2];
           rayHit.ray.tnear = 0.0f;
 #endif
         } while (reflect);
@@ -333,12 +333,12 @@ private:
     constexpr auto emptySymbol = '-';
     constexpr auto barEndSymbol = ']';
     constexpr auto percentageStringFormatLength = 3; // 3 digits
-    if (progressCount % (int)std::ceil((float)mNumRays / omp_get_num_threads() /
-                                       barLength) ==
+    if (progressCount % (int)std::ceil((rtcNumericType)mNumRays /
+                                       omp_get_num_threads() / barLength) ==
         0) {
       auto fillLength =
-          (int)std::ceil(progressCount /
-                         ((float)mNumRays / omp_get_num_threads() / barLength));
+          (int)std::ceil(progressCount / ((rtcNumericType)mNumRays /
+                                          omp_get_num_threads() / barLength));
       auto percentageString = std::to_string((fillLength * 100) / barLength);
       percentageString =
           std::string(percentageStringFormatLength - percentageString.length(),
@@ -361,12 +361,12 @@ private:
   // {
   //     std::cout << "Ray ID: " << rayHit.ray.id << std::endl;
   //     std::cout << "Origin: ";
-  //     rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x,
+  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.ray.org_x,
   //     rayHit.ray.org_y, rayHit.ray.org_z}); std::cout << "Direction: ";
-  //     rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x,
+  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.ray.dir_x,
   //     rayHit.ray.dir_y, rayHit.ray.dir_z}); std::cout << "Geometry hit ID: "
   //     << rayHit.hit.geomID << std::endl; std::cout << "Geometry normal: ";
-  //     rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x,
+  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.hit.Ng_x,
   //     rayHit.hit.Ng_y, rayHit.hit.Ng_z});
   // }
 

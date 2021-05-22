@@ -17,8 +17,17 @@ int main() {
 
   std::vector<NumericType> matIds(points.size(), 0);
 
+  rtTraceBoundary boundaryConds[D];
+  boundaryConds[0] = rtTraceBoundary::REFLECTIVE;
+  boundaryConds[1] = rtTraceBoundary::REFLECTIVE;
+  boundaryConds[2] = rtTraceBoundary::REFLECTIVE;
+
   rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
+  rayTracer.setBoundaryConditions(boundaryConds);
+  rayTracer.setCosinePower(2);
+  rayTracer.setSourceDirection(rtTraceDirection::POS_Z);
+  rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setUseRandomSeeds(true);
   rayTracer.setMaterialIds(matIds);
   rayTracer.apply();

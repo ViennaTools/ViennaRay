@@ -16,11 +16,12 @@
 #define RAYTEST_ASSERT_ISCLOSE(first, second, eps)                             \
   {                                                                            \
     if ((std::fabs(first - second) > eps)) {                                   \
-      throw std::runtime_error(std::string(__FILE__) + std::string(":") +      \
-                               std::to_string(__LINE__) +                      \
-                               std::string(" in ") +                           \
-                               std::string(__PRETTY_FUNCTION__) +              \
-                               std::string(" Number not close"));              \
+      throw std::runtime_error(                                                \
+          std::string(__FILE__) + std::string(":") +                           \
+          std::to_string(__LINE__) + std::string(" in ") +                     \
+          std::string(__PRETTY_FUNCTION__) +                                   \
+          std::string(" Numbers not close ") + std::to_string(first) +         \
+          std::string(" ") + std::to_string(second));                          \
     }                                                                          \
   }
 

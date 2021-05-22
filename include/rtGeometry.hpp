@@ -148,12 +148,14 @@ public:
 
   rtQuadruple<rtcNumericType> &getPrimRef(unsigned int primID) {
     assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rtQuadruple<rtcNumericType> *>(&mPointBuffer[primID]);
+    return *reinterpret_cast<rtQuadruple<rtcNumericType> *>(
+        &mPointBuffer[primID]);
   }
 
   rtTriple<rtcNumericType> &getNormalRef(unsigned int primID) {
     assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rtTriple<rtcNumericType> *>(&mNormalVecBuffer[primID]);
+    return *reinterpret_cast<rtTriple<rtcNumericType> *>(
+        &mNormalVecBuffer[primID]);
   }
 
   std::vector<int> &getMaterialIds() { return mMaterialIds; }

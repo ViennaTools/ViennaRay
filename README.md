@@ -90,7 +90,7 @@ In order to check whether ViennaRay runs without issues on your system, you can 
 git clone github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 mkdir build && cd build
-cmake .. -DVIENNARAY_BUILD_TESTS=ON
+cmake .. -DVIENNARAY_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=DEBUG
 make buildTests # build all tests
 make test # run all tests
 ```
