@@ -78,12 +78,13 @@ public:
 
       unsigned int seeds[7];
       if (mUseRandomSeeds) {
+        std::mt19937_64 rd(
+            static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 *
+                                      std::chrono::high_resolution_clock::now()
+                                          .time_since_epoch()
+                                          .count()));
         for (size_t i = 0; i < 7; ++i) {
-          seeds[i] = static_cast<unsigned int>(
-              (omp_get_thread_num() + 1) * 31 *
-              std::chrono::high_resolution_clock::now()
-                  .time_since_epoch()
-                  .count());
+          seeds[i] = rd();
         }
       } else {
         for (size_t i = 0; i < 7; ++i) {
