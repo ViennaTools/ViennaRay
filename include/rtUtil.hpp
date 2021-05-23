@@ -47,6 +47,12 @@ rtTriple<NumericType> Diff(const rtTriple<NumericType> &pVecA,
 }
 
 template <typename NumericType>
+rtPair<NumericType> Diff(const rtPair<NumericType> &pVecA,
+                         const rtPair<NumericType> &pVecB) {
+  return {pVecA[0] - pVecB[0], pVecA[1] - pVecB[1]};
+}
+
+template <typename NumericType>
 NumericType DotProduct(const rtTriple<NumericType> &pVecA,
                        const rtTriple<NumericType> &pVecB) {
   return pVecA[0] * pVecB[0] + pVecA[1] * pVecB[1] + pVecA[2] * pVecB[2];
@@ -92,9 +98,9 @@ rtTriple<NumericType> Scale(const NumericType pF, rtTriple<NumericType> &pT) {
   return pT;
 }
 
-template <typename NumericType>
-NumericType Distance(const rtTriple<NumericType> &pVecA,
-                     const rtTriple<NumericType> &pVecB) {
+template <typename NumericType, size_t D>
+NumericType Distance(const std::array<NumericType, D> &pVecA,
+                     const std::array<NumericType, D> &pVecB) {
   auto diff = Diff(pVecA, pVecB);
   return Norm(diff);
 }

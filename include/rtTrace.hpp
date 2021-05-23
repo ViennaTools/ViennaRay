@@ -57,6 +57,9 @@ public:
     extractMcEstimates();
   }
 
+  // Set the ray tracing geometry
+  // It is possible to set a 2D geometry with 3D points.
+  // In this case the last dimension is ignored.
   template <std::size_t Dim>
   void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
                    std::vector<std::array<NumericType, Dim>> &normals,
@@ -69,6 +72,7 @@ public:
     mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
   }
 
+  // Specify the disc radius manually.
   template <std::size_t Dim>
   void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
                    std::vector<std::array<NumericType, Dim>> &normals,
@@ -81,6 +85,7 @@ public:
     mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
   }
 
+  // Set material ID's for each geometry point.
   template <typename T> void setMaterialIds(std::vector<T> &pMaterialIds) {
     mGeometry.setMaterialIds(pMaterialIds);
   }
@@ -103,8 +108,11 @@ public:
 
   void setUseRandomSeeds(const bool useRand) { mUseRandomSeeds = useRand; }
 
+  // Returns the total number of hits for each geometry point.
   std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
 
+  // Returns the hit counts normalized, with the individual disc radii taken
+  // into account.
   std::vector<NumericType> getMcEstimates() const { return mMcEstimates; }
 
   std::vector<NumericType> getRelativeError() {
@@ -160,8 +168,8 @@ private:
 
   void initMemoryFlags() {
 #ifdef ARCH_X86
-    /* for best performance set FTZ and DAZ flags in MXCSR control and status
-     * register */
+    // for best performance set FTZ and DAZ flags in MXCSR control and status
+    // register
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 #endif

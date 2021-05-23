@@ -15,28 +15,14 @@ private:
 public:
   rtGeometry() {}
 
+  template <size_t Dim>
   void initGeometry(RTCDevice &pDevice,
-                    std::vector<std::array<NumericType, 2>> &points,
-                    std::vector<std::array<NumericType, 2>> &normals,
+                    std::vector<std::array<NumericType, Dim>> &points,
+                    std::vector<std::array<NumericType, Dim>> &normals,
                     NumericType discRadii) {
-    static_assert(D == 2 && "Setting 2D points in 3D geometry");
-    assert(points.size() == normals.size() &&
-           "rtGeometry: Points/Normals size missmatch");
-    std::vector<rtTriple<NumericType>> tempPoints;
-    std::vector<rtTriple<NumericType>> tempNormals;
-    tempPoints.reserve(points.size());
-    tempNormals.reserve(normals.size());
-    for (size_t i = 0; i < points.size(); ++i) {
-      tempPoints.push_back({points[i][0], points[i][1], 0.});
-      tempNormals.push_back({normals[i][0], normals[i][1], 0.});
-    }
-    initGeometry(pDevice, tempPoints, tempNormals, discRadii);
-  }
+    static_assert(!(D == 3 && Dim == 2) &&
+                  "Setting 2D geometry in 3D trace object");
 
-  void initGeometry(RTCDevice &pDevice,
-                    std::vector<std::array<NumericType, 3>> &points,
-                    std::vector<std::array<NumericType, 3>> &normals,
-                    NumericType discRadii) {
     assert(points.size() == normals.size() &&
            "rtGeometry: Points/Normals size missmatch");
 
@@ -68,20 +54,26 @@ public:
     for (size_t i = 0; i < mNumPoints; ++i) {
       mPointBuffer[i].xx = (float)points[i][0];
       mPointBuffer[i].yy = (float)points[i][1];
-      mPointBuffer[i].zz = (float)points[i][2];
       mPointBuffer[i].radius = (float)discRadii;
       if (points[i][0] < mMinCoords[0])
         mMinCoords[0] = points[i][0];
       if (points[i][1] < mMinCoords[1])
         mMinCoords[1] = points[i][1];
-      if (points[i][2] < mMinCoords[2])
-        mMinCoords[2] = points[i][2];
       if (points[i][0] > mMaxCoords[0])
         mMaxCoords[0] = points[i][0];
       if (points[i][1] > mMaxCoords[1])
         mMaxCoords[1] = points[i][1];
-      if (points[i][2] > mMaxCoords[2])
-        mMaxCoords[2] = points[i][2];
+      if constexpr (D == 2) {
+        mPointBuffer[i].zz = 0.f;
+        mMinCoords[2] = 0.;
+        mMaxCoords[2] = 0.;
+      } else {
+        mPointBuffer[i].zz = (float)points[i][2];
+        if (points[i][2] < mMinCoords[2])
+          mMinCoords[2] = points[i][2];
+        if (points[i][2] > mMaxCoords[2])
+          mMaxCoords[2] = points[i][2];
+      }
     }
 
     mNormalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(
@@ -94,7 +86,11 @@ public:
     for (size_t i = 0; i < mNumPoints; ++i) {
       mNormalVecBuffer[i].xx = (float)normals[i][0];
       mNormalVecBuffer[i].yy = (float)normals[i][1];
-      mNormalVecBuffer[i].zz = (float)normals[i][2];
+      if constexpr (D == 2) {
+        mNormalVecBuffer[i].zz = 0.f;
+      } else {
+        mNormalVecBuffer[i].zz = (float)normals[i][2];
+      }
     }
 
     rtcCommitGeometry(mRTCGeometry);
@@ -103,7 +99,6 @@ public:
 
     initPointNeighborhood(points);
     if (mMaterialIds.empty()) {
-      // rtMessage::getInstance().addDebug("Assigning materialIds 0").print();
       mMaterialIds.resize(mNumPoints, 0);
     }
   }
@@ -113,7 +108,7 @@ public:
     assert(pMaterialIds.size() == mNumPoints &&
            "rtGeometry: Material IDs size missmatch");
     mMaterialIds.clear();
-    mMaterialIds.reserve(pMaterialIds.size());
+    mMaterialIds.reserve(mNumPoints);
     for (const auto id : pMaterialIds) {
       mMaterialIds.push_back(static_cast<int>(id));
     }
@@ -190,7 +185,9 @@ public:
   }
 
 private:
-  void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points) {
+  template <size_t Dim>
+  void
+  initPointNeighborhood(std::vector<std::array<NumericType, Dim>> &points) {
     mPointNeighborhood.clear();
     mPointNeighborhood.resize(mNumPoints, std::vector<size_t>{});
 
@@ -342,14 +339,14 @@ private:
     }
   }
 
-  bool checkDistance(const rtTriple<NumericType> &p1,
-                     const rtTriple<NumericType> &p2, const NumericType &dist) {
-    if (std::abs(p1[0] - p2[0]) >= dist)
-      return false;
-    if (std::abs(p1[1] - p2[1]) >= dist)
-      return false;
-    if (std::abs(p1[2] - p2[2]) >= dist)
-      return false;
+  template <size_t Dim>
+  bool checkDistance(const std::array<NumericType, Dim> &p1,
+                     const std::array<NumericType, Dim> &p2,
+                     const NumericType &dist) {
+    for (int i = 0; i < D; ++i) {
+      if (std::abs(p1[i] - p2[i]) >= dist)
+        return false;
+    }
     if (rtInternal::Distance<NumericType>(p1, p2) < dist)
       return true;
 
@@ -387,7 +384,6 @@ private:
   rtTriple<NumericType> mMaxCoords{nummin, nummin, nummin};
   pointNeighborhoodType mPointNeighborhood;
   std::vector<int> mMaterialIds;
-  int counter = 0;
 };
 
 #endif // RT_GEOMETRY_HPP
