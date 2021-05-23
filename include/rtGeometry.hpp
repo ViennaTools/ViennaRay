@@ -63,6 +63,7 @@ public:
         RTC_FORMAT_FLOAT4, sizeof(point_4f_t), mNumPoints);
     assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
            "RTC Error: rtcSetNewGeometryBuffer points");
+    mDiscRadii = discRadii;
 
     for (size_t i = 0; i < mNumPoints; ++i) {
       mPointBuffer[i].xx = (float)points[i][0];
@@ -100,7 +101,7 @@ public:
     assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
            "RTC Error: rtcCommitGeometry");
 
-    initPointNeighborhood(points, discRadii);
+    initPointNeighborhood(points);
     if (mMaterialIds.empty()) {
       // rtMessage::getInstance().addDebug("Assigning materialIds 0").print();
       mMaterialIds.resize(mNumPoints, 0);
@@ -135,7 +136,7 @@ public:
 
   size_t getNumPoints() const { return mNumPoints; }
 
-  NumericType getDiscRadius() const { return mPointBuffer[0].radius; }
+  NumericType getDiscRadius() const { return mDiscRadii; }
 
   RTCGeometry &getRTCGeometry() override final { return mRTCGeometry; }
 
@@ -189,18 +190,155 @@ public:
   }
 
 private:
-  void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points,
-                             const NumericType discRadii) {
+  void initPointNeighborhood(std::vector<rtTriple<NumericType>> &points) {
     mPointNeighborhood.clear();
     mPointNeighborhood.resize(mNumPoints, std::vector<size_t>{});
-    // TODO: This SHOULD be further optizmized with a better algorithm!
-    for (size_t idx1 = 0; idx1 < mNumPoints; ++idx1) {
-      for (size_t idx2 = idx1 + 1; idx2 < mNumPoints; ++idx2) {
-        if (checkDistance(points[idx1], points[idx2], 2 * discRadii)) {
-          mPointNeighborhood[idx1].push_back(idx2);
-          mPointNeighborhood[idx2].push_back(idx1);
+
+    if constexpr (D == 3) {
+      std::vector<size_t> side1;
+      std::vector<size_t> side2;
+
+      // create copy of bounding box
+      rtTriple<NumericType> min = mMinCoords;
+      rtTriple<NumericType> max = mMaxCoords;
+
+      std::vector<int> dirs;
+      for (int i = 0; i < 3; ++i) {
+        if (min[i] != max[i]) {
+          dirs.push_back(i);
         }
       }
+      dirs.shrink_to_fit();
+
+      int dirIdx = 0;
+      NumericType pivot = (max[dirs[dirIdx]] + min[dirs[dirIdx]]) / 2;
+
+      // divide point data
+      for (size_t idx = 0; idx < mNumPoints; ++idx) {
+        if (points[idx][dirs[dirIdx]] <= pivot) {
+          side1.push_back(idx);
+        } else {
+          side2.push_back(idx);
+        }
+      }
+      createNeighborhood(points, side1, side2, min, max, dirIdx, dirs, pivot);
+    } else {
+      // TODO: 2D divide and conquer algorithm
+      for (size_t idx1 = 0; idx1 < mNumPoints; ++idx1) {
+        for (size_t idx2 = idx1 + 1; idx2 < mNumPoints; ++idx2) {
+          if (checkDistance(points[idx1], points[idx2], 2 * mDiscRadii)) {
+            mPointNeighborhood[idx1].push_back(idx2);
+            mPointNeighborhood[idx2].push_back(idx1);
+          }
+        }
+      }
+    }
+  }
+
+  void createNeighborhood(const std::vector<rtTriple<NumericType>> &points,
+                          const std::vector<size_t> &side1,
+                          const std::vector<size_t> &side2,
+                          const rtTriple<NumericType> &min,
+                          const rtTriple<NumericType> &max, const int &dirIdx,
+                          const std::vector<int> &dirs,
+                          const NumericType &pivot) {
+    assert(0 <= dirIdx && dirIdx < dirs.size() && "Assumption");
+    if (side1.size() + side2.size() <= 1) {
+      return;
+    }
+
+    // Corner case
+    // The pivot element should actually be inbetween min and max.
+    if (pivot == min[dirs[dirIdx]] || pivot == max[dirs[dirIdx]]) {
+      // In this case the points are extremly close to each other (with respect
+      // to the floating point precision).
+      assert((min[dirs[dirIdx]] + max[dirs[dirIdx]]) / 2 == pivot &&
+             "Characterization of corner case");
+      auto sides = std::vector<size_t>(side1);
+      sides.insert(sides.end(), side2.begin(), side2.end());
+      // Add each of them to the neighborhoods
+      for (size_t idx1 = 0; idx1 < sides.size() - 1; ++idx1) {
+        for (size_t idx2 = idx1 + 1; idx2 < sides.size(); ++idx2) {
+          auto const &pi1 = sides[idx1];
+          auto const &pi2 = sides[idx2];
+          assert(pi1 != pi2 && "Assumption");
+          mPointNeighborhood[pi1].push_back(pi2);
+          mPointNeighborhood[pi2].push_back(pi1);
+        }
+      }
+      return;
+    }
+
+    // sets of candidates
+    std::vector<size_t> side1Cand;
+    std::vector<size_t> side2Cand;
+
+    auto newDirIdx = (dirIdx + 1) % dirs.size();
+    NumericType newPivot = (max[dirs[newDirIdx]] + min[dirs[newDirIdx]]) / 2;
+
+    // recursion sets
+    std::vector<size_t> s1r1set;
+    std::vector<size_t> s1r2set;
+    std::vector<size_t> s2r1set;
+    std::vector<size_t> s2r2set;
+
+    for (size_t idx = 0; idx < side1.size(); ++idx) {
+      const auto &point = points[side1[idx]];
+      assert(point[dirs[dirIdx]] <= pivot && "Correctness Assertion");
+      if (point[dirs[newDirIdx]] <= newPivot) {
+        s1r1set.push_back(side1[idx]);
+      } else {
+        s1r2set.push_back(side1[idx]);
+      }
+      if (point[dirs[dirIdx]] + 2 * mDiscRadii <= pivot) {
+        continue;
+      }
+      side1Cand.push_back(side1[idx]);
+    }
+    for (size_t idx = 0; idx < side2.size(); ++idx) {
+      const auto &point = points[side2[idx]];
+      assert(point[dirs[dirIdx]] > pivot && "Correctness Assertion");
+      if (point[dirs[newDirIdx]] <= newPivot) {
+        s2r1set.push_back(side2[idx]);
+      } else {
+        s2r2set.push_back(side2[idx]);
+      }
+      if (point[dirs[dirIdx]] - 2 * mDiscRadii >= pivot) {
+        continue;
+      }
+      side2Cand.push_back(side2[idx]);
+    }
+
+    // Iterate over pairs of candidates
+    if (side1Cand.size() > 0 && side2Cand.size() > 0) {
+      for (size_t ci1 = 0; ci1 < side1Cand.size(); ++ci1) {
+        for (size_t ci2 = 0; ci2 < side2Cand.size(); ++ci2) {
+          const auto &point1 = points[side1Cand[ci1]];
+          const auto &point2 = points[side2Cand[ci2]];
+
+          assert(std::abs(point1[dirs[dirIdx]] - point2[dirs[dirIdx]]) <=
+                     (4 * mDiscRadii) &&
+                 "Correctness Assertion");
+          if (checkDistance(point1, point2, 2 * mDiscRadii)) {
+            mPointNeighborhood[side1Cand[ci1]].push_back(side2Cand[ci2]);
+            mPointNeighborhood[side2Cand[ci2]].push_back(side1Cand[ci1]);
+          }
+        }
+      }
+    }
+
+    // Recurse
+    if (side1.size() > 1) {
+      auto newS1Max = max;
+      newS1Max[dirs[dirIdx]] = pivot; // old diridx and old pivot!
+      createNeighborhood(points, s1r1set, s1r2set, min, newS1Max, newDirIdx,
+                         dirs, newPivot);
+    }
+    if (side2.size() > 1) {
+      auto newS2Min = min;
+      newS2Min[dirs[dirIdx]] = pivot; // old diridx and old pivot!
+      createNeighborhood(points, s2r1set, s2r2set, newS2Min, max, newDirIdx,
+                         dirs, newPivot);
     }
   }
 
@@ -241,6 +379,7 @@ private:
   RTCGeometry mRTCGeometry = nullptr;
 
   size_t mNumPoints;
+  NumericType mDiscRadii;
   constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
   constexpr static NumericType nummin =
       std::numeric_limits<NumericType>::lowest();
@@ -248,6 +387,7 @@ private:
   rtTriple<NumericType> mMaxCoords{nummin, nummin, nummin};
   pointNeighborhoodType mPointNeighborhood;
   std::vector<int> mMaterialIds;
+  int counter = 0;
 };
 
 #endif // RT_GEOMETRY_HPP

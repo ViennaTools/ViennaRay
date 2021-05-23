@@ -6,7 +6,7 @@
 int main() {
   using NumericType = float;
   constexpr int D = 3;
-  NumericType extent = 1;
+  NumericType extent = 10;
   NumericType gridDelta = 0.5;
   NumericType eps = 1e-6;
   std::vector<std::array<NumericType, D>> points;
@@ -14,37 +14,36 @@ int main() {
   rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   // setup simple plane grid with normal in z-direction with discs only
-  // overlapping at adjecent grid points x - x - x - x - x x - x - x - x - x x -
-  // x - x - x - x x - x - x - x - x x - x - x - x - x
+  // overlapping at adjecent grid points
 
-  // assert corner points have 2 neighbors
-  // assert boundary points have 3 neighbors
-  // assert inner points have 4 neighbors
+  // assert corner points have 3 neighbors
+  // assert boundary points have 5 neighbors
+  // assert inner points have 8 neighbors
 
   auto device = rtcNewDevice("");
   rtGeometry<NumericType, D> geometry;
-  geometry.initGeometry(device, points, normals, gridDelta);
+  geometry.initGeometry(device, points, normals, gridDelta - eps);
+  auto bdBox = geometry.getBoundingBox();
 
   for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto point = geometry.getPoint(idx);
     auto neighbors = geometry.getNeighborIndicies(idx);
-    NumericType sum = 0;
-    std::for_each(point.begin(), point.end(),
-                  [&sum](NumericType val) { sum += std::fabs(val); });
-    if (sum >= 2 - eps) {
-      // corner point
-      RAYTEST_ASSERT(neighbors.size() == 3)
-    } else if (std::any_of(point.begin(), point.end(), [eps](NumericType val) {
-                 return std::fabs(val) > 1 - eps;
-               })) {
-      // boundary point
-      RAYTEST_ASSERT(neighbors.size() == 5)
-    } else {
-      // inner point
-      RAYTEST_ASSERT(neighbors.size() == 8)
-    }
-  }
 
+    int numNeighbors = 8;
+    if (point[0] == bdBox[1][0] && point[1] == bdBox[1][1] ||
+        point[0] == bdBox[1][0] && point[1] == bdBox[0][1] ||
+        point[0] == bdBox[0][0] && point[1] == bdBox[1][1] ||
+        point[0] == bdBox[0][0] && point[1] == bdBox[0][1]) {
+      // corner point
+      numNeighbors = 3;
+    } else if (point[0] == bdBox[0][0] || point[1] == bdBox[0][1] ||
+               point[0] == bdBox[1][0] || point[1] == bdBox[1][1]) {
+      // boundary point
+      numNeighbors = 5;
+    }
+
+    RAYTEST_ASSERT(numNeighbors == neighbors.size())
+  }
   rtcReleaseDevice(device);
   return 0;
 }

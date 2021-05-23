@@ -3,7 +3,7 @@
 #include <rtTestAsserts.hpp>
 
 int main() {
-  using NumericType = double;
+  using NumericType = float;
   constexpr int D = 2;
   NumericType extent = 1;
   NumericType gridDelta = 0.5;
