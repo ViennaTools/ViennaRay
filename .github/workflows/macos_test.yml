@@ -36,8 +36,8 @@ jobs:
 
     - name: Configure CMake
       env: 
-        CC: $(brew --prefix llvm)/bin/clang
-        CXX: $(brew --prefix llvm)/bin/clang++
+        CC: '$(brew --prefix llvm)/bin/clang'
+        CXX: '$(brew --prefix llvm)/bin/clang++'
         LDFLAGS: "-L$(brew --prefix llvm)/lib"
         CPPFLAGS: "-I$(brew --prefix llvm)/include"
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -Dembree_DIR=${{github.workspace}}/embree -DVIENNARAY_BUILD_TESTS=ON
