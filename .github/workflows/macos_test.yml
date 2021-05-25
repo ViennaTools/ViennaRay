@@ -32,7 +32,7 @@ jobs:
 
       # Download and inflate embree, which is need for testing
     - name: Download embree 
-      run: curl -L -O https://github.com/embree/embree/releases/download/v3.13.0/embree-3.13.0.x86_64.macosx.zip && tar -xf embree-3.13.0.x86_64.macosx.zip && mv embree-3.11.0.x86_64.macosx embree
+      run: curl -L -O https://github.com/embree/embree/releases/download/v3.13.0/embree-3.13.0.x86_64.macosx.zip && tar -xf embree-3.13.0.x86_64.macosx.zip && mv embree-3.13.0.x86_64.macosx embree
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -Dembree_DIR=${{github.workspace}}/embree -DVIENNARAY_BUILD_TESTS=ON
