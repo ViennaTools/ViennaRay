@@ -1,4 +1,5 @@
 # ViennaRay
+![Linux](https://github.com/ViennaTools/ViennaRay/blob/main/.github/workflows/cmake.yml)
 
 ViennaRay is a flux calculation library for topography simulations, based in Intel®'s ray tracing kernel [Embree](https://www.embree.org/). It is designed to provide efficient and high-performance ray tracing, while maintaining a simple and easy to use interface. ViennaRay was developed and optimized for use in conjunction with [ViennaLS](https://github.com/ViennaTools/ViennaLS), which provides the necessary geometry representation. It is however possible to use this as a standalone library, with self-designed geometries.
 
@@ -10,7 +11,7 @@ IMPORTANT NOTE: ViennaRay is under heavy development and improved daily. If you 
 
 ## Releases
 
-None - yet.
+Releases are tagged on the main branch and available in the [releases section](https://github.com/ViennaTools/ViennaRay/releases).
 
 ## Building
 
