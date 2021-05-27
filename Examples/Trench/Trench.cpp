@@ -49,7 +49,7 @@ int main() {
   // Ray settings
   rayTracer.setSourceDirection(rtTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(1000);
-  rayTracer.setCosinePower(5.);
+  rayTracer.setSourceDistributionPower(5.);
 
   // Run the ray tracer
   rayTracer.apply();

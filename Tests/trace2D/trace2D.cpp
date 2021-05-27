@@ -29,7 +29,7 @@ int main() {
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setSourceDirection(rtTraceDirection::POS_Y);
   rayTracer.setBoundaryConditions(boundaryConds);
-  rayTracer.setCosinePower(2.);
+  rayTracer.setSourceDistributionPower(2.);
   rayTracer.setMaterialIds(materialIds);
   rayTracer.apply();
 }

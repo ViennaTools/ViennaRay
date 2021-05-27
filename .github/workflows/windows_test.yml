@@ -24,7 +24,7 @@ jobs:
       run: echo "${{github.workspace}}\embree\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -Dembree_DIR=${{github.workspace}}/embree
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -Dembree_DIR=${{github.workspace}}/embree -DVIENNARAY_BUILD_TESTS=ON
       
     - name: Build tests
       # Build program with the given configuration

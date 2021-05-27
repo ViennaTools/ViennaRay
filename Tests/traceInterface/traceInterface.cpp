@@ -25,7 +25,7 @@ int main() {
   rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
-  rayTracer.setCosinePower(2);
+  rayTracer.setSourceDistributionPower(2);
   rayTracer.setSourceDirection(rtTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setUseRandomSeeds(true);
