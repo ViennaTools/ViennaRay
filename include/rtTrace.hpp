@@ -35,6 +35,7 @@ public:
     rtcReleaseDevice(mDevice);
   }
 
+  /// Run the ray tracer
   void apply() {
     checkSettings();
     initMemoryFlags();
@@ -57,9 +58,9 @@ public:
     extractMcEstimates();
   }
 
-  // Set the ray tracing geometry
-  // It is possible to set a 2D geometry with 3D points.
-  // In this case the last dimension is ignored.
+  /// Set the ray tracing geometry
+  /// It is possible to set a 2D geometry with 3D points.
+  /// In this case the last dimension is ignored.
   template <std::size_t Dim>
   void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
                    std::vector<std::array<NumericType, Dim>> &normals,
@@ -72,7 +73,8 @@ public:
     mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
   }
 
-  // Specify the disc radius manually.
+  /// Set the ray tracing geometry
+  /// Specify the disc radius manually.
   template <std::size_t Dim>
   void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
                    std::vector<std::array<NumericType, Dim>> &normals,
@@ -85,34 +87,48 @@ public:
     mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
   }
 
-  // Set material ID's for each geometry point.
+  /// Set material ID's for each geometry point.
+  /// If not set, all material ID's are default 0.
   template <typename T> void setMaterialIds(std::vector<T> &pMaterialIds) {
     mGeometry.setMaterialIds(pMaterialIds);
   }
 
+  /// Set the boundary conditions.
+  /// There has to be a boundary condition defined for each space dimension,
+  /// however the boundary condition in direction of the tracing direction is
+  /// ignored.
   void setBoundaryConditions(rtTraceBoundary pBoundaryConds[D]) {
     for (size_t i = 0; i < D; ++i) {
       mBoundaryConds[i] = pBoundaryConds[i];
     }
   }
 
+  /// Set the number of rays per geometry point.
+  /// The total number of rays, that are traced, is the set number set here
+  /// times the number of points in the geometry.
   void setNumberOfRaysPerPoint(const size_t pNum) {
     mNumberOfRaysPerPoint = pNum;
   }
 
-  void setCosinePower(const NumericType pPower) { mCosinePower = pPower; }
+  /// Set the power of the cosine source distribution
+  void setSourceDistributionPower(const NumericType pPower) {
+    mCosinePower = pPower;
+  }
 
+  /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const rtTraceDirection pDirection) {
     mSourceDirection = pDirection;
   }
 
+  /// Set whether random seeds for the internal random number generators
+  /// should be used.
   void setUseRandomSeeds(const bool useRand) { mUseRandomSeeds = useRand; }
 
-  // Returns the total number of hits for each geometry point.
+  /// Returns the total number of hits for each geometry point.
   std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
 
-  // Returns the hit counts normalized, with the individual disc radii taken
-  // into account.
+  /// Returns the hit counts, weighted with the particle sticking probability
+  /// and normalized with the individual disc radii taken into account.
   std::vector<NumericType> getMcEstimates() const { return mMcEstimates; }
 
   std::vector<NumericType> getRelativeError() {
