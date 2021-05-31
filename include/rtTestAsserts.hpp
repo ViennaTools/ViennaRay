@@ -2,6 +2,10 @@
 #include <cmath>
 #include <rtUtil.hpp>
 
+#ifdef _MSC_VER
+  #define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
+
 #define RAYTEST_ASSERT(condition)                                              \
   {                                                                            \
     if (!(condition)) {                                                        \
