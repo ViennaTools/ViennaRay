@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <string>
 #include <rtUtil.hpp>
 
 #ifdef _MSC_VER
