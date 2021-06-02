@@ -55,7 +55,7 @@ int main() {
   rayTracer.apply();
 
   // Extract the normalized hit counts for each geometry point
-  auto mcEstimates = rayTracer.getMcEstimates();
+  auto mcEstimates = rayTracer.getNormalizedFlux();
   rtInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, mcEstimates);
 
   return 0;

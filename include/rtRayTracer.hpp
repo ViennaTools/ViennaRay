@@ -10,8 +10,9 @@
 #include <rtRaySource.hpp>
 #include <rtReflection.hpp>
 #include <rtUtil.hpp>
+#include <rtTracingData.hpp>
 
-#define PRINT_PROGRESS true
+#define PRINT_PROGRESS false
 #define PRINT_RESULT false
 
 template <typename NumericType, typename ParticleType, typename ReflectionType,
@@ -30,7 +31,7 @@ public:
            "Error: The minimum version of Embree is 3.6.1");
   }
 
-  rtHitCounter<NumericType> apply() {
+  rtHitCounter<NumericType> apply(rtTracingData &localData, const rtTracingData &globalData) {
     auto rtcScene = rtcNewScene(mDevice);
 
     // RTC scene flags
@@ -52,10 +53,18 @@ public:
     rtHitCounter<NumericType> hitCounter(mGeometry.getNumPoints());
     size_t geohitc = 0;
     size_t nongeohitc = 0;
+    const bool calcFlux = mCalcFlux;
 
     // The random number generator itself is stateless (has no members which
     // are modified). Hence, it may be shared by threads.
     rtRandomNumberGenerator RNG;
+
+    // thread local data storage
+    std::vector<rtTracingData> threadLocalData(omp_get_num_threads());
+    for(auto &data : threadLocalData)
+    {
+      data = localData;
+    }
 
 #pragma omp declare                                                    \
     reduction(hitCounterCombine                                        \
@@ -76,18 +85,19 @@ public:
       alignas(128) auto rayHit =
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-      unsigned int seeds[7];
+      constexpr int numRngStates = 8;
+      unsigned int seeds[numRngStates];
       if (mUseRandomSeeds) {
         std::mt19937_64 rd(
             static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 *
                                       std::chrono::high_resolution_clock::now()
                                           .time_since_epoch()
                                           .count()));
-        for (size_t i = 0; i < 7; ++i) {
+        for (size_t i = 0; i < numRngStates; ++i) {
           seeds[i] = rd();
         }
       } else {
-        for (size_t i = 0; i < 7; ++i) {
+        for (size_t i = 0; i < numRngStates; ++i) {
           seeds[i] =
               static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 + i);
         }
@@ -99,24 +109,25 @@ public:
       auto RngState5 = rtRandomNumberGenerator::RNGState{seeds[4]};
       auto RngState6 = rtRandomNumberGenerator::RNGState{seeds[5]};
       auto RngState7 = rtRandomNumberGenerator::RNGState{seeds[6]};
+      auto RngState8 = rtRandomNumberGenerator::RNGState{seeds[7]};
 
       // thread-local particle and reflection object
       auto particle = ParticleType{};
       auto surfaceReflect = ReflectionType{};
 
       // probabilistic weight
-      NumericType rayWeight = 1;
+      const auto initialRayWeight = 1;
 
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
 
       [[maybe_unused]] size_t progressCount = 0;
 
-#pragma omp for
+#pragma omp for schedule(dynamic)
       for (size_t idx = 0; idx < mNumRays; ++idx) {
-        particle.initNew();
-        rayWeight = 1;
-        const auto initialRayWeight = rayWeight;
+        particle.initNew(RNG, RngState8);
+        NumericType rayWeight = initialRayWeight;
+
         mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
 
@@ -194,8 +205,10 @@ public:
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           geohitc += 1;
           const auto materialID = mGeometry.getMaterialId(rayHit.hit.primID);
-          const auto sticking = particle.getStickingProbability(
+          const auto sticking = particle.getStickingProbability(rayWeight, 
               rayHit.ray, rayHit.hit, materialID, RNG, RngState5);
+
+
           const auto valueToDrop = rayWeight * sticking;
           hitCounter.use(rayHit.hit.primID, valueToDrop);
 
@@ -246,6 +259,9 @@ public:
 
       auto discAreas = computeDiscAreas();
       hitCounter.setDiscAreas(discAreas);
+
+      // merge local data
+      
     }
 
     if constexpr (PRINT_RESULT) {
@@ -270,8 +286,10 @@ public:
 
   void useRandomSeeds(bool use) { mUseRandomSeeds = use; }
 
+  void calcFlux(bool calc) { mCalcFlux = calc; }
+
 private:
-  bool rejectionControl(NumericType &rayWeight, NumericType const &initWeight,
+  bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
                         rtRandomNumberGenerator &RNG,
                         rtRandomNumberGenerator::RNGState &RngState) {
     // Choosing a good value for the weight lower threshold is important
@@ -376,6 +394,7 @@ private:
   rtRaySource<NumericType, D> &mSource;
   const size_t mNumRays;
   bool mUseRandomSeeds = false;
+  bool mCalcFlux = true;
 };
 
 #endif // RT_RAYTRACER_HPP
