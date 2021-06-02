@@ -7,8 +7,11 @@ template <typename NumericType>
 class rtTracingData
 {
 private:
-    std::vector<NumericType> scalarData;
-    std::vector<std::vector<NumericType>> vectorData;
+    using scalarDataType = std::vector<NumericType>;
+    using vectorDataType = std::vector<std::vector<NumericType>>;
+
+    scalarDataType scalarData;
+    vectorDataType vectorData;
 
 public:
     rtTracingData() {}
@@ -36,7 +39,7 @@ public:
         scalarData.resize(size);
     }
 
-    void setScalarData(std::vector<NumericType> &scalars)
+    void setScalarData(scalarDataType &scalars)
     {
         scalarData = scalars;
     }
@@ -46,14 +49,43 @@ public:
         vectorData[num] = vector;
     }
 
-    std::vector<NumericType> &getVectorData(int i)
+    void setVectorData(int num, size_t size, NumericType value)
+    {
+        vectorData[num].resize(size, value);
+    }
+
+    void setVectorData(int num, NumericType value)
+    {
+        vectorData[num].fill(vectorData[num].begin(), vectorData[num].end(), value);
+    }
+
+    void resizeAllVectorData(size_t size, NumericType val = 0)
+    {
+        for (auto &vector : vectorData)
+        {
+            vector.clear();
+            vector.resize(size, val);
+        }
+    }
+
+    scalarDataType &getVectorData(int i)
     {
         return vectorData[i];
     }
 
-    const std::vector<NumericType> &getVectorData(int i) const
+    const scalarDataType &getVectorData(int i) const
     {
         return vectorData[i];
+    }
+
+    vectorDataType &getVectorData()
+    {
+        return vectorData;
+    }
+
+    const vectorDataType &getVectorData() const
+    {
+        return vectorData;
     }
 
     NumericType &getScalarData(int i)
@@ -64,6 +96,16 @@ public:
     const NumericType &getScalarData(int i) const
     {
         return scalarData[i];
+    }
+
+    std::vector<NumericType> &getScalarData()
+    {
+        return scalarData;
+    }
+
+    const std::vector<NumericType> &getScalarData() const
+    {
+        return scalarData;
     }
 };
 

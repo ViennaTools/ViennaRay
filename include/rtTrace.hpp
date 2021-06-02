@@ -59,7 +59,7 @@ public:
     auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
         mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint);
     tracer.useRandomSeeds(mUseRandomSeeds);
-    auto hitCounter = tracer.apply();
+    auto hitCounter = tracer.apply(localData, globalData);
     boundary.releaseGeometry();
     extractFlux(hitCounter);
   }
@@ -155,12 +155,12 @@ public:
   //   return mHitCounter.getRelativeError();
   // }
 
-  rtTracingData<NumericType> getLocalData()
+  rtTracingData<NumericType> &getLocalData()
   {
     return localData;
   }
 
-  rtTracingData<NumericType> getLocalData()
+  rtTracingData<NumericType> &getGloballData()
   {
     return globalData;
   }

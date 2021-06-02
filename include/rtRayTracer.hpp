@@ -13,11 +13,12 @@
 #include <rtTracingData.hpp>
 
 #define PRINT_PROGRESS false
-#define PRINT_RESULT false
+#define PRINT_RESULT true
 
 template <typename NumericType, typename ParticleType, typename ReflectionType,
           int D>
-class rtRayTracer {
+class rtRayTracer
+{
 
 public:
   rtRayTracer(RTCDevice &pDevice, rtGeometry<NumericType, D> &pRTCGeometry,
@@ -25,13 +26,15 @@ public:
               rtRaySource<NumericType, D> &pSource,
               const size_t pNumOfRayPerPoint)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
-        mSource(pSource), mNumRays(pSource.getNumPoints() * pNumOfRayPerPoint) {
+        mSource(pSource), mNumRays(pSource.getNumPoints() * pNumOfRayPerPoint)
+  {
     assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
   }
 
-  rtHitCounter<NumericType> apply(rtTracingData &localData, const rtTracingData &globalData) {
+  rtHitCounter<NumericType> apply(rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData)
+  {
     auto rtcScene = rtcNewScene(mDevice);
 
     // RTC scene flags
@@ -60,8 +63,8 @@ public:
     rtRandomNumberGenerator RNG;
 
     // thread local data storage
-    std::vector<rtTracingData> threadLocalData(omp_get_num_threads());
-    for(auto &data : threadLocalData)
+    std::vector<rtTracingData<NumericType>> threadLocalData(omp_get_num_threads());
+    for (auto &data : threadLocalData)
     {
       data = localData;
     }
@@ -85,19 +88,25 @@ public:
       alignas(128) auto rayHit =
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+      const int threadID = omp_get_thread_num();
       constexpr int numRngStates = 8;
       unsigned int seeds[numRngStates];
-      if (mUseRandomSeeds) {
+      if (mUseRandomSeeds)
+      {
         std::mt19937_64 rd(
             static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 *
                                       std::chrono::high_resolution_clock::now()
                                           .time_since_epoch()
                                           .count()));
-        for (size_t i = 0; i < numRngStates; ++i) {
+        for (size_t i = 0; i < numRngStates; ++i)
+        {
           seeds[i] = rd();
         }
-      } else {
-        for (size_t i = 0; i < numRngStates; ++i) {
+      }
+      else
+      {
+        for (size_t i = 0; i < numRngStates; ++i)
+        {
           seeds[i] =
               static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 + i);
         }
@@ -115,6 +124,7 @@ public:
       auto particle = ParticleType{};
       auto surfaceReflect = ReflectionType{};
 
+      auto &myLocalData = threadLocalData[threadID];
       // probabilistic weight
       const auto initialRayWeight = 1;
 
@@ -124,20 +134,23 @@ public:
       [[maybe_unused]] size_t progressCount = 0;
 
 #pragma omp for schedule(dynamic)
-      for (size_t idx = 0; idx < mNumRays; ++idx) {
+      for (size_t idx = 0; idx < mNumRays; ++idx)
+      {
         particle.initNew(RNG, RngState8);
         NumericType rayWeight = initialRayWeight;
 
         mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
 
-        if constexpr (PRINT_PROGRESS) {
+        if constexpr (PRINT_PROGRESS)
+        {
           printProgress(progressCount);
         }
 
         bool reflect = false;
         bool hitFromBack = false;
-        do {
+        do
+        {
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
@@ -147,14 +160,16 @@ public:
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
 
           /* -------- No hit -------- */
-          if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
+          if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID)
+          {
             nongeohitc += 1;
             reflect = false;
             break;
           }
 
           /* -------- Boundary hit -------- */
-          if (rayHit.hit.geomID == boundaryID) {
+          if (rayHit.hit.geomID == boundaryID)
+          {
             auto newRay = mBoundary.processHit(rayHit, reflect);
 
             // Update ray
@@ -183,10 +198,12 @@ public:
           const auto &ray = rayHit.ray;
           if (rtInternal::DotProduct(
                   rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z},
-                  mGeometry.getPrimNormal(rayHit.hit.primID)) > 0) {
+                  mGeometry.getPrimNormal(rayHit.hit.primID)) > 0)
+          {
             // If the dot product of the ray direction and the surface normal is
             // greater than zero, then we hit the back face of the disc.
-            if (hitFromBack) {
+            if (hitFromBack)
+            {
               // if hitFromback == true, then the ray hits the back of a disc
               // the second time. In this case we ignore the ray.
               break;
@@ -205,31 +222,36 @@ public:
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           geohitc += 1;
           const auto materialID = mGeometry.getMaterialId(rayHit.hit.primID);
-          const auto sticking = particle.getStickingProbability(rayWeight, 
-              rayHit.ray, rayHit.hit, materialID, RNG, RngState5);
-
+          const auto sticking = particle.processSurfaceHit(rayWeight, rayHit.ray, rayHit.hit, materialID,
+                                                           myLocalData, globalData, RNG, RngState5);
 
           const auto valueToDrop = rayWeight * sticking;
           hitCounter.use(rayHit.hit.primID, valueToDrop);
 
           // Check for additional intersections
           for (const auto &id :
-               mGeometry.getNeighborIndicies(rayHit.hit.primID)) {
+               mGeometry.getNeighborIndicies(rayHit.hit.primID))
+          {
             const auto &disc = mGeometry.getPrimRef(id);
             const auto &normal = mGeometry.getNormalRef(id);
-            if (rtLocalIntersector::intersect(rayHit.ray, disc, normal)) {
+            if (rtLocalIntersector::intersect(rayHit.ray, disc, normal))
+            {
               hitCounter.use(id, valueToDrop);
+              particle.processSurfaceHit(rayWeight, rayHit.ray, rayHit.hit, materialID,
+                                         myLocalData, globalData, RNG, RngState5);
             }
           }
 
           // Update ray weight
           rayWeight -= valueToDrop;
-          if (rayWeight <= 0) {
+          if (rayWeight <= 0)
+          {
             break;
           }
           reflect =
               rejectionControl(rayWeight, initialRayWeight, RNG, RngState6);
-          if (!reflect) {
+          if (!reflect)
+          {
             break;
           }
           auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit, materialID,
@@ -260,11 +282,34 @@ public:
       auto discAreas = computeDiscAreas();
       hitCounter.setDiscAreas(discAreas);
 
-      // merge local data
-      
+// merge local data
+#pragma omp single
+      {
+        // merge vector data
+        for (size_t i = 0; i < localData.getVectorData().size(); ++i)
+        {
+          for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
+          {
+            for (int k = 0; k < omp_get_num_threads(); ++k)
+            {
+              localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
+            }
+          }
+        }
+
+        // merge scalar data
+        for (size_t i = 0; i < localData.getScalarData().size(); ++i)
+        {
+          for (int j = 0; j < omp_get_num_threads(); ++j)
+          {
+            localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
+          }
+        }
+      }
     }
 
-    if constexpr (PRINT_RESULT) {
+    if constexpr (PRINT_RESULT)
+    {
       std::cout << "==== Ray tracing result ====\n"
                 << "Elapsed time: "
                 << (rtInternal::timeStampNow<std::chrono::milliseconds>() -
@@ -291,7 +336,8 @@ public:
 private:
   bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
                         rtRandomNumberGenerator &RNG,
-                        rtRandomNumberGenerator::RNGState &RngState) {
+                        rtRandomNumberGenerator::RNGState &RngState)
+  {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;
@@ -299,7 +345,8 @@ private:
     // If the weight of the ray is above a certain threshold, we always reflect.
     // If the weight of the ray is below the threshold, we randomly decide to
     // either kill the ray or increase its weight (in an unbiased way).
-    if (rayWeight >= lowerThreshold) {
+    if (rayWeight >= lowerThreshold)
+    {
       return true;
     }
     // We want to set the weight of (the reflection of) the ray to the value of
@@ -307,7 +354,8 @@ private:
     // probability of (1 - rayWeight / renewWeight).
     auto rndm = RNG.get(RngState);
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rndm < (killProbability * RNG.max())) {
+    if (rndm < (killProbability * RNG.max()))
+    {
       // kill the ray
       return false;
     }
@@ -317,7 +365,8 @@ private:
     return true;
   }
 
-  std::vector<NumericType> computeDiscAreas() {
+  std::vector<NumericType> computeDiscAreas()
+  {
     constexpr NumericType eps = 1e-4;
     const auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
@@ -325,24 +374,29 @@ private:
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
 
 #pragma omp for
-    for (size_t idx = 0; idx < numOfPrimitives; ++idx) {
+    for (size_t idx = 0; idx < numOfPrimitives; ++idx)
+    {
       auto const &disc = mGeometry.getPrimRef(idx);
       areas[idx] = disc[3] * disc[3] * (NumericType)rtInternal::PI;
       if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
-          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
+          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps)
+      {
         areas[idx] /= 2;
       }
 
       if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) < eps ||
-          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < eps) {
+          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < eps)
+      {
         areas[idx] /= 2;
       }
     }
     return areas;
   }
 
-  void printProgress(size_t &progressCount) {
-    if (omp_get_thread_num() != 0) {
+  void printProgress(size_t &progressCount)
+  {
+    if (omp_get_thread_num() != 0)
+    {
       return;
     }
     constexpr auto barLength = 30;
@@ -353,7 +407,8 @@ private:
     constexpr auto percentageStringFormatLength = 3; // 3 digits
     if (progressCount % (int)std::ceil((rtcNumericType)mNumRays /
                                        omp_get_num_threads() / barLength) ==
-        0) {
+        0)
+    {
       auto fillLength =
           (int)std::ceil(progressCount / ((rtcNumericType)mNumRays /
                                           omp_get_num_threads() / barLength));
@@ -368,7 +423,8 @@ private:
                              emptySymbol) +
                  std::string(1, barEndSymbol) + " " + percentageString;
       std::cerr << "\r" << bar;
-      if (fillLength >= barLength) {
+      if (fillLength >= barLength)
+      {
         std::cerr << std::endl;
       }
     }
