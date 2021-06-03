@@ -44,6 +44,11 @@ public:
         scalarData = scalars;
     }
 
+    void setScalarData(int num, NumericType value)
+    {
+        scalarData[num] = value;
+    }
+
     void setVectorData(int num, std::vector<NumericType> &vector)
     {
         vectorData[num] = vector;

@@ -13,7 +13,7 @@
 #include <rtTracingData.hpp>
 
 #define PRINT_PROGRESS false
-#define PRINT_RESULT true
+#define PRINT_RESULT false
 
 template <typename NumericType, typename ParticleType, typename ReflectionType,
           int D>
@@ -63,7 +63,7 @@ public:
     rtRandomNumberGenerator RNG;
 
     // thread local data storage
-    std::vector<rtTracingData<NumericType>> threadLocalData(omp_get_num_threads());
+    std::vector<rtTracingData<NumericType>> threadLocalData(omp_get_max_threads());
     for (auto &data : threadLocalData)
     {
       data = localData;
@@ -81,7 +81,8 @@ public:
     reduction(+                      \
               : geohitc, nongeohitc) \
         reduction(hitCounterCombine  \
-                  : hitCounter)
+                  : hitCounter)      \
+            shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -196,9 +197,9 @@ public:
 
           /* -------- Hit from back -------- */
           const auto &ray = rayHit.ray;
-          if (rtInternal::DotProduct(
-                  rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z},
-                  mGeometry.getPrimNormal(rayHit.hit.primID)) > 0)
+          const auto rayDir = rtTriple<rtcNumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
+          if (rtInternal::DotProduct(rayDir,
+                                     mGeometry.getPrimNormal(rayHit.hit.primID)) > 0)
           {
             // If the dot product of the ray direction and the surface normal is
             // greater than zero, then we hit the back face of the disc.
@@ -221,23 +222,26 @@ public:
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           geohitc += 1;
-          const auto materialID = mGeometry.getMaterialId(rayHit.hit.primID);
-          const auto sticking = particle.processSurfaceHit(rayWeight, rayHit.ray, rayHit.hit, materialID,
+          const auto primID = rayHit.hit.primID;
+          const auto &geomNormal = mGeometry.getNormalRef(primID);
+          const auto materialID = mGeometry.getMaterialId(primID);
+          const auto sticking = particle.processSurfaceHit(rayWeight, rayDir, geomNormal, primID, materialID,
                                                            myLocalData, globalData, RNG, RngState5);
 
           const auto valueToDrop = rayWeight * sticking;
-          hitCounter.use(rayHit.hit.primID, valueToDrop);
-
+          hitCounter.use(primID, valueToDrop);
           // Check for additional intersections
           for (const auto &id :
-               mGeometry.getNeighborIndicies(rayHit.hit.primID))
+               mGeometry.getNeighborIndicies(primID))
           {
             const auto &disc = mGeometry.getPrimRef(id);
             const auto &normal = mGeometry.getNormalRef(id);
+            const auto matID = mGeometry.getMaterialId(id);
+
             if (rtLocalIntersector::intersect(rayHit.ray, disc, normal))
             {
               hitCounter.use(id, valueToDrop);
-              particle.processSurfaceHit(rayWeight, rayHit.ray, rayHit.hit, materialID,
+              particle.processSurfaceHit(rayWeight, rayDir, normal, id, matID,
                                          myLocalData, globalData, RNG, RngState5);
             }
           }
@@ -281,28 +285,34 @@ public:
 
       auto discAreas = computeDiscAreas();
       hitCounter.setDiscAreas(discAreas);
-
+      
 // merge local data
 #pragma omp single
       {
-        // merge vector data
-        for (size_t i = 0; i < localData.getVectorData().size(); ++i)
+        if (!localData.getVectorData().empty())
         {
-          for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
+          // merge vector data
+          for (size_t i = 0; i < localData.getVectorData().size(); ++i)
           {
-            for (int k = 0; k < omp_get_num_threads(); ++k)
+            for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
             {
-              localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
+              for (int k = 0; k < omp_get_num_threads(); ++k)
+              {
+                localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
+              }
             }
           }
         }
 
-        // merge scalar data
-        for (size_t i = 0; i < localData.getScalarData().size(); ++i)
+        if (!localData.getScalarData().empty())
         {
-          for (int j = 0; j < omp_get_num_threads(); ++j)
+          // merge scalar data
+          for (size_t i = 0; i < localData.getScalarData().size(); ++i)
           {
-            localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
+            for (int j = 0; j < omp_get_num_threads(); ++j)
+            {
+              localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
+            }
           }
         }
       }
@@ -329,7 +339,11 @@ public:
     return hitCounter;
   }
 
-  void useRandomSeeds(bool use) { mUseRandomSeeds = use; }
+  void
+  useRandomSeeds(bool use)
+  {
+    mUseRandomSeeds = use;
+  }
 
   void calcFlux(bool calc) { mCalcFlux = calc; }
 
