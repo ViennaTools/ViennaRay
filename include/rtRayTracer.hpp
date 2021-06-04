@@ -197,7 +197,7 @@ public:
 
           /* -------- Hit from back -------- */
           const auto &ray = rayHit.ray;
-          const auto rayDir = rtTriple<rtcNumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
+          const auto rayDir = rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           if (rtInternal::DotProduct(rayDir,
                                      mGeometry.getPrimNormal(rayHit.hit.primID)) > 0)
           {
@@ -223,7 +223,7 @@ public:
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           geohitc += 1;
           const auto primID = rayHit.hit.primID;
-          const auto &geomNormal = mGeometry.getNormalRef(primID);
+          const auto geomNormal = mGeometry.getPrimNormal(primID);
           const auto materialID = mGeometry.getMaterialId(primID);
           const auto sticking = particle.processSurfaceHit(rayWeight, rayDir, geomNormal, primID, materialID,
                                                            myLocalData, globalData, RNG, RngState5);
@@ -235,12 +235,13 @@ public:
                mGeometry.getNeighborIndicies(primID))
           {
             const auto &disc = mGeometry.getPrimRef(id);
-            const auto &normal = mGeometry.getNormalRef(id);
+            const auto &normalRef = mGeometry.getNormalRef(id);
             const auto matID = mGeometry.getMaterialId(id);
 
-            if (rtLocalIntersector::intersect(rayHit.ray, disc, normal))
+            if (rtLocalIntersector::intersect(rayHit.ray, disc, normalRef))
             {
               hitCounter.use(id, valueToDrop);
+              const auto normal = mGeometry.getPrimNormal(id);
               particle.processSurfaceHit(rayWeight, rayDir, normal, id, matID,
                                          myLocalData, globalData, RNG, RngState5);
             }

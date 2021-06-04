@@ -35,11 +35,11 @@ public:
            "RTC Error: rtcNewGeometry");
     mNumPoints = points.size();
 
-    if (!std::is_same<NumericType, float>::value) {
-      rtMessage::getInstance()
-          .addWarning("Internal type conversion to type float.")
-          .print();
-    }
+    // if (!std::is_same<NumericType, float>::value) {
+    //   rtMessage::getInstance()
+    //       .addWarning("Internal type conversion to type float.")
+    //       .print();
+    // }
 
     // The buffer data is managed internally (embree) and automatically freed
     // when the geometry is destroyed.

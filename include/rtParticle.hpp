@@ -12,7 +12,7 @@ public:
   virtual void initNew(rtRandomNumberGenerator &RNG,
                        rtRandomNumberGenerator::RNGState &RngState) = 0;
   virtual NumericType
-  processSurfaceHit(NumericType rayWeight, const rtTriple<rtcNumericType> &rayDir, const rtTriple<rtcNumericType> &geomNormal,
+  processSurfaceHit(NumericType rayWeight, const rtTriple<NumericType> &rayDir, const rtTriple<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
                     rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData,
                     rtRandomNumberGenerator &RNG,
@@ -23,7 +23,7 @@ template <typename NumericType>
 class rtParticle1 : public rtParticle<NumericType>
 {
 public:
-  NumericType processSurfaceHit(NumericType rayWeight, const rtTriple<rtcNumericType> &rayDir, const rtTriple<rtcNumericType> &geomNormal,
+  NumericType processSurfaceHit(NumericType rayWeight, const rtTriple<NumericType> &rayDir, const rtTriple<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
                                 rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData,
                                 rtRandomNumberGenerator &RNG,
@@ -41,7 +41,7 @@ template <typename NumericType>
 class rtParticle2 : public rtParticle<NumericType>
 {
 public:
-  NumericType processSurfaceHit(NumericType rayWeight, const rtTriple<rtcNumericType> &rayDir, const rtTriple<rtcNumericType> &geomNormal,
+  NumericType processSurfaceHit(NumericType rayWeight, const rtTriple<NumericType> &rayDir, const rtTriple<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
                                 rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData,
                                 rtRandomNumberGenerator &RNG,
