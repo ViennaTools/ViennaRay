@@ -59,9 +59,11 @@ public:
     auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
         mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint);
     tracer.useRandomSeeds(mUseRandomSeeds);
+    tracer.calcFlux(mCalcFlux);
     auto hitCounter = tracer.apply(localData, globalData);
     boundary.releaseGeometry();
-    extractFlux(hitCounter);
+    if (mCalcFlux)
+      extractFlux(hitCounter);
   }
 
   /// Set the ray tracing geometry
@@ -138,6 +140,8 @@ public:
   /// Set whether random seeds for the internal random number generators
   /// should be used.
   void setUseRandomSeeds(const bool useRand) { mUseRandomSeeds = useRand; }
+
+  void setCalculateFlux(const bool calcFlux) { mCalcFlux = calcFlux; }
 
   /// Returns the total flux on each disc normalized by the disc area and
   /// averaged over the neighborhood.

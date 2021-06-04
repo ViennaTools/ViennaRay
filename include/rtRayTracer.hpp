@@ -229,7 +229,8 @@ public:
                                                            myLocalData, globalData, RNG, RngState5);
 
           const auto valueToDrop = rayWeight * sticking;
-          hitCounter.use(primID, valueToDrop);
+          if (calcFlux)
+            hitCounter.use(primID, valueToDrop);
           // Check for additional intersections
           for (const auto &id :
                mGeometry.getNeighborIndicies(primID))
@@ -240,7 +241,8 @@ public:
 
             if (rtLocalIntersector::intersect(rayHit.ray, disc, normalRef))
             {
-              hitCounter.use(id, valueToDrop);
+              if (calcFlux)
+                hitCounter.use(id, valueToDrop);
               const auto normal = mGeometry.getPrimNormal(id);
               particle.processSurfaceHit(rayWeight, rayDir, normal, id, matID,
                                          myLocalData, globalData, RNG, RngState5);
@@ -286,7 +288,7 @@ public:
 
       auto discAreas = computeDiscAreas();
       hitCounter.setDiscAreas(discAreas);
-      
+
 // merge local data
 #pragma omp single
       {
