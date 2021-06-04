@@ -76,7 +76,7 @@ private:
     auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
     auto r2 = ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
 
-    NumericType tt = pow(r2, ee);
+    const NumericType tt = pow(r2, ee);
     direction[rayDir] = posNeg * sqrtf(tt);
     direction[firstDir] = cosf(two_pi * r1) * sqrtf(1 - tt);
 
