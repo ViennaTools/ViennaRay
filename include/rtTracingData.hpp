@@ -3,20 +3,40 @@
 
 #include <rtUtil.hpp>
 
+enum struct rtTracingDataMergeEnum : unsigned
+{
+    SUM = 0,
+    APPEND = 1,
+    AVERAGE = 2,
+};
+
 template <typename NumericType>
 class rtTracingData
 {
 private:
     using scalarDataType = std::vector<NumericType>;
     using vectorDataType = std::vector<std::vector<NumericType>>;
+    using mergeType = std::vector<rtTracingDataMergeEnum>;
 
     scalarDataType scalarData;
     vectorDataType vectorData;
+    mergeType scalarDataMerge;
+    mergeType vectorDataMerge;
 
 public:
     rtTracingData() {}
 
-    rtTracingData(const rtTracingData &otherData) : scalarData(otherData.scalarData), vectorData(otherData.vectorData)
+    rtTracingData(const rtTracingData &otherData) : scalarData(otherData.scalarData),
+                                                    vectorData(otherData.vectorData),
+                                                    scalarDataMerge(otherData.scalarDataMerge),
+                                                    vectorDataMerge(otherData.vectorDataMerge)
+    {
+    }
+
+    rtTracingData(const rtTracingData &&otherData) : scalarData(std::move(otherData.scalarData)),
+                                                     vectorData(std::move(otherData.vectorData)),
+                                                     scalarDataMerge(std::move(otherData.scalarDataMerge)),
+                                                     vectorDataMerge(std::move(otherData.vectorDataMerge))
     {
     }
 
@@ -24,6 +44,17 @@ public:
     {
         scalarData = otherData.scalarData;
         vectorData = otherData.vectorData;
+        scalarDataMerge = otherData.scalarDataMerge;
+        vectorDataMerge = otherData.vectorDataMerge;
+        return *this;
+    }
+
+    rtTracingData &operator=(const rtTracingData &&otherData)
+    {
+        scalarData = std::move(otherData.scalarData);
+        vectorData = std::move(otherData.vectorData);
+        scalarDataMerge = std::move(otherData.scalarDataMerge);
+        vectorDataMerge = std::move(otherData.vectorDataMerge);
         return *this;
     }
 
@@ -31,12 +62,14 @@ public:
     {
         vectorData.clear();
         vectorData.resize(size);
+        vectorDataMerge.resize(size, rtTracingDataMergeEnum::SUM);
     }
 
     void setNumberOfScalarData(int size)
     {
         scalarData.clear();
         scalarData.resize(size);
+        scalarDataMerge.resize(size, rtTracingDataMergeEnum::SUM);
     }
 
     void setScalarData(scalarDataType &scalars)
@@ -71,6 +104,27 @@ public:
             vector.clear();
             vector.resize(size, val);
         }
+        vectorDataMerge.resize(size, rtTracingDataMergeEnum::SUM);
+    }
+
+    void setVectorMergeType(const std::vector<rtTracingDataMergeEnum> &mergeType)
+    {
+        vectorDataMerge = mergeType;
+    }
+
+    void setVectorMergeType(int num, rtTracingDataMergeEnum mergeType)
+    {
+        vectorDataMerge[num] = mergeType;
+    }
+
+    void setScalarMergeType(const std::vector<rtTracingDataMergeEnum> &mergeType)
+    {
+        scalarDataMerge = mergeType;
+    }
+
+    void setScalarMergeType(int num, rtTracingDataMergeEnum mergeType)
+    {
+        scalarDataMerge[num] = mergeType;
     }
 
     scalarDataType &getVectorData(int i)
@@ -111,6 +165,11 @@ public:
     const std::vector<NumericType> &getScalarData() const
     {
         return scalarData;
+    }
+
+    const mergeType &getVectorMergeTypes() const
+    {
+        return vectorDataMerge;
     }
 };
 

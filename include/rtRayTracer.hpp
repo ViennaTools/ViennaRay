@@ -297,12 +297,35 @@ public:
           // merge vector data
           for (size_t i = 0; i < localData.getVectorData().size(); ++i)
           {
-            for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
+            switch (localData.getVectorMergeTypes()[i])
             {
+            case rtTracingDataMergeEnum::SUM:
+            {
+              for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
+              {
+                for (int k = 0; k < omp_get_num_threads(); ++k)
+                {
+                  localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
+                }
+              }
+              break;
+            }
+
+            case rtTracingDataMergeEnum::APPEND:
+            {
+              localData.getVectorData(i).clear();
               for (int k = 0; k < omp_get_num_threads(); ++k)
               {
-                localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
+                for (const auto &val : threadLocalData[k].getVectorData(i))
+                {
+                  localData.getVectorData(i).push_back(val);
+                }
               }
+              break;
+            }
+
+            default:
+              break;
             }
           }
         }
