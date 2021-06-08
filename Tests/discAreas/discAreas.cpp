@@ -42,7 +42,7 @@ int main() {
       boundingBox, 1., traceSettings, geometry.getNumPoints());
 
   auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
-      device, geometry, boundary, raySource, 1);
+      device, geometry, boundary, raySource, 1, 0);
   auto hitCounter = tracer.apply(localData, globalData);
   auto discAreas = hitCounter.getDiscAreas();
 

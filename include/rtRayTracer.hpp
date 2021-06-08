@@ -24,9 +24,10 @@ public:
   rtRayTracer(RTCDevice &pDevice, rtGeometry<NumericType, D> &pRTCGeometry,
               rtBoundary<NumericType, D> &pRTCBoundary,
               rtRaySource<NumericType, D> &pSource,
-              const size_t pNumOfRayPerPoint)
+              const size_t pNumOfRayPerPoint,
+              const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
-        mSource(pSource), mNumRays(pSource.getNumPoints() * pNumOfRayPerPoint)
+        mSource(pSource), mNumRays(pNumOfRayFixed == 0 ? pSource.getNumPoints() * pNumOfRayPerPoint : pNumOfRayFixed)
   {
     assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
@@ -63,7 +64,8 @@ public:
     rtRandomNumberGenerator RNG;
 
     // thread local data storage
-    std::vector<rtTracingData<NumericType>> threadLocalData(omp_get_max_threads());
+    const int numThreads = omp_get_max_threads();
+    std::vector<rtTracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData)
     {
       data = localData;
@@ -225,12 +227,7 @@ public:
           const auto primID = rayHit.hit.primID;
           const auto geomNormal = mGeometry.getPrimNormal(primID);
           const auto materialID = mGeometry.getMaterialId(primID);
-          const auto sticking = particle.processSurfaceHit(rayWeight, rayDir, geomNormal, primID, materialID,
-                                                           myLocalData, globalData, RNG, RngState5);
 
-          const auto valueToDrop = rayWeight * sticking;
-          if (calcFlux)
-            hitCounter.use(primID, valueToDrop);
           // Check for additional intersections
           for (const auto &id :
                mGeometry.getNeighborIndicies(primID))
@@ -241,13 +238,18 @@ public:
 
             if (rtLocalIntersector::intersect(rayHit.ray, disc, normalRef))
             {
-              if (calcFlux)
-                hitCounter.use(id, valueToDrop);
               const auto normal = mGeometry.getPrimNormal(id);
-              particle.processSurfaceHit(rayWeight, rayDir, normal, id, matID,
-                                         myLocalData, globalData, RNG, RngState5);
+              const auto sticking = particle.processSurfaceHit(rayWeight, rayDir, normal, id, matID, true,
+                                                               myLocalData, globalData, RNG, RngState5);
+              if (calcFlux)
+                hitCounter.use(id, rayWeight * sticking);
             }
           }
+          const auto sticking = particle.processSurfaceHit(rayWeight, rayDir, geomNormal, primID, materialID, false,
+                                                           myLocalData, globalData, RNG, RngState5);
+          const auto valueToDrop = rayWeight * sticking;
+          if (calcFlux)
+            hitCounter.use(primID, valueToDrop);
 
           // Update ray weight
           rayWeight -= valueToDrop;
@@ -288,58 +290,79 @@ public:
 
       auto discAreas = computeDiscAreas();
       hitCounter.setDiscAreas(discAreas);
-
-// merge local data
-#pragma omp single
+    }
+    // merge local data
+    if (!localData.getVectorData().empty())
+    {
+      // merge vector data
+#pragma omp parallel for
+      for (size_t i = 0; i < localData.getVectorData().size(); ++i)
       {
-        if (!localData.getVectorData().empty())
+        switch (localData.getVectorMergeType(i))
         {
-          // merge vector data
-          for (size_t i = 0; i < localData.getVectorData().size(); ++i)
+        case rtTracingDataMergeEnum::SUM:
+        {
+          for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
           {
-            switch (localData.getVectorMergeTypes()[i])
+            for (int k = 0; k < numThreads; ++k)
             {
-            case rtTracingDataMergeEnum::SUM:
-            {
-              for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
-              {
-                for (int k = 0; k < omp_get_num_threads(); ++k)
-                {
-                  localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
-                }
-              }
-              break;
+              localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
             }
-
-            case rtTracingDataMergeEnum::APPEND:
-            {
-              localData.getVectorData(i).clear();
-              for (int k = 0; k < omp_get_num_threads(); ++k)
-              {
-                for (const auto &val : threadLocalData[k].getVectorData(i))
-                {
-                  localData.getVectorData(i).push_back(val);
-                }
-              }
-              break;
-            }
-
-            default:
-              break;
-            }
+            localData.getVectorData(i)[j] /= hitCounter.getDiscAreas()[j];
           }
+          break;
         }
 
-        if (!localData.getScalarData().empty())
+        case rtTracingDataMergeEnum::APPEND:
         {
-          // merge scalar data
-          for (size_t i = 0; i < localData.getScalarData().size(); ++i)
+          localData.getVectorData(i).clear();
+          for (int k = 0; k < numThreads; ++k)
           {
-            for (int j = 0; j < omp_get_num_threads(); ++j)
-            {
-              localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
-            }
+            localData.appendVectorData(i, threadLocalData[k].getVectorData(i));
           }
+          break;
+        }
+
+        default:
+        {
+          rtMessage::getInstance().addWarning("Invalid merge type in local vector data.").print();
+          break;
+        }
+        }
+      }
+    }
+
+    if (!localData.getScalarData().empty())
+    {
+      // merge scalar data
+      for (size_t i = 0; i < localData.getScalarData().size(); ++i)
+      {
+        switch (localData.getScalarMergeType(i))
+        {
+        case rtTracingDataMergeEnum::SUM:
+        {
+          for (int j = 0; j < numThreads; ++j)
+          {
+            localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
+          }
+          break;
+        }
+
+        case rtTracingDataMergeEnum::AVERAGE:
+        {
+          for (int j = 0; j < numThreads; ++j)
+          {
+            localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
+          }
+          localData.getScalarData(i) /= (NumericType)numThreads;
+          break;
+        }
+
+        default:
+        {
+          rtMessage::getInstance().addWarning("Invalid merge type in local scalar data.").print();
+          break;
+        }
         }
       }
     }

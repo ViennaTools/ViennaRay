@@ -87,7 +87,7 @@ public:
 
   size_t getTotalCounts() const { return mTotalCnts; }
 
-  std::vector<NumericType> getDiscAreas() const { return mDiscAreas; }
+  const std::vector<NumericType> &getDiscAreas() const { return mDiscAreas; }
 
   std::vector<NumericType> getRelativeError() {
     auto result = std::vector<NumericType>(

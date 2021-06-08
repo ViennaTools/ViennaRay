@@ -19,6 +19,7 @@ private:
   RTCDevice mDevice;
   rtGeometry<NumericType, D> mGeometry;
   size_t mNumberOfRaysPerPoint = 1000;
+  size_t mNumberOfRaysFixed = 0;
   NumericType mDiscRadius = 0;
   NumericType mGridDelta = 0;
   rtTraceBoundary mBoundaryConds[D] = {};
@@ -57,7 +58,7 @@ public:
         boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
 
     auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
-        mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint);
+        mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint, mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
     tracer.calcFlux(mCalcFlux);
     auto hitCounter = tracer.apply(localData, globalData);
@@ -123,6 +124,13 @@ public:
   void setNumberOfRaysPerPoint(const size_t pNum)
   {
     mNumberOfRaysPerPoint = pNum;
+    mNumberOfRaysFixed = 0;
+  }
+
+  void setNumberOfRaysfixed(const size_t pNum)
+  {
+    mNumberOfRaysFixed = pNum;
+    mNumberOfRaysPerPoint = 0;
   }
 
   /// Set the power of the cosine source distribution
