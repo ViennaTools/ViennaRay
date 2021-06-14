@@ -7,7 +7,7 @@ int main() {
   constexpr int D = 2;
 
   using NumericType = float;
-  using ParticleType = rtParticle2<NumericType>;
+  using ParticleType = rtTestParticle<NumericType>;
   using ReflectionType = rtReflectionSpecular<NumericType, D>;
 
   omp_set_num_threads(1);

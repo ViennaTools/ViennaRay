@@ -1,10 +1,10 @@
 #pragma once
 #include <cmath>
-#include <string>
 #include <rtUtil.hpp>
+#include <string>
 
 #ifdef _MSC_VER
-  #define __PRETTY_FUNCTION__ __FUNCSIG__
+#define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
 #define RAYTEST_ASSERT(condition)                                              \

@@ -21,7 +21,7 @@ int main() {
   // again be a user defined custom reflection, that has to interface the
   // rtReflection<NumericType, D> class.
   using NumericType = float;
-  using ParticleType = rtParticle2<NumericType>;
+  using ParticleType = rtTestParticle<NumericType>;
   using ReflectionType = rtReflectionSpecular<NumericType, D>;
 
   // Set the number of threads to use in OpenMP parallelization

@@ -192,12 +192,12 @@ private:
         0, // slot
         RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles);
 
-    constexpr rtQuadruple<rtTriple<uint32_t>> xMinMaxPlanes = {0, 3, 7, 0, 7, 4,
-                                                             6, 2, 1, 6, 1, 5};
-    constexpr rtQuadruple<rtTriple<uint32_t>> yMinMaxPlanes = {0, 4, 5, 0, 5, 1,
-                                                             6, 7, 3, 6, 3, 2};
-    constexpr rtQuadruple<rtTriple<uint32_t>> zMinMaxPlanes = {0, 1, 2, 0, 2, 3,
-                                                             6, 5, 4, 6, 4, 7};
+    constexpr rtQuadruple<rtTriple<uint32_t>> xMinMaxPlanes = {
+        0, 3, 7, 0, 7, 4, 6, 2, 1, 6, 1, 5};
+    constexpr rtQuadruple<rtTriple<uint32_t>> yMinMaxPlanes = {
+        0, 4, 5, 0, 5, 1, 6, 7, 3, 6, 3, 2};
+    constexpr rtQuadruple<rtTriple<uint32_t>> zMinMaxPlanes = {
+        0, 1, 2, 0, 2, 3, 6, 5, 4, 6, 4, 7};
     constexpr rtTriple<rtQuadruple<rtTriple<uint32_t>>> Planes = {
         xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 

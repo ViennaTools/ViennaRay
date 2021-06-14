@@ -157,7 +157,7 @@ public:
 
   rtTracingData<NumericType> &getLocalData() { return localData; }
 
-  rtTracingData<NumericType> &getGloballData() { return globalData; }
+  rtTracingData<NumericType> &getGlobalData() { return globalData; }
 
 private:
   void extractFlux(const rtHitCounter<NumericType> &hitCounter) {

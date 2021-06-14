@@ -217,7 +217,12 @@ public:
           const auto geomNormal = mGeometry.getPrimNormal(primID);
           const auto materialID = mGeometry.getMaterialId(primID);
 
+          particle.surfaceCollision(rayWeight, rayDir, geomNormal, primID,
+                                    materialID, myLocalData, globalData, RNG,
+                                    RngState5);
+
           // Check for additional intersections
+          std::vector<size_t> intIds;
           for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
             const auto &disc = mGeometry.getPrimRef(id);
             const auto &normalRef = mGeometry.getNormalRef(id);
@@ -225,19 +230,24 @@ public:
 
             if (rtLocalIntersector::intersect(rayHit.ray, disc, normalRef)) {
               const auto normal = mGeometry.getPrimNormal(id);
-              const auto sticking = particle.processSurfaceHit(
-                  rayWeight, rayDir, normal, id, matID, true, myLocalData,
-                  globalData, RNG, RngState5);
+              particle.surfaceCollision(rayWeight, rayDir, normal, id, matID,
+                                        myLocalData, globalData, RNG,
+                                        RngState5);
               if (calcFlux)
-                hitCounter.use(id, rayWeight * sticking);
+                intIds.push_back(id);
             }
           }
-          const auto sticking = particle.processSurfaceHit(
-              rayWeight, rayDir, geomNormal, primID, materialID, false,
-              myLocalData, globalData, RNG, RngState5);
+
+          const auto sticking = particle.surfaceReflection(
+              rayWeight, rayDir, geomNormal, primID, materialID, globalData,
+              RNG, RngState5);
           const auto valueToDrop = rayWeight * sticking;
-          if (calcFlux)
+          if (calcFlux) {
+            for (const auto &id : intIds) {
+              hitCounter.use(id, valueToDrop);
+            }
             hitCounter.use(primID, valueToDrop);
+          }
 
           // Update ray weight
           rayWeight -= valueToDrop;
