@@ -10,6 +10,7 @@
 #include <rtRaySourceRandom.hpp>
 #include <rtRayTracer.hpp>
 #include <rtTraceDirection.hpp>
+#include <rtTracingData.hpp>
 
 template <class NumericType, class ParticleType, class ReflectionType, int D>
 class rtTrace {
@@ -17,15 +18,18 @@ private:
   RTCDevice mDevice;
   rtGeometry<NumericType, D> mGeometry;
   size_t mNumberOfRaysPerPoint = 1000;
+  size_t mNumberOfRaysFixed = 0;
   NumericType mDiscRadius = 0;
   NumericType mGridDelta = 0;
   rtTraceBoundary mBoundaryConds[D] = {};
   rtTraceDirection mSourceDirection = rtTraceDirection::POS_Z;
   NumericType mCosinePower = 1.;
   bool mUseRandomSeeds = false;
-  rtHitCounter<NumericType> mHitCounter = rtHitCounter<NumericType>(0);
-  std::vector<NumericType> mMcEstimates;
+  bool mCalcFlux = true;
+  std::vector<NumericType> mFlux;
   static constexpr NumericType mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
+  rtTracingData<NumericType> localData;
+  rtTracingData<NumericType> globalData;
 
 public:
   rtTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
@@ -51,11 +55,14 @@ public:
         boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
 
     auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
-        mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint);
+        mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint,
+        mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
-    mHitCounter = tracer.apply();
+    tracer.calcFlux(mCalcFlux);
+    auto hitCounter = tracer.apply(localData, globalData);
     boundary.releaseGeometry();
-    extractMcEstimates();
+    if (mCalcFlux)
+      extractFlux(hitCounter);
   }
 
   /// Set the ray tracing geometry
@@ -108,6 +115,12 @@ public:
   /// times the number of points in the geometry.
   void setNumberOfRaysPerPoint(const size_t pNum) {
     mNumberOfRaysPerPoint = pNum;
+    mNumberOfRaysFixed = 0;
+  }
+
+  void setNumberOfRaysfixed(const size_t pNum) {
+    mNumberOfRaysFixed = pNum;
+    mNumberOfRaysPerPoint = 0;
   }
 
   /// Set the power of the cosine source distribution
@@ -124,27 +137,36 @@ public:
   /// should be used.
   void setUseRandomSeeds(const bool useRand) { mUseRandomSeeds = useRand; }
 
-  /// Returns the total number of hits for each geometry point.
-  std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
+  void setCalculateFlux(const bool calcFlux) { mCalcFlux = calcFlux; }
 
-  /// Returns the hit counts, weighted with the particle sticking probability
-  /// and normalized with the individual disc radii taken into account.
-  std::vector<NumericType> getMcEstimates() const { return mMcEstimates; }
+  /// Returns the total flux on each disc normalized by the disc area and
+  /// averaged over the neighborhood.
+  std::vector<NumericType> getTotalFlux() const { return mFlux; }
 
-  std::vector<NumericType> getRelativeError() {
-    return mHitCounter.getRelativeError();
-  }
+  /// Returns the flux normalized to the maximum flux value.
+  std::vector<NumericType> getNormalizedFlux() { return normalizeFlux(); }
+
+  // /// Returns the total number of hits for each geometry point.
+  // std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts();
+  // }
+
+  // std::vector<NumericType> getRelativeError()
+  // {
+  //   return mHitCounter.getRelativeError();
+  // }
+
+  rtTracingData<NumericType> &getLocalData() { return localData; }
+
+  rtTracingData<NumericType> &getGloballData() { return globalData; }
 
 private:
-  void extractMcEstimates() {
-    assert(mHitCounter.getTotalCounts() > 0 && "Invalid trace result");
-    auto values = mHitCounter.getValues();
-    auto discAreas = mHitCounter.getDiscAreas();
-    mMcEstimates.clear();
-    mMcEstimates.reserve(values.size());
-
-    auto maxv = 0.0;
-    // Account for area and find max value
+  void extractFlux(const rtHitCounter<NumericType> &hitCounter) {
+    assert(hitCounter.getTotalCounts() > 0 && "Invalid trace result");
+    auto values = hitCounter.getValues();
+    auto discAreas = hitCounter.getDiscAreas();
+    mFlux.clear();
+    mFlux.reserve(values.size());
+    // Account for area and average over the neighborhood
     for (size_t idx = 0; idx < values.size(); ++idx) {
       auto vv = values[idx] / discAreas[idx];
       {
@@ -155,13 +177,20 @@ private:
         }
         vv /= (neighborhood.size() + 1);
       }
-      mMcEstimates.push_back(vv);
-      if (maxv < vv) {
-        maxv = vv;
-      }
+      mFlux.push_back(vv);
     }
-    std::for_each(mMcEstimates.begin(), mMcEstimates.end(),
-                  [&maxv](NumericType &ee) { ee /= maxv; });
+  }
+
+  std::vector<NumericType> normalizeFlux() {
+    assert(mFlux.size() > 0 && "No flux calculated");
+    std::vector<NumericType> normalizedFlux(mFlux.size(), 0);
+
+    auto maxv = *std::max_element(mFlux.begin(), mFlux.end());
+    for (size_t idx = 0; idx < mFlux.size(); ++idx) {
+      normalizedFlux[idx] = mFlux[idx] / maxv;
+    }
+
+    return normalizedFlux;
   }
 
   void checkSettings() {

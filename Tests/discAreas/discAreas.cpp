@@ -22,6 +22,9 @@ int main() {
 
   auto device = rtcNewDevice("");
 
+  auto localData = rtTracingData<NumericType>();
+  const auto globalData = rtTracingData<NumericType>();
+
   rtGeometry<NumericType, D> geometry;
   auto discRadius = gridDelta * discFactor;
   geometry.initGeometry(device, points, normals, discRadius);
@@ -38,8 +41,8 @@ int main() {
       boundingBox, 1., traceSettings, geometry.getNumPoints());
 
   auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
-      device, geometry, boundary, raySource, 1);
-  auto hitCounter = tracer.apply();
+      device, geometry, boundary, raySource, 1, 0);
+  auto hitCounter = tracer.apply(localData, globalData);
   auto discAreas = hitCounter.getDiscAreas();
 
   auto boundaryDirs = boundary.getDirs();

@@ -85,6 +85,18 @@ void Normalize(std::array<NumericType, D> &vec) {
                 [&norm](NumericType &entry) { entry *= norm; });
 }
 
+template <typename NumericType, size_t D>
+std::array<NumericType, D> Normalize(const std::array<NumericType, D> &vec) {
+  std::array<NumericType, D> normedVec = vec;
+  auto norm = 1. / Norm(normedVec);
+  if (norm == 1.)
+    return normedVec;
+  for (size_t i = 0; i < D; ++i) {
+    normedVec[i] = norm * vec[i];
+  }
+  return normedVec;
+}
+
 template <typename NumericType>
 rtTriple<NumericType> Inv(const rtTriple<NumericType> &vec) {
   return {-vec[0], -vec[1], -vec[2]};
