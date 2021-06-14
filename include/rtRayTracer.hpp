@@ -132,7 +132,7 @@ public:
       [[maybe_unused]] size_t progressCount = 0;
 
 #pragma omp for schedule(dynamic)
-      for (size_t idx = 0; idx < mNumRays; ++idx) {
+      for (long long idx = 0; idx < mNumRays; ++idx) {
         particle.initNew(RNG, RngState8);
         NumericType rayWeight = initialRayWeight;
 
@@ -469,7 +469,7 @@ private:
   rtGeometry<NumericType, D> &mGeometry;
   rtBoundary<NumericType, D> &mBoundary;
   rtRaySource<NumericType, D> &mSource;
-  const size_t mNumRays;
+  const long long mNumRays;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
 };

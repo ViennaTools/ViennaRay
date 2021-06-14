@@ -7,7 +7,7 @@ int main() {
   NumericType eps = 1e-6;
 
   size_t numPrims = 1000;
-  size_t primID = 10;
+  unsigned int primID = 10;
   size_t numRuns = 10000;
 
   rtHitCounter<NumericType> hitAcc(numPrims);
