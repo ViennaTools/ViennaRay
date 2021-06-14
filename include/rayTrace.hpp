@@ -1,40 +1,40 @@
-#ifndef RT_TRACE_HPP
-#define RT_TRACE_HPP
+#ifndef RAY_TRACE_HPP
+#define RAY_TRACE_HPP
 
 #include <embree3/rtcore.h>
-#include <rtBoundCondition.hpp>
-#include <rtBoundary.hpp>
-#include <rtGeometry.hpp>
-#include <rtHitCounter.hpp>
-#include <rtMessage.hpp>
-#include <rtRaySourceRandom.hpp>
-#include <rtRayTracer.hpp>
-#include <rtTraceDirection.hpp>
-#include <rtTracingData.hpp>
+#include <rayBoundCondition.hpp>
+#include <rayBoundary.hpp>
+#include <rayGeometry.hpp>
+#include <rayHitCounter.hpp>
+#include <rayMessage.hpp>
+#include <raySourceRandom.hpp>
+#include <rayTraceDirection.hpp>
+#include <rayTraceKernel.hpp>
+#include <rayTracingData.hpp>
 
 template <class NumericType, class ParticleType, class ReflectionType, int D>
-class rtTrace {
+class rayTrace {
 private:
   RTCDevice mDevice;
-  rtGeometry<NumericType, D> mGeometry;
+  rayGeometry<NumericType, D> mGeometry;
   size_t mNumberOfRaysPerPoint = 1000;
   size_t mNumberOfRaysFixed = 0;
   NumericType mDiscRadius = 0;
   NumericType mGridDelta = 0;
-  rtTraceBoundary mBoundaryConds[D] = {};
-  rtTraceDirection mSourceDirection = rtTraceDirection::POS_Z;
+  rayTraceBoundary mBoundaryConds[D] = {};
+  rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
   NumericType mCosinePower = 1.;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
   std::vector<NumericType> mFlux;
   static constexpr NumericType mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
-  rtTracingData<NumericType> localData;
-  rtTracingData<NumericType> globalData;
+  rayTracingData<NumericType> localData;
+  rayTracingData<NumericType> globalData;
 
 public:
-  rtTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
+  rayTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
 
-  ~rtTrace() {
+  ~rayTrace() {
     mGeometry.releaseGeometry();
     rtcReleaseDevice(mDevice);
   }
@@ -44,17 +44,17 @@ public:
     checkSettings();
     initMemoryFlags();
     auto boundingBox = mGeometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, mSourceDirection,
-                                                  mDiscRadius);
-    auto traceSettings = rtInternal::getTraceSettings(mSourceDirection);
+    rayInternal::adjustBoundingBox<NumericType, D>(
+        boundingBox, mSourceDirection, mDiscRadius);
+    auto traceSettings = rayInternal::getTraceSettings(mSourceDirection);
 
-    auto boundary = rtBoundary<NumericType, D>(mDevice, boundingBox,
-                                               mBoundaryConds, traceSettings);
+    auto boundary = rayBoundary<NumericType, D>(mDevice, boundingBox,
+                                                mBoundaryConds, traceSettings);
 
-    auto raySource = rtRaySourceRandom<NumericType, D>(
+    auto raySource = raySourceRandom<NumericType, D>(
         boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
 
-    auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
+    auto tracer = rayTraceKernel<NumericType, ParticleType, ReflectionType, D>(
         mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint,
         mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
@@ -104,7 +104,7 @@ public:
   /// There has to be a boundary condition defined for each space dimension,
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
-  void setBoundaryConditions(rtTraceBoundary pBoundaryConds[D]) {
+  void setBoundaryConditions(rayTraceBoundary pBoundaryConds[D]) {
     for (size_t i = 0; i < D; ++i) {
       mBoundaryConds[i] = pBoundaryConds[i];
     }
@@ -129,7 +129,7 @@ public:
   }
 
   /// Set the source direction, where the rays should be traced from.
-  void setSourceDirection(const rtTraceDirection pDirection) {
+  void setSourceDirection(const rayTraceDirection pDirection) {
     mSourceDirection = pDirection;
   }
 
@@ -155,12 +155,12 @@ public:
   //   return mHitCounter.getRelativeError();
   // }
 
-  rtTracingData<NumericType> &getLocalData() { return localData; }
+  rayTracingData<NumericType> &getLocalData() { return localData; }
 
-  rtTracingData<NumericType> &getGlobalData() { return globalData; }
+  rayTracingData<NumericType> &getGlobalData() { return globalData; }
 
 private:
-  void extractFlux(const rtHitCounter<NumericType> &hitCounter) {
+  void extractFlux(const rayHitCounter<NumericType> &hitCounter) {
     assert(hitCounter.getTotalCounts() > 0 && "Invalid trace result");
     auto values = hitCounter.getValues();
     auto discAreas = hitCounter.getDiscAreas();
@@ -195,16 +195,16 @@ private:
 
   void checkSettings() {
     if (mGeometry.checkGeometryEmpty()) {
-      rtMessage::getInstance().addError(
-          "No geometry was passed to rtTrace. Aborting.");
+      rayMessage::getInstance().addError(
+          "No geometry was passed to rayTrace. Aborting.");
     }
-    if ((D == 2 && mSourceDirection == rtTraceDirection::POS_Z) ||
-        (D == 2 && mSourceDirection == rtTraceDirection::NEG_Z)) {
-      rtMessage::getInstance().addError(
+    if ((D == 2 && mSourceDirection == rayTraceDirection::POS_Z) ||
+        (D == 2 && mSourceDirection == rayTraceDirection::NEG_Z)) {
+      rayMessage::getInstance().addError(
           "Invalid source direction in 2D geometry. Aborting.");
     }
     if (mDiscRadius > mGridDelta) {
-      rtMessage::getInstance()
+      rayMessage::getInstance()
           .addWarning("Disc radius should be smaller than grid delta. Hit "
                       "count normalization not correct.")
           .print();
@@ -221,4 +221,4 @@ private:
   }
 };
 
-#endif // RT_TRACE_HPP
+#endif // RAY_TRACE_HPP

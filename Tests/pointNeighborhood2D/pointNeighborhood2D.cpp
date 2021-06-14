@@ -1,6 +1,6 @@
 #include <embree3/rtcore.h>
-#include <rtGeometry.hpp>
-#include <rtTestAsserts.hpp>
+#include <rayGeometry.hpp>
+#include <rayTestAsserts.hpp>
 
 int main() {
   using NumericType = float;
@@ -21,7 +21,7 @@ int main() {
   }
 
   auto device = rtcNewDevice("");
-  rtGeometry<NumericType, D> geometry;
+  rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
   // setup simple 2D plane grid with normal in y-direction with discs only
   // overlapping at adjecent grid points x - x - x - x - x

@@ -1,9 +1,9 @@
 #include <embree3/rtcore.h>
-#include <rtBoundCondition.hpp>
-#include <rtBoundary.hpp>
-#include <rtGeometry.hpp>
-#include <rtTestAsserts.hpp>
-#include <rtUtil.hpp>
+#include <rayBoundCondition.hpp>
+#include <rayBoundary.hpp>
+#include <rayGeometry.hpp>
+#include <rayTestAsserts.hpp>
+#include <rayUtil.hpp>
 
 int main() {
   using NumericType = float;
@@ -18,26 +18,27 @@ int main() {
   {
     std::vector<std::array<NumericType, D>> points;
     std::vector<std::array<NumericType, D>> normals;
-    rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
+    rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    rtGeometry<NumericType, D> geometry;
+    rayGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rtTraceBoundary boundCons[D];
+    rayTraceBoundary boundCons[D];
     {
-      boundCons[0] = rtTraceBoundary::REFLECTIVE;
-      boundCons[1] = rtTraceBoundary::PERIODIC;
-      boundCons[2] = rtTraceBoundary::PERIODIC;
+      boundCons[0] = rayTraceBoundary::REFLECTIVE;
+      boundCons[1] = rayTraceBoundary::PERIODIC;
+      boundCons[2] = rayTraceBoundary::PERIODIC;
       auto boundingBox = geometry.getBoundingBox();
-      auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
-      rtInternal::adjustBoundingBox<NumericType, D>(
-          boundingBox, rtTraceDirection::POS_Z, gridDelta);
-      auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons,
-                                                 traceSetting);
+      auto traceSetting =
+          rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
+      rayInternal::adjustBoundingBox<NumericType, D>(
+          boundingBox, rayTraceDirection::POS_Z, gridDelta);
+      auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
+                                                  boundCons, traceSetting);
 
-      auto origin = rtTriple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = rtTriple<NumericType>{0.5, 0., -0.25};
-      auto distanceToHit = rtInternal::Norm(direction);
-      rtInternal::Normalize(direction);
+      auto origin = rayTriple<NumericType>{0.5, 0.5, 0.5};
+      auto direction = rayTriple<NumericType>{0.5, 0., -0.25};
+      auto distanceToHit = rayInternal::Norm(direction);
+      rayInternal::Normalize(direction);
       bool reflect = false;
 
       alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
@@ -78,26 +79,27 @@ int main() {
   {
     std::vector<std::array<NumericType, D>> points;
     std::vector<std::array<NumericType, D>> normals;
-    rtInternal::createPlaneGrid(gridDelta, extent, {0, 2, 1}, points, normals);
+    rayInternal::createPlaneGrid(gridDelta, extent, {0, 2, 1}, points, normals);
 
-    rtGeometry<NumericType, D> geometry;
+    rayGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rtTraceBoundary boundCons[D];
+    rayTraceBoundary boundCons[D];
     {
-      boundCons[0] = rtTraceBoundary::PERIODIC;
-      boundCons[1] = rtTraceBoundary::PERIODIC;
-      boundCons[2] = rtTraceBoundary::REFLECTIVE;
+      boundCons[0] = rayTraceBoundary::PERIODIC;
+      boundCons[1] = rayTraceBoundary::PERIODIC;
+      boundCons[2] = rayTraceBoundary::REFLECTIVE;
       auto boundingBox = geometry.getBoundingBox();
-      auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Y);
-      rtInternal::adjustBoundingBox<NumericType, D>(
-          boundingBox, rtTraceDirection::POS_Y, gridDelta);
-      auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons,
-                                                 traceSetting);
+      auto traceSetting =
+          rayInternal::getTraceSettings(rayTraceDirection::POS_Y);
+      rayInternal::adjustBoundingBox<NumericType, D>(
+          boundingBox, rayTraceDirection::POS_Y, gridDelta);
+      auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
+                                                  boundCons, traceSetting);
 
-      auto origin = rtTriple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = rtTriple<NumericType>{0., -0.25, 0.5};
-      auto distanceToHit = rtInternal::Norm(direction);
-      rtInternal::Normalize(direction);
+      auto origin = rayTriple<NumericType>{0.5, 0.5, 0.5};
+      auto direction = rayTriple<NumericType>{0., -0.25, 0.5};
+      auto distanceToHit = rayInternal::Norm(direction);
+      rayInternal::Normalize(direction);
       bool reflect = false;
 
       alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
@@ -138,26 +140,27 @@ int main() {
   {
     std::vector<std::array<NumericType, D>> points;
     std::vector<std::array<NumericType, D>> normals;
-    rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
+    rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    rtGeometry<NumericType, D> geometry;
+    rayGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rtTraceBoundary boundCons[D];
+    rayTraceBoundary boundCons[D];
     {
-      boundCons[0] = rtTraceBoundary::PERIODIC;
-      boundCons[1] = rtTraceBoundary::PERIODIC;
-      boundCons[2] = rtTraceBoundary::PERIODIC;
+      boundCons[0] = rayTraceBoundary::PERIODIC;
+      boundCons[1] = rayTraceBoundary::PERIODIC;
+      boundCons[2] = rayTraceBoundary::PERIODIC;
       auto boundingBox = geometry.getBoundingBox();
-      auto traceSetting = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
-      rtInternal::adjustBoundingBox<NumericType, D>(
-          boundingBox, rtTraceDirection::POS_Z, gridDelta);
-      auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons,
-                                                 traceSetting);
+      auto traceSetting =
+          rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
+      rayInternal::adjustBoundingBox<NumericType, D>(
+          boundingBox, rayTraceDirection::POS_Z, gridDelta);
+      auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
+                                                  boundCons, traceSetting);
 
-      auto origin = rtTriple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = rtTriple<NumericType>{0.5, 0., -0.25};
-      auto distanceToHit = rtInternal::Norm(direction);
-      rtInternal::Normalize(direction);
+      auto origin = rayTriple<NumericType>{0.5, 0.5, 0.5};
+      auto direction = rayTriple<NumericType>{0.5, 0., -0.25};
+      auto distanceToHit = rayInternal::Norm(direction);
+      rayInternal::Normalize(direction);
       bool reflect = false;
 
       alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin

@@ -1,36 +1,36 @@
-#ifndef RT_BOUNDARY_HPP
-#define RT_BOUNDARY_HPP
+#ifndef RAY_BOUNDARY_HPP
+#define RAY_BOUNDARY_HPP
 
-#include <rtBoundCondition.hpp>
-#include <rtMetaGeometry.hpp>
-#include <rtReflectionSpecular.hpp>
-#include <rtTraceDirection.hpp>
+#include <rayBoundCondition.hpp>
+#include <rayMetaGeometry.hpp>
+#include <rayReflectionSpecular.hpp>
+#include <rayTraceDirection.hpp>
 
 template <typename NumericType, int D>
-class rtBoundary : public rtMetaGeometry<NumericType, D> {
-  typedef rtPair<rtTriple<NumericType>> boundingBoxType;
+class rayBoundary : public rayMetaGeometry<NumericType, D> {
+  typedef rayPair<rayTriple<NumericType>> boundingBoxType;
 
 public:
-  rtBoundary(RTCDevice &pDevice, const boundingBoxType &pBoundingBox,
-             rtTraceBoundary pBoundaryConds[D],
-             std::array<int, 5> &pTraceSettings)
+  rayBoundary(RTCDevice &pDevice, const boundingBoxType &pBoundingBox,
+              rayTraceBoundary pBoundaryConds[D],
+              std::array<int, 5> &pTraceSettings)
       : mbdBox(pBoundingBox), firstDir(pTraceSettings[1]),
         secondDir(pTraceSettings[2]),
         mBoundaryConds({pBoundaryConds[firstDir], pBoundaryConds[secondDir]}) {
     initBoundary(pDevice);
   }
 
-  rtPair<rtTriple<NumericType>> processHit(RTCRayHit &rayHit, bool &reflect) {
+  rayPair<rayTriple<NumericType>> processHit(RTCRayHit &rayHit, bool &reflect) {
     const auto primID = rayHit.hit.primID;
 
     if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
-      if (mBoundaryConds[0] == rtTraceBoundary::REFLECTIVE) {
+      if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
         reflect = true;
-        return rtReflectionSpecular<NumericType, D>::use(rayHit.ray,
-                                                         rayHit.hit);
-      } else if (mBoundaryConds[0] == rtTraceBoundary::PERIODIC) {
+        return rayReflectionSpecular<NumericType, D>::use(rayHit.ray,
+                                                          rayHit.hit);
+      } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
         auto impactCoords = this->getNewOrigin(rayHit.ray);
         // periodically move ray origin
         if (primID == 0 || primID == 1) {
@@ -42,8 +42,8 @@ public:
         }
         reflect = true;
         return {impactCoords,
-                rtTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
-                                      rayHit.ray.dir_z}};
+                rayTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
+                                       rayHit.ray.dir_z}};
       } else {
         // ignore ray
         reflect = false;
@@ -54,12 +54,12 @@ public:
       return {0., 0., 0., 0., 0., 0.};
     } else {
       if (primID == 0 || primID == 1 || primID == 2 || primID == 3) {
-        if (mBoundaryConds[0] == rtTraceBoundary::REFLECTIVE) {
+        if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
           // use specular reflection
           reflect = true;
-          return rtReflectionSpecular<NumericType, D>::use(rayHit.ray,
-                                                           rayHit.hit);
-        } else if (mBoundaryConds[0] == rtTraceBoundary::PERIODIC) {
+          return rayReflectionSpecular<NumericType, D>::use(rayHit.ray,
+                                                            rayHit.hit);
+        } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 0 || primID == 1) {
@@ -71,20 +71,20 @@ public:
           }
           reflect = true;
           return {impactCoords,
-                  rtTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
-                                        rayHit.ray.dir_z}};
+                  rayTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
+                                         rayHit.ray.dir_z}};
         } else {
           // ignore ray
           reflect = false;
           return {0., 0., 0., 0., 0., 0.};
         }
       } else if (primID == 4 || primID == 5 || primID == 6 || primID == 7) {
-        if (mBoundaryConds[1] == rtTraceBoundary::REFLECTIVE) {
+        if (mBoundaryConds[1] == rayTraceBoundary::REFLECTIVE) {
           // use specular reflection
           reflect = true;
-          return rtReflectionSpecular<NumericType, D>::use(rayHit.ray,
-                                                           rayHit.hit);
-        } else if (mBoundaryConds[1] == rtTraceBoundary::PERIODIC) {
+          return rayReflectionSpecular<NumericType, D>::use(rayHit.ray,
+                                                            rayHit.hit);
+        } else if (mBoundaryConds[1] == rayTraceBoundary::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 4 || primID == 5) {
@@ -96,8 +96,8 @@ public:
           }
           reflect = true;
           return {impactCoords,
-                  rtTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
-                                        rayHit.ray.dir_z}};
+                  rayTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
+                                         rayHit.ray.dir_z}};
         } else {
           // ignore ray
           reflect = false;
@@ -127,14 +127,14 @@ public:
     }
   }
 
-  rtTriple<NumericType> getPrimNormal(const size_t primID) override {
-    assert(primID < numTriangles && "rtBoundary: primID out of bounds");
+  rayTriple<NumericType> getPrimNormal(const size_t primID) override {
+    assert(primID < numTriangles && "rayBoundary: primID out of bounds");
     return primNormals[primID];
   }
 
   boundingBoxType getBoundingBox() const { return mbdBox; }
 
-  rtPair<int> getDirs() const { return {firstDir, secondDir}; }
+  rayPair<int> getDirs() const { return {firstDir, secondDir}; }
 
 private:
   void initBoundary(RTCDevice &pDevice) {
@@ -192,13 +192,13 @@ private:
         0, // slot
         RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles);
 
-    constexpr rtQuadruple<rtTriple<uint32_t>> xMinMaxPlanes = {
+    constexpr rayQuadruple<rayTriple<uint32_t>> xMinMaxPlanes = {
         0, 3, 7, 0, 7, 4, 6, 2, 1, 6, 1, 5};
-    constexpr rtQuadruple<rtTriple<uint32_t>> yMinMaxPlanes = {
+    constexpr rayQuadruple<rayTriple<uint32_t>> yMinMaxPlanes = {
         0, 4, 5, 0, 5, 1, 6, 7, 3, 6, 3, 2};
-    constexpr rtQuadruple<rtTriple<uint32_t>> zMinMaxPlanes = {
+    constexpr rayQuadruple<rayTriple<uint32_t>> zMinMaxPlanes = {
         0, 1, 2, 0, 2, 3, 6, 5, 4, 6, 4, 7};
-    constexpr rtTriple<rtQuadruple<rtTriple<uint32_t>>> Planes = {
+    constexpr rayTriple<rayQuadruple<rayTriple<uint32_t>>> Planes = {
         xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 
     for (size_t idx = 0; idx < 4; ++idx) {
@@ -213,8 +213,8 @@ private:
 
     for (size_t idx = 0; idx < numTriangles; ++idx) {
       auto triangle = getTriangleCoords(idx);
-      auto triNorm = rtInternal::ComputeNormal(triangle);
-      rtInternal::Normalize(triNorm);
+      auto triNorm = rayInternal::ComputeNormal(triangle);
+      rayInternal::Normalize(triNorm);
       primNormals[idx] = triNorm;
     }
 
@@ -223,7 +223,7 @@ private:
            "RTC Error: rtcCommitGeometry");
   }
 
-  rtTriple<rtTriple<NumericType>> getTriangleCoords(const size_t primID) {
+  rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID) {
     assert(primID < numTriangles && "rtBounday: primID out of bounds");
     auto tt = mTriangleBuffer[primID];
     return {(NumericType)mVertexBuffer[tt.v0].xx,
@@ -256,10 +256,10 @@ private:
   const boundingBoxType mbdBox;
   const int firstDir = 0;
   const int secondDir = 1;
-  const std::array<rtTraceBoundary, 2> mBoundaryConds = {};
+  const std::array<rayTraceBoundary, 2> mBoundaryConds = {};
   static constexpr size_t numTriangles = 8;
   static constexpr size_t numVertices = 8;
-  std::array<rtTriple<NumericType>, numTriangles> primNormals;
+  std::array<rayTriple<NumericType>, numTriangles> primNormals;
 };
 
-#endif // RT_BOUNDARY_HPP
+#endif // RAY_BOUNDARY_HPP

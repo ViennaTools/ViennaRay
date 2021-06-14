@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-#include <rtUtil.hpp>
+#include <rayUtil.hpp>
 #include <string>
 
 #ifdef _MSC_VER
@@ -32,7 +32,7 @@
 
 #define RAYTEST_ASSERT_ISNORMAL(first, second, eps)                            \
   {                                                                            \
-    if ((std::fabs(rtInternal::DotProduct(first, second)) > eps)) {            \
+    if ((std::fabs(rayInternal::DotProduct(first, second)) > eps)) {           \
       throw std::runtime_error(std::string(__FILE__) + std::string(":") +      \
                                std::to_string(__LINE__) +                      \
                                std::string(" in ") +                           \

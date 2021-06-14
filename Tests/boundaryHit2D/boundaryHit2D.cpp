@@ -1,16 +1,16 @@
 #include <embree3/rtcore.h>
-#include <rtBoundCondition.hpp>
-#include <rtBoundary.hpp>
-#include <rtGeometry.hpp>
-#include <rtTestAsserts.hpp>
-#include <rtUtil.hpp>
+#include <rayBoundCondition.hpp>
+#include <rayBoundary.hpp>
+#include <rayGeometry.hpp>
+#include <rayTestAsserts.hpp>
+#include <rayUtil.hpp>
 
 int main() {
   using NumericType = float;
   constexpr int D = 2;
 
   auto device = rtcNewDevice("");
-  rtTraceBoundary boundCons[D] = {};
+  rayTraceBoundary boundCons[D] = {};
 
   NumericType extent = 2;
   NumericType gridDelta = 0.5;
@@ -27,24 +27,24 @@ int main() {
     normals.push_back(normal);
   }
 
-  rtGeometry<NumericType, D> geometry;
+  rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
-  boundCons[1] = rtTraceBoundary::REFLECTIVE;
+  boundCons[1] = rayTraceBoundary::REFLECTIVE;
   {
     // build reflective boundary in y and z directions
-    auto dir = rtTraceDirection::POS_X;
+    auto dir = rayTraceDirection::POS_X;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
-    auto traceSettings = rtInternal::getTraceSettings(dir);
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
+    auto traceSettings = rayInternal::getTraceSettings(dir);
 
-    auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons,
-                                               traceSettings);
+    auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
+                                                traceSettings);
 
-    auto origin = rtTriple<NumericType>{1., 1., 0.};
-    auto direction = rtTriple<NumericType>{-0.5, 1., 0.};
-    auto distanceToHit = rtInternal::Norm(direction);
-    rtInternal::Normalize(direction);
+    auto origin = rayTriple<NumericType>{1., 1., 0.};
+    auto direction = rayTriple<NumericType>{-0.5, 1., 0.};
+    auto distanceToHit = rayInternal::Norm(direction);
+    rayInternal::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
@@ -79,21 +79,21 @@ int main() {
     RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
   }
 
-  boundCons[1] = rtTraceBoundary::PERIODIC;
+  boundCons[1] = rayTraceBoundary::PERIODIC;
   {
     // build periodic boundary in y and z directions
-    auto dir = rtTraceDirection::POS_X;
+    auto dir = rayTraceDirection::POS_X;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
-    auto traceSettings = rtInternal::getTraceSettings(dir);
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
+    auto traceSettings = rayInternal::getTraceSettings(dir);
 
-    auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons,
-                                               traceSettings);
+    auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
+                                                traceSettings);
 
-    auto origin = rtTriple<NumericType>{1., 1., 0.};
-    auto direction = rtTriple<NumericType>{-0.5, 1., 0.};
-    auto distanceToHit = rtInternal::Norm(direction);
-    rtInternal::Normalize(direction);
+    auto origin = rayTriple<NumericType>{1., 1., 0.};
+    auto direction = rayTriple<NumericType>{-0.5, 1., 0.};
+    auto distanceToHit = rayInternal::Norm(direction);
+    rayInternal::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
@@ -140,23 +140,23 @@ int main() {
     normals.push_back(normal);
   }
 
-  rtGeometry<NumericType, D> geometry2;
+  rayGeometry<NumericType, D> geometry2;
   geometry2.initGeometry(device, points, normals, gridDelta);
-  boundCons[0] = rtTraceBoundary::REFLECTIVE;
+  boundCons[0] = rayTraceBoundary::REFLECTIVE;
   {
     // build periodic boundary in x and z directions
-    auto dir = rtTraceDirection::POS_Y;
+    auto dir = rayTraceDirection::POS_Y;
     auto boundingBox = geometry2.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
-    auto traceSettings = rtInternal::getTraceSettings(dir);
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
+    auto traceSettings = rayInternal::getTraceSettings(dir);
 
-    auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons,
-                                               traceSettings);
+    auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
+                                                traceSettings);
 
-    auto origin = rtTriple<NumericType>{1., 1., 0.};
-    auto direction = rtTriple<NumericType>{1., -0.5, 0.};
-    auto distanceToHit = rtInternal::Norm(direction);
-    rtInternal::Normalize(direction);
+    auto origin = rayTriple<NumericType>{1., 1., 0.};
+    auto direction = rayTriple<NumericType>{1., -0.5, 0.};
+    auto distanceToHit = rayInternal::Norm(direction);
+    rayInternal::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
@@ -191,21 +191,21 @@ int main() {
     RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
   }
 
-  boundCons[0] = rtTraceBoundary::PERIODIC;
+  boundCons[0] = rayTraceBoundary::PERIODIC;
   {
     // build periodic boundary in x and z directions
-    auto dir = rtTraceDirection::POS_Y;
+    auto dir = rayTraceDirection::POS_Y;
     auto boundingBox = geometry2.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
-    auto traceSettings = rtInternal::getTraceSettings(dir);
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, dir, gridDelta);
+    auto traceSettings = rayInternal::getTraceSettings(dir);
 
-    auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundCons,
-                                               traceSettings);
+    auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
+                                                traceSettings);
 
-    auto origin = rtTriple<NumericType>{1., 1., 0.};
-    auto direction = rtTriple<NumericType>{1., -0.5, 0.};
-    auto distanceToHit = rtInternal::Norm(direction);
-    rtInternal::Normalize(direction);
+    auto origin = rayTriple<NumericType>{1., 1., 0.};
+    auto direction = rayTriple<NumericType>{1., -0.5, 0.};
+    auto distanceToHit = rayInternal::Norm(direction);
+    rayInternal::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],

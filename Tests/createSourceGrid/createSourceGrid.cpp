@@ -1,8 +1,8 @@
-#include <rtGeometry.hpp>
-#include <rtRaySourceGrid.hpp>
-#include <rtTestAsserts.hpp>
-#include <rtTrace.hpp>
-#include <rtUtil.hpp>
+#include <rayGeometry.hpp>
+#include <raySourceGrid.hpp>
+#include <rayTestAsserts.hpp>
+#include <rayTrace.hpp>
+#include <rayUtil.hpp>
 
 int main() {
   constexpr int D = 3;
@@ -10,30 +10,30 @@ int main() {
   NumericType eps = 1e-6;
 
   NumericType gridDelta;
-  std::vector<rtTriple<NumericType>> points;
-  std::vector<rtTriple<NumericType>> normals;
-  rtInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
-                               points, normals);
+  std::vector<rayTriple<NumericType>> points;
+  std::vector<rayTriple<NumericType>> normals;
+  rayInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
+                                points, normals);
 
   auto device = rtcNewDevice("");
-  rtGeometry<NumericType, D> geometry;
+  rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
   auto boundingBox = geometry.getBoundingBox();
-  auto traceSettings = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
-  rtInternal::adjustBoundingBox<NumericType, D>(
-      boundingBox, rtTraceDirection::POS_Z, gridDelta);
+  auto traceSettings = rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
+  rayInternal::adjustBoundingBox<NumericType, D>(
+      boundingBox, rayTraceDirection::POS_Z, gridDelta);
 
-  auto grid = rtInternal::createSourceGrid<NumericType, D>(
+  auto grid = rayInternal::createSourceGrid<NumericType, D>(
       boundingBox, points.size(), gridDelta, traceSettings);
 
-  auto rng = rtRandomNumberGenerator{};
-  auto rngstate1 = rtRandomNumberGenerator::RNGState{0};
-  auto rngstate2 = rtRandomNumberGenerator::RNGState{1};
-  auto rngstate3 = rtRandomNumberGenerator::RNGState{2};
-  auto rngstate4 = rtRandomNumberGenerator::RNGState{3};
+  auto rng = rayRNG{};
+  auto rngstate1 = rayRNG::RNGState{0};
+  auto rngstate2 = rayRNG::RNGState{1};
+  auto rngstate3 = rayRNG::RNGState{2};
+  auto rngstate4 = rayRNG::RNGState{3};
   {
     // build source in positive z direction;
-    auto source = rtRaySourceGrid<NumericType, D>(grid, 1., traceSettings);
+    auto source = raySourceGrid<NumericType, D>(grid, 1., traceSettings);
     auto numGridPoints = source.getNumPoints();
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

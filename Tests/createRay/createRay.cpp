@@ -1,18 +1,18 @@
 #include <embree3/rtcore.h>
-#include <rtGeometry.hpp>
-#include <rtRandomNumberGenerator.hpp>
-#include <rtRaySourceGrid.hpp>
-#include <rtRaySourceRandom.hpp>
-#include <rtTestAsserts.hpp>
-#include <rtUtil.hpp>
+#include <rayGeometry.hpp>
+#include <rayRNG.hpp>
+#include <raySourceGrid.hpp>
+#include <raySourceRandom.hpp>
+#include <rayTestAsserts.hpp>
+#include <rayUtil.hpp>
 
 void printRay(RTCRayHit &rayHit) {
   std::cout << "Origin: ";
-  rtInternal::printTriple(
-      rtTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
+  rayInternal::printTriple(
+      rayTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
   std::cout << "Direction: ";
-  rtInternal::printTriple(
-      rtTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
+  rayInternal::printTriple(
+      rayTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
 }
 
 int main() {
@@ -21,31 +21,31 @@ int main() {
   NumericType eps = 1e-6;
 
   NumericType gridDelta;
-  std::vector<rtTriple<NumericType>> points;
-  std::vector<rtTriple<NumericType>> normals;
-  rtInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
-                               points, normals);
+  std::vector<rayTriple<NumericType>> points;
+  std::vector<rayTriple<NumericType>> normals;
+  rayInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
+                                points, normals);
 
   auto device = rtcNewDevice("");
-  rtGeometry<NumericType, D> geometry;
+  rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
-  auto rng = rtRandomNumberGenerator{};
+  auto rng = rayRNG{};
   unsigned seed = 31;
-  auto rngstate1 = rtRandomNumberGenerator::RNGState{seed + 0};
-  auto rngstate2 = rtRandomNumberGenerator::RNGState{seed + 1};
-  auto rngstate3 = rtRandomNumberGenerator::RNGState{seed + 2};
-  auto rngstate4 = rtRandomNumberGenerator::RNGState{seed + 3};
+  auto rngstate1 = rayRNG::RNGState{seed + 0};
+  auto rngstate2 = rayRNG::RNGState{seed + 1};
+  auto rngstate3 = rayRNG::RNGState{seed + 2};
+  auto rngstate4 = rayRNG::RNGState{seed + 3};
 
   {
-    auto direction = rtTraceDirection::POS_Z;
+    auto direction = rayTraceDirection::POS_Z;
     // build source in positive z direction;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
-                                                  gridDelta);
-    auto traceSetting = rtInternal::getTraceSettings(direction);
-    auto source = rtRaySourceRandom<NumericType, D>(
-        boundingBox, 2., traceSetting, geometry.getNumPoints());
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
+                                                   gridDelta);
+    auto traceSetting = rayInternal::getTraceSettings(direction);
+    auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                                  geometry.getNumPoints());
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -57,14 +57,14 @@ int main() {
   }
 
   {
-    auto direction = rtTraceDirection::NEG_Z;
+    auto direction = rayTraceDirection::NEG_Z;
     // build source in positive z direction;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
-                                                  gridDelta);
-    auto traceSetting = rtInternal::getTraceSettings(direction);
-    auto source = rtRaySourceRandom<NumericType, D>(
-        boundingBox, 2., traceSetting, geometry.getNumPoints());
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
+                                                   gridDelta);
+    auto traceSetting = rayInternal::getTraceSettings(direction);
+    auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                                  geometry.getNumPoints());
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -76,14 +76,14 @@ int main() {
   }
 
   {
-    auto direction = rtTraceDirection::POS_X;
+    auto direction = rayTraceDirection::POS_X;
     // build source in positive z direction;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
-                                                  gridDelta);
-    auto traceSetting = rtInternal::getTraceSettings(direction);
-    auto source = rtRaySourceRandom<NumericType, D>(
-        boundingBox, 2., traceSetting, geometry.getNumPoints());
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
+                                                   gridDelta);
+    auto traceSetting = rayInternal::getTraceSettings(direction);
+    auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                                  geometry.getNumPoints());
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -95,14 +95,14 @@ int main() {
   }
 
   {
-    auto direction = rtTraceDirection::NEG_X;
+    auto direction = rayTraceDirection::NEG_X;
     // build source in positive z direction;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
-                                                  gridDelta);
-    auto traceSetting = rtInternal::getTraceSettings(direction);
-    auto source = rtRaySourceRandom<NumericType, D>(
-        boundingBox, 2., traceSetting, geometry.getNumPoints());
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
+                                                   gridDelta);
+    auto traceSetting = rayInternal::getTraceSettings(direction);
+    auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                                  geometry.getNumPoints());
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -114,14 +114,14 @@ int main() {
   }
 
   {
-    auto direction = rtTraceDirection::POS_Y;
+    auto direction = rayTraceDirection::POS_Y;
     // build source in positive z direction;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
-                                                  gridDelta);
-    auto traceSetting = rtInternal::getTraceSettings(direction);
-    auto source = rtRaySourceRandom<NumericType, D>(
-        boundingBox, 2., traceSetting, geometry.getNumPoints());
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
+                                                   gridDelta);
+    auto traceSetting = rayInternal::getTraceSettings(direction);
+    auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                                  geometry.getNumPoints());
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -133,14 +133,14 @@ int main() {
   }
 
   {
-    auto direction = rtTraceDirection::NEG_Y;
+    auto direction = rayTraceDirection::NEG_Y;
     // build source in positive z direction;
     auto boundingBox = geometry.getBoundingBox();
-    rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
-                                                  gridDelta);
-    auto traceSetting = rtInternal::getTraceSettings(direction);
-    auto source = rtRaySourceRandom<NumericType, D>(
-        boundingBox, 2., traceSetting, geometry.getNumPoints());
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
+                                                   gridDelta);
+    auto traceSetting = rayInternal::getTraceSettings(direction);
+    auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                                  geometry.getNumPoints());
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {

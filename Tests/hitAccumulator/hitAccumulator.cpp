@@ -1,6 +1,6 @@
 #include <omp.h>
-#include <rtHitCounter.hpp>
-#include <rtTestAsserts.hpp>
+#include <rayHitCounter.hpp>
+#include <rayTestAsserts.hpp>
 
 int main() {
   using NumericType = double;
@@ -10,15 +10,15 @@ int main() {
   unsigned int primID = 10;
   size_t numRuns = 10000;
 
-  rtHitCounter<NumericType> hitAcc(numPrims);
+  rayHitCounter<NumericType> hitAcc(numPrims);
 
   omp_set_num_threads(4);
 
 #pragma omp declare                                                        \
     reduction(hit_accumulator_combine                                      \
-              : rtHitCounter <NumericType>                             \
-              : omp_out = rtHitCounter <NumericType>(omp_out, omp_in)) \
-        initializer(omp_priv = rtHitCounter <NumericType>(omp_orig))
+              : rayHitCounter <NumericType>                             \
+              : omp_out = rayHitCounter <NumericType>(omp_out, omp_in)) \
+        initializer(omp_priv = rayHitCounter <NumericType>(omp_orig))
 
 #pragma omp parallel reduction(hit_accumulator_combine : hitAcc)
   {

@@ -1,7 +1,7 @@
 #include <embree3/rtcore.h>
-#include <rtGeometry.hpp>
-#include <rtTestAsserts.hpp>
-#include <rtUtil.hpp>
+#include <rayGeometry.hpp>
+#include <rayTestAsserts.hpp>
+#include <rayUtil.hpp>
 
 int main() {
   using NumericType = float;
@@ -11,7 +11,7 @@ int main() {
   NumericType eps = 1e-6;
   std::vector<std::array<NumericType, D>> points;
   std::vector<std::array<NumericType, D>> normals;
-  rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
+  rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   // setup simple plane grid with normal in z-direction with discs only
   // overlapping at adjecent grid points
@@ -21,7 +21,7 @@ int main() {
   // assert inner points have 8 neighbors
 
   auto device = rtcNewDevice("");
-  rtGeometry<NumericType, D> geometry;
+  rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta - eps);
   auto bdBox = geometry.getBoundingBox();
 

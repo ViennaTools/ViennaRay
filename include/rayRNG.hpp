@@ -1,5 +1,5 @@
-#ifndef RT_RANDOMNUMBERGENERATOR_HPP
-#define RT_RANDOMNUMBERGENERATOR_HPP
+#ifndef RAY_RNG_HPP
+#define RAY_RNG_HPP
 
 #include <memory>
 #include <random>
@@ -9,7 +9,7 @@
 // state (e.g. seeds) which the random number generator needs. That is,
 // this interface defines how a stateless random number generator relates
 // to a state which is held by the user of this interface.
-class rtRandomNumberGenerator {
+class rayRNG {
 public:
   // A definition of the interface of a state
   struct RNGState {
@@ -29,4 +29,4 @@ public:
   uint64_t max() { return std::mt19937_64::max(); }
 };
 
-#endif // RT_RANDOMNUMBERGENERATOR_HPP
+#endif // RAY_RNG_HPP

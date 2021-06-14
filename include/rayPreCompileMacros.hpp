@@ -1,5 +1,5 @@
-#ifndef RT_PRE_COMPILE_MACROS
-#define RT_PRE_COMPILE_MACROS
+#ifndef RAY_PRE_COMPILE_MACROS
+#define RAY_PRE_COMPILE_MACROS
 
 #if defined(__x86_64__) || defined(_M_X64)
 #define ARCH_X86

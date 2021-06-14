@@ -1,31 +1,31 @@
-#ifndef RT_HITCOUNTER_HPP
-#define RT_HITCOUNTER_HPP
+#ifndef RAY_HITCOUNTER_HPP
+#define RAY_HITCOUNTER_HPP
 
-#include <rtUtil.hpp>
+#include <rayUtil.hpp>
 
-template <typename NumericType> class rtHitCounter {
+template <typename NumericType> class rayHitCounter {
 public:
   // elements initialized to 0.
-  rtHitCounter(size_t size)
+  rayHitCounter(size_t size)
       : mCnts(size, 0), mTotalCnts(0), mDiscAreas(size, 0), mS1s(size, 0),
         mS2s(size, 0) {}
 
   // copy construct the vector members
-  rtHitCounter(rtHitCounter<NumericType> const &pA)
+  rayHitCounter(rayHitCounter<NumericType> const &pA)
       : mCnts(pA.mCnts), mTotalCnts(pA.mTotalCnts), mDiscAreas(pA.mDiscAreas),
         mS1s(pA.mS1s), mS2s(pA.mS2s) {}
 
   // move the vector members
-  rtHitCounter(rtHitCounter<NumericType> const &&pA)
+  rayHitCounter(rayHitCounter<NumericType> const &&pA)
       : mCnts(std::move(pA.mCnts)), mTotalCnts(std::move(pA.mTotalCnts)),
         mDiscAreas(std::move(pA.mDiscAreas)), mS1s(std::move(pA.mS1s)),
         mS2s(std::move(pA.mS2s)) {}
 
   // A copy constructor which can accumulate values from two instances
   // Precondition: the size of the accumulators are equal
-  rtHitCounter(rtHitCounter<NumericType> const &pA1,
-               rtHitCounter<NumericType> const &pA2)
-      : rtHitCounter(pA1) {
+  rayHitCounter(rayHitCounter<NumericType> const &pA1,
+                rayHitCounter<NumericType> const &pA2)
+      : rayHitCounter(pA1) {
     for (size_t idx = 0; idx < mCnts.size(); ++idx) {
       mCnts[idx] += pA2.mCnts[idx];
       mS1s[idx] += pA2.mS1s[idx];
@@ -40,8 +40,8 @@ public:
     }
   }
 
-  rtHitCounter<NumericType> &
-  operator=(rtHitCounter<NumericType> const &pOther) {
+  rayHitCounter<NumericType> &
+  operator=(rayHitCounter<NumericType> const &pOther) {
     if (this != &pOther) {
       // copy from pOther to this
       mCnts.clear();
@@ -57,8 +57,8 @@ public:
     return *this;
   }
 
-  rtHitCounter<NumericType> &
-  operator=(rtHitCounter<NumericType> const &&pOther) {
+  rayHitCounter<NumericType> &
+  operator=(rayHitCounter<NumericType> const &&pOther) {
     if (this != &pOther) {
       // move from pOther to this
       mCnts.clear();
@@ -126,4 +126,4 @@ private:
   std::vector<NumericType> mS2s;
 };
 
-#endif // RT_HITCOUNTER_HPP
+#endif // RAY_HITCOUNTER_HPP

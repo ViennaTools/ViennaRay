@@ -1,15 +1,15 @@
-#ifndef RT_RAYSOURCEGRID_HPP
-#define RT_RAYSOURCEGRID_HPP
+#ifndef RAY_SOURCEGRID_HPP
+#define RAY_SOURCEGRID_HPP
 
-#include <rtGeometry.hpp>
-#include <rtRaySource.hpp>
+#include <rayGeometry.hpp>
+#include <raySource.hpp>
 
 template <typename NumericType, int D>
-class rtRaySourceGrid : public rtRaySource<NumericType, D> {
+class raySourceGrid : public raySource<NumericType, D> {
 public:
-  rtRaySourceGrid(std::vector<rtTriple<NumericType>> &sourceGrid,
-                  NumericType passedCosinePower,
-                  const std::array<int, 5> &passedTraceSettings)
+  raySourceGrid(std::vector<rayTriple<NumericType>> &sourceGrid,
+                NumericType passedCosinePower,
+                const std::array<int, 5> &passedTraceSettings)
       : mSourceGrid(sourceGrid), mNumPoints(sourceGrid.size()),
         cosinePower(passedCosinePower), rayDir(passedTraceSettings[0]),
         firstDir(passedTraceSettings[1]), secondDir(passedTraceSettings[2]),
@@ -17,11 +17,10 @@ public:
         ee(((NumericType)2) / (passedCosinePower + 1)),
         indexCounter(sourceGrid.size(), 0) {}
 
-  void fillRay(RTCRay &ray, rtRandomNumberGenerator &RNG, const size_t idx,
-               rtRandomNumberGenerator::RNGState &RngState1,
-               rtRandomNumberGenerator::RNGState &RngState2,
-               rtRandomNumberGenerator::RNGState &RngState3,
-               rtRandomNumberGenerator::RNGState &RngState4) override final {
+  void fillRay(RTCRay &ray, rayRNG &RNG, const size_t idx,
+               rayRNG::RNGState &RngState1, rayRNG::RNGState &RngState2,
+               rayRNG::RNGState &RngState3,
+               rayRNG::RNGState &RngState4) override final {
     auto index = idx % mNumPoints;
     indexCounter[index]++;
     auto origin = mSourceGrid[idx % mNumPoints];
@@ -55,11 +54,9 @@ public:
   }
 
 private:
-  rtTriple<NumericType>
-  getDirection(rtRandomNumberGenerator &RNG,
-               rtRandomNumberGenerator::RNGState &RngState1,
-               rtRandomNumberGenerator::RNGState &RngState2) {
-    rtTriple<NumericType> direction{0., 0., 0.};
+  rayTriple<NumericType> getDirection(rayRNG &RNG, rayRNG::RNGState &RngState1,
+                                      rayRNG::RNGState &RngState2) {
+    rayTriple<NumericType> direction{0., 0., 0.};
     auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
     auto r2 = ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
 
@@ -73,12 +70,12 @@ private:
       direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
     }
 
-    rtInternal::Normalize(direction);
+    rayInternal::Normalize(direction);
 
     return direction;
   }
 
-  const std::vector<rtTriple<NumericType>> &mSourceGrid;
+  const std::vector<rayTriple<NumericType>> &mSourceGrid;
   const size_t mNumPoints;
   const NumericType cosinePower;
   const int rayDir;
@@ -88,7 +85,7 @@ private:
   const NumericType posNeg;
   const NumericType ee;
   std::vector<size_t> indexCounter;
-  constexpr static NumericType two_pi = rtInternal::PI * 2;
+  constexpr static NumericType two_pi = rayInternal::PI * 2;
 };
 
 #endif // RT_RAYSOURCE_HPP

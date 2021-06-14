@@ -1,19 +1,18 @@
-#ifndef RT_GEOMETRY_HPP
-#define RT_GEOMETRY_HPP
+#ifndef RAY_GEOMETRY_HPP
+#define RAY_GEOMETRY_HPP
 
 #include <embree3/rtcore.h>
-#include <rtMessage.hpp>
-#include <rtMetaGeometry.hpp>
-#include <rtUtil.hpp>
-#include <type_traits>
+#include <rayMessage.hpp>
+#include <rayMetaGeometry.hpp>
+#include <rayUtil.hpp>
 
 template <typename NumericType, int D>
-class rtGeometry : public rtMetaGeometry<NumericType, D> {
+class rayGeometry : public rayMetaGeometry<NumericType, D> {
 private:
   typedef std::vector<std::vector<size_t>> pointNeighborhoodType;
 
 public:
-  rtGeometry() {}
+  rayGeometry() {}
 
   template <size_t Dim>
   void initGeometry(RTCDevice &pDevice,
@@ -24,7 +23,7 @@ public:
                   "Setting 2D geometry in 3D trace object");
 
     assert(points.size() == normals.size() &&
-           "rtGeometry: Points/Normals size missmatch");
+           "rayGeometry: Points/Normals size missmatch");
 
     // overwriting the geometry without releasing it beforehand causes the old
     // buffer to leak
@@ -34,12 +33,6 @@ public:
     assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
            "RTC Error: rtcNewGeometry");
     mNumPoints = points.size();
-
-    // if (!std::is_same<NumericType, float>::value) {
-    //   rtMessage::getInstance()
-    //       .addWarning("Internal type conversion to type float.")
-    //       .print();
-    // }
 
     // The buffer data is managed internally (embree) and automatically freed
     // when the geometry is destroyed.
@@ -106,7 +99,7 @@ public:
   template <typename MatIdType>
   void setMaterialIds(std::vector<MatIdType> &pMaterialIds) {
     assert(pMaterialIds.size() == mNumPoints &&
-           "rtGeometry: Material IDs size missmatch");
+           "rayGeometry: Material IDs size missmatch");
     mMaterialIds.clear();
     mMaterialIds.reserve(mNumPoints);
     for (const auto id : pMaterialIds) {
@@ -114,18 +107,18 @@ public:
     }
   }
 
-  rtPair<rtTriple<NumericType>> getBoundingBox() const {
+  rayPair<rayTriple<NumericType>> getBoundingBox() const {
     return {mMinCoords, mMaxCoords};
   }
 
-  rtTriple<NumericType> getPoint(const size_t primID) const {
-    assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+  rayTriple<NumericType> getPoint(const size_t primID) const {
+    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
     auto const &pnt = mPointBuffer[primID];
     return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
   }
 
   std::vector<size_t> getNeighborIndicies(const size_t idx) const {
-    assert(idx < mNumPoints && "rtGeometry: Index out of bounds");
+    assert(idx < mNumPoints && "rayGeometry: Index out of bounds");
     return mPointNeighborhood[idx];
   }
 
@@ -135,29 +128,29 @@ public:
 
   RTCGeometry &getRTCGeometry() override final { return mRTCGeometry; }
 
-  rtTriple<NumericType> getPrimNormal(const size_t primID) override final {
-    assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
+  rayTriple<NumericType> getPrimNormal(const size_t primID) override final {
+    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
     auto const &normal = mNormalVecBuffer[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,
             (NumericType)normal.zz};
   }
 
-  rtQuadruple<rtcNumericType> &getPrimRef(unsigned int primID) {
-    assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rtQuadruple<rtcNumericType> *>(
+  rayQuadruple<rtcNumericType> &getPrimRef(unsigned int primID) {
+    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
+    return *reinterpret_cast<rayQuadruple<rtcNumericType> *>(
         &mPointBuffer[primID]);
   }
 
-  rtTriple<rtcNumericType> &getNormalRef(unsigned int primID) {
-    assert(primID < mNumPoints && "rtGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rtTriple<rtcNumericType> *>(
+  rayTriple<rtcNumericType> &getNormalRef(unsigned int primID) {
+    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
+    return *reinterpret_cast<rayTriple<rtcNumericType> *>(
         &mNormalVecBuffer[primID]);
   }
 
   std::vector<int> &getMaterialIds() { return mMaterialIds; }
 
   int getMaterialId(const size_t primID) const override final {
-    assert(primID < mNumPoints && "rtGeometry Prim ID out of bounds");
+    assert(primID < mNumPoints && "rayGeometry Prim ID out of bounds");
     return mMaterialIds[primID];
   }
 
@@ -196,8 +189,8 @@ private:
       std::vector<size_t> side2;
 
       // create copy of bounding box
-      rtTriple<NumericType> min = mMinCoords;
-      rtTriple<NumericType> max = mMaxCoords;
+      rayTriple<NumericType> min = mMinCoords;
+      rayTriple<NumericType> max = mMaxCoords;
 
       std::vector<int> dirs;
       for (int i = 0; i < 3; ++i) {
@@ -232,11 +225,11 @@ private:
     }
   }
 
-  void createNeighborhood(const std::vector<rtTriple<NumericType>> &points,
+  void createNeighborhood(const std::vector<rayTriple<NumericType>> &points,
                           const std::vector<size_t> &side1,
                           const std::vector<size_t> &side2,
-                          const rtTriple<NumericType> &min,
-                          const rtTriple<NumericType> &max, const int &dirIdx,
+                          const rayTriple<NumericType> &min,
+                          const rayTriple<NumericType> &max, const int &dirIdx,
                           const std::vector<int> &dirs,
                           const NumericType &pivot) {
     assert(0 <= dirIdx && dirIdx < dirs.size() && "Assumption");
@@ -347,7 +340,7 @@ private:
       if (std::abs(p1[i] - p2[i]) >= dist)
         return false;
     }
-    if (rtInternal::Distance<NumericType>(p1, p2) < dist)
+    if (rayInternal::Distance<NumericType>(p1, p2) < dist)
       return true;
 
     return false;
@@ -380,10 +373,10 @@ private:
   constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
   constexpr static NumericType nummin =
       std::numeric_limits<NumericType>::lowest();
-  rtTriple<NumericType> mMinCoords{nummax, nummax, nummax};
-  rtTriple<NumericType> mMaxCoords{nummin, nummin, nummin};
+  rayTriple<NumericType> mMinCoords{nummax, nummax, nummax};
+  rayTriple<NumericType> mMaxCoords{nummin, nummin, nummin};
   pointNeighborhoodType mPointNeighborhood;
   std::vector<int> mMaterialIds;
 };
 
-#endif // RT_GEOMETRY_HPP
+#endif // RAY_GEOMETRY_HPP

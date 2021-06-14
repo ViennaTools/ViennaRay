@@ -1,25 +1,24 @@
-#ifndef RT_RAYSOURCERANDOM_HPP
-#define RT_RAYSOURCERANDOM_HPP
+#ifndef RAY_SOURCERANDOM_HPP
+#define RAY_SOURCERANDOM_HPP
 
-#include <rtRaySource.hpp>
+#include <raySource.hpp>
 
 template <typename NumericType, int D>
-class rtRaySourceRandom : public rtRaySource<NumericType, D> {
-  typedef rtPair<rtTriple<NumericType>> boundingBoxType;
+class raySourceRandom : public raySource<NumericType, D> {
+  typedef rayPair<rayTriple<NumericType>> boundingBoxType;
 
 public:
-  rtRaySourceRandom(boundingBoxType pBoundingBox, NumericType pCosinePower,
-                    std::array<int, 5> &pTraceSettings, const size_t pNumPoints)
+  raySourceRandom(boundingBoxType pBoundingBox, NumericType pCosinePower,
+                  std::array<int, 5> &pTraceSettings, const size_t pNumPoints)
       : bdBox(pBoundingBox), rayDir(pTraceSettings[0]),
         firstDir(pTraceSettings[1]), secondDir(pTraceSettings[2]),
         minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
         ee(((NumericType)2) / (pCosinePower + 1)), mNumPoints(pNumPoints) {}
 
-  void fillRay(RTCRay &ray, rtRandomNumberGenerator &RNG, const size_t idx,
-               rtRandomNumberGenerator::RNGState &RngState1,
-               rtRandomNumberGenerator::RNGState &RngState2,
-               rtRandomNumberGenerator::RNGState &RngState3,
-               rtRandomNumberGenerator::RNGState &RngState4) override final {
+  void fillRay(RTCRay &ray, rayRNG &RNG, const size_t idx,
+               rayRNG::RNGState &RngState1, rayRNG::RNGState &RngState2,
+               rayRNG::RNGState &RngState3,
+               rayRNG::RNGState &RngState4) override final {
     auto origin = getOrigin(RNG, RngState1, RngState2);
     auto direction = getDirection(RNG, RngState3, RngState4);
 
@@ -45,11 +44,9 @@ public:
   size_t getNumPoints() const override final { return mNumPoints; }
 
 private:
-  rtTriple<NumericType>
-  getOrigin(rtRandomNumberGenerator &RNG,
-            rtRandomNumberGenerator::RNGState &RngState1,
-            rtRandomNumberGenerator::RNGState &RngState2) {
-    rtTriple<NumericType> origin{0., 0., 0.};
+  rayTriple<NumericType> getOrigin(rayRNG &RNG, rayRNG::RNGState &RngState1,
+                                   rayRNG::RNGState &RngState2) {
+    rayTriple<NumericType> origin{0., 0., 0.};
     auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
 
     origin[rayDir] = bdBox[minMax][rayDir];
@@ -68,11 +65,9 @@ private:
     return origin;
   }
 
-  rtTriple<NumericType>
-  getDirection(rtRandomNumberGenerator &RNG,
-               rtRandomNumberGenerator::RNGState &RngState1,
-               rtRandomNumberGenerator::RNGState &RngState2) {
-    rtTriple<NumericType> direction{0., 0., 0.};
+  rayTriple<NumericType> getDirection(rayRNG &RNG, rayRNG::RNGState &RngState1,
+                                      rayRNG::RNGState &RngState2) {
+    rayTriple<NumericType> direction{0., 0., 0.};
     auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
     auto r2 = ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
 
@@ -86,7 +81,7 @@ private:
       direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
     }
 
-    rtInternal::Normalize(direction);
+    rayInternal::Normalize(direction);
 
     return direction;
   }
@@ -99,7 +94,7 @@ private:
   const NumericType posNeg;
   const NumericType ee;
   const size_t mNumPoints;
-  constexpr static NumericType two_pi = rtInternal::PI * 2;
+  constexpr static NumericType two_pi = rayInternal::PI * 2;
 };
 
-#endif // RT_RAYSOURCERANDOM_HPP
+#endif // RAY_SOURCERANDOM_HPP

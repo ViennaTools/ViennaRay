@@ -1,16 +1,17 @@
 #include <omp.h>
-#include <rtBoundary.hpp>
-#include <rtGeometry.hpp>
-#include <rtRaySourceRandom.hpp>
-#include <rtRayTracer.hpp>
-#include <rtTestAsserts.hpp>
-#include <rtUtil.hpp>
+#include <rayBoundary.hpp>
+#include <rayGeometry.hpp>
+#include <rayParticle.hpp>
+#include <raySourceRandom.hpp>
+#include <rayTestAsserts.hpp>
+#include <rayTraceKernel.hpp>
+#include <rayUtil.hpp>
 
 int main() {
   constexpr int D = 3;
   using NumericType = float;
-  using ParticleType = rtTestParticle<NumericType>;
-  using ReflectionType = rtReflectionSpecular<NumericType, D>;
+  using ParticleType = rayTestParticle<NumericType>;
+  using ReflectionType = rayReflectionSpecular<NumericType, D>;
   NumericType extent = 10;
   NumericType gridDelta = 0.5;
   NumericType eps = 1e-6;
@@ -18,35 +19,35 @@ int main() {
 
   std::vector<std::array<NumericType, D>> points;
   std::vector<std::array<NumericType, D>> normals;
-  rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
+  rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   auto device = rtcNewDevice("");
 
-  auto localData = rtTracingData<NumericType>();
-  const auto globalData = rtTracingData<NumericType>();
+  auto localData = rayTracingData<NumericType>();
+  const auto globalData = rayTracingData<NumericType>();
 
-  rtGeometry<NumericType, D> geometry;
+  rayGeometry<NumericType, D> geometry;
   auto discRadius = gridDelta * discFactor;
   geometry.initGeometry(device, points, normals, discRadius);
 
   auto boundingBox = geometry.getBoundingBox();
-  rtInternal::adjustBoundingBox<NumericType, D>(
-      boundingBox, rtTraceDirection::POS_Z, discRadius);
-  auto traceSettings = rtInternal::getTraceSettings(rtTraceDirection::POS_Z);
+  rayInternal::adjustBoundingBox<NumericType, D>(
+      boundingBox, rayTraceDirection::POS_Z, discRadius);
+  auto traceSettings = rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
 
-  rtTraceBoundary boundaryConds[D] = {};
-  auto boundary = rtBoundary<NumericType, D>(device, boundingBox, boundaryConds,
-                                             traceSettings);
-  auto raySource = rtRaySourceRandom<NumericType, D>(
+  rayTraceBoundary boundaryConds[D] = {};
+  auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
+                                              boundaryConds, traceSettings);
+  auto raySource = raySourceRandom<NumericType, D>(
       boundingBox, 1., traceSettings, geometry.getNumPoints());
 
-  auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
+  auto tracer = rayTraceKernel<NumericType, ParticleType, ReflectionType, D>(
       device, geometry, boundary, raySource, 1, 0);
   auto hitCounter = tracer.apply(localData, globalData);
   auto discAreas = hitCounter.getDiscAreas();
 
   auto boundaryDirs = boundary.getDirs();
-  auto wholeDiscArea = discRadius * discRadius * rtInternal::PI;
+  auto wholeDiscArea = discRadius * discRadius * rayInternal::PI;
   for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto const &disc = geometry.getPrimRef(idx);
     if (std::fabs(disc[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <

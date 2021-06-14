@@ -1,7 +1,8 @@
 #include <omp.h>
-#include <rtBoundCondition.hpp>
-#include <rtReflectionDiffuse.hpp>
-#include <rtTrace.hpp>
+#include <rayBoundCondition.hpp>
+#include <rayParticle.hpp>
+#include <rayReflectionDiffuse.hpp>
+#include <rayTrace.hpp>
 
 int main() {
   // Geometry space dimension
@@ -14,15 +15,15 @@ int main() {
   // internally to float.
   // ParticleType: The particle types provides the sticking probability for
   // each surface hit. This class can be user defined, but has to interface
-  // the rtParticle<NumericType> class.
+  // the rayParticle<NumericType> class.
   // ReflectionType: This reflection will be used at each surface hit.
-  // Already implented types are rtReflectionSpecular for specular reflections
-  // and rtReflectionDiffuse for diffuse reflections. However, this class can
+  // Already implented types are rayReflectionSpecular for specular reflections
+  // and rayReflectionDiffuse for diffuse reflections. However, this class can
   // again be a user defined custom reflection, that has to interface the
-  // rtReflection<NumericType, D> class.
+  // rayReflection<NumericType, D> class.
   using NumericType = float;
-  using ParticleType = rtTestParticle<NumericType>;
-  using ReflectionType = rtReflectionDiffuse<NumericType, D>;
+  using ParticleType = rayTestParticle<NumericType>;
+  using ReflectionType = rayReflectionDiffuse<NumericType, D>;
 
   // Set the number of threads to use in OpenMP parallelization
   omp_set_num_threads(12);
@@ -31,23 +32,23 @@ int main() {
   NumericType gridDelta;
   std::vector<std::array<NumericType, D>> points;
   std::vector<std::array<NumericType, D>> normals;
-  rtInternal::readGridFromFile("trenchGrid3D.dat", gridDelta, points, normals);
+  rayInternal::readGridFromFile("trenchGrid3D.dat", gridDelta, points, normals);
 
   // Ray tracer boundary conditions:
   // There has to be a boundary condition defined for each space dimension,
   // however the boundary condition in direction of the tracing direction will
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
-  rtTraceBoundary boundaryConds[D];
-  boundaryConds[0] = rtTraceBoundary::PERIODIC; // x
-  boundaryConds[1] = rtTraceBoundary::PERIODIC; // y
-  boundaryConds[2] = rtTraceBoundary::PERIODIC; // z
+  rayTraceBoundary boundaryConds[D];
+  boundaryConds[0] = rayTraceBoundary::PERIODIC; // x
+  boundaryConds[1] = rayTraceBoundary::PERIODIC; // y
+  boundaryConds[2] = rayTraceBoundary::PERIODIC; // z
 
-  rtTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
+  rayTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
 
   // Ray settings
-  rayTracer.setSourceDirection(rtTraceDirection::POS_Z);
+  rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(1000);
   rayTracer.setSourceDistributionPower(5.);
 
@@ -56,7 +57,8 @@ int main() {
 
   // Extract the normalized hit counts for each geometry point
   auto mcEstimates = rayTracer.getNormalizedFlux();
-  rtInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, mcEstimates);
+  rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points,
+                                        mcEstimates);
 
   return 0;
 }

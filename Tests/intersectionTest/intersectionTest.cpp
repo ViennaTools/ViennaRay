@@ -1,8 +1,8 @@
 #include <embree3/rtcore.h>
-#include <rtBoundary.hpp>
-#include <rtGeometry.hpp>
-#include <rtTestAsserts.hpp>
-#include <rtUtil.hpp>
+#include <rayBoundary.hpp>
+#include <rayGeometry.hpp>
+#include <rayTestAsserts.hpp>
+#include <rayUtil.hpp>
 // void printRay(RTCRayHit &rayHit)
 // {
 //     std::cout << "Origin: ";
@@ -23,23 +23,23 @@ int main() {
   NumericType gridDelta = 0.5;
   std::vector<std::array<NumericType, D>> points;
   std::vector<std::array<NumericType, D>> normals;
-  rtInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
+  rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   auto rtcDevice = rtcNewDevice("");
-  auto sourceDirection = rtTraceDirection::POS_Z;
-  rtTraceBoundary boundaryConds[D] = {};
+  auto sourceDirection = rayTraceDirection::POS_Z;
+  rayTraceBoundary boundaryConds[D] = {};
 
   constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
   auto discRadius = gridDelta * discFactor;
-  rtGeometry<NumericType, D> geometry;
+  rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(rtcDevice, points, normals, discRadius);
   auto boundingBox = geometry.getBoundingBox();
 
-  rtInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection,
-                                                discRadius);
-  auto traceSettings = rtInternal::getTraceSettings(sourceDirection);
-  auto boundary = rtBoundary<NumericType, D>(rtcDevice, boundingBox,
-                                             boundaryConds, traceSettings);
+  rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection,
+                                                 discRadius);
+  auto traceSettings = rayInternal::getTraceSettings(sourceDirection);
+  auto boundary = rayBoundary<NumericType, D>(rtcDevice, boundingBox,
+                                              boundaryConds, traceSettings);
 
   auto rtcscene = rtcNewScene(rtcDevice);
   rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
@@ -56,8 +56,8 @@ int main() {
   RAYTEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
   {
-    auto origin = rtTriple<NumericType>{0., 0., 2 * discRadius};
-    auto direction = rtTriple<NumericType>{0., 0., -1.};
+    auto origin = rayTriple<NumericType>{0., 0., 2 * discRadius};
+    auto direction = rayTriple<NumericType>{0., 0., -1.};
 
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -83,9 +83,9 @@ int main() {
   }
 
   {
-    auto origin = rtTriple<NumericType>{0., 9., 2 * discRadius};
-    auto direction = rtTriple<NumericType>{0., 2., -1.};
-    rtInternal::Normalize(direction);
+    auto origin = rayTriple<NumericType>{0., 9., 2 * discRadius};
+    auto direction = rayTriple<NumericType>{0., 2., -1.};
+    rayInternal::Normalize(direction);
 
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

@@ -1,34 +1,34 @@
-#ifndef RT_MESSAGE_HPP
-#define RT_MESSAGE_HPP
+#ifndef RAY_MESSAGE_HPP
+#define RAY_MESSAGE_HPP
 
 #include <iostream>
 
 /// Singleton class for thread-safe logging.
-class rtMessage {
+class rayMessage {
   std::string message;
 
   bool error = false;
   const unsigned tabWidth = 2;
 
-  rtMessage() {}
+  rayMessage() {}
 
 public:
   // delete constructors to result in better error messages by compilers
-  rtMessage(const rtMessage &) = delete;
-  void operator=(const rtMessage &) = delete;
+  rayMessage(const rayMessage &) = delete;
+  void operator=(const rayMessage &) = delete;
 
-  static rtMessage &getInstance() {
-    static rtMessage instance;
+  static rayMessage &getInstance() {
+    static rayMessage instance;
     return instance;
   }
 
-  rtMessage &addWarning(std::string s) {
+  rayMessage &addWarning(std::string s) {
 #pragma omp critical
     { message += "\n" + std::string(tabWidth, ' ') + "WARNING: " + s + "\n"; }
     return *this;
   }
 
-  rtMessage &addError(std::string s, bool shouldAbort = true) {
+  rayMessage &addError(std::string s, bool shouldAbort = true) {
 #pragma omp critical
     { message += "\n" + std::string(tabWidth, ' ') + "ERROR: " + s + "\n"; }
     // always abort once error message should be printed
@@ -39,7 +39,7 @@ public:
     return *this;
   }
 
-  rtMessage &addDebug(std::string s) {
+  rayMessage &addDebug(std::string s) {
 #pragma omp critical
     { message += std::string(tabWidth, ' ') + "DEBUG: " + s + "\n"; }
     return *this;
@@ -53,4 +53,4 @@ public:
   }
 };
 
-#endif // RT_MESSAGE_HPP
+#endif // RAY_MESSAGE_HPP
