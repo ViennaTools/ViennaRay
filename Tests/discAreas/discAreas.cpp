@@ -25,7 +25,6 @@ int main() {
   auto localData = rtTracingData<NumericType>();
   const auto globalData = rtTracingData<NumericType>();
 
-
   rtGeometry<NumericType, D> geometry;
   auto discRadius = gridDelta * discFactor;
   geometry.initGeometry(device, points, normals, discRadius);

@@ -9,33 +9,34 @@
 #include <rtRandomNumberGenerator.hpp>
 #include <rtRaySource.hpp>
 #include <rtReflection.hpp>
-#include <rtUtil.hpp>
 #include <rtTracingData.hpp>
+#include <rtUtil.hpp>
 
 #define PRINT_PROGRESS false
 #define PRINT_RESULT false
 
 template <typename NumericType, typename ParticleType, typename ReflectionType,
           int D>
-class rtRayTracer
-{
+class rtRayTracer {
 
 public:
   rtRayTracer(RTCDevice &pDevice, rtGeometry<NumericType, D> &pRTCGeometry,
               rtBoundary<NumericType, D> &pRTCBoundary,
               rtRaySource<NumericType, D> &pSource,
-              const size_t pNumOfRayPerPoint,
-              const size_t pNumOfRayFixed)
+              const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
-        mSource(pSource), mNumRays(pNumOfRayFixed == 0 ? pSource.getNumPoints() * pNumOfRayPerPoint : pNumOfRayFixed)
-  {
+        mSource(pSource),
+        mNumRays(pNumOfRayFixed == 0
+                     ? pSource.getNumPoints() * pNumOfRayPerPoint
+                     : pNumOfRayFixed) {
     assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
   }
 
-  rtHitCounter<NumericType> apply(rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData)
-  {
+  rtHitCounter<NumericType>
+  apply(rtTracingData<NumericType> &localData,
+        const rtTracingData<NumericType> &globalData) {
     auto rtcScene = rtcNewScene(mDevice);
 
     // RTC scene flags
@@ -66,8 +67,7 @@ public:
     // thread local data storage
     const int numThreads = omp_get_max_threads();
     std::vector<rtTracingData<NumericType>> threadLocalData(numThreads);
-    for (auto &data : threadLocalData)
-    {
+    for (auto &data : threadLocalData) {
       data = localData;
     }
 
@@ -94,22 +94,17 @@ public:
       const int threadID = omp_get_thread_num();
       constexpr int numRngStates = 8;
       unsigned int seeds[numRngStates];
-      if (mUseRandomSeeds)
-      {
+      if (mUseRandomSeeds) {
         std::mt19937_64 rd(
             static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 *
                                       std::chrono::high_resolution_clock::now()
                                           .time_since_epoch()
                                           .count()));
-        for (size_t i = 0; i < numRngStates; ++i)
-        {
+        for (size_t i = 0; i < numRngStates; ++i) {
           seeds[i] = rd();
         }
-      }
-      else
-      {
-        for (size_t i = 0; i < numRngStates; ++i)
-        {
+      } else {
+        for (size_t i = 0; i < numRngStates; ++i) {
           seeds[i] =
               static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 + i);
         }
@@ -137,23 +132,20 @@ public:
       [[maybe_unused]] size_t progressCount = 0;
 
 #pragma omp for schedule(dynamic)
-      for (size_t idx = 0; idx < mNumRays; ++idx)
-      {
+      for (size_t idx = 0; idx < mNumRays; ++idx) {
         particle.initNew(RNG, RngState8);
         NumericType rayWeight = initialRayWeight;
 
         mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
 
-        if constexpr (PRINT_PROGRESS)
-        {
+        if constexpr (PRINT_PROGRESS) {
           printProgress(progressCount);
         }
 
         bool reflect = false;
         bool hitFromBack = false;
-        do
-        {
+        do {
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
@@ -163,16 +155,14 @@ public:
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
 
           /* -------- No hit -------- */
-          if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID)
-          {
+          if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
             nongeohitc += 1;
             reflect = false;
             break;
           }
 
           /* -------- Boundary hit -------- */
-          if (rayHit.hit.geomID == boundaryID)
-          {
+          if (rayHit.hit.geomID == boundaryID) {
             auto newRay = mBoundary.processHit(rayHit, reflect);
 
             // Update ray
@@ -199,14 +189,13 @@ public:
 
           /* -------- Hit from back -------- */
           const auto &ray = rayHit.ray;
-          const auto rayDir = rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
-          if (rtInternal::DotProduct(rayDir,
-                                     mGeometry.getPrimNormal(rayHit.hit.primID)) > 0)
-          {
+          const auto rayDir =
+              rtTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
+          if (rtInternal::DotProduct(
+                  rayDir, mGeometry.getPrimNormal(rayHit.hit.primID)) > 0) {
             // If the dot product of the ray direction and the surface normal is
             // greater than zero, then we hit the back face of the disc.
-            if (hitFromBack)
-            {
+            if (hitFromBack) {
               // if hitFromback == true, then the ray hits the back of a disc
               // the second time. In this case we ignore the ray.
               break;
@@ -229,38 +218,35 @@ public:
           const auto materialID = mGeometry.getMaterialId(primID);
 
           // Check for additional intersections
-          for (const auto &id :
-               mGeometry.getNeighborIndicies(primID))
-          {
+          for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
             const auto &disc = mGeometry.getPrimRef(id);
             const auto &normalRef = mGeometry.getNormalRef(id);
             const auto matID = mGeometry.getMaterialId(id);
 
-            if (rtLocalIntersector::intersect(rayHit.ray, disc, normalRef))
-            {
+            if (rtLocalIntersector::intersect(rayHit.ray, disc, normalRef)) {
               const auto normal = mGeometry.getPrimNormal(id);
-              const auto sticking = particle.processSurfaceHit(rayWeight, rayDir, normal, id, matID, true,
-                                                               myLocalData, globalData, RNG, RngState5);
+              const auto sticking = particle.processSurfaceHit(
+                  rayWeight, rayDir, normal, id, matID, true, myLocalData,
+                  globalData, RNG, RngState5);
               if (calcFlux)
                 hitCounter.use(id, rayWeight * sticking);
             }
           }
-          const auto sticking = particle.processSurfaceHit(rayWeight, rayDir, geomNormal, primID, materialID, false,
-                                                           myLocalData, globalData, RNG, RngState5);
+          const auto sticking = particle.processSurfaceHit(
+              rayWeight, rayDir, geomNormal, primID, materialID, false,
+              myLocalData, globalData, RNG, RngState5);
           const auto valueToDrop = rayWeight * sticking;
           if (calcFlux)
             hitCounter.use(primID, valueToDrop);
 
           // Update ray weight
           rayWeight -= valueToDrop;
-          if (rayWeight <= 0)
-          {
+          if (rayWeight <= 0) {
             break;
           }
           reflect =
               rejectionControl(rayWeight, initialRayWeight, RNG, RngState6);
-          if (!reflect)
-          {
+          if (!reflect) {
             break;
           }
           auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit, materialID,
@@ -292,83 +278,70 @@ public:
       hitCounter.setDiscAreas(discAreas);
     }
     // merge local data
-    if (!localData.getVectorData().empty())
-    {
+    if (!localData.getVectorData().empty()) {
       // merge vector data
 #pragma omp parallel for
-      for (size_t i = 0; i < localData.getVectorData().size(); ++i)
-      {
-        switch (localData.getVectorMergeType(i))
-        {
-        case rtTracingDataMergeEnum::SUM:
-        {
-          for (size_t j = 0; j < localData.getVectorData(i).size(); ++j)
-          {
-            for (int k = 0; k < numThreads; ++k)
-            {
-              localData.getVectorData(i)[j] += threadLocalData[k].getVectorData(i)[j];
+      for (size_t i = 0; i < localData.getVectorData().size(); ++i) {
+        switch (localData.getVectorMergeType(i)) {
+        case rtTracingDataMergeEnum::SUM: {
+          for (size_t j = 0; j < localData.getVectorData(i).size(); ++j) {
+            for (int k = 0; k < numThreads; ++k) {
+              localData.getVectorData(i)[j] +=
+                  threadLocalData[k].getVectorData(i)[j];
             }
-            localData.getVectorData(i)[j] /= hitCounter.getDiscAreas()[j];
+            // localData.getVectorData(i)[j] /= hitCounter.getDiscAreas()[j];
           }
           break;
         }
 
-        case rtTracingDataMergeEnum::APPEND:
-        {
+        case rtTracingDataMergeEnum::APPEND: {
           localData.getVectorData(i).clear();
-          for (int k = 0; k < numThreads; ++k)
-          {
+          for (int k = 0; k < numThreads; ++k) {
             localData.appendVectorData(i, threadLocalData[k].getVectorData(i));
           }
           break;
         }
 
-        default:
-        {
-          rtMessage::getInstance().addWarning("Invalid merge type in local vector data.").print();
+        default: {
+          rtMessage::getInstance()
+              .addWarning("Invalid merge type in local vector data.")
+              .print();
           break;
         }
         }
       }
     }
 
-    if (!localData.getScalarData().empty())
-    {
+    if (!localData.getScalarData().empty()) {
       // merge scalar data
-      for (size_t i = 0; i < localData.getScalarData().size(); ++i)
-      {
-        switch (localData.getScalarMergeType(i))
-        {
-        case rtTracingDataMergeEnum::SUM:
-        {
-          for (int j = 0; j < numThreads; ++j)
-          {
+      for (size_t i = 0; i < localData.getScalarData().size(); ++i) {
+        switch (localData.getScalarMergeType(i)) {
+        case rtTracingDataMergeEnum::SUM: {
+          for (int j = 0; j < numThreads; ++j) {
             localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
           }
           break;
         }
 
-        case rtTracingDataMergeEnum::AVERAGE:
-        {
-          for (int j = 0; j < numThreads; ++j)
-          {
+        case rtTracingDataMergeEnum::AVERAGE: {
+          for (int j = 0; j < numThreads; ++j) {
             localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
           }
           localData.getScalarData(i) /= (NumericType)numThreads;
           break;
         }
 
-        default:
-        {
-          rtMessage::getInstance().addWarning("Invalid merge type in local scalar data.").print();
+        default: {
+          rtMessage::getInstance()
+              .addWarning("Invalid merge type in local scalar data.")
+              .print();
           break;
         }
         }
       }
     }
 
-    if constexpr (PRINT_RESULT)
-    {
+    if constexpr (PRINT_RESULT) {
       std::cout << "==== Ray tracing result ====\n"
                 << "Elapsed time: "
                 << (rtInternal::timeStampNow<std::chrono::milliseconds>() -
@@ -388,19 +361,14 @@ public:
     return hitCounter;
   }
 
-  void
-  useRandomSeeds(bool use)
-  {
-    mUseRandomSeeds = use;
-  }
+  void useRandomSeeds(bool use) { mUseRandomSeeds = use; }
 
   void calcFlux(bool calc) { mCalcFlux = calc; }
 
 private:
   bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
                         rtRandomNumberGenerator &RNG,
-                        rtRandomNumberGenerator::RNGState &RngState)
-  {
+                        rtRandomNumberGenerator::RNGState &RngState) {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;
@@ -408,8 +376,7 @@ private:
     // If the weight of the ray is above a certain threshold, we always reflect.
     // If the weight of the ray is below the threshold, we randomly decide to
     // either kill the ray or increase its weight (in an unbiased way).
-    if (rayWeight >= lowerThreshold)
-    {
+    if (rayWeight >= lowerThreshold) {
       return true;
     }
     // We want to set the weight of (the reflection of) the ray to the value of
@@ -417,8 +384,7 @@ private:
     // probability of (1 - rayWeight / renewWeight).
     auto rndm = RNG.get(RngState);
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rndm < (killProbability * RNG.max()))
-    {
+    if (rndm < (killProbability * RNG.max())) {
       // kill the ray
       return false;
     }
@@ -428,8 +394,7 @@ private:
     return true;
   }
 
-  std::vector<NumericType> computeDiscAreas()
-  {
+  std::vector<NumericType> computeDiscAreas() {
     constexpr NumericType eps = 1e-4;
     const auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
@@ -437,29 +402,24 @@ private:
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
 
 #pragma omp for
-    for (size_t idx = 0; idx < numOfPrimitives; ++idx)
-    {
+    for (size_t idx = 0; idx < numOfPrimitives; ++idx) {
       auto const &disc = mGeometry.getPrimRef(idx);
       areas[idx] = disc[3] * disc[3] * (NumericType)rtInternal::PI;
       if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
-          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps)
-      {
+          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
         areas[idx] /= 2;
       }
 
       if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) < eps ||
-          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < eps)
-      {
+          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < eps) {
         areas[idx] /= 2;
       }
     }
     return areas;
   }
 
-  void printProgress(size_t &progressCount)
-  {
-    if (omp_get_thread_num() != 0)
-    {
+  void printProgress(size_t &progressCount) {
+    if (omp_get_thread_num() != 0) {
       return;
     }
     constexpr auto barLength = 30;
@@ -470,8 +430,7 @@ private:
     constexpr auto percentageStringFormatLength = 3; // 3 digits
     if (progressCount % (int)std::ceil((rtcNumericType)mNumRays /
                                        omp_get_num_threads() / barLength) ==
-        0)
-    {
+        0) {
       auto fillLength =
           (int)std::ceil(progressCount / ((rtcNumericType)mNumRays /
                                           omp_get_num_threads() / barLength));
@@ -486,8 +445,7 @@ private:
                              emptySymbol) +
                  std::string(1, barEndSymbol) + " " + percentageString;
       std::cerr << "\r" << bar;
-      if (fillLength >= barLength)
-      {
+      if (fillLength >= barLength) {
         std::cerr << std::endl;
       }
     }

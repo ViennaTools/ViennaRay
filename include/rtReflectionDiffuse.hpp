@@ -4,15 +4,13 @@
 #include <rtReflection.hpp>
 
 template <typename NumericType, int D>
-class rtReflectionDiffuse : public rtReflection<NumericType, D>
-{
+class rtReflectionDiffuse : public rtReflection<NumericType, D> {
 
 public:
   rtPair<rtTriple<NumericType>>
   use(RTCRay &rayin, RTCHit &hitin, const int materialId,
       rtRandomNumberGenerator &RNG,
-      rtRandomNumberGenerator::RNGState &RngState) override final
-  {
+      rtRandomNumberGenerator::RNGState &RngState) override final {
     auto normal =
         rtTriple<NumericType>{(NumericType)hitin.Ng_x, (NumericType)hitin.Ng_y,
                               (NumericType)hitin.Ng_z};
@@ -20,8 +18,7 @@ public:
     assert(rtInternal::IsNormalized(normal) &&
            "rtReflectionDiffuse: Surface normal is not normalized");
 
-    if constexpr (D == 3)
-    {
+    if constexpr (D == 3) {
 
       // Compute lambertian reflection with respect to surface normal
       const auto orthonormalBasis = rtInternal::getOrthonormalBasis(normal);
@@ -34,13 +31,15 @@ public:
       auto zz = rayin.org_z + rayin.dir_z * rayin.tfar;
 
       return {xx, yy, zz, newDirection};
-    }
-    else
-    {
-      const auto angle = ((NumericType)RNG.get(RngState) / (NumericType)RNG.max() - 0.5) * rtInternal::PI / 2.;
+    } else {
+      const auto angle =
+          ((NumericType)RNG.get(RngState) / (NumericType)RNG.max() - 0.5) *
+          rtInternal::PI / 2.;
       const auto cos = std::cos(angle);
       const auto sin = std::sin(angle);
-      auto newDirection = rtTriple<NumericType>{cos * normal[0] - sin * normal[1], sin * normal[0] + cos * normal[1], 0.};
+      auto newDirection =
+          rtTriple<NumericType>{cos * normal[0] - sin * normal[1],
+                                sin * normal[0] + cos * normal[1], 0.};
       assert(rtInternal::IsNormalized(newDirection) &&
              "rtReflectionDiffuse: New direction is not normalized");
       // Compute new origin
@@ -55,8 +54,7 @@ private:
   rtTriple<NumericType>
   getCosineHemi(const rtTriple<rtTriple<NumericType>> &basis,
                 rtRandomNumberGenerator &RNG,
-                rtRandomNumberGenerator::RNGState &RngState)
-  {
+                rtRandomNumberGenerator::RNGState &RngState) {
     NumericType r1 =
         ((NumericType)RNG.get(RngState)) / ((NumericType)RNG.max() + 1);
     NumericType r2 =

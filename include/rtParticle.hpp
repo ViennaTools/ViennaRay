@@ -5,30 +5,31 @@
 #include <rtRandomNumberGenerator.hpp>
 #include <rtTracingData.hpp>
 
-template <typename NumericType>
-class rtParticle
-{
+template <typename NumericType> class rtParticle {
 public:
   virtual void initNew(rtRandomNumberGenerator &RNG,
                        rtRandomNumberGenerator::RNGState &RngState) = 0;
   virtual NumericType
-  processSurfaceHit(NumericType rayWeight, const rtTriple<NumericType> &rayDir, const rtTriple<NumericType> &geomNormal,
-                    const unsigned int primID, const int materialId, const bool neighbor,
-                    rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData,
+  processSurfaceHit(NumericType rayWeight, const rtTriple<NumericType> &rayDir,
+                    const rtTriple<NumericType> &geomNormal,
+                    const unsigned int primID, const int materialId,
+                    const bool neighbor, rtTracingData<NumericType> &localData,
+                    const rtTracingData<NumericType> &globalData,
                     rtRandomNumberGenerator &RNG,
                     rtRandomNumberGenerator::RNGState &RngState) = 0;
 };
 
 template <typename NumericType>
-class rtParticle1 : public rtParticle<NumericType>
-{
+class rtParticle1 : public rtParticle<NumericType> {
 public:
-  NumericType processSurfaceHit(NumericType rayWeight, const rtTriple<NumericType> &rayDir, const rtTriple<NumericType> &geomNormal,
-                                const unsigned int primID, const int materialId, const bool neighbor,
-                                rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData,
-                                rtRandomNumberGenerator &RNG,
-                                rtRandomNumberGenerator::RNGState &RngState) override final
-  {
+  NumericType processSurfaceHit(
+      NumericType rayWeight, const rtTriple<NumericType> &rayDir,
+      const rtTriple<NumericType> &geomNormal, const unsigned int primID,
+      const int materialId, const bool neighbor,
+      rtTracingData<NumericType> &localData,
+      const rtTracingData<NumericType> &globalData,
+      rtRandomNumberGenerator &RNG,
+      rtRandomNumberGenerator::RNGState &RngState) override final {
     // return the sticking probability for this hit
     return 0.1;
   }
@@ -38,15 +39,16 @@ public:
 };
 
 template <typename NumericType>
-class rtParticle2 : public rtParticle<NumericType>
-{
+class rtParticle2 : public rtParticle<NumericType> {
 public:
-  NumericType processSurfaceHit(NumericType rayWeight, const rtTriple<NumericType> &rayDir, const rtTriple<NumericType> &geomNormal,
-                                const unsigned int primID, const int materialId, const bool neighbor,
-                                rtTracingData<NumericType> &localData, const rtTracingData<NumericType> &globalData,
-                                rtRandomNumberGenerator &RNG,
-                                rtRandomNumberGenerator::RNGState &RngState) override final
-  {
+  NumericType processSurfaceHit(
+      NumericType rayWeight, const rtTriple<NumericType> &rayDir,
+      const rtTriple<NumericType> &geomNormal, const unsigned int primID,
+      const int materialId, const bool neighbor,
+      rtTracingData<NumericType> &localData,
+      const rtTracingData<NumericType> &globalData,
+      rtRandomNumberGenerator &RNG,
+      rtRandomNumberGenerator::RNGState &RngState) override final {
     // return the sticking probability for this hit
     // do something with energy
     totalEnergy += 0.1;
@@ -54,7 +56,9 @@ public:
   }
 
   void initNew(rtRandomNumberGenerator &RNG,
-               rtRandomNumberGenerator::RNGState &RngState) override final { totalEnergy = 0.1; }
+               rtRandomNumberGenerator::RNGState &RngState) override final {
+    totalEnergy = 0.1;
+  }
 
 private:
   NumericType totalEnergy;

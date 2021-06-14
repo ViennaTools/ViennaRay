@@ -13,8 +13,7 @@
 #include <rtTracingData.hpp>
 
 template <class NumericType, class ParticleType, class ReflectionType, int D>
-class rtTrace
-{
+class rtTrace {
 private:
   RTCDevice mDevice;
   rtGeometry<NumericType, D> mGeometry;
@@ -35,15 +34,13 @@ private:
 public:
   rtTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
 
-  ~rtTrace()
-  {
+  ~rtTrace() {
     mGeometry.releaseGeometry();
     rtcReleaseDevice(mDevice);
   }
 
   /// Run the ray tracer
-  void apply()
-  {
+  void apply() {
     checkSettings();
     initMemoryFlags();
     auto boundingBox = mGeometry.getBoundingBox();
@@ -58,7 +55,8 @@ public:
         boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
 
     auto tracer = rtRayTracer<NumericType, ParticleType, ReflectionType, D>(
-        mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint, mNumberOfRaysFixed);
+        mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint,
+        mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
     tracer.calcFlux(mCalcFlux);
     auto hitCounter = tracer.apply(localData, globalData);
@@ -73,8 +71,7 @@ public:
   template <std::size_t Dim>
   void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
                    std::vector<std::array<NumericType, Dim>> &normals,
-                   const NumericType gridDelta)
-  {
+                   const NumericType gridDelta) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
 
@@ -88,8 +85,7 @@ public:
   template <std::size_t Dim>
   void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
                    std::vector<std::array<NumericType, Dim>> &normals,
-                   const NumericType gridDelta, const NumericType discRadii)
-  {
+                   const NumericType gridDelta, const NumericType discRadii) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
 
@@ -100,9 +96,7 @@ public:
 
   /// Set material ID's for each geometry point.
   /// If not set, all material ID's are default 0.
-  template <typename T>
-  void setMaterialIds(std::vector<T> &pMaterialIds)
-  {
+  template <typename T> void setMaterialIds(std::vector<T> &pMaterialIds) {
     mGeometry.setMaterialIds(pMaterialIds);
   }
 
@@ -110,10 +104,8 @@ public:
   /// There has to be a boundary condition defined for each space dimension,
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
-  void setBoundaryConditions(rtTraceBoundary pBoundaryConds[D])
-  {
-    for (size_t i = 0; i < D; ++i)
-    {
+  void setBoundaryConditions(rtTraceBoundary pBoundaryConds[D]) {
+    for (size_t i = 0; i < D; ++i) {
       mBoundaryConds[i] = pBoundaryConds[i];
     }
   }
@@ -121,27 +113,23 @@ public:
   /// Set the number of rays per geometry point.
   /// The total number of rays, that are traced, is the set number set here
   /// times the number of points in the geometry.
-  void setNumberOfRaysPerPoint(const size_t pNum)
-  {
+  void setNumberOfRaysPerPoint(const size_t pNum) {
     mNumberOfRaysPerPoint = pNum;
     mNumberOfRaysFixed = 0;
   }
 
-  void setNumberOfRaysfixed(const size_t pNum)
-  {
+  void setNumberOfRaysfixed(const size_t pNum) {
     mNumberOfRaysFixed = pNum;
     mNumberOfRaysPerPoint = 0;
   }
 
   /// Set the power of the cosine source distribution
-  void setSourceDistributionPower(const NumericType pPower)
-  {
+  void setSourceDistributionPower(const NumericType pPower) {
     mCosinePower = pPower;
   }
 
   /// Set the source direction, where the rays should be traced from.
-  void setSourceDirection(const rtTraceDirection pDirection)
-  {
+  void setSourceDirection(const rtTraceDirection pDirection) {
     mSourceDirection = pDirection;
   }
 
@@ -167,33 +155,24 @@ public:
   //   return mHitCounter.getRelativeError();
   // }
 
-  rtTracingData<NumericType> &getLocalData()
-  {
-    return localData;
-  }
+  rtTracingData<NumericType> &getLocalData() { return localData; }
 
-  rtTracingData<NumericType> &getGloballData()
-  {
-    return globalData;
-  }
+  rtTracingData<NumericType> &getGloballData() { return globalData; }
 
 private:
-  void extractFlux(const rtHitCounter<NumericType> &hitCounter)
-  {
+  void extractFlux(const rtHitCounter<NumericType> &hitCounter) {
     assert(hitCounter.getTotalCounts() > 0 && "Invalid trace result");
     auto values = hitCounter.getValues();
     auto discAreas = hitCounter.getDiscAreas();
     mFlux.clear();
     mFlux.reserve(values.size());
     // Account for area and average over the neighborhood
-    for (size_t idx = 0; idx < values.size(); ++idx)
-    {
+    for (size_t idx = 0; idx < values.size(); ++idx) {
       auto vv = values[idx] / discAreas[idx];
       {
         // Average over the neighborhood
         auto neighborhood = mGeometry.getNeighborIndicies(idx);
-        for (auto const &nbi : neighborhood)
-        {
+        for (auto const &nbi : neighborhood) {
           vv += values[nbi] / discAreas[nbi];
         }
         vv /= (neighborhood.size() + 1);
@@ -202,35 +181,29 @@ private:
     }
   }
 
-  std::vector<NumericType> normalizeFlux()
-  {
+  std::vector<NumericType> normalizeFlux() {
     assert(mFlux.size() > 0 && "No flux calculated");
     std::vector<NumericType> normalizedFlux(mFlux.size(), 0);
 
     auto maxv = *std::max_element(mFlux.begin(), mFlux.end());
-    for (size_t idx = 0; idx < mFlux.size(); ++idx)
-    {
+    for (size_t idx = 0; idx < mFlux.size(); ++idx) {
       normalizedFlux[idx] = mFlux[idx] / maxv;
     }
 
     return normalizedFlux;
   }
 
-  void checkSettings()
-  {
-    if (mGeometry.checkGeometryEmpty())
-    {
+  void checkSettings() {
+    if (mGeometry.checkGeometryEmpty()) {
       rtMessage::getInstance().addError(
           "No geometry was passed to rtTrace. Aborting.");
     }
     if ((D == 2 && mSourceDirection == rtTraceDirection::POS_Z) ||
-        (D == 2 && mSourceDirection == rtTraceDirection::NEG_Z))
-    {
+        (D == 2 && mSourceDirection == rtTraceDirection::NEG_Z)) {
       rtMessage::getInstance().addError(
           "Invalid source direction in 2D geometry. Aborting.");
     }
-    if (mDiscRadius > mGridDelta)
-    {
+    if (mDiscRadius > mGridDelta) {
       rtMessage::getInstance()
           .addWarning("Disc radius should be smaller than grid delta. Hit "
                       "count normalization not correct.")
@@ -238,8 +211,7 @@ private:
     }
   }
 
-  void initMemoryFlags()
-  {
+  void initMemoryFlags() {
 #ifdef ARCH_X86
     // for best performance set FTZ and DAZ flags in MXCSR control and status
     // register

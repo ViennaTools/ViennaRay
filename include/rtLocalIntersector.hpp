@@ -8,7 +8,8 @@ class rtLocalIntersector {
   using NumericType = float;
 
 public:
-  static bool intersect(RTCRay const &ray, rtQuadruple<rtcNumericType> const &disc,
+  static bool intersect(RTCRay const &ray,
+                        rtQuadruple<rtcNumericType> const &disc,
                         rtTriple<rtcNumericType> const &normal) {
     auto const &rayOrigin =
         *reinterpret_cast<rtTriple<rtcNumericType> const *>(&ray.org_x);
@@ -40,8 +41,8 @@ public:
     }
 
     // copy ray direction
-    auto rayDirectionC = rtTriple<rtcNumericType>{rayDirection[0], rayDirection[1],
-                                               rayDirection[2]};
+    auto rayDirectionC = rtTriple<rtcNumericType>{
+        rayDirection[0], rayDirection[1], rayDirection[2]};
     rtInternal::Scale(tt, rayDirectionC);
     auto hitpoint = rtInternal::Sum(rayOrigin, rayDirectionC);
     auto discOrigin2HitPoint = rtInternal::Diff(hitpoint, discOrigin);
