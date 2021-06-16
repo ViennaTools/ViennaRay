@@ -128,7 +128,8 @@ public:
 
   RTCGeometry &getRTCGeometry() override final { return mRTCGeometry; }
 
-  rayTriple<NumericType> getPrimNormal(const unsigned int primID) override final {
+  rayTriple<NumericType>
+  getPrimNormal(const unsigned int primID) override final {
     assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
     auto const &normal = mNormalVecBuffer[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,

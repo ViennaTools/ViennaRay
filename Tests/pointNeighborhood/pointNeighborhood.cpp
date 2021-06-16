@@ -25,7 +25,7 @@ int main() {
   geometry.initGeometry(device, points, normals, gridDelta - eps);
   auto bdBox = geometry.getBoundingBox();
 
-  for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx) {
+  for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto point = geometry.getPoint(idx);
     auto neighbors = geometry.getNeighborIndicies(idx);
 

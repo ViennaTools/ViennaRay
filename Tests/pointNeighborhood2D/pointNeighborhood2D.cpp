@@ -29,7 +29,7 @@ int main() {
   // assert boundary points have 1 neighbor
   // assert inner points have 2 neighbors
 
-  for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx) {
+  for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto point = geometry.getPoint(idx);
     auto neighbors = geometry.getNeighborIndicies(idx);
     if (std::fabs(point[0]) > 1 - eps) {

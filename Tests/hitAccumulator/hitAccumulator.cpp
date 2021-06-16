@@ -10,27 +10,34 @@ int main() {
   unsigned int primID = 10;
   long long numRuns = 10000;
 
-  rayHitCounter<NumericType> hitAcc(numPrims);
-
   omp_set_num_threads(4);
+  const auto numThreads = omp_get_max_threads();
 
-#pragma omp declare                                                        \
-    reduction(hit_accumulator_combine                                      \
-              : rayHitCounter <NumericType>                             \
-              : omp_out = rayHitCounter <NumericType>(omp_out, omp_in)) \
-        initializer(omp_priv = rayHitCounter <NumericType>(omp_orig))
-
-#pragma omp parallel reduction(hit_accumulator_combine : hitAcc)
+  // hit counters
+  std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
+  rayHitCounter<NumericType> hitCounter(numPrims);
+  for (auto &hitC : threadLocalHitCounter) {
+    hitC = hitCounter;
+  }
+#pragma omp parallel
   {
+    const auto threadID = omp_get_thread_num();
+    auto &hitAcc = threadLocalHitCounter[threadID];
 #pragma omp for
     for (long long i = 0; i < numRuns; i++) {
       hitAcc.use(primID, 0.1);
     }
+
+    if (threadID == 0) {
+      for (int i = 1; i < numThreads; ++i) {
+        hitAcc.merge(threadLocalHitCounter[i], true);
+      }
+    }
   }
 
-  auto totalCounts = hitAcc.getTotalCounts();
-  auto counts = hitAcc.getCounts();
-  auto values = hitAcc.getValues();
+  auto totalCounts = threadLocalHitCounter[0].getTotalCounts();
+  auto counts = threadLocalHitCounter[0].getCounts();
+  auto values = threadLocalHitCounter[0].getValues();
 
   RAYTEST_ASSERT(totalCounts == numRuns)
   RAYTEST_ASSERT(counts[primID] == numRuns)

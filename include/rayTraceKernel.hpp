@@ -221,7 +221,7 @@ public:
                                     RngState5);
 
           // Check for additional intersections
-          std::vector<size_t> intIds;
+          std::vector<unsigned int> intIds;
           for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
             const auto matID = mGeometry.getMaterialId(id);
 
@@ -407,14 +407,14 @@ private:
   }
 
   std::vector<NumericType> computeDiscAreas() {
-    constexpr NumericType eps = 1e-4;
+    constexpr double eps = 1e-4;
     const auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
     const auto boundaryDirs = mBoundary.getDirs();
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
 
 #pragma omp for
-    for (size_t idx = 0; idx < numOfPrimitives; ++idx) {
+    for (long idx = 0; idx < numOfPrimitives; ++idx) {
       auto const &disc = mGeometry.getPrimRef(idx);
       areas[idx] = disc[3] * disc[3] * (NumericType)rayInternal::PI;
       if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
@@ -464,8 +464,7 @@ private:
     progressCount += 1;
   }
 
-  bool checkLocalIntersection(RTCRay const &ray,
-                              const unsigned int primID) {
+  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID) {
     auto const &rayOrigin =
         *reinterpret_cast<rayTriple<rtcNumericType> const *>(&ray.org_x);
     auto const &rayDirection =

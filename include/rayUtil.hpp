@@ -78,7 +78,7 @@ NumericType Norm(const std::array<NumericType, D> &vec) {
 
 template <typename NumericType, size_t D>
 void Normalize(std::array<NumericType, D> &vec) {
-  auto norm = 1. / Norm(vec);
+  NumericType norm = 1. / Norm(vec);
   if (norm == 1.)
     return;
   std::for_each(vec.begin(), vec.end(),

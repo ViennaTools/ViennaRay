@@ -8,9 +8,9 @@
 int main() {
   using NumericType = float;
   constexpr int D = 3;
-  NumericType extent = 1.0;
-  NumericType gridDelta = 0.1;
-  NumericType eps = 1e-6;
+  NumericType extent = 1.0f;
+  NumericType gridDelta = 0.1f;
+  NumericType eps = 1e-6f;
 
   auto device = rtcNewDevice("");
 
