@@ -3,9 +3,7 @@
 
 #include <rayUtil.hpp>
 
-template <typename NumericType>
-class rayHitCounter
-{
+template <typename NumericType> class rayHitCounter {
 public:
   rayHitCounter() : mTotalCnts(0) {}
 
@@ -29,18 +27,15 @@ public:
   // Precondition: the size of the accumulators are equal
   rayHitCounter(rayHitCounter<NumericType> const &pA1,
                 rayHitCounter<NumericType> const &pA2)
-      : rayHitCounter(pA1)
-  {
-    for (size_t idx = 0; idx < mCnts.size(); ++idx)
-    {
+      : rayHitCounter(pA1) {
+    for (size_t idx = 0; idx < mCnts.size(); ++idx) {
       mCnts[idx] += pA2.mCnts[idx];
       mS1s[idx] += pA2.mS1s[idx];
       mS2s[idx] += pA2.mS2s[idx];
     }
 
     mTotalCnts = pA1.mTotalCnts + pA2.mTotalCnts;
-    for (size_t idx = 0; idx < pA1.mDiscAreas.size(); ++idx)
-    {
+    for (size_t idx = 0; idx < pA1.mDiscAreas.size(); ++idx) {
       mDiscAreas[idx] = pA1.mDiscAreas[idx] > pA2.mDiscAreas[idx]
                             ? pA1.mDiscAreas[idx]
                             : pA2.mDiscAreas[idx];
@@ -48,10 +43,8 @@ public:
   }
 
   rayHitCounter<NumericType> &
-  operator=(rayHitCounter<NumericType> const &pOther)
-  {
-    if (this != &pOther)
-    {
+  operator=(rayHitCounter<NumericType> const &pOther) {
+    if (this != &pOther) {
       // copy from pOther to this
       mCnts.clear();
       mCnts = pOther.mCnts;
@@ -67,10 +60,8 @@ public:
   }
 
   rayHitCounter<NumericType> &
-  operator=(rayHitCounter<NumericType> const &&pOther)
-  {
-    if (this != &pOther)
-    {
+  operator=(rayHitCounter<NumericType> const &&pOther) {
+    if (this != &pOther) {
       // move from pOther to this
       mCnts.clear();
       mCnts = std::move(pOther.mCnts);
@@ -85,20 +76,16 @@ public:
     return *this;
   }
 
-  void use(unsigned int primID, NumericType value)
-  {
+  void use(unsigned int primID, NumericType value) {
     mCnts[primID] += 1;
     mTotalCnts += 1;
     mS1s[primID] += value;
     mS2s[primID] += value * value;
   }
 
-  void merge(rayHitCounter<NumericType> const &pOther, const bool calcFlux)
-  {
-    if (calcFlux)
-    {
-      for (size_t idx = 0; idx < mCnts.size(); ++idx)
-      {
+  void merge(rayHitCounter<NumericType> const &pOther, const bool calcFlux) {
+    if (calcFlux) {
+      for (size_t idx = 0; idx < mCnts.size(); ++idx) {
         mCnts[idx] += pOther.mCnts[idx];
         mS1s[idx] += pOther.mS1s[idx];
         mS2s[idx] += pOther.mS2s[idx];
@@ -106,8 +93,7 @@ public:
     }
 
     mTotalCnts += pOther.mTotalCnts;
-    for (size_t idx = 0; idx < mDiscAreas.size(); ++idx)
-    {
+    for (size_t idx = 0; idx < mDiscAreas.size(); ++idx) {
       mDiscAreas[idx] = mDiscAreas[idx] > pOther.mDiscAreas[idx]
                             ? mDiscAreas[idx]
                             : pOther.mDiscAreas[idx];
@@ -122,20 +108,16 @@ public:
 
   const std::vector<NumericType> &getDiscAreas() const { return mDiscAreas; }
 
-  std::vector<NumericType> getRelativeError()
-  {
+  std::vector<NumericType> getRelativeError() {
     auto result = std::vector<NumericType>(
         mS1s.size(),
         std::numeric_limits<NumericType>::max()); // size, initial values
-    if (mTotalCnts == 0)
-    {
+    if (mTotalCnts == 0) {
       return result;
     }
-    for (size_t idx = 0; idx < result.size(); ++idx)
-    {
+    for (size_t idx = 0; idx < result.size(); ++idx) {
       auto s1square = mS1s[idx] * mS1s[idx];
-      if (s1square == 0)
-      {
+      if (s1square == 0) {
         continue;
       }
       // This is an approximation of the relative error assuming sqrt(N-1) =~
@@ -147,8 +129,7 @@ public:
     return result;
   }
 
-  void setDiscAreas(std::vector<NumericType> &pDiscAreas)
-  {
+  void setDiscAreas(std::vector<NumericType> &pDiscAreas) {
     mDiscAreas = pDiscAreas;
   }
 
