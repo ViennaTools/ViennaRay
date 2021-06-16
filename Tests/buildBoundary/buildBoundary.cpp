@@ -8,7 +8,7 @@
 int main() {
   using NumericType = float;
   constexpr int D = 3;
-  NumericType eps = 1e-6;
+  NumericType eps = 1e-6f;
 
   NumericType gridDelta;
   std::vector<rayTriple<NumericType>> points;

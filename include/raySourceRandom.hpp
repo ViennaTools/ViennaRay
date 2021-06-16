@@ -94,7 +94,7 @@ private:
   const NumericType posNeg;
   const NumericType ee;
   const size_t mNumPoints;
-  constexpr static NumericType two_pi = rayInternal::PI * 2;
+  constexpr static double two_pi = rayInternal::PI * 2;
 };
 
 #endif // RAY_SOURCERANDOM_HPP

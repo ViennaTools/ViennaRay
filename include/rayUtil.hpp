@@ -127,7 +127,7 @@ ComputeNormal(const rayTriple<rayTriple<NumericType>> &planeCoords) {
 
 template <typename NumericType>
 bool IsNormalized(const rayTriple<NumericType> &vec) {
-  constexpr NumericType eps = 1e-4;
+  constexpr double eps = 1e-4;
   auto norm = Norm(vec);
   return std::fabs(norm - 1) < eps;
 }
@@ -272,7 +272,7 @@ getOrthonormalBasis(const rayTriple<NumericType> &pVector) {
   rayInternal::Normalize(rr[2]);
 
   // Sanity check
-  NumericType eps = 1e-6;
+  const double eps = 1e-6;
   assert(std::abs(rayInternal::DotProduct(rr[0], rr[1])) < eps &&
          "Error in orthonormal basis computation");
   assert(std::abs(rayInternal::DotProduct(rr[1], rr[2])) < eps &&
@@ -378,7 +378,7 @@ createSourceGrid(const rayPair<rayTriple<NumericType>> &pBdBox,
                  const std::array<int, 5> &pTraceSettings) {
   std::vector<rayTriple<NumericType>> sourceGrid;
   sourceGrid.reserve(pNumPoints);
-  constexpr NumericType eps = 1e-4;
+  constexpr double eps = 1e-4;
   // Trace settings
   // sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source, posNeg dir
   auto rayDir = pTraceSettings[0];
@@ -389,11 +389,11 @@ createSourceGrid(const rayPair<rayTriple<NumericType>> &pBdBox,
 
   auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
   auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];
-  size_t numPointsInFirstDir = round(len1 / pGridDelta);
-  size_t numPointsInSecondDir = round(len2 / pGridDelta);
+  size_t numPointsInFirstDir = static_cast<size_t>(round(len1 / pGridDelta));
+  size_t numPointsInSecondDir = static_cast<size_t>(round(len2 / pGridDelta));
   auto ratio = numPointsInFirstDir / numPointsInSecondDir;
-  numPointsInFirstDir = std::sqrt(pNumPoints * ratio);
-  numPointsInSecondDir = std::sqrt(pNumPoints / ratio);
+  numPointsInFirstDir = static_cast<size_t>(std::sqrt(pNumPoints * ratio));
+  numPointsInSecondDir = static_cast<size_t>(std::sqrt(pNumPoints / ratio));
 
   auto firstGridDelta =
       (len1 - 2 * eps) / (NumericType)(numPointsInFirstDir - 1);

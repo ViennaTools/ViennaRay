@@ -9,7 +9,7 @@
 template <typename NumericType, int D>
 class rayGeometry : public rayMetaGeometry<NumericType, D> {
 private:
-  typedef std::vector<std::vector<size_t>> pointNeighborhoodType;
+  typedef std::vector<std::vector<unsigned int>> pointNeighborhoodType;
 
 public:
   rayGeometry() {}
@@ -111,13 +111,13 @@ public:
     return {mMinCoords, mMaxCoords};
   }
 
-  rayTriple<NumericType> getPoint(const size_t primID) const {
+  rayTriple<NumericType> getPoint(const unsigned int primID) const {
     assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
     auto const &pnt = mPointBuffer[primID];
     return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
   }
 
-  std::vector<size_t> getNeighborIndicies(const size_t idx) const {
+  std::vector<unsigned int> getNeighborIndicies(const unsigned int idx) const {
     assert(idx < mNumPoints && "rayGeometry: Index out of bounds");
     return mPointNeighborhood[idx];
   }
@@ -128,7 +128,7 @@ public:
 
   RTCGeometry &getRTCGeometry() override final { return mRTCGeometry; }
 
-  rayTriple<NumericType> getPrimNormal(const size_t primID) override final {
+  rayTriple<NumericType> getPrimNormal(const unsigned int primID) override final {
     assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
     auto const &normal = mNormalVecBuffer[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,
@@ -149,7 +149,7 @@ public:
 
   std::vector<int> &getMaterialIds() { return mMaterialIds; }
 
-  int getMaterialId(const size_t primID) const override final {
+  int getMaterialId(const unsigned int primID) const override final {
     assert(primID < mNumPoints && "rayGeometry Prim ID out of bounds");
     return mMaterialIds[primID];
   }
@@ -182,11 +182,11 @@ private:
   void
   initPointNeighborhood(std::vector<std::array<NumericType, Dim>> &points) {
     mPointNeighborhood.clear();
-    mPointNeighborhood.resize(mNumPoints, std::vector<size_t>{});
+    mPointNeighborhood.resize(mNumPoints, std::vector<unsigned int>{});
 
     if constexpr (D == 3) {
-      std::vector<size_t> side1;
-      std::vector<size_t> side2;
+      std::vector<unsigned int> side1;
+      std::vector<unsigned int> side2;
 
       // create copy of bounding box
       rayTriple<NumericType> min = mMinCoords;
@@ -204,7 +204,7 @@ private:
       NumericType pivot = (max[dirs[dirIdx]] + min[dirs[dirIdx]]) / 2;
 
       // divide point data
-      for (size_t idx = 0; idx < mNumPoints; ++idx) {
+      for (unsigned int idx = 0; idx < mNumPoints; ++idx) {
         if (points[idx][dirs[dirIdx]] <= pivot) {
           side1.push_back(idx);
         } else {
@@ -214,8 +214,8 @@ private:
       createNeighborhood(points, side1, side2, min, max, dirIdx, dirs, pivot);
     } else {
       // TODO: 2D divide and conquer algorithm
-      for (size_t idx1 = 0; idx1 < mNumPoints; ++idx1) {
-        for (size_t idx2 = idx1 + 1; idx2 < mNumPoints; ++idx2) {
+      for (unsigned int idx1 = 0; idx1 < mNumPoints; ++idx1) {
+        for (unsigned int idx2 = idx1 + 1; idx2 < mNumPoints; ++idx2) {
           if (checkDistance(points[idx1], points[idx2], 2 * mDiscRadii)) {
             mPointNeighborhood[idx1].push_back(idx2);
             mPointNeighborhood[idx2].push_back(idx1);
@@ -226,8 +226,8 @@ private:
   }
 
   void createNeighborhood(const std::vector<rayTriple<NumericType>> &points,
-                          const std::vector<size_t> &side1,
-                          const std::vector<size_t> &side2,
+                          const std::vector<unsigned int> &side1,
+                          const std::vector<unsigned int> &side2,
                           const rayTriple<NumericType> &min,
                           const rayTriple<NumericType> &max, const int &dirIdx,
                           const std::vector<int> &dirs,
@@ -244,11 +244,11 @@ private:
       // to the floating point precision).
       assert((min[dirs[dirIdx]] + max[dirs[dirIdx]]) / 2 == pivot &&
              "Characterization of corner case");
-      auto sides = std::vector<size_t>(side1);
+      auto sides = std::vector<unsigned int>(side1);
       sides.insert(sides.end(), side2.begin(), side2.end());
       // Add each of them to the neighborhoods
-      for (size_t idx1 = 0; idx1 < sides.size() - 1; ++idx1) {
-        for (size_t idx2 = idx1 + 1; idx2 < sides.size(); ++idx2) {
+      for (unsigned int idx1 = 0; idx1 < sides.size() - 1; ++idx1) {
+        for (unsigned int idx2 = idx1 + 1; idx2 < sides.size(); ++idx2) {
           auto const &pi1 = sides[idx1];
           auto const &pi2 = sides[idx2];
           assert(pi1 != pi2 && "Assumption");
@@ -260,19 +260,19 @@ private:
     }
 
     // sets of candidates
-    std::vector<size_t> side1Cand;
-    std::vector<size_t> side2Cand;
+    std::vector<unsigned int> side1Cand;
+    std::vector<unsigned int> side2Cand;
 
-    auto newDirIdx = (dirIdx + 1) % dirs.size();
+    int newDirIdx = (dirIdx + 1) % dirs.size();
     NumericType newPivot = (max[dirs[newDirIdx]] + min[dirs[newDirIdx]]) / 2;
 
     // recursion sets
-    std::vector<size_t> s1r1set;
-    std::vector<size_t> s1r2set;
-    std::vector<size_t> s2r1set;
-    std::vector<size_t> s2r2set;
+    std::vector<unsigned int> s1r1set;
+    std::vector<unsigned int> s1r2set;
+    std::vector<unsigned int> s2r1set;
+    std::vector<unsigned int> s2r2set;
 
-    for (size_t idx = 0; idx < side1.size(); ++idx) {
+    for (unsigned int idx = 0; idx < side1.size(); ++idx) {
       const auto &point = points[side1[idx]];
       assert(point[dirs[dirIdx]] <= pivot && "Correctness Assertion");
       if (point[dirs[newDirIdx]] <= newPivot) {
@@ -285,7 +285,7 @@ private:
       }
       side1Cand.push_back(side1[idx]);
     }
-    for (size_t idx = 0; idx < side2.size(); ++idx) {
+    for (unsigned int idx = 0; idx < side2.size(); ++idx) {
       const auto &point = points[side2[idx]];
       assert(point[dirs[dirIdx]] > pivot && "Correctness Assertion");
       if (point[dirs[newDirIdx]] <= newPivot) {
@@ -301,8 +301,8 @@ private:
 
     // Iterate over pairs of candidates
     if (side1Cand.size() > 0 && side2Cand.size() > 0) {
-      for (size_t ci1 = 0; ci1 < side1Cand.size(); ++ci1) {
-        for (size_t ci2 = 0; ci2 < side2Cand.size(); ++ci2) {
+      for (unsigned int ci1 = 0; ci1 < side1Cand.size(); ++ci1) {
+        for (unsigned int ci2 = 0; ci2 < side2Cand.size(); ++ci2) {
           const auto &point1 = points[side1Cand[ci1]];
           const auto &point2 = points[side2Cand[ci2]];
 

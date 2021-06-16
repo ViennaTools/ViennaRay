@@ -27,9 +27,9 @@ private:
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
   std::vector<NumericType> mFlux;
-  static constexpr NumericType mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
   rayTracingData<NumericType> localData;
   rayTracingData<NumericType> globalData;
+  static constexpr double mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
 public:
   rayTrace() : mDevice(rtcNewDevice("hugepages=1")) {}

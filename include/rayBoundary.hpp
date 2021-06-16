@@ -127,7 +127,7 @@ public:
     }
   }
 
-  rayTriple<NumericType> getPrimNormal(const size_t primID) override {
+  rayTriple<NumericType> getPrimNormal(const unsigned int primID) override {
     assert(primID < numTriangles && "rayBoundary: primID out of bounds");
     return primNormals[primID];
   }

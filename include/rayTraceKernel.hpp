@@ -98,7 +98,7 @@ public:
                                           .time_since_epoch()
                                           .count()));
         for (size_t i = 0; i < numRngStates; ++i) {
-          seeds[i] = rd();
+          seeds[i] = static_cast<unsigned int>(rd());
         }
       } else {
         for (size_t i = 0; i < numRngStates; ++i) {
@@ -294,7 +294,7 @@ public:
     if (!localData.getVectorData().empty()) {
       // merge vector data
 #pragma omp parallel for
-      for (size_t i = 0; i < localData.getVectorData().size(); ++i) {
+      for (int i = 0; i < localData.getVectorData().size(); ++i) {
         switch (localData.getVectorMergeType(i)) {
         case rayTracingDataMergeEnum::SUM: {
           for (size_t j = 0; j < localData.getVectorData(i).size(); ++j) {
@@ -327,7 +327,7 @@ public:
 
     if (!localData.getScalarData().empty()) {
       // merge scalar data
-      for (size_t i = 0; i < localData.getScalarData().size(); ++i) {
+      for (int i = 0; i < localData.getScalarData().size(); ++i) {
         switch (localData.getScalarMergeType(i)) {
         case rayTracingDataMergeEnum::SUM: {
           for (int j = 0; j < numThreads; ++j) {

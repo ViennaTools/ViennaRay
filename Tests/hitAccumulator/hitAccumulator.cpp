@@ -8,7 +8,7 @@ int main() {
 
   size_t numPrims = 1000;
   unsigned int primID = 10;
-  size_t numRuns = 10000;
+  long long numRuns = 10000;
 
   rayHitCounter<NumericType> hitAcc(numPrims);
 
@@ -23,7 +23,7 @@ int main() {
 #pragma omp parallel reduction(hit_accumulator_combine : hitAcc)
   {
 #pragma omp for
-    for (size_t i = 0; i < numRuns; i++) {
+    for (long long i = 0; i < numRuns; i++) {
       hitAcc.use(primID, 0.1);
     }
   }

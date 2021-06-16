@@ -8,7 +8,7 @@ template <typename NumericType, int D> class rayMetaGeometry {
 public:
   virtual ~rayMetaGeometry() {}
   virtual RTCGeometry &getRTCGeometry() = 0;
-  virtual rayTriple<NumericType> getPrimNormal(const size_t primID) = 0;
+  virtual rayTriple<NumericType> getPrimNormal(const unsigned int primID) = 0;
   virtual rayTriple<NumericType> getNewOrigin(RTCRay &ray) {
     assert(rayInternal::IsNormalized(
                rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
@@ -18,7 +18,7 @@ public:
     auto zz = ray.org_z + ray.dir_z * ray.tfar;
     return {xx, yy, zz};
   }
-  virtual int getMaterialId(const size_t primID) const { return 0; };
+  virtual int getMaterialId(const unsigned int primID) const { return 0; };
 };
 
 #endif // RAY_METAGEOMETRY_HPP

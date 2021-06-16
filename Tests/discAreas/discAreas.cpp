@@ -48,7 +48,7 @@ int main() {
 
   auto boundaryDirs = boundary.getDirs();
   auto wholeDiscArea = discRadius * discRadius * rayInternal::PI;
-  for (size_t idx = 0; idx < geometry.getNumPoints(); ++idx) {
+  for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto const &disc = geometry.getPrimRef(idx);
     if (std::fabs(disc[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <
             eps ||
