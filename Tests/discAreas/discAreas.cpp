@@ -25,6 +25,7 @@ int main() {
 
   auto localData = rayTracingData<NumericType>();
   const auto globalData = rayTracingData<NumericType>();
+  rayHitCounter<NumericType> hitCounter;
 
   rayGeometry<NumericType, D> geometry;
   auto discRadius = gridDelta * discFactor;
@@ -43,7 +44,9 @@ int main() {
 
   auto tracer = rayTraceKernel<NumericType, ParticleType, ReflectionType, D>(
       device, geometry, boundary, raySource, 1, 0);
-  auto hitCounter = tracer.apply(localData, globalData);
+  tracer.setTracingData(&localData, &globalData);
+  tracer.setHitCounter(&hitCounter);
+  tracer.apply();
   auto discAreas = hitCounter.getDiscAreas();
 
   auto boundaryDirs = boundary.getDirs();

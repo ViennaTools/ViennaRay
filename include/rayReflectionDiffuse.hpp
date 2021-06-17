@@ -7,9 +7,9 @@ template <typename NumericType, int D>
 class rayReflectionDiffuse : public rayReflection<NumericType, D> {
 
 public:
-  rayPair<rayTriple<NumericType>>
-  use(RTCRay &rayin, RTCHit &hitin, const int materialId, rayRNG &RNG,
-      rayRNG::RNGState &RngState) override final {
+  rayPair<rayTriple<NumericType>> use(RTCRay &rayin, RTCHit &hitin,
+                                      const int materialId,
+                                      rayRNG &RNG) override final {
     auto normal =
         rayTriple<NumericType>{(NumericType)hitin.Ng_x, (NumericType)hitin.Ng_y,
                                (NumericType)hitin.Ng_z};
@@ -21,7 +21,7 @@ public:
 
       // Compute lambertian reflection with respect to surface normal
       const auto orthonormalBasis = rayInternal::getOrthonormalBasis(normal);
-      auto newDirection = getCosineHemi(orthonormalBasis, RNG, RngState);
+      auto newDirection = getCosineHemi(orthonormalBasis, RNG);
       assert(rayInternal::IsNormalized(newDirection) &&
              "rayReflectionDiffuse: New direction is not normalized");
       // Compute new origin
@@ -32,8 +32,7 @@ public:
       return {xx, yy, zz, newDirection};
     } else {
       const auto angle =
-          ((NumericType)RNG.get(RngState) / (NumericType)RNG.max() - 0.5) *
-          rayInternal::PI / 2.;
+          ((NumericType)RNG() / (NumericType)RNG.max() - 0.5) * rayInternal::PI;
       const auto cos = std::cos(angle);
       const auto sin = std::sin(angle);
       auto newDirection =
@@ -51,12 +50,10 @@ public:
 
 private:
   rayTriple<NumericType>
-  getCosineHemi(const rayTriple<rayTriple<NumericType>> &basis, rayRNG &RNG,
-                rayRNG::RNGState &RngState) {
-    NumericType r1 =
-        ((NumericType)RNG.get(RngState)) / ((NumericType)RNG.max() + 1);
-    NumericType r2 =
-        ((NumericType)RNG.get(RngState)) / ((NumericType)RNG.max() + 1);
+  getCosineHemi(const rayTriple<rayTriple<NumericType>> &basis, rayRNG &RNG) {
+    std::uniform_real_distribution<NumericType> uniDist;
+    auto r1 = uniDist(RNG);
+    auto r2 = uniDist(RNG);
 
     constexpr NumericType two_pi = 2 * rayInternal::PI;
     NumericType cc1 = sqrt(r2);

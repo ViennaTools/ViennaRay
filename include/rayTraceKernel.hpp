@@ -31,9 +31,7 @@ public:
            "Error: The minimum version of Embree is 3.6.1");
   }
 
-  rayHitCounter<NumericType>
-  apply(rayTracingData<NumericType> &localData,
-        const rayTracingData<NumericType> &globalData) {
+  void apply() {
     auto rtcScene = rtcNewScene(mDevice);
 
     // RTC scene flags
@@ -56,23 +54,20 @@ public:
     size_t nongeohitc = 0;
     const bool calcFlux = mCalcFlux;
 
-    // The random number generator itself is stateless (has no members which
-    // are modified). Hence, it may be shared by threads.
-    rayRNG RNG;
-
     // thread local data storage
     const int numThreads = omp_get_max_threads();
     std::vector<rayTracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
-      data = localData;
+      data = *localData;
     }
 
     // hit counters
+    assert(hitCounter != nullptr && "Hit counter is nullptr");
+    hitCounter->resize(mGeometry.getNumPoints(), calcFlux);
     std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
     if (calcFlux) {
-      rayHitCounter<NumericType> hitCounter(mGeometry.getNumPoints());
       for (auto &hitC : threadLocalHitCounter) {
-        hitC = hitCounter;
+        hitC = *hitCounter;
       }
     }
 
@@ -92,11 +87,7 @@ public:
       constexpr int numRngStates = 8;
       unsigned int seeds[numRngStates];
       if (mUseRandomSeeds) {
-        std::mt19937_64 rd(
-            static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 *
-                                      std::chrono::high_resolution_clock::now()
-                                          .time_since_epoch()
-                                          .count()));
+        std::random_device rd;
         for (size_t i = 0; i < numRngStates; ++i) {
           seeds[i] = static_cast<unsigned int>(rd());
         }
@@ -106,24 +97,27 @@ public:
               static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 + i);
         }
       }
-      auto RngState1 = rayRNG::RNGState{seeds[0]};
-      auto RngState2 = rayRNG::RNGState{seeds[1]};
-      auto RngState3 = rayRNG::RNGState{seeds[2]};
-      auto RngState4 = rayRNG::RNGState{seeds[3]};
-      auto RngState5 = rayRNG::RNGState{seeds[4]};
-      auto RngState6 = rayRNG::RNGState{seeds[5]};
-      auto RngState7 = rayRNG::RNGState{seeds[6]};
-      auto RngState8 = rayRNG::RNGState{seeds[7]};
+      // It seems really important to use two separate seeds / states for
+      // sampling the source and sampling reflections. When we use only one
+      // state for both, then the variance is very high.
+      rayRNG RngState1(seeds[0]);
+      rayRNG RngState2(seeds[1]);
+      rayRNG RngState3(seeds[2]);
+      rayRNG RngState4(seeds[3]);
+      rayRNG RngState5(seeds[4]);
+      rayRNG RngState6(seeds[5]);
+      rayRNG RngState7(seeds[6]);
+      rayRNG RngState8(seeds[7]);
 
       // thread-local particle and reflection object
       auto particle = ParticleType{};
       auto surfaceReflect = ReflectionType{};
 
       auto &myLocalData = threadLocalData[threadID];
-      auto &hitCounter = threadLocalHitCounter[threadID];
+      auto &myHitCounter = threadLocalHitCounter[threadID];
 
       // probabilistic weight
-      const auto initialRayWeight = 1;
+      const NumericType initialRayWeight = 1.;
 
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
@@ -132,10 +126,10 @@ public:
 
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < mNumRays; ++idx) {
-        particle.initNew(RNG, RngState8);
+        particle.initNew(RngState8);
         NumericType rayWeight = initialRayWeight;
 
-        mSource.fillRay(rayHit.ray, RNG, idx, RngState1, RngState2, RngState3,
+        mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
 
         if constexpr (PRINT_PROGRESS) {
@@ -181,7 +175,7 @@ public:
             rayHit.ray.dir_x = (rtcNumericType)newRay[1][0];
             rayHit.ray.dir_y = (rtcNumericType)newRay[1][1];
             rayHit.ray.dir_z = (rtcNumericType)newRay[1][2];
-            rayHit.ray.tnear = 0.0f;
+            rayHit.ray.time = 0.0f;
 #endif
             continue;
           }
@@ -217,7 +211,7 @@ public:
           const auto materialID = mGeometry.getMaterialId(primID);
 
           particle.surfaceCollision(rayWeight, rayDir, geomNormal, primID,
-                                    materialID, myLocalData, globalData, RNG,
+                                    materialID, myLocalData, *globalData,
                                     RngState5);
 
           // Check for additional intersections
@@ -228,22 +222,21 @@ public:
             if (checkLocalIntersection(rayHit.ray, id)) {
               const auto normal = mGeometry.getPrimNormal(id);
               particle.surfaceCollision(rayWeight, rayDir, normal, id, matID,
-                                        myLocalData, globalData, RNG,
-                                        RngState5);
+                                        myLocalData, *globalData, RngState5);
               if (calcFlux)
                 intIds.push_back(id);
             }
           }
 
-          const auto sticking = particle.surfaceReflection(
-              rayWeight, rayDir, geomNormal, primID, materialID, globalData,
-              RNG, RngState5);
+          const auto sticking =
+              particle.surfaceReflection(rayWeight, rayDir, geomNormal, primID,
+                                         materialID, *globalData, RngState5);
           const auto valueToDrop = rayWeight * sticking;
           if (calcFlux) {
             for (const auto &id : intIds) {
-              hitCounter.use(id, valueToDrop);
+              myHitCounter.use(id, valueToDrop);
             }
-            hitCounter.use(primID, valueToDrop);
+            myHitCounter.use(primID, valueToDrop);
           }
 
           // Update ray weight
@@ -251,13 +244,12 @@ public:
           if (rayWeight <= 0) {
             break;
           }
-          reflect =
-              rejectionControl(rayWeight, initialRayWeight, RNG, RngState6);
+          reflect = rejectionControl(rayWeight, initialRayWeight, RngState6);
           if (!reflect) {
             break;
           }
-          auto newRay = surfaceReflect.use(rayHit.ray, rayHit.hit, materialID,
-                                           RNG, RngState7);
+          auto newRay =
+              surfaceReflect.use(rayHit.ray, rayHit.hit, materialID, RngState7);
 
           // Update ray
 #ifdef ARCH_X86
@@ -276,30 +268,28 @@ public:
           rayHit.ray.dir_x = (rtcNumericType)newRay[1][0];
           rayHit.ray.dir_y = (rtcNumericType)newRay[1][1];
           rayHit.ray.dir_z = (rtcNumericType)newRay[1][2];
-          rayHit.ray.tnear = 0.0f;
+          rayHit.ray.time = 0.0f;
 #endif
         } while (reflect);
       }
 
       auto discAreas = computeDiscAreas();
-      hitCounter.setDiscAreas(discAreas);
-
-      if (threadID == 0) {
-        for (int i = 1; i < numThreads; ++i) {
-          hitCounter.merge(threadLocalHitCounter[i], calcFlux);
-        }
-      }
+      myHitCounter.setDiscAreas(discAreas);
+    }
+    // merge hit counters
+    for (int i = 0; i < numThreads; ++i) {
+      hitCounter->merge(threadLocalHitCounter[i], calcFlux);
     }
     // merge local data
-    if (!localData.getVectorData().empty()) {
+    if (!localData->getVectorData().empty()) {
       // merge vector data
 #pragma omp parallel for
-      for (int i = 0; i < localData.getVectorData().size(); ++i) {
-        switch (localData.getVectorMergeType(i)) {
+      for (int i = 0; i < localData->getVectorData().size(); ++i) {
+        switch (localData->getVectorMergeType(i)) {
         case rayTracingDataMergeEnum::SUM: {
-          for (size_t j = 0; j < localData.getVectorData(i).size(); ++j) {
+          for (size_t j = 0; j < localData->getVectorData(i).size(); ++j) {
             for (int k = 0; k < numThreads; ++k) {
-              localData.getVectorData(i)[j] +=
+              localData->getVectorData(i)[j] +=
                   threadLocalData[k].getVectorData(i)[j];
             }
             // localData.getVectorData(i)[j] /= hitCounter.getDiscAreas()[j];
@@ -308,9 +298,9 @@ public:
         }
 
         case rayTracingDataMergeEnum::APPEND: {
-          localData.getVectorData(i).clear();
+          localData->getVectorData(i).clear();
           for (int k = 0; k < numThreads; ++k) {
-            localData.appendVectorData(i, threadLocalData[k].getVectorData(i));
+            localData->appendVectorData(i, threadLocalData[k].getVectorData(i));
           }
           break;
         }
@@ -325,22 +315,22 @@ public:
       }
     }
 
-    if (!localData.getScalarData().empty()) {
+    if (!localData->getScalarData().empty()) {
       // merge scalar data
-      for (int i = 0; i < localData.getScalarData().size(); ++i) {
-        switch (localData.getScalarMergeType(i)) {
+      for (int i = 0; i < localData->getScalarData().size(); ++i) {
+        switch (localData->getScalarMergeType(i)) {
         case rayTracingDataMergeEnum::SUM: {
           for (int j = 0; j < numThreads; ++j) {
-            localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
+            localData->getScalarData(i) += threadLocalData[j].getScalarData(i);
           }
           break;
         }
 
         case rayTracingDataMergeEnum::AVERAGE: {
           for (int j = 0; j < numThreads; ++j) {
-            localData.getScalarData(i) += threadLocalData[j].getScalarData(i);
+            localData->getScalarData(i) += threadLocalData[j].getScalarData(i);
           }
-          localData.getScalarData(i) /= (NumericType)numThreads;
+          localData->getScalarData(i) /= (NumericType)numThreads;
           break;
         }
 
@@ -364,23 +354,31 @@ public:
                 << "Number of rays: " << mNumRays << std::endl
                 << "Surface hits: " << geohitc << std::endl
                 << "Non-geometry hits: " << nongeohitc << std::endl
-                << "Total number of disc hits "
-                << threadLocalHitCounter[0].getTotalCounts() << std::endl;
+                << "Total number of disc hits " << hitCounter->getTotalCounts()
+                << std::endl;
     }
 
     rtcReleaseGeometry(rtcGeometry);
     rtcReleaseGeometry(rtcBoundary);
-
-    return threadLocalHitCounter[0];
   }
 
   void useRandomSeeds(bool use) { mUseRandomSeeds = use; }
 
   void calcFlux(bool calc) { mCalcFlux = calc; }
 
+  void setTracingData(rayTracingData<NumericType> *plocalData,
+                      const rayTracingData<NumericType> *pglobalData) {
+    localData = plocalData;
+    globalData = pglobalData;
+  }
+
+  void setHitCounter(rayHitCounter<NumericType> *phitCounter) {
+    hitCounter = phitCounter;
+  }
+
 private:
   bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
-                        rayRNG &RNG, rayRNG::RNGState &RngState) {
+                        rayRNG &RNG) {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;
@@ -394,7 +392,7 @@ private:
     // We want to set the weight of (the reflection of) the ray to the value of
     // renewWeight. In order to stay unbiased we kill the reflection with a
     // probability of (1 - rayWeight / renewWeight).
-    auto rndm = RNG.get(RngState);
+    auto rndm = RNG();
     auto killProbability = 1.0 - rayWeight / renewWeight;
     if (rndm < (killProbability * RNG.max())) {
       // kill the ray
@@ -531,6 +529,9 @@ private:
   const long long mNumRays;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
+  rayTracingData<NumericType> *localData = nullptr;
+  const rayTracingData<NumericType> *globalData = nullptr;
+  rayHitCounter<NumericType> *hitCounter = nullptr;
 };
 
 #endif // RAY_TRACEKERNEL_HPP

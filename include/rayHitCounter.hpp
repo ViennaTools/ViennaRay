@@ -100,6 +100,16 @@ public:
     }
   }
 
+  void resize(const size_t numPoints, const bool calcFlux) {
+    mDiscAreas.resize(numPoints);
+    mTotalCnts = 0;
+    if (calcFlux) {
+      mCnts.resize(numPoints);
+      mS1s.resize(numPoints);
+      mS2s.resize(numPoints);
+    }
+  }
+
   std::vector<NumericType> getValues() const { return mS1s; }
 
   std::vector<size_t> getCounts() const { return mCnts; }

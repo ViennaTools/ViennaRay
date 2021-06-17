@@ -15,12 +15,11 @@ public:
         minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
         ee(((NumericType)2) / (pCosinePower + 1)), mNumPoints(pNumPoints) {}
 
-  void fillRay(RTCRay &ray, rayRNG &RNG, const size_t idx,
-               rayRNG::RNGState &RngState1, rayRNG::RNGState &RngState2,
-               rayRNG::RNGState &RngState3,
-               rayRNG::RNGState &RngState4) override final {
-    auto origin = getOrigin(RNG, RngState1, RngState2);
-    auto direction = getDirection(RNG, RngState3, RngState4);
+  void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState1,
+               rayRNG &RngState2, rayRNG &RngState3,
+               rayRNG &RngState4) override final {
+    auto origin = getOrigin(RngState1, RngState2);
+    auto direction = getDirection(RngState3, RngState4);
 
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(ray) =
@@ -37,17 +36,17 @@ public:
     ray.dir_x = (float)direction[0];
     ray.dir_y = (float)direction[1];
     ray.dir_z = (float)direction[2];
-    ray.tnear = 0.0f;
+    ray.time = 0.0f;
 #endif
   }
 
   size_t getNumPoints() const override final { return mNumPoints; }
 
 private:
-  rayTriple<NumericType> getOrigin(rayRNG &RNG, rayRNG::RNGState &RngState1,
-                                   rayRNG::RNGState &RngState2) {
+  rayTriple<NumericType> getOrigin(rayRNG &RngState1, rayRNG &RngState2) {
     rayTriple<NumericType> origin{0., 0., 0.};
-    auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
+    std::uniform_real_distribution<NumericType> uniDist;
+    auto r1 = uniDist(RngState1);
 
     origin[rayDir] = bdBox[minMax][rayDir];
     origin[firstDir] =
@@ -56,8 +55,7 @@ private:
     if constexpr (D == 2) {
       origin[secondDir] = 0.;
     } else {
-      auto r2 =
-          ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
+      auto r2 = uniDist(RngState2);
       origin[secondDir] = bdBox[0][secondDir] +
                           (bdBox[1][secondDir] - bdBox[0][secondDir]) * r2;
     }
@@ -65,11 +63,11 @@ private:
     return origin;
   }
 
-  rayTriple<NumericType> getDirection(rayRNG &RNG, rayRNG::RNGState &RngState1,
-                                      rayRNG::RNGState &RngState2) {
+  rayTriple<NumericType> getDirection(rayRNG &RngState1, rayRNG &RngState2) {
     rayTriple<NumericType> direction{0., 0., 0.};
-    auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
-    auto r2 = ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
+    std::uniform_real_distribution<NumericType> uniDist;
+    auto r1 = uniDist(RngState1);
+    auto r2 = uniDist(RngState2);
 
     const NumericType tt = pow(r2, ee);
     direction[rayDir] = posNeg * sqrtf(tt);

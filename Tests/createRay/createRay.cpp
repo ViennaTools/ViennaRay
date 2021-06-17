@@ -32,10 +32,10 @@ int main() {
 
   auto rng = rayRNG{};
   unsigned seed = 31;
-  auto rngstate1 = rayRNG::RNGState{seed + 0};
-  auto rngstate2 = rayRNG::RNGState{seed + 1};
-  auto rngstate3 = rayRNG::RNGState{seed + 2};
-  auto rngstate4 = rayRNG::RNGState{seed + 3};
+  rayRNG rngstate1(seed + 0);
+  rayRNG rngstate2(seed + 1);
+  rayRNG rngstate3(seed + 2);
+  rayRNG rngstate4(seed + 3);
 
   {
     auto direction = rayTraceDirection::POS_Z;
@@ -49,8 +49,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3,
-                     rngstate4);
+      source.fillRay(rayhit.ray, 0, rngstate1, rngstate2, rngstate3, rngstate4);
       RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
     }
@@ -68,8 +67,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3,
-                     rngstate4);
+      source.fillRay(rayhit.ray, 0, rngstate1, rngstate2, rngstate3, rngstate4);
       RAYTEST_ASSERT(rayhit.ray.dir_z > 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (-1. - 2 * gridDelta), eps)
     }
@@ -87,8 +85,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3,
-                     rngstate4);
+      source.fillRay(rayhit.ray, 0, rngstate1, rngstate2, rngstate3, rngstate4);
       RAYTEST_ASSERT(rayhit.ray.dir_x < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (1. + 2 * gridDelta), eps)
     }
@@ -106,8 +103,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3,
-                     rngstate4);
+      source.fillRay(rayhit.ray, 0, rngstate1, rngstate2, rngstate3, rngstate4);
       RAYTEST_ASSERT(rayhit.ray.dir_x > 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (-1. - 2 * gridDelta), eps)
     }
@@ -125,8 +121,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3,
-                     rngstate4);
+      source.fillRay(rayhit.ray, 0, rngstate1, rngstate2, rngstate3, rngstate4);
       RAYTEST_ASSERT(rayhit.ray.dir_y < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (1. + 2 * gridDelta), eps)
     }
@@ -144,8 +139,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      source.fillRay(rayhit.ray, rng, 0, rngstate1, rngstate2, rngstate3,
-                     rngstate4);
+      source.fillRay(rayhit.ray, 0, rngstate1, rngstate2, rngstate3, rngstate4);
       RAYTEST_ASSERT(rayhit.ray.dir_y > 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (-1. - 2 * gridDelta), eps)
     }

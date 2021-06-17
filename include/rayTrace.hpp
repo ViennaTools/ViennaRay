@@ -27,8 +27,9 @@ private:
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
   std::vector<NumericType> mFlux;
-  rayTracingData<NumericType> localData;
-  rayTracingData<NumericType> globalData;
+  rayHitCounter<NumericType> mHitCounter;
+  rayTracingData<NumericType> mLocalData;
+  rayTracingData<NumericType> mGlobalData;
   static constexpr double mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
 public:
@@ -59,10 +60,13 @@ public:
         mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
     tracer.calcFlux(mCalcFlux);
-    auto hitCounter = tracer.apply(localData, globalData);
+    tracer.setTracingData(&mLocalData, &mGlobalData);
+    tracer.setHitCounter(&mHitCounter);
+    tracer.apply();
+
     boundary.releaseGeometry();
     if (mCalcFlux)
-      extractFlux(hitCounter);
+      extractFlux();
   }
 
   /// Set the ray tracing geometry
@@ -118,7 +122,9 @@ public:
     mNumberOfRaysFixed = 0;
   }
 
-  void setNumberOfRaysfixed(const size_t pNum) {
+  /// Set the number of total rays traced to a fixed amount,
+  /// independent of the geometry
+  void setNumberOfRaysFixed(const size_t pNum) {
     mNumberOfRaysFixed = pNum;
     mNumberOfRaysPerPoint = 0;
   }
@@ -137,6 +143,10 @@ public:
   /// should be used.
   void setUseRandomSeeds(const bool useRand) { mUseRandomSeeds = useRand; }
 
+  /// Set whether the flux and hit counts should be recorded. If not needed,
+  /// this should be turned off to increase performance. If set to false, the
+  /// functions getTotalFlux(), getNormalizedFlux(), gitHitCounts() and
+  /// getRelativeError() can not be used.
   void setCalculateFlux(const bool calcFlux) { mCalcFlux = calcFlux; }
 
   /// Returns the total flux on each disc normalized by the disc area and
@@ -146,24 +156,26 @@ public:
   /// Returns the flux normalized to the maximum flux value.
   std::vector<NumericType> getNormalizedFlux() { return normalizeFlux(); }
 
-  // /// Returns the total number of hits for each geometry point.
-  // std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts();
-  // }
+  /// Returns the total number of hits for each geometry point.
+  std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
 
-  // std::vector<NumericType> getRelativeError()
-  // {
-  //   return mHitCounter.getRelativeError();
-  // }
+  /// Returns the relative error of the flux for each geometry point
+  std::vector<NumericType> getRelativeError() {
+    return mHitCounter.getRelativeError();
+  }
 
-  rayTracingData<NumericType> &getLocalData() { return localData; }
+  /// Returns the disc area for each geometry point
+  std::vector<NumericType> getDiscAreas() { return mHitCounter.getDiscAreas(); }
 
-  rayTracingData<NumericType> &getGlobalData() { return globalData; }
+  rayTracingData<NumericType> &getLocalData() { return mLocalData; }
+
+  rayTracingData<NumericType> &getGlobalData() { return mGlobalData; }
 
 private:
-  void extractFlux(const rayHitCounter<NumericType> &hitCounter) {
-    assert(hitCounter.getTotalCounts() > 0 && "Invalid trace result");
-    auto values = hitCounter.getValues();
-    auto discAreas = hitCounter.getDiscAreas();
+  void extractFlux() {
+    assert(mHitCounter.getTotalCounts() > 0 && "Invalid trace result");
+    auto values = mHitCounter.getValues();
+    auto discAreas = mHitCounter.getDiscAreas();
     mFlux.clear();
     mFlux.reserve(values.size());
     // Account for area and average over the neighborhood

@@ -6,9 +6,9 @@
 template <typename NumericType, int D>
 class rayReflectionSpecular : public rayReflection<NumericType, D> {
 public:
-  rayPair<rayTriple<NumericType>>
-  use(RTCRay &rayin, RTCHit &hitin, const int materialId, rayRNG &RNG,
-      rayRNG::RNGState &RngState) override final {
+  rayPair<rayTriple<NumericType>> use(RTCRay &rayin, RTCHit &hitin,
+                                      const int materialId,
+                                      rayRNG &RNG) override final {
     return use(rayin, hitin);
   }
 

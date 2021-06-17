@@ -8,9 +8,8 @@
 template <typename NumericType, int D> class rayReflection {
 public:
   virtual ~rayReflection() {}
-  virtual rayPair<rayTriple<NumericType>> use(RTCRay &rayin, RTCHit &hitin,
-                                              const int materialId, rayRNG &RNG,
-                                              rayRNG::RNGState &RngState) = 0;
+  virtual rayPair<rayTriple<NumericType>>
+  use(RTCRay &rayin, RTCHit &hitin, const int materialId, rayRNG &RNG) = 0;
 };
 
 #endif // RAY_REFLECTION_HPP

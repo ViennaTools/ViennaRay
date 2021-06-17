@@ -26,11 +26,10 @@ int main() {
   auto grid = rayInternal::createSourceGrid<NumericType, D>(
       boundingBox, points.size(), gridDelta, traceSettings);
 
-  auto rng = rayRNG{};
-  auto rngstate1 = rayRNG::RNGState{0};
-  auto rngstate2 = rayRNG::RNGState{1};
-  auto rngstate3 = rayRNG::RNGState{2};
-  auto rngstate4 = rayRNG::RNGState{3};
+  rayRNG rngstate1(0);
+  rayRNG rngstate2(1);
+  rayRNG rngstate3(2);
+  rayRNG rngstate4(3);
   {
     // build source in positive z direction;
     auto source = raySourceGrid<NumericType, D>(grid, 1., traceSettings);
@@ -38,8 +37,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < numGridPoints; ++i) {
-      source.fillRay(rayhit.ray, rng, i, rngstate1, rngstate2, rngstate3,
-                     rngstate4);
+      source.fillRay(rayhit.ray, i, rngstate1, rngstate2, rngstate3, rngstate4);
 
       RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)

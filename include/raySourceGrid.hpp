@@ -17,14 +17,13 @@ public:
         ee(((NumericType)2) / (passedCosinePower + 1)),
         indexCounter(sourceGrid.size(), 0) {}
 
-  void fillRay(RTCRay &ray, rayRNG &RNG, const size_t idx,
-               rayRNG::RNGState &RngState1, rayRNG::RNGState &RngState2,
-               rayRNG::RNGState &RngState3,
-               rayRNG::RNGState &RngState4) override final {
+  void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState1,
+               rayRNG &RngState2, rayRNG &RngState3,
+               rayRNG &RngState4) override final {
     auto index = idx % mNumPoints;
     indexCounter[index]++;
     auto origin = mSourceGrid[idx % mNumPoints];
-    auto direction = getDirection(RNG, RngState3, RngState4);
+    auto direction = getDirection(RngState3, RngState4);
 
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(ray) =
@@ -54,11 +53,11 @@ public:
   }
 
 private:
-  rayTriple<NumericType> getDirection(rayRNG &RNG, rayRNG::RNGState &RngState1,
-                                      rayRNG::RNGState &RngState2) {
+  rayTriple<NumericType> getDirection(rayRNG &RngState1, rayRNG &RngState2) {
     rayTriple<NumericType> direction{0., 0., 0.};
-    auto r1 = ((NumericType)RNG.get(RngState1)) / ((NumericType)RNG.max() + 1);
-    auto r2 = ((NumericType)RNG.get(RngState2)) / ((NumericType)RNG.max() + 1);
+    std::uniform_real_distribution<NumericType> uniDist;
+    auto r1 = uniDist(RngState1);
+    auto r2 = uniDist(RngState2);
 
     NumericType tt = pow(r2, ee);
     direction[rayDir] = posNeg * sqrtf(tt);

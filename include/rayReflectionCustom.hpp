@@ -9,14 +9,14 @@
 template <typename NumericType, int D>
 class rayReflectionCustom : public rayReflection<NumericType, D> {
 public:
-  rayPair<rayTriple<NumericType>>
-  use(RTCRay &rayin, RTCHit &hitin, const int materialId, rayRNG &RNG,
-      rayRNG::RNGState &RngState) override final {
-    if (RNG.get(RngState) < RNG.max() / 2 && materialId == 0) {
+  rayPair<rayTriple<NumericType>> use(RTCRay &rayin, RTCHit &hitin,
+                                      const int materialId,
+                                      rayRNG &RNG) override final {
+    if (RNG() < RNG.max() / 2 && materialId == 0) {
       return rayReflectionSpecular<NumericType, D>::use(rayin, hitin);
     } else {
-      return rayReflectionDiffuse<NumericType, D>().use(
-          rayin, hitin, materialId, RNG, RngState);
+      return rayReflectionDiffuse<NumericType, D>().use(rayin, hitin,
+                                                        materialId, RNG);
     }
   }
 };
