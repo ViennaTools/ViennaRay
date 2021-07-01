@@ -5,11 +5,28 @@
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D> class rayReflection {
-public:
-  virtual ~rayReflection() {}
-  virtual rayPair<rayTriple<NumericType>>
-  use(RTCRay &rayin, RTCHit &hitin, const int materialId, rayRNG &RNG) = 0;
-};
+template <typename NumericType>
+static rayTriple<NumericType> rayReflectionSpecular(const rayTriple<NumericType> &rayDir, const rayTriple<NumericType> &geomNormal)
+{ 
+  auto normal = geomNormal;
+  auto dir = rayDir;
+  rayInternal::Normalize(normal);
+  rayInternal::Normalize(dir);
+
+  assert(rayInternal::IsNormalized(normal) &&
+         "rayReflectionSpecular: Surface normal is not normalized");
+
+  auto dirOldInv = rayInternal::Inv(dir);
+  assert(rayInternal::IsNormalized(dirOldInv) &&
+         "rayReflectionSpecular: Surface normal is not normalized");
+
+  // Compute new direction
+  auto direction = rayInternal::Diff(
+      rayInternal::Scale(2 * rayInternal::DotProduct(normal, dirOldInv),
+                         normal),
+      dirOldInv);
+
+  return direction;
+}
 
 #endif // RAY_REFLECTION_HPP
