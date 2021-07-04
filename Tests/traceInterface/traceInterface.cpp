@@ -7,7 +7,6 @@ int main() {
   constexpr int D = 3;
   using NumericType = float;
   using ParticleType = rayTestParticle<NumericType>;
-  using ReflectionType = rayReflectionCustom<NumericType, D>;
   omp_set_num_threads(4);
 
   NumericType extent = 5;
@@ -23,7 +22,7 @@ int main() {
   boundaryConds[1] = rayTraceBoundary::REFLECTIVE;
   boundaryConds[2] = rayTraceBoundary::REFLECTIVE;
 
-  rayTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
+  rayTrace<NumericType, ParticleType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setSourceDistributionPower(2);

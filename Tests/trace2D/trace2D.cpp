@@ -8,7 +8,6 @@ int main() {
 
   using NumericType = float;
   using ParticleType = rayTestParticle<NumericType>;
-  using ReflectionType = rayReflectionSpecular<NumericType, D>;
 
   omp_set_num_threads(1);
 
@@ -24,7 +23,7 @@ int main() {
   boundaryConds[0] = rayTraceBoundary::REFLECTIVE;
   boundaryConds[1] = rayTraceBoundary::REFLECTIVE;
 
-  rayTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
+  rayTrace<NumericType, ParticleType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setSourceDirection(rayTraceDirection::POS_Y);

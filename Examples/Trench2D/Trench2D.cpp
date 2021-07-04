@@ -22,7 +22,6 @@ int main() {
   // rayReflection<NumericType, D> class.
   using NumericType = float;
   using ParticleType = rayTestParticle<NumericType>;
-  using ReflectionType = rayReflectionSpecular<NumericType, D>;
 
   // Set the number of threads to use in OpenMP parallelization
   omp_set_num_threads(6);
@@ -41,7 +40,7 @@ int main() {
   boundaryConds[0] = rayTraceBoundary::PERIODIC;
   boundaryConds[1] = rayTraceBoundary::PERIODIC;
 
-  rayTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
+  rayTrace<NumericType, ParticleType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
 

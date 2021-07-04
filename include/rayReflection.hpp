@@ -6,24 +6,20 @@
 #include <rayUtil.hpp>
 
 template <typename NumericType>
-static rayTriple<NumericType> rayReflectionSpecular(const rayTriple<NumericType> &rayDir, const rayTriple<NumericType> &geomNormal)
-{ 
-  auto normal = geomNormal;
-  auto dir = rayDir;
-  rayInternal::Normalize(normal);
-  rayInternal::Normalize(dir);
-
-  assert(rayInternal::IsNormalized(normal) &&
+static rayTriple<NumericType>
+rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
+                      const rayTriple<NumericType> &geomNormal) {
+  assert(rayInternal::IsNormalized(geomNormal) &&
+         "rayReflectionSpecular: Surface normal is not normalized");
+  assert(rayInternal::IsNormalized(rayDir) &&
          "rayReflectionSpecular: Surface normal is not normalized");
 
-  auto dirOldInv = rayInternal::Inv(dir);
-  assert(rayInternal::IsNormalized(dirOldInv) &&
-         "rayReflectionSpecular: Surface normal is not normalized");
+  auto dirOldInv = rayInternal::Inv(rayDir);
 
   // Compute new direction
   auto direction = rayInternal::Diff(
-      rayInternal::Scale(2 * rayInternal::DotProduct(normal, dirOldInv),
-                         normal),
+      rayInternal::Scale(2 * rayInternal::DotProduct(geomNormal, dirOldInv),
+                         geomNormal),
       dirOldInv);
 
   return direction;

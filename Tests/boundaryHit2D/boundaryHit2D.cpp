@@ -116,7 +116,7 @@ int main() {
                                          3,
                                          0,
                                          0}; // primID, geomID, instanceID
-    
+
     boundary.processHit(rayhit, reflect);
 
     RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)

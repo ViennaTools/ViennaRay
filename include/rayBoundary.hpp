@@ -3,13 +3,12 @@
 
 #include <rayBoundCondition.hpp>
 #include <rayMetaGeometry.hpp>
+#include <rayPreCompileMacros.hpp>
 #include <rayReflection.hpp>
 #include <rayTraceDirection.hpp>
-#include <rayPreCompileMacros.hpp>
 
 template <typename NumericType, int D>
-class rayBoundary : public rayMetaGeometry<NumericType, D>
-{
+class rayBoundary : public rayMetaGeometry<NumericType, D> {
   typedef rayPair<rayTriple<NumericType>> boundingBoxType;
 
 public:
@@ -18,117 +17,85 @@ public:
               std::array<int, 5> &pTraceSettings)
       : mbdBox(pBoundingBox), firstDir(pTraceSettings[1]),
         secondDir(pTraceSettings[2]),
-        mBoundaryConds({pBoundaryConds[firstDir], pBoundaryConds[secondDir]})
-  {
+        mBoundaryConds({pBoundaryConds[firstDir], pBoundaryConds[secondDir]}) {
     initBoundary(pDevice);
   }
 
-  void processHit(RTCRayHit &rayHit, bool &reflect)
-  {
+  void processHit(RTCRayHit &rayHit, bool &reflect) {
     const auto primID = rayHit.hit.primID;
 
-    if constexpr (D == 2)
-    {
+    if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
-      if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE)
-      {
+      if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
         reflectRay(rayHit);
         reflect = true;
         return;
-      }
-      else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC)
-      {
+      } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
         auto impactCoords = this->getNewOrigin(rayHit.ray);
         // periodically move ray origin
-        if (primID == 0 || primID == 1)
-        {
+        if (primID == 0 || primID == 1) {
           // hit at x/y min boundary -> move to max x/y
           impactCoords[firstDir] = mbdBox[1][firstDir];
-        }
-        else if (primID == 2 || primID == 3)
-        {
+        } else if (primID == 2 || primID == 3) {
           // hit at x/y max boundary -> move to min x/y
           impactCoords[firstDir] = mbdBox[0][firstDir];
         }
         moveRay(rayHit, impactCoords);
         reflect = true;
         return;
-      }
-      else
-      {
+      } else {
         // ignore ray
         reflect = false;
         return;
       }
 
       assert(false && "Correctness Assumption");
-    }
-    else
-    {
-      if (primID == 0 || primID == 1 || primID == 2 || primID == 3)
-      {
-        if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE)
-        {
+    } else {
+      if (primID == 0 || primID == 1 || primID == 2 || primID == 3) {
+        if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        }
-        else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC)
-        {
+        } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
-          if (primID == 0 || primID == 1)
-          {
+          if (primID == 0 || primID == 1) {
             // hit at firstDir min boundary -> move to max firstDir
             impactCoords[firstDir] = mbdBox[1][firstDir];
-          }
-          else if (primID == 2 || primID == 3)
-          {
+          } else if (primID == 2 || primID == 3) {
             // hit at firstDir max boundary -> move to min fristDir
             impactCoords[firstDir] = mbdBox[0][firstDir];
           }
           moveRay(rayHit, impactCoords);
           reflect = true;
           return;
-        }
-        else
-        {
+        } else {
           // ignore ray
           reflect = false;
           return;
         }
-      }
-      else if (primID == 4 || primID == 5 || primID == 6 || primID == 7)
-      {
-        if (mBoundaryConds[1] == rayTraceBoundary::REFLECTIVE)
-        {
+      } else if (primID == 4 || primID == 5 || primID == 6 || primID == 7) {
+        if (mBoundaryConds[1] == rayTraceBoundary::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        }
-        else if (mBoundaryConds[1] == rayTraceBoundary::PERIODIC)
-        {
+        } else if (mBoundaryConds[1] == rayTraceBoundary::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
-          if (primID == 4 || primID == 5)
-          {
+          if (primID == 4 || primID == 5) {
             // hit at secondDir min boundary -> move to max secondDir
             impactCoords[secondDir] = mbdBox[1][secondDir];
-          }
-          else if (primID == 6 || primID == 7)
-          {
+          } else if (primID == 6 || primID == 7) {
             // hit at secondDir max boundary -> move to min secondDir
             impactCoords[secondDir] = mbdBox[0][secondDir];
           }
           moveRay(rayHit, impactCoords);
           reflect = true;
           return;
-        }
-        else
-        {
+        } else {
           // ignore ray
           reflect = false;
           return;
@@ -141,18 +108,14 @@ public:
 
   RTCGeometry &getRTCGeometry() override final { return mRtcBoundary; }
 
-  void releaseGeometry()
-  {
+  void releaseGeometry() {
     // Attention:
     // This function must not be called when the RTCGeometry reference count is
     // > 1 Doing so leads to leaked memory buffers
     if (mTriangleBuffer == nullptr || mVertexBuffer == nullptr ||
-        mRtcBoundary == nullptr)
-    {
+        mRtcBoundary == nullptr) {
       return;
-    }
-    else
-    {
+    } else {
       rtcReleaseGeometry(mRtcBoundary);
       mRtcBoundary = nullptr;
       mTriangleBuffer = nullptr;
@@ -160,8 +123,7 @@ public:
     }
   }
 
-  rayTriple<NumericType> getPrimNormal(const unsigned int primID) override
-  {
+  rayTriple<NumericType> getPrimNormal(const unsigned int primID) override {
     assert(primID < numTriangles && "rayBoundary: primID out of bounds");
     return primNormals[primID];
   }
@@ -171,8 +133,7 @@ public:
   rayPair<int> getDirs() const { return {firstDir, secondDir}; }
 
 private:
-  void initBoundary(RTCDevice &pDevice)
-  {
+  void initBoundary(RTCDevice &pDevice) {
     assert(mVertexBuffer == nullptr && mTriangleBuffer == nullptr &&
            "Boundary buffer not empty");
     mRtcBoundary = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_TRIANGLE);
@@ -236,8 +197,7 @@ private:
     constexpr rayTriple<rayQuadruple<rayTriple<uint32_t>>> Planes = {
         xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 
-    for (size_t idx = 0; idx < 4; ++idx)
-    {
+    for (size_t idx = 0; idx < 4; ++idx) {
       mTriangleBuffer[idx].v0 = Planes[firstDir][idx][0];
       mTriangleBuffer[idx].v1 = Planes[firstDir][idx][1];
       mTriangleBuffer[idx].v2 = Planes[firstDir][idx][2];
@@ -247,8 +207,7 @@ private:
       mTriangleBuffer[idx + 4].v2 = Planes[secondDir][idx][2];
     }
 
-    for (size_t idx = 0; idx < numTriangles; ++idx)
-    {
+    for (size_t idx = 0; idx < numTriangles; ++idx) {
       auto triangle = getTriangleCoords(idx);
       auto triNorm = rayInternal::ComputeNormal(triangle);
       rayInternal::Normalize(triNorm);
@@ -260,8 +219,7 @@ private:
            "RTC Error: rtcCommitGeometry");
   }
 
-  rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID)
-  {
+  rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID) {
     assert(primID < numTriangles && "rtBounday: primID out of bounds");
     auto tt = mTriangleBuffer[primID];
     return {(NumericType)mVertexBuffer[tt.v0].xx,
@@ -275,20 +233,23 @@ private:
             (NumericType)mVertexBuffer[tt.v2].zz};
   }
 
-  void reflectRay(RTCRayHit &rayHit)
-  {
-    auto dir = *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.ray.dir_x);
-    auto normal = *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.hit.Ng_x);
+  void reflectRay(RTCRayHit &rayHit) {
+    auto dir =
+        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.ray.dir_x);
+    auto normal =
+        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.hit.Ng_x);
+    rayInternal::Normalize(dir);
+    rayInternal::Normalize(normal);
     dir = rayReflectionSpecular(dir, normal);
     // normal gets reused for new origin here
     normal = this->getNewOrigin(rayHit.ray);
 #ifdef ARCH_X86
-    reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(
-        1e-4f, (rtcNumericType)normal[2], (rtcNumericType)normal[1],
-        (rtcNumericType)normal[0]);
-    reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
-        0.0f, (rtcNumericType)dir[2], (rtcNumericType)dir[1],
-        (rtcNumericType)dir[0]);
+    reinterpret_cast<__m128 &>(rayHit.ray) =
+        _mm_set_ps(1e-4f, (rtcNumericType)normal[2], (rtcNumericType)normal[1],
+                   (rtcNumericType)normal[0]);
+    reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
+        _mm_set_ps(0.0f, (rtcNumericType)dir[2], (rtcNumericType)dir[1],
+                   (rtcNumericType)dir[0]);
 #else
     rayHit.ray.org_x = (rtcNumericType)normal[0];
     rayHit.ray.org_y = (rtcNumericType)normal[1];
@@ -302,11 +263,11 @@ private:
 #endif
   }
 
-  void moveRay(RTCRayHit &rayHit, const rayTriple<NumericType> &coords)
-  {
+  void moveRay(RTCRayHit &rayHit, const rayTriple<NumericType> &coords) {
 #ifdef ARCH_X86
-    reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(
-        1e-4f, (rtcNumericType)coords[2], (rtcNumericType)coords[1], (rtcNumericType)coords[0]);
+    reinterpret_cast<__m128 &>(rayHit.ray) =
+        _mm_set_ps(1e-4f, (rtcNumericType)coords[2], (rtcNumericType)coords[1],
+                   (rtcNumericType)coords[0]);
     rayHit.ray.time = 0.0f;
 #else
     rayHit.ray.org_x = (rtcNumericType)coords[0];
@@ -317,8 +278,7 @@ private:
 #endif
   }
 
-  struct vertex_f3_t
-  {
+  struct vertex_f3_t {
     // vertex is the nomenclature of Embree
     // The triangle geometry has a vertex buffer which uses x, y, and z
     // in single precision floating point types.
@@ -326,8 +286,7 @@ private:
   };
   vertex_f3_t *mVertexBuffer = nullptr;
 
-  struct triangle_t
-  {
+  struct triangle_t {
     // The triangle geometry uses an index buffer that contains an array
     // of three 32-bit indices per triangle.
     uint32_t v0, v1, v2;

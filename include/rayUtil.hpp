@@ -110,6 +110,12 @@ rayTriple<NumericType> Scale(const NumericType pF, rayTriple<NumericType> &pT) {
   return pT;
 }
 
+template <typename NumericType>
+rayTriple<NumericType> Scale(const NumericType pF,
+                             const rayTriple<NumericType> &pT) {
+  return {pF * pT[0], pF * pT[1], pF * pT[2]};
+}
+
 template <typename NumericType, size_t D>
 NumericType Distance(const std::array<NumericType, D> &pVecA,
                      const std::array<NumericType, D> &pVecB) {

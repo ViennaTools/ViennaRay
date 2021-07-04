@@ -12,8 +12,7 @@
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
 
-template <class NumericType, class ParticleType, class ReflectionType, int D>
-class rayTrace {
+template <class NumericType, class ParticleType, int D> class rayTrace {
 private:
   RTCDevice mDevice;
   rayGeometry<NumericType, D> mGeometry;
@@ -55,7 +54,7 @@ public:
     auto raySource = raySourceRandom<NumericType, D>(
         boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
 
-    auto tracer = rayTraceKernel<NumericType, ParticleType, ReflectionType, D>(
+    auto tracer = rayTraceKernel<NumericType, ParticleType, D>(
         mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint,
         mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
