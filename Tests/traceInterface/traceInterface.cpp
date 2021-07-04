@@ -1,12 +1,10 @@
 #include <rayParticle.hpp>
-#include <rayReflectionCustom.hpp>
 #include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
 
 int main() {
   constexpr int D = 3;
   using NumericType = float;
-  using ParticleType = rayTestParticle<NumericType>;
   omp_set_num_threads(4);
 
   NumericType extent = 5;
@@ -21,8 +19,10 @@ int main() {
   boundaryConds[0] = rayTraceBoundary::REFLECTIVE;
   boundaryConds[1] = rayTraceBoundary::REFLECTIVE;
   boundaryConds[2] = rayTraceBoundary::REFLECTIVE;
+  rayTestParticle<NumericType> particle;
 
-  rayTrace<NumericType, ParticleType, D> rayTracer;
+  rayTrace<NumericType, D> rayTracer;
+  rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setSourceDistributionPower(2);

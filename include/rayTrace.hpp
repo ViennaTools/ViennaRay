@@ -12,10 +12,11 @@
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
 
-template <class NumericType, class ParticleType, int D> class rayTrace {
+template <class NumericType, int D> class rayTrace {
 private:
   RTCDevice mDevice;
   rayGeometry<NumericType, D> mGeometry;
+  rayAbstractParticle<NumericType> *mParticle = nullptr;
   size_t mNumberOfRaysPerPoint = 1000;
   size_t mNumberOfRaysFixed = 0;
   NumericType mDiscRadius = 0;
@@ -54,9 +55,9 @@ public:
     auto raySource = raySourceRandom<NumericType, D>(
         boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
 
-    auto tracer = rayTraceKernel<NumericType, ParticleType, D>(
-        mDevice, mGeometry, boundary, raySource, mNumberOfRaysPerPoint,
-        mNumberOfRaysFixed);
+    auto tracer = rayTraceKernel<NumericType, D>(
+        mDevice, mGeometry, boundary, raySource, mParticle,
+        mNumberOfRaysPerPoint, mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
     tracer.calcFlux(mCalcFlux);
     tracer.setTracingData(&mLocalData, &mGlobalData);
@@ -66,6 +67,14 @@ public:
     boundary.releaseGeometry();
     if (mCalcFlux)
       extractFlux();
+  }
+
+  template <typename ParticleType,
+            std::enable_if_t<std::is_base_of<rayAbstractParticle<NumericType>,
+                                             ParticleType>::value,
+                             std::nullptr_t> = std::nullptr_t()>
+  void setParticleType(ParticleType p) {
+    mParticle = dynamic_cast<rayAbstractParticle<NumericType> *>(&p);
   }
 
   /// Set the ray tracing geometry
@@ -205,6 +214,10 @@ private:
   }
 
   void checkSettings() {
+    if (mParticle == nullptr) {
+      rayMessage::getInstance().addError(
+          "No particle was specified in rayTrace. Aborting.");
+    }
     if (mGeometry.checkGeometryEmpty()) {
       rayMessage::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");

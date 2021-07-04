@@ -1,7 +1,6 @@
 #ifndef RAY_REFLECTION_HPP
 #define RAY_REFLECTION_HPP
 
-#include <embree3/rtcore.h>
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 
@@ -26,7 +25,7 @@ rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
 }
 
 template <typename NumericType, int D>
-rayTriple<NumericType>
+static rayTriple<NumericType>
 rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
   assert(rayInternal::IsNormalized(geomNormal) &&
          "rayReflectionDiffuse: Surface normal is not normalized");

@@ -1,6 +1,5 @@
 #include <omp.h>
 #include <rayParticle.hpp>
-#include <rayReflectionSpecular.hpp>
 #include <rayTrace.hpp>
 
 int main() {
@@ -21,7 +20,6 @@ int main() {
   // again be a user defined custom reflection, that has to interface the
   // rayReflection<NumericType, D> class.
   using NumericType = float;
-  using ParticleType = rayTestParticle<NumericType>;
 
   // Set the number of threads to use in OpenMP parallelization
   omp_set_num_threads(6);
@@ -38,9 +36,10 @@ int main() {
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
   rayTraceBoundary boundaryConds[D];
   boundaryConds[0] = rayTraceBoundary::PERIODIC;
-  boundaryConds[1] = rayTraceBoundary::PERIODIC;
+  rayTestParticle<NumericType> particle;
 
-  rayTrace<NumericType, ParticleType, D> rayTracer;
+  rayTrace<NumericType, D> rayTracer;
+  rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
 

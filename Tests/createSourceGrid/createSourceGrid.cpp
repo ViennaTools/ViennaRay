@@ -1,7 +1,7 @@
 #include <rayGeometry.hpp>
+#include <rayRNG.hpp>
 #include <raySourceGrid.hpp>
 #include <rayTestAsserts.hpp>
-#include <rayTrace.hpp>
 #include <rayUtil.hpp>
 
 int main() {

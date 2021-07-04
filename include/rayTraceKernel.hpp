@@ -4,6 +4,7 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
+#include <rayParticle.hpp>
 #include <rayRNG.hpp>
 #include <raySource.hpp>
 #include <rayTracingData.hpp>
@@ -12,16 +13,16 @@
 #define PRINT_PROGRESS false
 #define PRINT_RESULT false
 
-template <typename NumericType, typename ParticleType, int D>
-class rayTraceKernel {
+template <typename NumericType, int D> class rayTraceKernel {
 
 public:
   rayTraceKernel(RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
+                 rayAbstractParticle<NumericType> *pParticle,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
-        mSource(pSource),
+        mSource(pSource), mParticle(pParticle),
         mNumRays(pNumOfRayFixed == 0
                      ? pSource.getNumPoints() * pNumOfRayPerPoint
                      : pNumOfRayFixed) {
@@ -109,7 +110,7 @@ public:
       rayRNG RngState8(seeds[7]);
 
       // thread-local particle object
-      auto particle = ParticleType{};
+      auto particle = mParticle->clone();
 
       auto &myLocalData = threadLocalData[threadID];
       auto &myHitCounter = threadLocalHitCounter[threadID];
@@ -124,7 +125,7 @@ public:
 
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < mNumRays; ++idx) {
-        particle.initNew(RngState8);
+        particle->initNew(RngState8);
         NumericType rayWeight = initialRayWeight;
 
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
@@ -192,9 +193,9 @@ public:
           const auto primID = rayHit.hit.primID;
           const auto materialID = mGeometry.getMaterialId(primID);
 
-          particle.surfaceCollision(rayWeight, rayDir, geomNormal, primID,
-                                    materialID, myLocalData, *globalData,
-                                    RngState5);
+          particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
+                                     materialID, myLocalData, *globalData,
+                                     RngState5);
 
           // Check for additional intersections
           std::vector<unsigned int> intIds;
@@ -203,16 +204,16 @@ public:
 
             if (checkLocalIntersection(ray, id)) {
               const auto normal = mGeometry.getPrimNormal(id);
-              particle.surfaceCollision(rayWeight, rayDir, normal, id, matID,
-                                        myLocalData, *globalData, RngState5);
+              particle->surfaceCollision(rayWeight, rayDir, normal, id, matID,
+                                         myLocalData, *globalData, RngState5);
               if (calcFlux)
                 intIds.push_back(id);
             }
           }
 
           const auto stickingnDirection =
-              particle.surfaceReflection(rayWeight, rayDir, geomNormal, primID,
-                                         materialID, *globalData, RngState5);
+              particle->surfaceReflection(rayWeight, rayDir, geomNormal, primID,
+                                          materialID, *globalData, RngState5);
           const auto valueToDrop = rayWeight * stickingnDirection.first;
           if (calcFlux) {
             for (const auto &id : intIds) {
@@ -506,6 +507,7 @@ private:
   rayGeometry<NumericType, D> &mGeometry;
   rayBoundary<NumericType, D> &mBoundary;
   raySource<NumericType, D> &mSource;
+  rayAbstractParticle<NumericType> *const mParticle;
   const long long mNumRays;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
