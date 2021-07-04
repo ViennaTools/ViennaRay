@@ -194,7 +194,7 @@ public:
           const auto materialID = mGeometry.getMaterialId(primID);
 
           particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
-                                     materialID, myLocalData, *globalData,
+                                     materialID, myLocalData, globalData,
                                      RngState5);
 
           // Check for additional intersections
@@ -205,7 +205,7 @@ public:
             if (checkLocalIntersection(ray, id)) {
               const auto normal = mGeometry.getPrimNormal(id);
               particle->surfaceCollision(rayWeight, rayDir, normal, id, matID,
-                                         myLocalData, *globalData, RngState5);
+                                         myLocalData, globalData, RngState5);
               if (calcFlux)
                 intIds.push_back(id);
             }
@@ -213,7 +213,7 @@ public:
 
           const auto stickingnDirection =
               particle->surfaceReflection(rayWeight, rayDir, geomNormal, primID,
-                                          materialID, *globalData, RngState5);
+                                          materialID, globalData, RngState5);
           const auto valueToDrop = rayWeight * stickingnDirection.first;
           if (calcFlux) {
             for (const auto &id : intIds) {

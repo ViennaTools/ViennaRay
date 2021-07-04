@@ -31,7 +31,7 @@ public:
   surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
                     const rayTriple<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const rayTracingData<NumericType> &globalData,
+                    const rayTracingData<NumericType> *globalData,
                     rayRNG &Rng) = 0;
 
   /// Surface collision. This function gets called whenever an intersection of
@@ -49,7 +49,7 @@ public:
                                 const rayTriple<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
                                 rayTracingData<NumericType> &localData,
-                                const rayTracingData<NumericType> &globalData,
+                                const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) = 0;
 };
 
@@ -79,7 +79,7 @@ public:
   surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
                     const rayTriple<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
-                    const rayTracingData<NumericType> &globalData,
+                    const rayTracingData<NumericType> *globalData,
                     rayRNG &Rng) override final {
     // return the sticking probability and direction after reflection for this
     // hit
@@ -93,7 +93,7 @@ public:
                         const rayTriple<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
                         rayTracingData<NumericType> &localData,
-                        const rayTracingData<NumericType> &globalData,
+                        const rayTracingData<NumericType> *globalData,
                         rayRNG &Rng) override final {
     // collect data for this hit
   }

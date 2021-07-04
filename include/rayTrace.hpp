@@ -29,7 +29,7 @@ private:
   std::vector<NumericType> mFlux;
   rayHitCounter<NumericType> mHitCounter;
   rayTracingData<NumericType> mLocalData;
-  rayTracingData<NumericType> mGlobalData;
+  rayTracingData<NumericType> *mGlobalData = nullptr;
   static constexpr double mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
 public:
@@ -60,7 +60,7 @@ public:
         mNumberOfRaysPerPoint, mNumberOfRaysFixed);
     tracer.useRandomSeeds(mUseRandomSeeds);
     tracer.calcFlux(mCalcFlux);
-    tracer.setTracingData(&mLocalData, &mGlobalData);
+    tracer.setTracingData(&mLocalData, mGlobalData);
     tracer.setHitCounter(&mHitCounter);
     tracer.apply();
 
@@ -69,11 +69,13 @@ public:
       extractFlux();
   }
 
-  template <typename ParticleType,
-            std::enable_if_t<std::is_base_of<rayAbstractParticle<NumericType>,
-                                             ParticleType>::value,
-                             std::nullptr_t> = std::nullptr_t()>
-  void setParticleType(ParticleType p) {
+  /// Set the particle type used for ray tracing
+  /// The particle is a user defined object that has to interface the
+  /// rayParticle class.
+  template <typename ParticleType> void setParticleType(ParticleType p) {
+    static_assert(std::is_base_of<rayAbstractParticle<NumericType>,
+                                  ParticleType>::value &&
+                  "Particle object does not interface correct class");
     mParticle = dynamic_cast<rayAbstractParticle<NumericType> *>(&p);
   }
 
@@ -177,7 +179,11 @@ public:
 
   rayTracingData<NumericType> &getLocalData() { return mLocalData; }
 
-  rayTracingData<NumericType> &getGlobalData() { return mGlobalData; }
+  rayTracingData<NumericType> *getGlobalData() { return mGlobalData; }
+
+  void setLocalData(rayTracingData<NumericType> &data) { mLocalData = data; }
+
+  void setGlobalData(rayTracingData<NumericType> &data) { mGlobalData = &data; }
 
 private:
   void extractFlux() {
