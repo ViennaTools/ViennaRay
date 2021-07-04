@@ -68,15 +68,15 @@ int main() {
                                          0,
                                          0}; // primID, geomID, instanceID
 
-    auto newRay = boundary.processHit(rayhit, reflect);
+    boundary.processHit(rayhit, reflect);
 
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 2, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 0, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 2, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][0], direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][1], -direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, -direction[1], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   boundCons[1] = rayTraceBoundary::PERIODIC;
@@ -116,16 +116,16 @@ int main() {
                                          3,
                                          0,
                                          0}; // primID, geomID, instanceID
+    
+    boundary.processHit(rayhit, reflect);
 
-    auto newRay = boundary.processHit(rayhit, reflect);
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, -2, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][1], -2, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 0, eps)
-
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][0], direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][1], direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   normal = std::array<NumericType, D>{0., 1.};
@@ -180,15 +180,15 @@ int main() {
                                          0,
                                          0}; // primID, geomID, instanceID
 
-    auto newRay = boundary.processHit(rayhit, reflect);
+    boundary.processHit(rayhit, reflect);
 
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 2, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 0, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 2, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][0], -direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][1], direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, -direction[0], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   boundCons[0] = rayTraceBoundary::PERIODIC;
@@ -229,15 +229,15 @@ int main() {
                                          0,
                                          0}; // primID, geomID, instanceID
 
-    auto newRay = boundary.processHit(rayhit, reflect);
+    boundary.processHit(rayhit, reflect);
 
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][0], -2, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 0, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -2, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][0], direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][1], direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   rtcReleaseDevice(device);

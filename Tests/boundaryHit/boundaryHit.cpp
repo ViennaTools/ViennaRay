@@ -62,15 +62,15 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      auto newRay = boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayhit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 1., eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 0.25, eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 1., eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(-newRay[1][0], direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[1][1], direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
+      RAYTEST_ASSERT_ISCLOSE(-rayhit.ray.dir_x, direction[0], eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
 
       RAYTEST_ASSERT(reflect)
     }
@@ -123,15 +123,15 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      auto newRay = boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayhit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][0], 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.25, eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 1.0, eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.25, eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 1.0, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(newRay[1][0], direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[1][1], direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(-newRay[1][2], direction[2], eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+      RAYTEST_ASSERT_ISCLOSE(-rayhit.ray.dir_z, direction[2], eps)
 
       RAYTEST_ASSERT(reflect)
     }
@@ -184,15 +184,15 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      auto newRay = boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayhit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][0], -1., eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][1], 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[0][2], 0.25, eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -1., eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(newRay[1][0], direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[1][1], direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(newRay[1][2], direction[2], eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
 
       RAYTEST_ASSERT(reflect)
     }
