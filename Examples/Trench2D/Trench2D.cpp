@@ -6,19 +6,10 @@ int main() {
   // Geometry space dimension
   constexpr int D = 2;
 
-  // Static settings for the ray tracer:
   // NumericType: The used floating point precision type. It is possible to use
   // float or double, but keep in mind, that embree internally only works with
   // float and thus any double precision geometry passed, will be converted
   // internally to float.
-  // ParticleType: The particle types provides the sticking probability for
-  // each surface hit. This class can be user defined, but has to interface
-  // the rayParticle<NumericType> class.
-  // ReflectionType: This reflection will be used at each surface hit.
-  // Already implented types are rayReflectionSpecular for specular reflections
-  // and rayReflectionDiffuse for diffuse reflections. However, this class can
-  // again be a user defined custom reflection, that has to interface the
-  // rayReflection<NumericType, D> class.
   using NumericType = float;
 
   // Set the number of threads to use in OpenMP parallelization
@@ -35,13 +26,20 @@ int main() {
   // however the boundary condition in direction of the tracing direction will
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
   rayTraceBoundary boundaryConds[D];
-  boundaryConds[0] = rayTraceBoundary::PERIODIC;
+  boundaryConds[0] = rayTraceBoundary::PERIODIC; // x
+  boundaryConds[1] = rayTraceBoundary::PERIODIC; // y
+
+  // ParticleType: The particle types provides the sticking probability and
+  // the reflection process for each surface hit. This class can be user
+  // defined, but has to interface the rayParticle<NumericType> class and
+  // provide the functions: initNew(...), surfaceCollision(...),
+  // surfaceReflection(...).
   rayTestParticle<NumericType> particle;
 
   rayTrace<NumericType, D> rayTracer;
-  rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
+  rayTracer.setParticleType(particle);
 
   // Ray settings
   rayTracer.setSourceDirection(rayTraceDirection::POS_Y);
