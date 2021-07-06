@@ -52,8 +52,11 @@ public:
                                 const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) = 0;
 
+  /// Set the number of required data vectors for this particle to 
+  /// collect data.
   virtual int getRequiredLocalDataSize() const = 0;
-  /// Set the power of the cosine source distribution
+
+  /// Set the power of the cosine source distribution for this particle.
   virtual NumericType getSourceDistributionPower() const = 0;
 };
 
@@ -66,7 +69,6 @@ public:
   clone() const override final {
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
-
   virtual void initNew(rayRNG &Rng) override {}
   virtual std::pair<NumericType, rayTriple<NumericType>>
   surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
