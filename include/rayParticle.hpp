@@ -6,11 +6,11 @@
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType> class rayAbstractParticle {
+template <typename NumericType> class rayBaseParticle {
 public:
   /// These function must NOT be overwritten by user
-  virtual ~rayAbstractParticle() = default;
-  virtual std::unique_ptr<rayAbstractParticle> clone() const = 0;
+  virtual ~rayBaseParticle() = default;
+  virtual std::unique_ptr<rayBaseParticle> clone() const = 0;
 
   /// Initialize a new particle. This function gets called every time
   /// new particle is traced from the source plane.
@@ -63,9 +63,9 @@ public:
 /// This CRTP class implements clone() for the derived particle class.
 /// A user has to interface this class.
 template <typename Derived, typename NumericType>
-class rayParticle : public rayAbstractParticle<NumericType> {
+class rayParticle : public rayBaseParticle<NumericType> {
 public:
-  std::unique_ptr<rayAbstractParticle<NumericType>>
+  std::unique_ptr<rayBaseParticle<NumericType>>
   clone() const override final {
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }

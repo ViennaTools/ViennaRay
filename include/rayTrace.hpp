@@ -16,7 +16,7 @@ template <class NumericType, int D> class rayTrace {
 private:
   RTCDevice mDevice;
   rayGeometry<NumericType, D> mGeometry;
-  std::unique_ptr<rayAbstractParticle<NumericType>> mParticle = nullptr;
+  std::unique_ptr<rayBaseParticle<NumericType>> mParticle = nullptr;
   size_t mNumberOfRaysPerPoint = 1000;
   size_t mNumberOfRaysFixed = 0;
   NumericType mDiscRadius = 0;
@@ -77,7 +77,7 @@ public:
   /// rayParticle class.
   template <typename ParticleType>
   void setParticleType(std::unique_ptr<ParticleType> &p) {
-    static_assert(std::is_base_of<rayAbstractParticle<NumericType>,
+    static_assert(std::is_base_of<rayBaseParticle<NumericType>,
                                   ParticleType>::value &&
                   "Particle object does not interface correct class");
     mParticle = p->clone();

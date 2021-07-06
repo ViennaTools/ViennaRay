@@ -19,7 +19,7 @@ public:
   rayTraceKernel(RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
-                 rayAbstractParticle<NumericType> *pParticle,
+                 rayBaseParticle<NumericType> *pParticle,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
         mSource(pSource), mParticle(pParticle),
@@ -500,7 +500,7 @@ private:
   rayGeometry<NumericType, D> &mGeometry;
   rayBoundary<NumericType, D> &mBoundary;
   raySource<NumericType, D> &mSource;
-  std::unique_ptr<rayAbstractParticle<NumericType>> const mParticle = nullptr;
+  std::unique_ptr<rayBaseParticle<NumericType>> const mParticle = nullptr;
   const long long mNumRays;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
