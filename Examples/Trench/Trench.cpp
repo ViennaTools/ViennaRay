@@ -36,7 +36,7 @@ int main() {
   // defined, but has to interface the rayParticle<NumericType> class and
   // provide the functions: initNew(...), surfaceCollision(...),
   // surfaceReflection(...).
-  rayTestParticle<NumericType> particle;
+  auto particle = std::make_unique<rayTestParticle<NumericType>>();
 
   rayTrace<NumericType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
@@ -46,7 +46,6 @@ int main() {
   // Ray settings
   rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(1000);
-  rayTracer.setSourceDistributionPower(5.);
 
   // Run the ray tracer
   rayTracer.apply();

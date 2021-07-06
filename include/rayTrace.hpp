@@ -16,21 +16,19 @@ template <class NumericType, int D> class rayTrace {
 private:
   RTCDevice mDevice;
   rayGeometry<NumericType, D> mGeometry;
-  rayAbstractParticle<NumericType> *mParticle = nullptr;
+  std::unique_ptr<rayAbstractParticle<NumericType>> mParticle = nullptr;
   size_t mNumberOfRaysPerPoint = 1000;
   size_t mNumberOfRaysFixed = 0;
   NumericType mDiscRadius = 0;
   NumericType mGridDelta = 0;
   rayTraceBoundary mBoundaryConds[D] = {};
   rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
-  NumericType mCosinePower = 1.;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
   std::vector<NumericType> mFlux;
   rayHitCounter<NumericType> mHitCounter;
   rayTracingData<NumericType> mLocalData;
   rayTracingData<NumericType> *mGlobalData = nullptr;
-  static constexpr double mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
 public:
   rayTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
@@ -53,11 +51,16 @@ public:
                                                 mBoundaryConds, traceSettings);
 
     auto raySource = raySourceRandom<NumericType, D>(
-        boundingBox, mCosinePower, traceSettings, mGeometry.getNumPoints());
+        boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
+        mGeometry.getNumPoints());
+
+    mLocalData.setNumberOfVectorData(mParticle->getRequiredLocalDataSize());
+    mLocalData.resizeAllVectorData(mGeometry.getNumPoints());
 
     auto tracer = rayTraceKernel<NumericType, D>(
-        mDevice, mGeometry, boundary, raySource, mParticle,
+        mDevice, mGeometry, boundary, raySource, mParticle.release(),
         mNumberOfRaysPerPoint, mNumberOfRaysFixed);
+
     tracer.useRandomSeeds(mUseRandomSeeds);
     tracer.calcFlux(mCalcFlux);
     tracer.setTracingData(&mLocalData, mGlobalData);
@@ -72,11 +75,12 @@ public:
   /// Set the particle type used for ray tracing
   /// The particle is a user defined object that has to interface the
   /// rayParticle class.
-  template <typename ParticleType> void setParticleType(ParticleType p) {
+  template <typename ParticleType>
+  void setParticleType(std::unique_ptr<ParticleType> &p) {
     static_assert(std::is_base_of<rayAbstractParticle<NumericType>,
                                   ParticleType>::value &&
                   "Particle object does not interface correct class");
-    mParticle = dynamic_cast<rayAbstractParticle<NumericType> *>(&p);
+    mParticle = p->clone();
   }
 
   /// Set the ray tracing geometry
@@ -90,7 +94,7 @@ public:
                   "Setting 2D geometry in 3D trace object");
 
     mGridDelta = gridDelta;
-    mDiscRadius = gridDelta * mDiscFactor;
+    mDiscRadius = gridDelta * rayInternal::mDiscFactor;
     mGeometry.initGeometry(mDevice, points, normals, mDiscRadius);
   }
 
@@ -139,11 +143,6 @@ public:
     mNumberOfRaysPerPoint = 0;
   }
 
-  /// Set the power of the cosine source distribution
-  void setSourceDistributionPower(const NumericType pPower) {
-    mCosinePower = pPower;
-  }
-
   /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const rayTraceDirection pDirection) {
     mSourceDirection = pDirection;
@@ -180,8 +179,6 @@ public:
   rayTracingData<NumericType> &getLocalData() { return mLocalData; }
 
   rayTracingData<NumericType> *getGlobalData() { return mGlobalData; }
-
-  void setLocalData(rayTracingData<NumericType> &data) { mLocalData = data; }
 
   void setGlobalData(rayTracingData<NumericType> &data) { mGlobalData = &data; }
 

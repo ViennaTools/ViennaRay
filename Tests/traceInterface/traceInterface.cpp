@@ -19,13 +19,12 @@ int main() {
   boundaryConds[0] = rayTraceBoundary::REFLECTIVE;
   boundaryConds[1] = rayTraceBoundary::REFLECTIVE;
   boundaryConds[2] = rayTraceBoundary::REFLECTIVE;
-  rayTestParticle<NumericType> particle;
+  auto particle = std::make_unique<rayTestParticle<NumericType>>();
 
   rayTrace<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
-  rayTracer.setSourceDistributionPower(2);
   rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setUseRandomSeeds(true);

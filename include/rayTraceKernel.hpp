@@ -141,7 +141,8 @@ public:
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-          rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle source
+          // rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle
+          // source
 
           // Run the intersection
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
@@ -180,9 +181,15 @@ public:
             hitFromBack = true;
             // Let ray through, i.e., continue.
             reflect = true;
+#ifdef ARCH_X86
+            reinterpret_cast<__m128 &>(rayHit.ray) =
+                _mm_set_ps(1e-4f, zz, yy, xx);
+#else
             rayHit.ray.org_x = xx;
             rayHit.ray.org_y = yy;
             rayHit.ray.org_z = zz;
+            rayHit.ray.tnear = 1e-4f;
+#endif
             // keep ray direction as it is
             continue;
           }
@@ -190,7 +197,7 @@ public:
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           geohitc += 1;
-          const auto primID = rayHit.hit.primID;
+          const auto &primID = rayHit.hit.primID;
           const auto materialID = mGeometry.getMaterialId(primID);
 
           particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
@@ -273,7 +280,6 @@ public:
               localData->getVectorData(i)[j] +=
                   threadLocalData[k].getVectorData(i)[j];
             }
-            // localData.getVectorData(i)[j] /= hitCounter.getDiscAreas()[j];
           }
           break;
         }
@@ -461,7 +467,7 @@ private:
       return false;
     }
 
-    auto eps = 1e-6f;
+    constexpr auto eps = 1e-6f;
     if (std::fabs(prodOfDirections) < eps) {
       // Ray is parallel to disc surface
       return false;
@@ -490,24 +496,11 @@ private:
     return false;
   }
 
-  // void printRay(RTCRayHit &rayHit)
-  // {
-  //     std::cout << "Ray ID: " << rayHit.ray.id << std::endl;
-  //     std::cout << "Origin: ";
-  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.ray.org_x,
-  //     rayHit.ray.org_y, rayHit.ray.org_z}); std::cout << "Direction: ";
-  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.ray.dir_x,
-  //     rayHit.ray.dir_y, rayHit.ray.dir_z}); std::cout << "Geometry hit ID: "
-  //     << rayHit.hit.geomID << std::endl; std::cout << "Geometry normal: ";
-  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.hit.Ng_x,
-  //     rayHit.hit.Ng_y, rayHit.hit.Ng_z});
-  // }
-
   RTCDevice &mDevice;
   rayGeometry<NumericType, D> &mGeometry;
   rayBoundary<NumericType, D> &mBoundary;
   raySource<NumericType, D> &mSource;
-  rayAbstractParticle<NumericType> *const mParticle;
+  std::unique_ptr<rayAbstractParticle<NumericType>> const mParticle = nullptr;
   const long long mNumRays;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;

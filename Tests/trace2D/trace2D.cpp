@@ -20,7 +20,7 @@ int main() {
   rayTraceBoundary boundaryConds[D];
   boundaryConds[0] = rayTraceBoundary::REFLECTIVE;
   boundaryConds[1] = rayTraceBoundary::REFLECTIVE;
-  rayTestParticle<NumericType> particle;
+  auto particle = std::make_unique<rayTestParticle<NumericType>>();
 
   rayTrace<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);
@@ -28,7 +28,6 @@ int main() {
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setSourceDirection(rayTraceDirection::POS_Y);
   rayTracer.setBoundaryConditions(boundaryConds);
-  rayTracer.setSourceDistributionPower(2.);
   rayTracer.setMaterialIds(materialIds);
   rayTracer.apply();
 }

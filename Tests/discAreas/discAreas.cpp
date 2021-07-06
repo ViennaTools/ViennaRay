@@ -42,10 +42,10 @@ int main() {
       boundingBox, 1., traceSettings, geometry.getNumPoints());
 
   rayTestParticle<NumericType> particle;
-  auto cp = dynamic_cast<rayAbstractParticle<NumericType> *>(&particle);
+  auto cp = particle.clone();
 
   auto tracer = rayTraceKernel<NumericType, D>(device, geometry, boundary,
-                                               raySource, cp, 1, 0);
+                                               raySource, cp.release(), 1, 0);
   tracer.setTracingData(&localData, &globalData);
   tracer.setHitCounter(&hitCounter);
   tracer.apply();
