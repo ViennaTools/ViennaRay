@@ -10,6 +10,7 @@
 #include <iostream>
 #include <omp.h>
 #include <rayMessage.hpp>
+#include <rayPreCompileMacros.hpp>
 #include <rayTraceDirection.hpp>
 #include <vector>
 
@@ -58,6 +59,27 @@ NumericType DotProduct(const rayTriple<NumericType> &pVecA,
                        const rayTriple<NumericType> &pVecB) {
   return pVecA[0] * pVecB[0] + pVecA[1] * pVecB[1] + pVecA[2] * pVecB[2];
 }
+
+#ifdef ARCH_X86
+static inline float SumSse(__m128 v) {
+  __m128 shufReg, sumsReg;
+  // Calculates the sum of SSE Register -
+  // https://stackoverflow.com/a/35270026/195787
+  shufReg = _mm_shuffle_ps(
+      v, v, _MM_SHUFFLE(2, 3, 0, 1)); // Broadcast elements 3,1 to 2,0
+  sumsReg = _mm_add_ps(v, shufReg);
+  shufReg = _mm_movehl_ps(shufReg, sumsReg); // High Half -> Low Half
+  sumsReg = _mm_add_ss(sumsReg, shufReg);
+  return _mm_cvtss_f32(sumsReg);
+}
+
+static inline float DotProductSse(__m128 x, __m128 y) {
+  __m128 mulRes;
+  mulRes = _mm_mul_ps(x, y);
+
+  return SumSse(mulRes);
+}
+#endif
 
 template <typename NumericType>
 rayTriple<NumericType> CrossProduct(const rayTriple<NumericType> &pVecA,

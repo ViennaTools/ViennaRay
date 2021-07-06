@@ -52,7 +52,7 @@ public:
                                 const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) = 0;
 
-  /// Set the number of required data vectors for this particle to 
+  /// Set the number of required data vectors for this particle to
   /// collect data.
   virtual int getRequiredLocalDataSize() const = 0;
 
@@ -65,8 +65,7 @@ public:
 template <typename Derived, typename NumericType>
 class rayParticle : public rayBaseParticle<NumericType> {
 public:
-  std::unique_ptr<rayBaseParticle<NumericType>>
-  clone() const override final {
+  std::unique_ptr<rayBaseParticle<NumericType>> clone() const override final {
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
   virtual void initNew(rayRNG &Rng) override {}

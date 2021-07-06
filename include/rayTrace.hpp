@@ -58,7 +58,7 @@ public:
     mLocalData.resizeAllVectorData(mGeometry.getNumPoints());
 
     auto tracer = rayTraceKernel<NumericType, D>(
-        mDevice, mGeometry, boundary, raySource, mParticle.release(),
+        mDevice, mGeometry, boundary, raySource, mParticle,
         mNumberOfRaysPerPoint, mNumberOfRaysFixed);
 
     tracer.useRandomSeeds(mUseRandomSeeds);
@@ -77,9 +77,9 @@ public:
   /// rayParticle class.
   template <typename ParticleType>
   void setParticleType(std::unique_ptr<ParticleType> &p) {
-    static_assert(std::is_base_of<rayBaseParticle<NumericType>,
-                                  ParticleType>::value &&
-                  "Particle object does not interface correct class");
+    static_assert(
+        std::is_base_of<rayBaseParticle<NumericType>, ParticleType>::value &&
+        "Particle object does not interface correct class");
     mParticle = p->clone();
   }
 

@@ -1,6 +1,7 @@
 #ifndef RAY_TRACEKERNEL_HPP
 #define RAY_TRACEKERNEL_HPP
 
+#include <iomanip>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
@@ -11,7 +12,7 @@
 #include <rayUtil.hpp>
 
 #define PRINT_PROGRESS false
-#define PRINT_RESULT false
+#define PRINT_RESULT true
 
 template <typename NumericType, int D> class rayTraceKernel {
 
@@ -19,10 +20,10 @@ public:
   rayTraceKernel(RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
-                 rayBaseParticle<NumericType> *pParticle,
+                 std::unique_ptr<rayBaseParticle<NumericType>> &pParticle,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
-        mSource(pSource), mParticle(pParticle),
+        mSource(pSource), mParticle(pParticle->clone()),
         mNumRays(pNumOfRayFixed == 0
                      ? pSource.getNumPoints() * pNumOfRayPerPoint
                      : pNumOfRayFixed) {
@@ -162,10 +163,16 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
+#ifdef ARCH_X86
+          __m128 impactPoint =
+              _mm_set_ps(1e-4f, ray.org_z + ray.dir_z * ray.tfar,
+                         ray.org_y + ray.dir_y * ray.tfar,
+                         ray.org_x + ray.dir_x * ray.tfar);
+#else
           const rtcNumericType xx = ray.org_x + ray.dir_x * ray.tfar;
           const rtcNumericType yy = ray.org_y + ray.dir_y * ray.tfar;
           const rtcNumericType zz = ray.org_z + ray.dir_z * ray.tfar;
-
+#endif
           /* -------- Hit from back -------- */
           const auto rayDir =
               rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
@@ -182,8 +189,7 @@ public:
             // Let ray through, i.e., continue.
             reflect = true;
 #ifdef ARCH_X86
-            reinterpret_cast<__m128 &>(rayHit.ray) =
-                _mm_set_ps(1e-4f, zz, yy, xx);
+            _mm_store_ps(&rayHit.ray.org_x, impactPoint);
 #else
             rayHit.ray.org_x = xx;
             rayHit.ray.org_y = yy;
@@ -205,11 +211,13 @@ public:
                                      RngState5);
 
           // Check for additional intersections
+          rayHit.ray.tnear = 0.f;
+          rayHit.ray.time = 0.f;
           std::vector<unsigned int> intIds;
           for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
             const auto matID = mGeometry.getMaterialId(id);
 
-            if (checkLocalIntersection(ray, id)) {
+            if (checkLocalIntersection(rayHit.ray, id)) {
               const auto normal = mGeometry.getPrimNormal(id);
               particle->surfaceCollision(rayWeight, rayDir, normal, id, matID,
                                          myLocalData, globalData, RngState5);
@@ -241,8 +249,7 @@ public:
 
           // Update ray
 #ifdef ARCH_X86
-          reinterpret_cast<__m128 &>(rayHit.ray) =
-              _mm_set_ps(1e-4f, zz, yy, xx);
+          _mm_store_ps(&rayHit.ray.org_x, impactPoint);
           reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
               _mm_set_ps(0.0f, (rtcNumericType)stickingnDirection.second[2],
                          (rtcNumericType)stickingnDirection.second[1],
@@ -450,6 +457,41 @@ private:
   }
 
   bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID) {
+#ifdef ARCH_X86
+    assert(ray.tnear == 0.f && ray.time == 0.f);
+    const auto rayOrigin = _mm_load_ps(&ray.org_x);
+    auto rayDirection = _mm_load_ps(&ray.dir_x);
+    const auto &normal = mGeometry.getNormalRef(primID);
+    const auto &disc = mGeometry.getPrimRef(primID);
+    auto geoNorm = _mm_set_ps(0.f, normal[2], normal[1], normal[0]);
+
+    const auto prodOfDirections =
+        rayInternal::DotProductSse(geoNorm, rayDirection);
+    if (prodOfDirections > 0.f)
+      return false;
+
+    if (std::fabs(prodOfDirections) < 1e-6f)
+      return false;
+
+    const auto discOrigin = _mm_set_ps(0.f, disc[2], disc[1], disc[0]);
+    const auto ddneg = rayInternal::DotProductSse(discOrigin, geoNorm);
+    const auto tt = (ddneg - rayInternal::DotProductSse(geoNorm, rayOrigin)) /
+                    prodOfDirections;
+    if (tt <= 0)
+      return false;
+
+    geoNorm = _mm_set1_ps(tt);                        // reuse geomNorm register
+    rayDirection = _mm_mul_ps(geoNorm, rayDirection); // Scale
+    geoNorm = _mm_add_ps(rayOrigin,
+                         rayDirection); // reuse geomNorm register; hitpoint
+    geoNorm = _mm_sub_ps(
+        geoNorm, discOrigin); // reuse geomNorm register; discOrigin2Hitpoint
+    const auto distance =
+        std::sqrt(rayInternal::DotProductSse(geoNorm, geoNorm));
+    if (disc[3] > distance)
+      return true;
+    return false;
+#else
     auto const &rayOrigin =
         *reinterpret_cast<rayTriple<rtcNumericType> const *>(&ray.org_x);
     auto const &rayDirection =
@@ -494,6 +536,7 @@ private:
       return true;
     }
     return false;
+#endif
   }
 
   RTCDevice &mDevice;
