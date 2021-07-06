@@ -12,7 +12,7 @@
 #include <rayUtil.hpp>
 
 #define PRINT_PROGRESS false
-#define PRINT_RESULT true
+#define PRINT_RESULT false
 
 template <typename NumericType, int D> class rayTraceKernel {
 
@@ -20,7 +20,7 @@ public:
   rayTraceKernel(RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
-                 std::unique_ptr<rayBaseParticle<NumericType>> &pParticle,
+                 std::unique_ptr<rayBaseParticle> &pParticle,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
         mSource(pSource), mParticle(pParticle->clone()),
@@ -57,7 +57,7 @@ public:
 
     // thread local data storage
     const int numThreads = omp_get_max_threads();
-    std::vector<rayTracingData<NumericType>> threadLocalData(numThreads);
+    std::vector<rayTracingData<rtcNumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *localData;
     }
@@ -117,7 +117,7 @@ public:
       auto &myHitCounter = threadLocalHitCounter[threadID];
 
       // probabilistic weight
-      const NumericType initialRayWeight = 1.;
+      const rtcNumericType initialRayWeight = 1.;
 
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
@@ -127,7 +127,7 @@ public:
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < mNumRays; ++idx) {
         particle->initNew(RngState8);
-        NumericType rayWeight = initialRayWeight;
+        rtcNumericType rayWeight = initialRayWeight;
 
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
@@ -164,10 +164,10 @@ public:
           // Calculate point of impact
           const auto &ray = rayHit.ray;
 #ifdef ARCH_X86
+          __m128 rayOrgReg = _mm_load_ps(&ray.org_x);
+          __m128 rayDirReg = _mm_load_ps(&ray.dir_x);
           __m128 impactPoint =
-              _mm_set_ps(1e-4f, ray.org_z + ray.dir_z * ray.tfar,
-                         ray.org_y + ray.dir_y * ray.tfar,
-                         ray.org_x + ray.dir_x * ray.tfar);
+              _mm_fmadd_ps(_mm_set1_ps(ray.tfar), rayDirReg, rayOrgReg);
 #else
           const rtcNumericType xx = ray.org_x + ray.dir_x * ray.tfar;
           const rtcNumericType yy = ray.org_y + ray.dir_y * ray.tfar;
@@ -175,7 +175,7 @@ public:
 #endif
           /* -------- Hit from back -------- */
           const auto rayDir =
-              rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
+              rayTriple<rtcNumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           const auto geomNormal = mGeometry.getPrimNormal(rayHit.hit.primID);
           if (rayInternal::DotProduct(rayDir, geomNormal) > 0) {
             // If the dot product of the ray direction and the surface normal is
@@ -211,13 +211,11 @@ public:
                                      RngState5);
 
           // Check for additional intersections
-          rayHit.ray.tnear = 0.f;
-          rayHit.ray.time = 0.f;
           std::vector<unsigned int> intIds;
           for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
             const auto matID = mGeometry.getMaterialId(id);
 
-            if (checkLocalIntersection(rayHit.ray, id)) {
+            if (checkLocalIntersection(rayDirReg, rayOrgReg, id)) {
               const auto normal = mGeometry.getPrimNormal(id);
               particle->surfaceCollision(rayWeight, rayDir, normal, id, matID,
                                          myLocalData, globalData, RngState5);
@@ -250,19 +248,18 @@ public:
           // Update ray
 #ifdef ARCH_X86
           _mm_store_ps(&rayHit.ray.org_x, impactPoint);
-          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
-              _mm_set_ps(0.0f, (rtcNumericType)stickingnDirection.second[2],
-                         (rtcNumericType)stickingnDirection.second[1],
-                         (rtcNumericType)stickingnDirection.second[0]);
+          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
+              0.0f, stickingnDirection.second[2], stickingnDirection.second[1],
+              stickingnDirection.second[0]);
 #else
           rayHit.ray.org_x = xx;
           rayHit.ray.org_y = yy;
           rayHit.ray.org_z = zz;
           rayHit.ray.tnear = 1e-4f;
 
-          rayHit.ray.dir_x = (rtcNumericType)stickingnDirection.second[0];
-          rayHit.ray.dir_y = (rtcNumericType)stickingnDirection.second[1];
-          rayHit.ray.dir_z = (rtcNumericType)stickingnDirection.second[2];
+          rayHit.ray.dir_x = stickingnDirection.second[0];
+          rayHit.ray.dir_y = stickingnDirection.second[1];
+          rayHit.ray.dir_z = stickingnDirection.second[2];
           rayHit.ray.time = 0.0f;
 #endif
         } while (reflect);
@@ -360,8 +357,8 @@ public:
 
   void calcFlux(bool calc) { mCalcFlux = calc; }
 
-  void setTracingData(rayTracingData<NumericType> *plocalData,
-                      const rayTracingData<NumericType> *pglobalData) {
+  void setTracingData(rayTracingData<rtcNumericType> *plocalData,
+                      const rayTracingData<rtcNumericType> *pglobalData) {
     localData = plocalData;
     globalData = pglobalData;
   }
@@ -371,8 +368,8 @@ public:
   }
 
 private:
-  bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
-                        rayRNG &RNG) {
+  bool rejectionControl(rtcNumericType &rayWeight,
+                        const rtcNumericType &initWeight, rayRNG &RNG) {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;
@@ -456,14 +453,12 @@ private:
     progressCount += 1;
   }
 
-  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID) {
+  bool checkLocalIntersection(__m128 rayDirection, __m128 rayOrigin,
+                              const unsigned int primID) {
 #ifdef ARCH_X86
-    assert(ray.tnear == 0.f && ray.time == 0.f);
-    const auto rayOrigin = _mm_load_ps(&ray.org_x);
-    auto rayDirection = _mm_load_ps(&ray.dir_x);
     const auto &normal = mGeometry.getNormalRef(primID);
     const auto &disc = mGeometry.getPrimRef(primID);
-    auto geoNorm = _mm_set_ps(0.f, normal[2], normal[1], normal[0]);
+    __m128 geoNorm = _mm_set_ps(0.f, normal[2], normal[1], normal[0]);
 
     const auto prodOfDirections =
         rayInternal::DotProductSse(geoNorm, rayDirection);
@@ -473,21 +468,18 @@ private:
     if (std::fabs(prodOfDirections) < 1e-6f)
       return false;
 
-    const auto discOrigin = _mm_set_ps(0.f, disc[2], disc[1], disc[0]);
+    __m128 discOrigin = _mm_set_ps(0.f, disc[2], disc[1], disc[0]);
     const auto ddneg = rayInternal::DotProductSse(discOrigin, geoNorm);
     const auto tt = (ddneg - rayInternal::DotProductSse(geoNorm, rayOrigin)) /
                     prodOfDirections;
     if (tt <= 0)
       return false;
 
-    geoNorm = _mm_set1_ps(tt);                        // reuse geomNorm register
-    rayDirection = _mm_mul_ps(geoNorm, rayDirection); // Scale
-    geoNorm = _mm_add_ps(rayOrigin,
-                         rayDirection); // reuse geomNorm register; hitpoint
+    geoNorm = _mm_set1_ps(tt); // reuse geomNorm register
+    geoNorm = _mm_fmadd_ps(geoNorm, rayDirection, rayOrigin); // hitpoint
     geoNorm = _mm_sub_ps(
         geoNorm, discOrigin); // reuse geomNorm register; discOrigin2Hitpoint
-    const auto distance =
-        std::sqrt(rayInternal::DotProductSse(geoNorm, geoNorm));
+    const auto distance = rayInternal::NormSse(geoNorm);
     if (disc[3] > distance)
       return true;
     return false;
@@ -543,12 +535,12 @@ private:
   rayGeometry<NumericType, D> &mGeometry;
   rayBoundary<NumericType, D> &mBoundary;
   raySource<NumericType, D> &mSource;
-  std::unique_ptr<rayBaseParticle<NumericType>> const mParticle = nullptr;
+  std::unique_ptr<rayBaseParticle> const mParticle = nullptr;
   const long long mNumRays;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;
-  rayTracingData<NumericType> *localData = nullptr;
-  const rayTracingData<NumericType> *globalData = nullptr;
+  rayTracingData<rtcNumericType> *localData = nullptr;
+  const rayTracingData<rtcNumericType> *globalData = nullptr;
   rayHitCounter<NumericType> *hitCounter = nullptr;
 };
 

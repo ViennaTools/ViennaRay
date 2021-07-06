@@ -61,24 +61,25 @@ NumericType DotProduct(const rayTriple<NumericType> &pVecA,
 }
 
 #ifdef ARCH_X86
-static inline float SumSse(__m128 v) {
-  __m128 shufReg, sumsReg;
-  // Calculates the sum of SSE Register -
-  // https://stackoverflow.com/a/35270026/195787
-  shufReg = _mm_shuffle_ps(
-      v, v, _MM_SHUFFLE(2, 3, 0, 1)); // Broadcast elements 3,1 to 2,0
-  sumsReg = _mm_add_ps(v, shufReg);
-  shufReg = _mm_movehl_ps(shufReg, sumsReg); // High Half -> Low Half
-  sumsReg = _mm_add_ss(sumsReg, shufReg);
-  return _mm_cvtss_f32(sumsReg);
-}
-
 static inline float DotProductSse(__m128 x, __m128 y) {
-  __m128 mulRes;
-  mulRes = _mm_mul_ps(x, y);
+  // dot product without SSE4.1
+  // __m128 mulRes, shufReg, sumsReg;
+  // mulRes = _mm_mul_ps(x, y);
 
-  return SumSse(mulRes);
+  // // Calculates the sum of SSE Register -
+  // https://stackoverflow.com/a/35270026/195787 shufReg =
+  // _mm_movehdup_ps(mulRes); // Broadcast elements 3,1 to 2,0 sumsReg =
+  // _mm_add_ps(mulRes, shufReg); shufReg = _mm_movehl_ps(shufReg, sumsReg); //
+  // High Half -> Low Half sumsReg = _mm_add_ss(sumsReg, shufReg); return
+  // _mm_cvtss_f32(sumsReg); // Result in the lower part of the SSE Register
+
+  return _mm_cvtss_f32(_mm_dp_ps(x, y, 0x77));
 }
+
+static inline float NormSse(__m128 v) {
+  return _mm_cvtss_f32(_mm_sqrt_ps(_mm_dp_ps(v, v, 0x7F)));
+}
+
 #endif
 
 template <typename NumericType>
@@ -268,22 +269,24 @@ std::array<int, 5> getTraceSettings(rayTraceDirection sourceDir) {
 // (possibly scaled) as the first element of the return value.
 // This function is deterministic, i.e., for one input it will return always
 // the same result.
-template <typename NumericType>
-rayTriple<rayTriple<NumericType>>
-getOrthonormalBasis(const rayTriple<NumericType> &pVector) {
-  rayTriple<rayTriple<NumericType>> rr;
+rayTriple<rayTriple<rtcNumericType>>
+getOrthonormalBasis(const rayTriple<rtcNumericType> &pVector) {
+  rayTriple<rayTriple<rtcNumericType>> rr;
   rr[0] = pVector;
 
   // Calculate a vector (rr[1]) which is perpendicular to rr[0]
   // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
-  rayTriple<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
-  rayTriple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
-  rayTriple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
+  rayTriple<rtcNumericType> candidate0{rr[0][2], rr[0][2],
+                                       -(rr[0][0] + rr[0][1])};
+  rayTriple<rtcNumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]),
+                                       rr[0][1]};
+  rayTriple<rtcNumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0],
+                                       rr[0][0]};
   // We choose the candidate which maximizes the sum of its components, because
   // we want to avoid numeric errors and that the result is (0, 0, 0).
-  std::array<rayTriple<NumericType>, 3> cc = {candidate0, candidate1,
-                                              candidate2};
-  auto sumFun = [](const rayTriple<NumericType> &oo) {
+  std::array<rayTriple<rtcNumericType>, 3> cc = {candidate0, candidate1,
+                                                 candidate2};
+  auto sumFun = [](const rayTriple<rtcNumericType> &oo) {
     return oo[0] + oo[1] + oo[2];
   };
   int maxIdx = 0;

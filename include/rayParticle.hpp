@@ -6,7 +6,7 @@
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType> class rayBaseParticle {
+class rayBaseParticle {
 public:
   /// These function must NOT be overwritten by user
   virtual ~rayBaseParticle() = default;
@@ -27,11 +27,12 @@ public:
   /// globalData: constant user-defined data;
   /// Rng: thread-safe randon number generator (standard library conform);
   /// Returns pair: 1. sticking coefficient, 2. ray direction after reflection
-  virtual std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  virtual std::pair<rtcNumericType, rayTriple<rtcNumericType>>
+  surfaceReflection(rtcNumericType rayWeight,
+                    const rayTriple<rtcNumericType> &rayDir,
+                    const rayTriple<rtcNumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const rayTracingData<NumericType> *globalData,
+                    const rayTracingData<rtcNumericType> *globalData,
                     rayRNG &Rng) = 0;
 
   /// Surface collision. This function gets called whenever an intersection of
@@ -44,52 +45,51 @@ public:
   /// localData: user-defined data;
   /// globalData: constant user-defined data;
   /// Rng: thread-safe randon number generator (standard library conform);
-  virtual void surfaceCollision(NumericType rayWeight,
-                                const rayTriple<NumericType> &rayDir,
-                                const rayTriple<NumericType> &geomNormal,
-                                const unsigned int primID, const int materialId,
-                                rayTracingData<NumericType> &localData,
-                                const rayTracingData<NumericType> *globalData,
-                                rayRNG &Rng) = 0;
+  virtual void surfaceCollision(
+      rtcNumericType rayWeight, const rayTriple<rtcNumericType> &rayDir,
+      const rayTriple<rtcNumericType> &geomNormal, const unsigned int primID,
+      const int materialId, rayTracingData<rtcNumericType> &localData,
+      const rayTracingData<rtcNumericType> *globalData, rayRNG &Rng) = 0;
 
   /// Set the number of required data vectors for this particle to
   /// collect data.
   virtual int getRequiredLocalDataSize() const = 0;
 
   /// Set the power of the cosine source distribution for this particle.
-  virtual NumericType getSourceDistributionPower() const = 0;
+  virtual rtcNumericType getSourceDistributionPower() const = 0;
 };
 
 /// This CRTP class implements clone() for the derived particle class.
 /// A user has to interface this class.
-template <typename Derived, typename NumericType>
-class rayParticle : public rayBaseParticle<NumericType> {
+template <typename Derived> class rayParticle : public rayBaseParticle {
 public:
-  std::unique_ptr<rayBaseParticle<NumericType>> clone() const override final {
+  std::unique_ptr<rayBaseParticle> clone() const override final {
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
   virtual void initNew(rayRNG &Rng) override {}
-  virtual std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  virtual std::pair<rtcNumericType, rayTriple<rtcNumericType>>
+  surfaceReflection(rtcNumericType rayWeight,
+                    const rayTriple<rtcNumericType> &rayDir,
+                    const rayTriple<rtcNumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const rayTracingData<NumericType> *globalData,
+                    const rayTracingData<rtcNumericType> *globalData,
                     rayRNG &Rng) override {
     // return the sticking probability and direction after reflection for this
     // hit
-    return std::pair<NumericType, rayTriple<NumericType>>{
-        1., rayTriple<NumericType>{0., 0., 0.}};
+    return std::pair<rtcNumericType, rayTriple<rtcNumericType>>{
+        1., rayTriple<rtcNumericType>{0., 0., 0.}};
   }
-  virtual void
-  surfaceCollision(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                   const rayTriple<NumericType> &geomNormal,
-                   const unsigned int primID, const int materialId,
-                   rayTracingData<NumericType> &localData,
-                   const rayTracingData<NumericType> *globalData,
-                   rayRNG &Rng) override { // collect data for this hit
+  virtual void surfaceCollision(
+      rtcNumericType rayWeight, const rayTriple<rtcNumericType> &rayDir,
+      const rayTriple<rtcNumericType> &geomNormal, const unsigned int primID,
+      const int materialId, rayTracingData<rtcNumericType> &localData,
+      const rayTracingData<rtcNumericType> *globalData,
+      rayRNG &Rng) override { // collect data for this hit
   }
   virtual int getRequiredLocalDataSize() const override { return 0; }
-  virtual NumericType getSourceDistributionPower() const override { return 1.; }
+  virtual rtcNumericType getSourceDistributionPower() const override {
+    return 1.;
+  }
 
 protected:
   // We make clear rayParticle class needs to be inherited
@@ -98,34 +98,33 @@ protected:
   rayParticle(rayParticle &&) = default;
 };
 
-template <typename NumericType>
-class rayTestParticle
-    : public rayParticle<rayTestParticle<NumericType>, NumericType> {
+class rayTestParticle : public rayParticle<rayTestParticle> {
 public:
   void initNew(rayRNG &Rng) override final {}
 
-  std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
-                    const unsigned int primID, const int materialId,
-                    const rayTracingData<NumericType> *globalData,
-                    rayRNG &Rng) override final {
+  std::pair<rtcNumericType, rayTriple<rtcNumericType>> surfaceReflection(
+      rtcNumericType rayWeight, const rayTriple<rtcNumericType> &rayDir,
+      const rayTriple<rtcNumericType> &geomNormal, const unsigned int primID,
+      const int materialId, const rayTracingData<rtcNumericType> *globalData,
+      rayRNG &Rng) override final {
     auto direction = rayReflectionSpecular(rayDir, geomNormal);
 
-    return std::pair<NumericType, rayTriple<NumericType>>{.5, direction};
+    return std::pair<rtcNumericType, rayTriple<rtcNumericType>>{.5, direction};
   }
 
-  void surfaceCollision(NumericType rayWeight,
-                        const rayTriple<NumericType> &rayDir,
-                        const rayTriple<NumericType> &geomNormal,
+  void surfaceCollision(rtcNumericType rayWeight,
+                        const rayTriple<rtcNumericType> &rayDir,
+                        const rayTriple<rtcNumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
-                        rayTracingData<NumericType> &localData,
-                        const rayTracingData<NumericType> *globalData,
+                        rayTracingData<rtcNumericType> &localData,
+                        const rayTracingData<rtcNumericType> *globalData,
                         rayRNG &Rng) override final {}
 
   int getRequiredLocalDataSize() const override final { return 0; }
 
-  NumericType getSourceDistributionPower() const override final { return 1.; }
+  rtcNumericType getSourceDistributionPower() const override final {
+    return 1.;
+  }
 };
 
 #endif // RAY_PARTICLE_HPP

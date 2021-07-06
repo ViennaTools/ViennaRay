@@ -51,7 +51,7 @@ include(ExternalProject)
 add_subdirectory(external/upstream)
 
 set(VIENNARAY_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.1 -mfma")
 
 #################################################
 # BUILD EXAMPLES
