@@ -61,25 +61,86 @@ NumericType DotProduct(const rayTriple<NumericType> &pVecA,
 }
 
 #ifdef ARCH_X86
-static inline float DotProductSse(__m128 x, __m128 y) {
-  // dot product without SSE4.1
-  // __m128 mulRes, shufReg, sumsReg;
+[[nodiscard]] static inline float DotProductSse(__m128 const &x,
+                                                __m128 const &y) {
+  // __m128 mulRes;
   // mulRes = _mm_mul_ps(x, y);
-
-  // // Calculates the sum of SSE Register -
-  // https://stackoverflow.com/a/35270026/195787 shufReg =
-  // _mm_movehdup_ps(mulRes); // Broadcast elements 3,1 to 2,0 sumsReg =
-  // _mm_add_ps(mulRes, shufReg); shufReg = _mm_movehl_ps(shufReg, sumsReg); //
-  // High Half -> Low Half sumsReg = _mm_add_ss(sumsReg, shufReg); return
-  // _mm_cvtss_f32(sumsReg); // Result in the lower part of the SSE Register
-
+  // return SumSse(mulRes);
   return _mm_cvtss_f32(_mm_dp_ps(x, y, 0x77));
 }
 
-static inline float NormSse(__m128 v) {
-  return _mm_cvtss_f32(_mm_sqrt_ps(_mm_dp_ps(v, v, 0x7F)));
+[[nodiscard]] static inline float SumSse(__m128 const &v) {
+  __m128 shufReg, sumsReg;
+  // Calculates the sum of SSE Register -
+  // https://stackoverflow.com/a/35270026/195787
+  shufReg = _mm_movehdup_ps(v); // Broadcast elements 3,1 to 2,0
+  sumsReg = _mm_add_ps(v, shufReg);
+  shufReg = _mm_movehl_ps(shufReg, sumsReg); // High Half -> Low Half
+  sumsReg = _mm_add_ss(sumsReg, shufReg);
+  return _mm_cvtss_f32(sumsReg); // Result in the lower part of the SSE Register
 }
 
+[[nodiscard]] inline static __m128 CrossProductSse(__m128 const &vec0,
+                                                   __m128 const &vec1) {
+  // from https://geometrian.com/programming/tutorials/cross-product/index.php
+  __m128 tmp0 = _mm_shuffle_ps(vec0, vec0, _MM_SHUFFLE(3, 0, 2, 1));
+  __m128 tmp1 = _mm_shuffle_ps(vec1, vec1, _MM_SHUFFLE(3, 1, 0, 2));
+  __m128 tmp2 = _mm_mul_ps(tmp0, vec1);
+  __m128 tmp3 = _mm_mul_ps(tmp0, tmp1);
+  __m128 tmp4 = _mm_shuffle_ps(tmp2, tmp2, _MM_SHUFFLE(3, 0, 2, 1));
+  return _mm_sub_ps(tmp3, tmp4);
+}
+
+// Norm of 3D Vector using SSE http://fastcpp.blogspot.com/2012/02/calculating-length-of-3d-vector-using.html
+[[nodiscard]] static inline float NormSse(__m128 const &v) {
+  return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(v, v, 0x71)));
+}
+
+[[nodiscard]] static inline __m128 NormalizeSse(__m128 const &v) {
+  __m128 inverse_norm = _mm_rsqrt_ps(_mm_dp_ps(v, v, 0x77));
+  return _mm_mul_ps(v, inverse_norm);
+}
+
+[[nodiscard]] static inline __m128 NormalizeAccurateSse(__m128 const &v) {
+  __m128 norm = _mm_sqrt_ps(_mm_dp_ps(v, v, 0x7F));
+  return _mm_div_ps(v, norm);
+}
+
+template <typename NumericType>
+[[nodiscard]] rayTriple<NumericType> ConvertSse(__m128 const &vec) {
+  alignas(16) float result[4];
+  _mm_store_ps(&result[0], vec);
+  return rayTriple<NumericType>{result[0], result[1], result[2]};
+}
+
+rayTriple<__m128> getOrthonormalBasisSse(const rayTriple<rtcNumericType> &pV) {
+  rayTriple<__m128> rr;
+  rr[0] = _mm_set_ps(0.f, pV[2], pV[1], pV[0]);
+  __m128 cand1 = _mm_set_ps(0.f, -(pV[0] + pV[1]), pV[2], pV[2]);
+  __m128 cand2 = _mm_set_ps(0.f, pV[1], -(pV[0] + pV[2]), pV[1]);
+  __m128 cand3 = _mm_set_ps(0.f, pV[0], pV[0], -(pV[1] + pV[2]));
+
+  if (SumSse(cand2) > SumSse(cand1)) {
+    if (SumSse(cand3) > SumSse(cand2)) {
+      rr[1] = cand3;
+    } else {
+      rr[1] = cand2;
+    }
+  } else {
+    if (SumSse(cand3) > SumSse(cand1)) {
+      rr[1] = cand3;
+    } else {
+      rr[1] = cand1;
+    }
+  }
+
+  rr[2] = CrossProductSse(rr[0], rr[1]);
+  rr[0] = NormalizeAccurateSse(rr[0]);
+  rr[1] = NormalizeAccurateSse(rr[1]);
+  rr[2] = NormalizeAccurateSse(rr[2]);
+
+  return rr;
+}
 #endif
 
 template <typename NumericType>
