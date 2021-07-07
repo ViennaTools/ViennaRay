@@ -91,7 +91,8 @@ NumericType DotProduct(const rayTriple<NumericType> &pVecA,
   return _mm_sub_ps(tmp3, tmp4);
 }
 
-// Norm of 3D Vector using SSE http://fastcpp.blogspot.com/2012/02/calculating-length-of-3d-vector-using.html
+// Norm of 3D Vector using SSE
+// http://fastcpp.blogspot.com/2012/02/calculating-length-of-3d-vector-using.html
 [[nodiscard]] static inline float NormSse(__m128 const &v) {
   return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(v, v, 0x71)));
 }
@@ -113,33 +114,36 @@ template <typename NumericType>
   return rayTriple<NumericType>{result[0], result[1], result[2]};
 }
 
-rayTriple<__m128> getOrthonormalBasisSse(const rayTriple<rtcNumericType> &pV) {
-  rayTriple<__m128> rr;
-  rr[0] = _mm_set_ps(0.f, pV[2], pV[1], pV[0]);
+const auto getOrthonormalBasisSse(const rayTriple<rtcNumericType> &pV) {
+  struct Basis {
+    __m128 b1, b2, b3;
+  } basis;
+
+  basis.b1 = _mm_set_ps(0.f, pV[2], pV[1], pV[0]);
   __m128 cand1 = _mm_set_ps(0.f, -(pV[0] + pV[1]), pV[2], pV[2]);
   __m128 cand2 = _mm_set_ps(0.f, pV[1], -(pV[0] + pV[2]), pV[1]);
   __m128 cand3 = _mm_set_ps(0.f, pV[0], pV[0], -(pV[1] + pV[2]));
 
   if (SumSse(cand2) > SumSse(cand1)) {
     if (SumSse(cand3) > SumSse(cand2)) {
-      rr[1] = cand3;
+      basis.b2 = cand3;
     } else {
-      rr[1] = cand2;
+      basis.b2 = cand2;
     }
   } else {
     if (SumSse(cand3) > SumSse(cand1)) {
-      rr[1] = cand3;
+      basis.b2 = cand3;
     } else {
-      rr[1] = cand1;
+      basis.b2 = cand1;
     }
   }
 
-  rr[2] = CrossProductSse(rr[0], rr[1]);
-  rr[0] = NormalizeAccurateSse(rr[0]);
-  rr[1] = NormalizeAccurateSse(rr[1]);
-  rr[2] = NormalizeAccurateSse(rr[2]);
+  basis.b3 = CrossProductSse(basis.b1, basis.b2);
+  basis.b1 = NormalizeAccurateSse(basis.b1);
+  basis.b2 = NormalizeAccurateSse(basis.b2);
+  basis.b3 = NormalizeAccurateSse(basis.b3);
 
-  return rr;
+  return basis;
 }
 #endif
 

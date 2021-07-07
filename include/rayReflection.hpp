@@ -42,14 +42,12 @@ rayReflectionDiffuse(const rayTriple<rtcNumericType> &geomNormal, rayRNG &RNG) {
     const rtcNumericType cc3 = sinf(two_pi * r1) * r2;
 
 #ifdef ARCH_X86
-    auto basis = rayInternal::getOrthonormalBasisSse(geomNormal);
+    const auto basis = rayInternal::getOrthonormalBasisSse(geomNormal);
 
-    basis[0] = _mm_mul_ps(basis[0], _mm_set1_ps(cc1));
-    basis[1] = _mm_mul_ps(basis[1], _mm_set1_ps(cc2));
-    basis[0] = _mm_add_ps(basis[0], basis[1]);
-    basis[1] = _mm_mul_ps(basis[2], _mm_set1_ps(cc3));
-    auto newDirection =
-        rayInternal::ConvertSse<rtcNumericType>(_mm_add_ps(basis[0], basis[1]));
+    __m128 result = _mm_mul_ps(_mm_set1_ps(cc1), basis.b1);
+    result = _mm_fmadd_ps(_mm_set1_ps(cc2), basis.b2, result);
+    result = _mm_fmadd_ps(_mm_set1_ps(cc3), basis.b3, result);
+    auto newDirection = rayInternal::ConvertSse<rtcNumericType>(result);
 #else
     // Compute lambertian reflection with respect to surface normal
     const auto basis = rayInternal::getOrthonormalBasis(geomNormal);
