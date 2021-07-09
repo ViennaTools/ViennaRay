@@ -58,7 +58,7 @@ public:
     mLocalData.resizeAllVectorData(mGeometry.getNumPoints());
 
     auto tracer = rayTraceKernel<NumericType, D>(
-        mDevice, mGeometry, boundary, raySource, mParticle.release(),
+        mDevice, mGeometry, boundary, raySource, mParticle,
         mNumberOfRaysPerPoint, mNumberOfRaysFixed);
 
     tracer.useRandomSeeds(mUseRandomSeeds);

@@ -19,10 +19,10 @@ public:
   rayTraceKernel(RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
-                 rayAbstractParticle<NumericType> *pParticle,
+                 std::unique_ptr<rayAbstractParticle<NumericType>> &pParticle,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
-        mSource(pSource), mParticle(pParticle),
+        mSource(pSource), mParticle(pParticle->clone()),
         mNumRays(pNumOfRayFixed == 0
                      ? pSource.getNumPoints() * pNumOfRayPerPoint
                      : pNumOfRayFixed) {
