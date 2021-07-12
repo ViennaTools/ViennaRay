@@ -32,39 +32,29 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
          "rayReflectionDiffuse: Surface normal is not normalized");
 
   if constexpr (D == 3) {
-    // Compute lambertian reflection with respect to surface normal
-    const auto basis = rayInternal::getOrthonormalBasis(geomNormal);
-
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(RNG);
     auto r2 = uniDist(RNG);
 
     constexpr NumericType two_pi = 2 * rayInternal::PI;
-    const NumericType cc1 = sqrt(r2);
-    const NumericType cc2 = cos(two_pi * r1) * sqrt(1 - r2);
-    const NumericType cc3 = sin(two_pi * r1) * sqrt(1 - r2);
-    alignas(16) float result[4];
+    const NumericType cc1 = std::sqrt(r2);
+    const NumericType sq = std::sqrt(1 - r2);
+    const NumericType cc2 = std::cos(two_pi * r1) * sq;
+    const NumericType cc3 = std::sin(two_pi * r1) * sq;
 
-    auto tt1 =
-        _mm_set_ps((rtcNumericType)basis[0][2], (rtcNumericType)basis[0][1],
-                   (rtcNumericType)basis[0][0], 0.f);
-    tt1 = _mm_mul_ps(tt1, _mm_set1_ps(cc1));
+    // Compute lambertian reflection with respect to surface normal
+    const auto basis = rayInternal::getOrthonormalBasis(geomNormal);
 
-    auto tt2 =
-        _mm_set_ps((rtcNumericType)basis[1][2], (rtcNumericType)basis[1][1],
-                   (rtcNumericType)basis[1][0], 0.f);
-    tt2 = _mm_mul_ps(tt2, _mm_set1_ps(cc2));
+    auto tt1 = basis[0];
+    rayInternal::Scale(cc1, tt1);
+    auto tt2 = basis[1];
+    rayInternal::Scale(cc2, tt2);
+    auto tt3 = basis[2];
+    rayInternal::Scale(cc3, tt3);
 
-    auto tt3 =
-        _mm_set_ps((rtcNumericType)basis[2][2], (rtcNumericType)basis[2][1],
-                   (rtcNumericType)basis[2][0], 0.f);
-    tt3 = _mm_mul_ps(tt3, _mm_set1_ps(cc3));
-
-    _mm_store_ps(&result[0], _mm_add_ps(tt3, _mm_add_ps(tt2, tt1)));
-    auto newDirection = rayTriple<NumericType>{result[1], result[2], result[3]};
+    auto newDirection = rayInternal::Sum(tt1, tt2, tt3);
     assert(rayInternal::IsNormalized(newDirection) &&
            "rayReflectionDiffuse: New direction is not normalized");
-
     return newDirection;
   } else {
     const auto angle =

@@ -9,7 +9,7 @@ public:
   virtual ~rayMetaGeometry() {}
   virtual RTCGeometry &getRTCGeometry() = 0;
   virtual rayTriple<NumericType> getPrimNormal(const unsigned int primID) = 0;
-  virtual rayTriple<NumericType> getNewOrigin(RTCRay &ray) {
+  virtual rayTriple<rtcNumericType> getNewOrigin(RTCRay &ray) {
     assert(rayInternal::IsNormalized(
                rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
            "MetaGeometry: direction not normalized");

@@ -45,7 +45,7 @@ int main() {
   auto cp = particle.clone();
 
   auto tracer = rayTraceKernel<NumericType, D>(device, geometry, boundary,
-                                               raySource, cp.release(), 1, 0);
+                                               raySource, cp, 1, 0);
   tracer.setTracingData(&localData, &globalData);
   tracer.setHitCounter(&hitCounter);
   tracer.apply();

@@ -240,7 +240,7 @@ private:
         *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.hit.Ng_x);
     rayInternal::Normalize(dir);
     rayInternal::Normalize(normal);
-    dir = rayReflectionSpecular(dir, normal);
+    dir = rayReflectionSpecular<rtcNumericType>(dir, normal);
     // normal gets reused for new origin here
     normal = this->getNewOrigin(rayHit.ray);
 #ifdef ARCH_X86
@@ -251,28 +251,28 @@ private:
         _mm_set_ps(0.0f, (rtcNumericType)dir[2], (rtcNumericType)dir[1],
                    (rtcNumericType)dir[0]);
 #else
-    rayHit.ray.org_x = (rtcNumericType)normal[0];
-    rayHit.ray.org_y = (rtcNumericType)normal[1];
-    rayHit.ray.org_z = (rtcNumericType)normal[2];
+    rayHit.ray.org_x = normal[0];
+    rayHit.ray.org_y = normal[1];
+    rayHit.ray.org_z = normal[2];
     rayHit.ray.tnear = 1e-4f;
 
-    rayHit.ray.dir_x = (rtcNumericType)dir[0];
-    rayHit.ray.dir_y = (rtcNumericType)dir[1];
-    rayHit.ray.dir_z = (rtcNumericType)dir[2];
+    rayHit.ray.dir_x = dir[0];
+    rayHit.ray.dir_y = dir[1];
+    rayHit.ray.dir_z = dir[2];
     rayHit.ray.time = 0.0f;
 #endif
   }
 
-  void moveRay(RTCRayHit &rayHit, const rayTriple<NumericType> &coords) {
+  void moveRay(RTCRayHit &rayHit, const rayTriple<rtcNumericType> &coords) {
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
         _mm_set_ps(1e-4f, (rtcNumericType)coords[2], (rtcNumericType)coords[1],
                    (rtcNumericType)coords[0]);
     rayHit.ray.time = 0.0f;
 #else
-    rayHit.ray.org_x = (rtcNumericType)coords[0];
-    rayHit.ray.org_y = (rtcNumericType)coords[1];
-    rayHit.ray.org_z = (rtcNumericType)coords[2];
+    rayHit.ray.org_x = coords[0];
+    rayHit.ray.org_y = coords[1];
+    rayHit.ray.org_z = coords[2];
     rayHit.ray.tnear = 1e-4f;
     rayHit.ray.time = 0.0f;
 #endif
