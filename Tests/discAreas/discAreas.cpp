@@ -11,7 +11,6 @@ int main() {
   constexpr int D = 3;
   using NumericType = float;
   using ParticleType = rayTestParticle<NumericType>;
-  using ReflectionType = rayReflectionSpecular<NumericType, D>;
   NumericType extent = 10;
   NumericType gridDelta = 0.5;
   NumericType eps = 1e-6;
@@ -42,8 +41,11 @@ int main() {
   auto raySource = raySourceRandom<NumericType, D>(
       boundingBox, 1., traceSettings, geometry.getNumPoints());
 
-  auto tracer = rayTraceKernel<NumericType, ParticleType, ReflectionType, D>(
-      device, geometry, boundary, raySource, 1, 0);
+  rayTestParticle<NumericType> particle;
+  auto cp = particle.clone();
+
+  auto tracer = rayTraceKernel<NumericType, D>(device, geometry, boundary,
+                                               raySource, cp, 1, 0);
   tracer.setTracingData(&localData, &globalData);
   tracer.setHitCounter(&hitCounter);
   tracer.apply();

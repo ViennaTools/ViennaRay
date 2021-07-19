@@ -4,6 +4,7 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
+#include <rayParticle.hpp>
 #include <rayRNG.hpp>
 #include <raySource.hpp>
 #include <rayTracingData.hpp>
@@ -12,17 +13,16 @@
 #define PRINT_PROGRESS false
 #define PRINT_RESULT false
 
-template <typename NumericType, typename ParticleType, typename ReflectionType,
-          int D>
-class rayTraceKernel {
+template <typename NumericType, int D> class rayTraceKernel {
 
 public:
   rayTraceKernel(RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
+                 std::unique_ptr<rayAbstractParticle<NumericType>> &pParticle,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
-        mSource(pSource),
+        mSource(pSource), mParticle(pParticle->clone()),
         mNumRays(pNumOfRayFixed == 0
                      ? pSource.getNumPoints() * pNumOfRayPerPoint
                      : pNumOfRayFixed) {
@@ -109,9 +109,8 @@ public:
       rayRNG RngState7(seeds[6]);
       rayRNG RngState8(seeds[7]);
 
-      // thread-local particle and reflection object
-      auto particle = ParticleType{};
-      auto surfaceReflect = ReflectionType{};
+      // thread-local particle object
+      auto particle = mParticle->clone();
 
       auto &myLocalData = threadLocalData[threadID];
       auto &myHitCounter = threadLocalHitCounter[threadID];
@@ -126,7 +125,7 @@ public:
 
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < mNumRays; ++idx) {
-        particle.initNew(RngState8);
+        particle->initNew(RngState8);
         NumericType rayWeight = initialRayWeight;
 
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
@@ -142,7 +141,8 @@ public:
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-          rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle source
+          // rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle
+          // source
 
           // Run the intersection
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
@@ -156,36 +156,21 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
-            auto newRay = mBoundary.processHit(rayHit, reflect);
-
-            // Update ray
-#ifdef ARCH_X86
-            reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(
-                1e-4f, (rtcNumericType)newRay[0][2],
-                (rtcNumericType)newRay[0][1], (rtcNumericType)newRay[0][0]);
-            reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
-                0.0f, (rtcNumericType)newRay[1][2],
-                (rtcNumericType)newRay[1][1], (rtcNumericType)newRay[1][0]);
-#else
-            rayHit.ray.org_x = (rtcNumericType)newRay[0][0];
-            rayHit.ray.org_y = (rtcNumericType)newRay[0][1];
-            rayHit.ray.org_z = (rtcNumericType)newRay[0][2];
-            rayHit.ray.tnear = 1e-4f;
-
-            rayHit.ray.dir_x = (rtcNumericType)newRay[1][0];
-            rayHit.ray.dir_y = (rtcNumericType)newRay[1][1];
-            rayHit.ray.dir_z = (rtcNumericType)newRay[1][2];
-            rayHit.ray.time = 0.0f;
-#endif
+            mBoundary.processHit(rayHit, reflect);
             continue;
           }
 
-          /* -------- Hit from back -------- */
+          // Calculate point of impact
           const auto &ray = rayHit.ray;
+          const rtcNumericType xx = ray.org_x + ray.dir_x * ray.tfar;
+          const rtcNumericType yy = ray.org_y + ray.dir_y * ray.tfar;
+          const rtcNumericType zz = ray.org_z + ray.dir_z * ray.tfar;
+
+          /* -------- Hit from back -------- */
           const auto rayDir =
               rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
-          if (rayInternal::DotProduct(
-                  rayDir, mGeometry.getPrimNormal(rayHit.hit.primID)) > 0) {
+          const auto geomNormal = mGeometry.getPrimNormal(rayHit.hit.primID);
+          if (rayInternal::DotProduct(rayDir, geomNormal) > 0) {
             // If the dot product of the ray direction and the surface normal is
             // greater than zero, then we hit the back face of the disc.
             if (hitFromBack) {
@@ -196,9 +181,15 @@ public:
             hitFromBack = true;
             // Let ray through, i.e., continue.
             reflect = true;
-            rayHit.ray.org_x = ray.org_x + ray.dir_x * ray.tfar;
-            rayHit.ray.org_y = ray.org_y + ray.dir_y * ray.tfar;
-            rayHit.ray.org_z = ray.org_z + ray.dir_z * ray.tfar;
+#ifdef ARCH_X86
+            reinterpret_cast<__m128 &>(rayHit.ray) =
+                _mm_set_ps(1e-4f, zz, yy, xx);
+#else
+            rayHit.ray.org_x = xx;
+            rayHit.ray.org_y = yy;
+            rayHit.ray.org_z = zz;
+            rayHit.ray.tnear = 1e-4f;
+#endif
             // keep ray direction as it is
             continue;
           }
@@ -206,32 +197,31 @@ public:
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           geohitc += 1;
-          const auto primID = rayHit.hit.primID;
-          const auto geomNormal = mGeometry.getPrimNormal(primID);
+          const auto &primID = rayHit.hit.primID;
           const auto materialID = mGeometry.getMaterialId(primID);
 
-          particle.surfaceCollision(rayWeight, rayDir, geomNormal, primID,
-                                    materialID, myLocalData, *globalData,
-                                    RngState5);
+          particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
+                                     materialID, myLocalData, globalData,
+                                     RngState5);
 
           // Check for additional intersections
           std::vector<unsigned int> intIds;
           for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
             const auto matID = mGeometry.getMaterialId(id);
 
-            if (checkLocalIntersection(rayHit.ray, id)) {
+            if (checkLocalIntersection(ray, id)) {
               const auto normal = mGeometry.getPrimNormal(id);
-              particle.surfaceCollision(rayWeight, rayDir, normal, id, matID,
-                                        myLocalData, *globalData, RngState5);
+              particle->surfaceCollision(rayWeight, rayDir, normal, id, matID,
+                                         myLocalData, globalData, RngState5);
               if (calcFlux)
                 intIds.push_back(id);
             }
           }
 
-          const auto sticking =
-              particle.surfaceReflection(rayWeight, rayDir, geomNormal, primID,
-                                         materialID, *globalData, RngState5);
-          const auto valueToDrop = rayWeight * sticking;
+          const auto stickingnDirection =
+              particle->surfaceReflection(rayWeight, rayDir, geomNormal, primID,
+                                          materialID, globalData, RngState5);
+          const auto valueToDrop = rayWeight * stickingnDirection.first;
           if (calcFlux) {
             for (const auto &id : intIds) {
               myHitCounter.use(id, valueToDrop);
@@ -248,26 +238,24 @@ public:
           if (!reflect) {
             break;
           }
-          auto newRay =
-              surfaceReflect.use(rayHit.ray, rayHit.hit, materialID, RngState7);
 
           // Update ray
 #ifdef ARCH_X86
-          reinterpret_cast<__m128 &>(rayHit.ray) = _mm_set_ps(
-              1e-4f, (rtcNumericType)newRay[0][2], (rtcNumericType)newRay[0][1],
-              (rtcNumericType)newRay[0][0]);
-          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
-              0.0f, (rtcNumericType)newRay[1][2], (rtcNumericType)newRay[1][1],
-              (rtcNumericType)newRay[1][0]);
+          reinterpret_cast<__m128 &>(rayHit.ray) =
+              _mm_set_ps(1e-4f, zz, yy, xx);
+          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
+              _mm_set_ps(0.0f, (rtcNumericType)stickingnDirection.second[2],
+                         (rtcNumericType)stickingnDirection.second[1],
+                         (rtcNumericType)stickingnDirection.second[0]);
 #else
-          rayHit.ray.org_x = (rtcNumericType)newRay[0][0];
-          rayHit.ray.org_y = (rtcNumericType)newRay[0][1];
-          rayHit.ray.org_z = (rtcNumericType)newRay[0][2];
+          rayHit.ray.org_x = xx;
+          rayHit.ray.org_y = yy;
+          rayHit.ray.org_z = zz;
           rayHit.ray.tnear = 1e-4f;
 
-          rayHit.ray.dir_x = (rtcNumericType)newRay[1][0];
-          rayHit.ray.dir_y = (rtcNumericType)newRay[1][1];
-          rayHit.ray.dir_z = (rtcNumericType)newRay[1][2];
+          rayHit.ray.dir_x = (rtcNumericType)stickingnDirection.second[0];
+          rayHit.ray.dir_y = (rtcNumericType)stickingnDirection.second[1];
+          rayHit.ray.dir_z = (rtcNumericType)stickingnDirection.second[2];
           rayHit.ray.time = 0.0f;
 #endif
         } while (reflect);
@@ -292,7 +280,6 @@ public:
               localData->getVectorData(i)[j] +=
                   threadLocalData[k].getVectorData(i)[j];
             }
-            // localData.getVectorData(i)[j] /= hitCounter.getDiscAreas()[j];
           }
           break;
         }
@@ -480,7 +467,7 @@ private:
       return false;
     }
 
-    auto eps = 1e-6f;
+    constexpr auto eps = 1e-6f;
     if (std::fabs(prodOfDirections) < eps) {
       // Ray is parallel to disc surface
       return false;
@@ -509,23 +496,11 @@ private:
     return false;
   }
 
-  // void printRay(RTCRayHit &rayHit)
-  // {
-  //     std::cout << "Ray ID: " << rayHit.ray.id << std::endl;
-  //     std::cout << "Origin: ";
-  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.ray.org_x,
-  //     rayHit.ray.org_y, rayHit.ray.org_z}); std::cout << "Direction: ";
-  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.ray.dir_x,
-  //     rayHit.ray.dir_y, rayHit.ray.dir_z}); std::cout << "Geometry hit ID: "
-  //     << rayHit.hit.geomID << std::endl; std::cout << "Geometry normal: ";
-  //     rtInternal::printTriple(rtTriple<rtcNumericType>{rayHit.hit.Ng_x,
-  //     rayHit.hit.Ng_y, rayHit.hit.Ng_z});
-  // }
-
   RTCDevice &mDevice;
   rayGeometry<NumericType, D> &mGeometry;
   rayBoundary<NumericType, D> &mBoundary;
   raySource<NumericType, D> &mSource;
+  std::unique_ptr<rayAbstractParticle<NumericType>> const mParticle = nullptr;
   const long long mNumRays;
   bool mUseRandomSeeds = false;
   bool mCalcFlux = true;

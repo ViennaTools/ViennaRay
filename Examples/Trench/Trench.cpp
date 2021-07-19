@@ -1,29 +1,17 @@
 #include <omp.h>
 #include <rayBoundCondition.hpp>
 #include <rayParticle.hpp>
-#include <rayReflectionDiffuse.hpp>
 #include <rayTrace.hpp>
 
 int main() {
   // Geometry space dimension
   constexpr int D = 3;
 
-  // Static settings for the ray tracer:
   // NumericType: The used floating point precision type. It is possible to use
   // float or double, but keep in mind, that embree internally only works with
   // float and thus any double precision geometry passed, will be converted
   // internally to float.
-  // ParticleType: The particle types provides the sticking probability for
-  // each surface hit. This class can be user defined, but has to interface
-  // the rayParticle<NumericType> class.
-  // ReflectionType: This reflection will be used at each surface hit.
-  // Already implented types are rayReflectionSpecular for specular reflections
-  // and rayReflectionDiffuse for diffuse reflections. However, this class can
-  // again be a user defined custom reflection, that has to interface the
-  // rayReflection<NumericType, D> class.
   using NumericType = float;
-  using ParticleType = rayTestParticle<NumericType>;
-  using ReflectionType = rayReflectionDiffuse<NumericType, D>;
 
   // Set the number of threads to use in OpenMP parallelization
   omp_set_num_threads(12);
@@ -43,14 +31,21 @@ int main() {
   boundaryConds[1] = rayTraceBoundary::PERIODIC; // y
   boundaryConds[2] = rayTraceBoundary::PERIODIC; // z
 
-  rayTrace<NumericType, ParticleType, ReflectionType, D> rayTracer;
+  // ParticleType: The particle types provides the sticking probability and
+  // the reflection process for each surface hit. This class can be user
+  // defined, but has to interface the rayParticle<NumericType> class and
+  // provide the functions: initNew(...), surfaceCollision(...),
+  // surfaceReflection(...).
+  auto particle = std::make_unique<rayTestParticle<NumericType>>();
+
+  rayTrace<NumericType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
+  rayTracer.setParticleType(particle);
 
   // Ray settings
   rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(1000);
-  rayTracer.setSourceDistributionPower(5.);
 
   // Run the ray tracer
   rayTracer.apply();

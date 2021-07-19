@@ -3,7 +3,8 @@
 
 #include <rayBoundCondition.hpp>
 #include <rayMetaGeometry.hpp>
-#include <rayReflectionSpecular.hpp>
+#include <rayPreCompileMacros.hpp>
+#include <rayReflection.hpp>
 #include <rayTraceDirection.hpp>
 
 template <typename NumericType, int D>
@@ -20,16 +21,16 @@ public:
     initBoundary(pDevice);
   }
 
-  rayPair<rayTriple<NumericType>> processHit(RTCRayHit &rayHit, bool &reflect) {
+  void processHit(RTCRayHit &rayHit, bool &reflect) {
     const auto primID = rayHit.hit.primID;
 
     if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
       if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
+        reflectRay(rayHit);
         reflect = true;
-        return rayReflectionSpecular<NumericType, D>::use(rayHit.ray,
-                                                          rayHit.hit);
+        return;
       } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
         auto impactCoords = this->getNewOrigin(rayHit.ray);
         // periodically move ray origin
@@ -40,25 +41,23 @@ public:
           // hit at x/y max boundary -> move to min x/y
           impactCoords[firstDir] = mbdBox[0][firstDir];
         }
+        moveRay(rayHit, impactCoords);
         reflect = true;
-        return {impactCoords,
-                rayTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
-                                       rayHit.ray.dir_z}};
+        return;
       } else {
         // ignore ray
         reflect = false;
-        return {0., 0., 0., 0., 0., 0.};
+        return;
       }
 
       assert(false && "Correctness Assumption");
-      return {0., 0., 0., 0., 0., 0.};
     } else {
       if (primID == 0 || primID == 1 || primID == 2 || primID == 3) {
         if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
           // use specular reflection
+          reflectRay(rayHit);
           reflect = true;
-          return rayReflectionSpecular<NumericType, D>::use(rayHit.ray,
-                                                            rayHit.hit);
+          return;
         } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
@@ -69,21 +68,20 @@ public:
             // hit at firstDir max boundary -> move to min fristDir
             impactCoords[firstDir] = mbdBox[0][firstDir];
           }
+          moveRay(rayHit, impactCoords);
           reflect = true;
-          return {impactCoords,
-                  rayTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
-                                         rayHit.ray.dir_z}};
+          return;
         } else {
           // ignore ray
           reflect = false;
-          return {0., 0., 0., 0., 0., 0.};
+          return;
         }
       } else if (primID == 4 || primID == 5 || primID == 6 || primID == 7) {
         if (mBoundaryConds[1] == rayTraceBoundary::REFLECTIVE) {
           // use specular reflection
+          reflectRay(rayHit);
           reflect = true;
-          return rayReflectionSpecular<NumericType, D>::use(rayHit.ray,
-                                                            rayHit.hit);
+          return;
         } else if (mBoundaryConds[1] == rayTraceBoundary::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
@@ -94,19 +92,17 @@ public:
             // hit at secondDir max boundary -> move to min secondDir
             impactCoords[secondDir] = mbdBox[0][secondDir];
           }
+          moveRay(rayHit, impactCoords);
           reflect = true;
-          return {impactCoords,
-                  rayTriple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
-                                         rayHit.ray.dir_z}};
+          return;
         } else {
           // ignore ray
           reflect = false;
-          return {0., 0., 0., 0., 0., 0.};
+          return;
         }
       }
 
       assert(false && "Correctness Assumption");
-      return {0., 0., 0., 0., 0., 0.};
     }
   }
 
@@ -235,6 +231,51 @@ private:
             (NumericType)mVertexBuffer[tt.v2].xx,
             (NumericType)mVertexBuffer[tt.v2].yy,
             (NumericType)mVertexBuffer[tt.v2].zz};
+  }
+
+  void reflectRay(RTCRayHit &rayHit) {
+    auto dir =
+        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.ray.dir_x);
+    auto normal =
+        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.hit.Ng_x);
+    rayInternal::Normalize(dir);
+    rayInternal::Normalize(normal);
+    dir = rayReflectionSpecular<rtcNumericType>(dir, normal);
+    // normal gets reused for new origin here
+    normal = this->getNewOrigin(rayHit.ray);
+#ifdef ARCH_X86
+    reinterpret_cast<__m128 &>(rayHit.ray) =
+        _mm_set_ps(1e-4f, (rtcNumericType)normal[2], (rtcNumericType)normal[1],
+                   (rtcNumericType)normal[0]);
+    reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
+        _mm_set_ps(0.0f, (rtcNumericType)dir[2], (rtcNumericType)dir[1],
+                   (rtcNumericType)dir[0]);
+#else
+    rayHit.ray.org_x = normal[0];
+    rayHit.ray.org_y = normal[1];
+    rayHit.ray.org_z = normal[2];
+    rayHit.ray.tnear = 1e-4f;
+
+    rayHit.ray.dir_x = dir[0];
+    rayHit.ray.dir_y = dir[1];
+    rayHit.ray.dir_z = dir[2];
+    rayHit.ray.time = 0.0f;
+#endif
+  }
+
+  void moveRay(RTCRayHit &rayHit, const rayTriple<rtcNumericType> &coords) {
+#ifdef ARCH_X86
+    reinterpret_cast<__m128 &>(rayHit.ray) =
+        _mm_set_ps(1e-4f, (rtcNumericType)coords[2], (rtcNumericType)coords[1],
+                   (rtcNumericType)coords[0]);
+    rayHit.ray.time = 0.0f;
+#else
+    rayHit.ray.org_x = coords[0];
+    rayHit.ray.org_y = coords[1];
+    rayHit.ray.org_z = coords[2];
+    rayHit.ray.tnear = 1e-4f;
+    rayHit.ray.time = 0.0f;
+#endif
   }
 
   struct vertex_f3_t {

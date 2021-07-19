@@ -24,6 +24,7 @@ using rtcNumericType = float;
 
 namespace rayInternal {
 constexpr double PI = 3.14159265358979323846;
+constexpr double mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
 /* ------------- Vector operation functions ------------- */
 template <typename NumericType>
@@ -108,6 +109,12 @@ rayTriple<NumericType> Scale(const NumericType pF, rayTriple<NumericType> &pT) {
   pT[1] *= pF;
   pT[2] *= pF;
   return pT;
+}
+
+template <typename NumericType>
+rayTriple<NumericType> Scale(const NumericType pF,
+                             const rayTriple<NumericType> &pT) {
+  return {pF * pT[0], pF * pT[1], pF * pT[2]};
 }
 
 template <typename NumericType, size_t D>
