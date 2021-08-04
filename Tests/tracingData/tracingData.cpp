@@ -31,7 +31,7 @@ int main() {
   rayTracingData<NumericType> movedData = std::move(defaultData);
 
   RAYTEST_ASSERT(defaultData.getScalarData().data() == nullptr);
-  RAYTEST_ASSERT(defaultData.getVectorData(0).data() == nullptr);
+  RAYTEST_ASSERT(defaultData.getVectorData().data() == nullptr);
 
   return 0;
 }
