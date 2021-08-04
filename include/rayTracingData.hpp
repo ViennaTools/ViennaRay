@@ -33,7 +33,7 @@ public:
         scalarDataMerge(otherData.scalarDataMerge),
         vectorDataMerge(otherData.vectorDataMerge) {}
 
-  rayTracingData(const rayTracingData &&otherData)
+  rayTracingData(rayTracingData &&otherData)
       : scalarData(std::move(otherData.scalarData)),
         vectorData(std::move(otherData.vectorData)),
         scalarDataMerge(std::move(otherData.scalarDataMerge)),
@@ -48,7 +48,7 @@ public:
     return *this;
   }
 
-  rayTracingData &operator=(const rayTracingData &&otherData)
+  rayTracingData &operator=(rayTracingData &&otherData)
   {
     scalarData = std::move(otherData.scalarData);
     vectorData = std::move(otherData.vectorData);
@@ -107,6 +107,7 @@ public:
     if (num >= vectorData.size())
       rayMessage::getInstance().addError("Setting vector data in rayTracingData out of range.").print();
     vectorData[num].resize(size, value);
+    vectorDataLabels[num] = label;
   }
 
   void setVectorData(int num, NumericType value, std::string label = "vectorData")
@@ -114,6 +115,7 @@ public:
     if (num >= vectorData.size())
       rayMessage::getInstance().addError("Setting vector data in rayTracingData out of range.").print();
     vectorData[num].fill(vectorData[num].begin(), vectorData[num].end(), value);
+    vectorDataLabels[num] = label;
   }
 
   void resizeAllVectorData(size_t size, NumericType val = 0)
@@ -151,6 +153,12 @@ public:
 
   const vectorDataType &getVectorData(int i) const { return vectorData[i]; }
 
+  vectorDataType &getVectorData(std::string label)
+  {
+    int idx = getVectorDataIndex(label);
+    return vectorData[idx];
+  }
+
   std::vector<vectorDataType> &getVectorData() { return vectorData; }
 
   const std::vector<vectorDataType> &getVectorData() const { return vectorData; }
@@ -158,6 +166,12 @@ public:
   scalarDataType &getScalarData(int i) { return scalarData[i]; }
 
   const scalarDataType &getScalarData(int i) const { return scalarData[i]; }
+
+  scalarDataType &getScalarData(std::string label)
+  {
+    int idx = getScalarDataIndex(label);
+    return scalarData[idx];
+  }
 
   std::vector<scalarDataType> &getScalarData() { return scalarData; }
 
@@ -175,6 +189,32 @@ public:
     if (i >= scalarDataLabels.size())
       rayMessage::getInstance().addError("Getting scalar data label in rayTracingData out of range.").print();
     return scalarDataLabels[i];
+  }
+
+  int getVectorDataIndex(std::string label)
+  {
+    for (int i = 0; i < vectorDataLabels.size(); ++i)
+    {
+      if (vectorDataLabels[i] == label)
+      {
+        return i;
+      }
+    }
+    rayMessage::getInstance().addError("Can not find vector data label in rayTracingData.").print();
+    return -1;
+  }
+
+  int getScalarDataIndex(std::string label)
+  {
+    for (int i = 0; i < scalarDataLabels.size(); ++i)
+    {
+      if (scalarDataLabels[i] == label)
+      {
+        return i;
+      }
+    }
+    rayMessage::getInstance().addError("Can not find scalar data label in rayTracingData.").print();
+    return -1;
   }
 
   const rayTracingDataMergeEnum getVectorMergeType(int num) const
