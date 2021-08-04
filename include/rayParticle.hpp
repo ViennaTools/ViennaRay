@@ -52,7 +52,7 @@ public:
                                 const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) = 0;
 
-  /// Set the number of required data vectors for this particle to 
+  /// Set the number of required data vectors for this particle to
   /// collect data.
   virtual int getRequiredLocalDataSize() const = 0;
 
