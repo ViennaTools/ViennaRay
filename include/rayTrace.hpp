@@ -54,8 +54,15 @@ public:
         boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
         mGeometry.getNumPoints());
 
-    mLocalData.setNumberOfVectorData(mParticle->getRequiredLocalDataSize());
-    mLocalData.resizeAllVectorData(mGeometry.getNumPoints());
+    auto numberOfLocalData = mParticle->getRequiredLocalDataSize();
+    if (numberOfLocalData) {
+      mLocalData.setNumberOfVectorData(numberOfLocalData);
+      auto numPoints = mGeometry.getNumPoints();
+      auto localDataLabes = mParticle->getLocalDataLabels();
+      for (int i = 0; i < numberOfLocalData; ++i) {
+        mLocalData.setVectorData(i, numPoints, 0., localDataLabes[i]);
+      }
+    }
 
     auto tracer = rayTraceKernel<NumericType, D>(
         mDevice, mGeometry, boundary, raySource, mParticle,
