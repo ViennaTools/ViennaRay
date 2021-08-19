@@ -27,18 +27,24 @@ public:
 
   rayTracingData(const rayTracingData &otherData)
       : scalarData(otherData.scalarData), vectorData(otherData.vectorData),
+        scalarDataLabels(otherData.scalarDataLabels),
+        vectorDataLabels(otherData.vectorDataLabels),
         scalarDataMerge(otherData.scalarDataMerge),
         vectorDataMerge(otherData.vectorDataMerge) {}
 
   rayTracingData(rayTracingData &&otherData)
       : scalarData(std::move(otherData.scalarData)),
         vectorData(std::move(otherData.vectorData)),
+        scalarDataLabels(std::move(otherData.scalarDataLabels)),
+        vectorDataLabels(std::move(otherData.vectorDataLabels)),
         scalarDataMerge(std::move(otherData.scalarDataMerge)),
         vectorDataMerge(std::move(otherData.vectorDataMerge)) {}
 
   rayTracingData &operator=(const rayTracingData &otherData) {
     scalarData = otherData.scalarData;
     vectorData = otherData.vectorData;
+    scalarDataLabels = otherData.scalarDataLabels;
+    vectorDataLabels = otherData.vectorDataLabels;
     scalarDataMerge = otherData.scalarDataMerge;
     vectorDataMerge = otherData.vectorDataMerge;
     return *this;
@@ -47,6 +53,8 @@ public:
   rayTracingData &operator=(rayTracingData &&otherData) {
     scalarData = std::move(otherData.scalarData);
     vectorData = std::move(otherData.vectorData);
+    scalarDataLabels = std::move(otherData.scalarDataLabels);
+    vectorDataLabels = std::move(otherData.vectorDataLabels);
     scalarDataMerge = std::move(otherData.scalarDataMerge);
     vectorDataMerge = std::move(otherData.vectorDataMerge);
     return *this;
