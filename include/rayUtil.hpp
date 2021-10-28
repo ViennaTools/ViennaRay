@@ -435,9 +435,9 @@ template <typename TimeUnit> const static uint64_t timeStampNow() {
 
 /* ------------- Debug convenience functions ------------- */
 template <typename NumericType>
-void printTriple(const rayTriple<NumericType> &vec) {
+void printTriple(const rayTriple<NumericType> &vec, bool endl=true) {
   std::cout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")"
-            << std::endl;
+            << (endl ? "\n" : "");
 }
 
 template <typename NumericType>

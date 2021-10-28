@@ -402,13 +402,19 @@ private:
     for (long idx = 0; idx < numOfPrimitives; ++idx) {
       auto const &disc = mGeometry.getPrimRef(idx);
       areas[idx] = disc[3] * disc[3] * (NumericType)rayInternal::PI;
-      if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
-          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
+      if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < disc[3] + eps ||
+          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < disc[3] + eps) {
+        auto coords = rayTriple<NumericType>{disc[0], disc[1], disc[2]};
+        std::cout << "Disk " << idx << " near boundary 1 ";
+        rayInternal::printTriple(coords);
         areas[idx] /= 2;
       }
 
-      if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) < eps ||
-          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < eps) {
+      if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) < disc[3] + eps ||
+          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < disc[3] + eps) {
+        auto coords = rayTriple<NumericType>{disc[0], disc[1], disc[2]};
+        std::cout << "Disk " << idx << " near boundary 2 ";
+        rayInternal::printTriple(coords);
         areas[idx] /= 2;
       }
     }
