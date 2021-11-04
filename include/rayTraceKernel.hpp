@@ -63,6 +63,7 @@ public:
 
     // hit counters
     assert(hitCounter != nullptr && "Hit counter is nullptr");
+    hitCounter->clear();
     hitCounter->resize(mGeometry.getNumPoints(), calcFlux);
     std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
     if (calcFlux) {
@@ -392,8 +393,8 @@ private:
   }
 
   std::vector<NumericType> computeDiscAreas() {
-    constexpr double eps = 1e-4;
-    const auto bdBox = mGeometry.getBoundingBox();
+    constexpr double eps = 1e-3;
+    auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
     const auto boundaryDirs = mBoundary.getDirs();
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
@@ -407,11 +408,16 @@ private:
         areas[idx] /= 2;
       }
 
-      if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) < eps ||
-          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < eps) {
-        areas[idx] /= 2;
+      if constexpr (D == 3) {
+        if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
+                eps ||
+            std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
+                eps) {
+          areas[idx] /= 2;
+        }
       }
     }
+
     return areas;
   }
 

@@ -8,11 +8,12 @@
 #include <rayUtil.hpp>
 
 int main() {
+  omp_set_num_threads(1);
   constexpr int D = 3;
   using NumericType = float;
   using ParticleType = rayTestParticle<NumericType>;
-  NumericType extent = 10;
-  NumericType gridDelta = 0.5;
+  NumericType extent = 2;
+  NumericType gridDelta = 1.;
   NumericType eps = 1e-6;
   static constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
@@ -33,6 +34,7 @@ int main() {
   auto boundingBox = geometry.getBoundingBox();
   rayInternal::adjustBoundingBox<NumericType, D>(
       boundingBox, rayTraceDirection::POS_Z, discRadius);
+  rayInternal::printBoundingBox(boundingBox);
   auto traceSettings = rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
 
   rayTraceBoundary boundaryConds[D] = {};
