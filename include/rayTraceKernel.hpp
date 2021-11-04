@@ -393,7 +393,7 @@ private:
   }
 
   std::vector<NumericType> computeDiscAreas() {
-    constexpr double eps = 1e-4;
+    constexpr double eps = 1e-3;
     auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
     const auto boundaryDirs = mBoundary.getDirs();
