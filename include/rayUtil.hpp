@@ -435,7 +435,7 @@ template <typename TimeUnit> const static uint64_t timeStampNow() {
 
 /* ------------- Debug convenience functions ------------- */
 template <typename NumericType>
-void printTriple(const rayTriple<NumericType> &vec, bool endl=true) {
+void printTriple(const rayTriple<NumericType> &vec, bool endl = true) {
   std::cout << "(" << vec[0] << ", " << vec[1] << ", " << vec[2] << ")"
             << (endl ? "\n" : "");
 }
@@ -446,7 +446,7 @@ void printPair(const rayPair<NumericType> &vec) {
 }
 
 template <typename NumericType>
-void printBoundingBox(rayPair<rayTriple<NumericType>> &bdBox) {
+void printBoundingBox(const rayPair<rayTriple<NumericType>> &bdBox) {
   std::cout << "Bounding box min coords: ";
   printTriple(bdBox[0]);
   std::cout << "Bounding box max coords: ";

@@ -110,6 +110,13 @@ public:
     }
   }
 
+  void clear() {
+    mDiscAreas.clear();
+    mCnts.clear();
+    mS1s.clear();
+    mS2s.clear();
+  }
+
   std::vector<NumericType> getValues() const { return mS1s; }
 
   std::vector<size_t> getCounts() const { return mCnts; }

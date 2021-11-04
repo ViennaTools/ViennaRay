@@ -63,6 +63,7 @@ public:
 
     // hit counters
     assert(hitCounter != nullptr && "Hit counter is nullptr");
+    hitCounter->clear();
     hitCounter->resize(mGeometry.getNumPoints(), calcFlux);
     std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
     if (calcFlux) {
@@ -393,7 +394,7 @@ private:
 
   std::vector<NumericType> computeDiscAreas() {
     constexpr double eps = 1e-4;
-    const auto bdBox = mGeometry.getBoundingBox();
+    auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
     const auto boundaryDirs = mBoundary.getDirs();
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
@@ -402,22 +403,21 @@ private:
     for (long idx = 0; idx < numOfPrimitives; ++idx) {
       auto const &disc = mGeometry.getPrimRef(idx);
       areas[idx] = disc[3] * disc[3] * (NumericType)rayInternal::PI;
-      if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < disc[3] + eps ||
-          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < disc[3] + eps) {
-        auto coords = rayTriple<NumericType>{disc[0], disc[1], disc[2]};
-        std::cout << "Disk " << idx << " near boundary 1 ";
-        rayInternal::printTriple(coords);
+      if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
+          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
         areas[idx] /= 2;
       }
 
-      if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) < disc[3] + eps ||
-          std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) < disc[3] + eps) {
-        auto coords = rayTriple<NumericType>{disc[0], disc[1], disc[2]};
-        std::cout << "Disk " << idx << " near boundary 2 ";
-        rayInternal::printTriple(coords);
-        areas[idx] /= 2;
+      if constexpr (D == 3) {
+        if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
+                eps ||
+            std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
+                eps) {
+          areas[idx] /= 2;
+        }
       }
     }
+
     return areas;
   }
 
