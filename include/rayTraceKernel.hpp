@@ -201,22 +201,24 @@ public:
           const auto &primID = rayHit.hit.primID;
           const auto materialID = mGeometry.getMaterialId(primID);
 
-          particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
-                                     materialID, myLocalData, globalData,
-                                     RngState5);
-
           // Check for additional intersections
           std::vector<unsigned int> intIds;
           for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
-            const auto matID = mGeometry.getMaterialId(id);
-
             if (checkLocalIntersection(ray, id)) {
-              const auto normal = mGeometry.getPrimNormal(id);
-              particle->surfaceCollision(rayWeight, rayDir, normal, id, matID,
-                                         myLocalData, globalData, RngState5);
-              if (calcFlux)
-                intIds.push_back(id);
+              intIds.push_back(id);
             }
+          }
+          const size_t numDiscsHit = intIds.size() + 1;
+
+          particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
+                                     materialID, numDiscsHit, myLocalData, globalData,
+                                     RngState5);
+
+          for (const auto &id : intIds) {
+            const auto matID = mGeometry.getMaterialId(id);
+            const auto normal = mGeometry.getPrimNormal(id);
+            particle->surfaceCollision(rayWeight, rayDir, normal, id, matID, numDiscsHit,
+                                        myLocalData, globalData, RngState5);
           }
 
           const auto stickingnDirection =
