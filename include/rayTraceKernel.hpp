@@ -202,23 +202,49 @@ public:
           const auto materialID = mGeometry.getMaterialId(primID);
 
           // Check for additional intersections
-          std::vector<unsigned int> intIds;
+          std::vector<unsigned int> additionalDiskIds;
+          std::vector<rtcNumericType>
+              impactDistances; // distances between point of impact and disk
+                               // origins of hit disks
+          {                    // distance on first disk hit
+            const auto &disk = mGeometry.getPrimRef(primID);
+            const auto &diskOrigin =
+                *reinterpret_cast<rayTriple<rtcNumericType> const *>(&disk);
+            impactDistances.push_back(
+                rayInternal::Distance({xx, yy, zz}, diskOrigin) +
+                1e-6f); // add eps to avoid division by 0
+          }
           for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
-            if (checkLocalIntersection(ray, id)) {
-              intIds.push_back(id);
+            rtcNumericType distance;
+            if (checkLocalIntersection(ray, id, distance)) {
+              impactDistances.push_back(distance + 1e-6f);
+              additionalDiskIds.push_back(id);
             }
           }
-          const size_t numDiscsHit = intIds.size() + 1;
+          rtcNumericType invDistanceWeightSum = 0;
+          const size_t numDiscsHit = additionalDiskIds.size() + 1;
+          assert(numDiscsHit == impactDistances.size() &&
+                 "Unequal number of hit disks");
 
-          particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
-                                     materialID, numDiscsHit, myLocalData, globalData,
-                                     RngState5);
+          for (const auto &d : impactDistances)
+            invDistanceWeightSum += 1 / d;
 
-          for (const auto &id : intIds) {
-            const auto matID = mGeometry.getMaterialId(id);
-            const auto normal = mGeometry.getPrimNormal(id);
-            particle->surfaceCollision(rayWeight, rayDir, normal, id, matID, numDiscsHit,
-                                        myLocalData, globalData, RngState5);
+          particle->surfaceCollision(
+              rayWeight / impactDistances[0] / invDistanceWeightSum, rayDir,
+              geomNormal, primID, materialID, numDiscsHit, myLocalData,
+              globalData, RngState5);
+
+          for (size_t additionalDisk = 0; additionalDisk < numDiscsHit - 1;
+               ++additionalDisk) {
+            const auto matID =
+                mGeometry.getMaterialId(additionalDiskIds[additionalDisk]);
+            const auto normal =
+                mGeometry.getPrimNormal(additionalDiskIds[additionalDisk]);
+            particle->surfaceCollision(
+                rayWeight / impactDistances[additionalDisk + 1] /
+                    invDistanceWeightSum,
+                rayDir, normal, additionalDiskIds[additionalDisk], matID,
+                numDiscsHit, myLocalData, globalData, RngState5);
           }
 
           const auto stickingnDirection =
@@ -226,7 +252,7 @@ public:
                                           materialID, globalData, RngState5);
           const auto valueToDrop = rayWeight * stickingnDirection.first;
           if (calcFlux) {
-            for (const auto &id : intIds) {
+            for (const auto &id : additionalDiskIds) {
               myHitCounter.use(id, valueToDrop);
             }
             myHitCounter.use(primID, valueToDrop);
@@ -457,7 +483,8 @@ private:
     progressCount += 1;
   }
 
-  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID) {
+  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
+                              rtcNumericType &impactDistance) {
     auto const &rayOrigin =
         *reinterpret_cast<rayTriple<rtcNumericType> const *>(&ray.org_x);
     auto const &rayDirection =
@@ -499,6 +526,7 @@ private:
     auto distance = rayInternal::Norm(discOrigin2HitPoint);
     auto const &radius = disc[3];
     if (radius > distance) {
+      impactDistance = distance;
       return true;
     }
     return false;
