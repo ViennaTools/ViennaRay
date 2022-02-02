@@ -52,6 +52,7 @@ public:
 
     size_t geohitc = 0;
     size_t nongeohitc = 0;
+    size_t totaltraces = 0;
     const bool calcFlux = mCalcFlux;
 
     // thread local data storage
@@ -76,7 +77,7 @@ public:
 
 #pragma omp parallel                 \
     reduction(+                      \
-              : geohitc, nongeohitc) \
+              : geohitc, nongeohitc, totaltraces) \
         shared(threadLocalData, threadLocalHitCounter)
     {
       rtcJoinCommitScene(rtcScene);
@@ -147,10 +148,11 @@ public:
 
           // Run the intersection
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
+          ++totaltraces;
 
           /* -------- No hit -------- */
           if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
-            nongeohitc += 1;
+            ++nongeohitc;
             reflect = false;
             break;
           }
@@ -197,7 +199,7 @@ public:
 
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
-          geohitc += 1;
+          ++geohitc;
           const auto &primID = rayHit.hit.primID;
           const auto materialID = mGeometry.getMaterialId(primID);
 
@@ -288,11 +290,14 @@ public:
           rayHit.ray.time = 0.0f;
 #endif
         } while (reflect);
-      }
+      } // end ray tracing for loop
 
       auto discAreas = computeDiscAreas();
       myHitCounter.setDiscAreas(discAreas);
-    }
+    } // end parallel section
+
+    auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
+
     // merge hit counters
     for (int i = 0; i < numThreads; ++i) {
       hitCounter->merge(threadLocalHitCounter[i], calcFlux);
@@ -360,18 +365,13 @@ public:
       }
     }
 
-    if constexpr (PRINT_RESULT) {
-      std::cout << "==== Ray tracing result ====\n"
-                << "Elapsed time: "
-                << (rayInternal::timeStampNow<std::chrono::milliseconds>() -
-                    time) *
-                       1e-3
-                << " s\n"
-                << "Number of rays: " << mNumRays << std::endl
-                << "Surface hits: " << geohitc << std::endl
-                << "Non-geometry hits: " << nongeohitc << std::endl
-                << "Total number of disc hits " << hitCounter->getTotalCounts()
-                << std::endl;
+    if (mTraceInfo != nullptr) {
+      mTraceInfo->numRays = mNumRays;
+      mTraceInfo->totalRaysTraced = totaltraces;
+      mTraceInfo->totalDiskHits = hitCounter->getTotalCounts();
+      mTraceInfo->nonGeometryHits = nongeohitc;
+      mTraceInfo->geometryHits = geohitc;
+      mTraceInfo->time = (endTime - time) * 1e-3;
     }
 
     rtcReleaseGeometry(rtcGeometry);
@@ -391,6 +391,8 @@ public:
   void setHitCounter(rayHitCounter<NumericType> *phitCounter) {
     hitCounter = phitCounter;
   }
+
+  void setRayTraceInfo(rayTraceInfo *pTraceInfo) { mTraceInfo = pTraceInfo; }
 
 private:
   bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
@@ -543,6 +545,7 @@ private:
   rayTracingData<NumericType> *localData = nullptr;
   const rayTracingData<NumericType> *globalData = nullptr;
   rayHitCounter<NumericType> *hitCounter = nullptr;
+  rayTraceInfo *mTraceInfo = nullptr;
 };
 
 #endif // RAY_TRACEKERNEL_HPP

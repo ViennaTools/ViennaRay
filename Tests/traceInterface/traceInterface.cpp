@@ -27,9 +27,12 @@ int main() {
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(10);
-  rayTracer.setUseRandomSeeds(true);
+  rayTracer.setUseRandomSeeds(false);
   rayTracer.setMaterialIds(matIds);
   rayTracer.apply();
+
+  auto info = rayTracer.getRayTraceInfo();
+  RAYTEST_ASSERT(info.numRays == 4410);
 
   return 0;
 }

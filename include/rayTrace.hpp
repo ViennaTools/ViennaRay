@@ -29,6 +29,7 @@ private:
   rayHitCounter<NumericType> mHitCounter;
   rayTracingData<NumericType> mLocalData;
   rayTracingData<NumericType> *mGlobalData = nullptr;
+  rayTraceInfo mRTInfo;
 
 public:
   rayTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
@@ -72,6 +73,7 @@ public:
     tracer.calcFlux(mCalcFlux);
     tracer.setTracingData(&mLocalData, mGlobalData);
     tracer.setHitCounter(&mHitCounter);
+    tracer.setRayTraceInfo(&mRTInfo);
     tracer.apply();
 
     boundary.releaseGeometry();
@@ -188,6 +190,8 @@ public:
   rayTracingData<NumericType> *getGlobalData() { return mGlobalData; }
 
   void setGlobalData(rayTracingData<NumericType> &data) { mGlobalData = &data; }
+
+  rayTraceInfo getRayTraceInfo() { return mRTInfo; }
 
 private:
   void extractFlux() {
