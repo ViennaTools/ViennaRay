@@ -52,6 +52,11 @@ add_subdirectory(external/upstream)
 
 set(VIENNARAY_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
 
+option(VIENNARAY_USE_WDIST "Use weighted distribution of ray weights." ON)
+if(VIENNARAY_USE_WDIST)
+  add_compile_definitions(VIENNARAY_USE_WDIST)
+endif(VIENNARAY_USE_WDIST)
+
 
 #################################################
 # BUILD EXAMPLES

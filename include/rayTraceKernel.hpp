@@ -200,64 +200,71 @@ public:
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           ++geohitc;
-          const auto &primID = rayHit.hit.primID;
-          const auto materialID = mGeometry.getMaterialId(primID);
+          std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
-          // Check for additional intersections
-          std::vector<unsigned int> additionalDiskIds;
+#ifdef VIENNARAY_USE_WDIST
           std::vector<rtcNumericType>
               impactDistances; // distances between point of impact and disk
                                // origins of hit disks
           {                    // distance on first disk hit
-            const auto &disk = mGeometry.getPrimRef(primID);
+            const auto &disk = mGeometry.getPrimRef(rayHit.hit.primID);
             const auto &diskOrigin =
                 *reinterpret_cast<rayTriple<rtcNumericType> const *>(&disk);
             impactDistances.push_back(
                 rayInternal::Distance({xx, yy, zz}, diskOrigin) +
                 1e-6f); // add eps to avoid division by 0
           }
-          for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
+#endif
+          // check for additional intersections
+          for (const auto &id :
+               mGeometry.getNeighborIndicies(rayHit.hit.primID)) {
             rtcNumericType distance;
             if (checkLocalIntersection(ray, id, distance)) {
+              hitDiskIds.push_back(id);
+#ifdef VIENNARAY_USE_WDIST
               impactDistances.push_back(distance + 1e-6f);
-              additionalDiskIds.push_back(id);
+#endif
             }
           }
-          rtcNumericType invDistanceWeightSum = 0;
-          const size_t numDiscsHit = additionalDiskIds.size() + 1;
-          assert(numDiscsHit == impactDistances.size() &&
-                 "Unequal number of hit disks");
+          const size_t numDisksHit = hitDiskIds.size();
 
+#ifdef VIENNARAY_USE_WDIST
+          rtcNumericType invDistanceWeightSum = 0;
           for (const auto &d : impactDistances)
             invDistanceWeightSum += 1 / d;
-
-          particle->surfaceCollision(
-              rayWeight / impactDistances[0] / invDistanceWeightSum, rayDir,
-              geomNormal, primID, materialID, numDiscsHit, myLocalData,
-              globalData, RngState5);
-
-          for (size_t additionalDisk = 0; additionalDisk < numDiscsHit - 1;
-               ++additionalDisk) {
-            const auto matID =
-                mGeometry.getMaterialId(additionalDiskIds[additionalDisk]);
-            const auto normal =
-                mGeometry.getPrimNormal(additionalDiskIds[additionalDisk]);
-            particle->surfaceCollision(
-                rayWeight / impactDistances[additionalDisk + 1] /
-                    invDistanceWeightSum,
-                rayDir, normal, additionalDiskIds[additionalDisk], matID,
-                numDiscsHit, myLocalData, globalData, RngState5);
+#endif
+          // for each disk hit
+          for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
+            const auto matID = mGeometry.getMaterialId(hitDiskIds[diskId]);
+            const auto normal = mGeometry.getPrimNormal(hitDiskIds[diskId]);
+#ifdef VIENNARAY_USE_WDIST
+            auto distRayWeight =
+                rayWeight / impactDistances[diskId] / invDistanceWeightSum;
+#else
+            auto distRayWeight = rayWeight / numDisksHit;
+#endif
+            particle->surfaceCollision(distRayWeight, rayDir, normal,
+                                       hitDiskIds[diskId], matID, myLocalData,
+                                       globalData, RngState5);
           }
 
-          const auto stickingnDirection =
-              particle->surfaceReflection(rayWeight, rayDir, geomNormal, primID,
-                                          materialID, globalData, RngState5);
-          const auto valueToDrop = rayWeight * stickingnDirection.first;
+          // get sticking probability and reflection direction
+          const auto stickingnDirection = particle->surfaceReflection(
+              rayWeight, rayDir, geomNormal, rayHit.hit.primID,
+              mGeometry.getMaterialId(rayHit.hit.primID), globalData,
+              RngState5);
+          auto valueToDrop = rayWeight * stickingnDirection.first;
+
           if (calcFlux) {
-            for (const auto &id : additionalDiskIds) {
-              myHitCounter.use(id, valueToDrop);
+            for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
+#ifdef VIENNARAY_USE_WDIST
+              auto distRayWeight =
+                  valueToDrop / impactDistances[diskId] / invDistanceWeightSum;
+#else
+              auto distRayWeight = valueToDrop / numDisksHit;
+#endif
+              myHitCounter.use(hitDiskIds[diskId], distRayWeight);
             }
-            myHitCounter.use(primID, valueToDrop);
           }
 
           // Update ray weight
@@ -270,7 +277,7 @@ public:
             break;
           }
 
-          // Update ray
+          // Update ray direction and origin
 #ifdef ARCH_X86
           reinterpret_cast<__m128 &>(rayHit.ray) =
               _mm_set_ps(1e-4f, zz, yy, xx);
