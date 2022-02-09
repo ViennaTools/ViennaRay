@@ -48,7 +48,6 @@ public:
                                 const rayTriple<NumericType> &rayDir,
                                 const rayTriple<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
-                                const size_t numDiscsHit,
                                 rayTracingData<NumericType> &localData,
                                 const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) = 0;
@@ -88,7 +87,6 @@ public:
   surfaceCollision(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
                    const rayTriple<NumericType> &geomNormal,
                    const unsigned int primID, const int materialId,
-                   const size_t numDiscsHit,
                    rayTracingData<NumericType> &localData,
                    const rayTracingData<NumericType> *globalData,
                    rayRNG &Rng) override { // collect data for this hit
@@ -127,7 +125,6 @@ public:
                         const rayTriple<NumericType> &rayDir,
                         const rayTriple<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
-                        const size_t numDiscsHit,
                         rayTracingData<NumericType> &localData,
                         const rayTracingData<NumericType> *globalData,
                         rayRNG &Rng) override final {}
