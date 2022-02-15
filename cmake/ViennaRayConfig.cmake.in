@@ -24,6 +24,10 @@ else(ViennaRay_COMMON_TARGET)
   SET(VIENNARAY_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@@CMAKE_INSTALL_INCLUDEDIR@")
 endif()
 
+if(@VIENNARAY_USE_WDIST@)
+  add_compile_definitions(VIENNARAY_USE_WDIST)
+endif(@VIENNARAY_USE_WDIST@)
+
 set(embree_DIR @embree_DIR@)
 find_package(embree 3.0 PATHS ${embree_DIR} REQUIRED)
 list(APPEND VIENNARAY_LIBRARIES embree)

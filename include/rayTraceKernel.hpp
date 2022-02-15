@@ -52,6 +52,7 @@ public:
 
     size_t geohitc = 0;
     size_t nongeohitc = 0;
+    size_t totaltraces = 0;
     const bool calcFlux = mCalcFlux;
 
     // thread local data storage
@@ -76,7 +77,7 @@ public:
 
 #pragma omp parallel                 \
     reduction(+                      \
-              : geohitc, nongeohitc) \
+              : geohitc, nongeohitc, totaltraces) \
         shared(threadLocalData, threadLocalHitCounter)
     {
       rtcJoinCommitScene(rtcScene);
@@ -147,10 +148,11 @@ public:
 
           // Run the intersection
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
+          ++totaltraces;
 
           /* -------- No hit -------- */
           if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
-            nongeohitc += 1;
+            ++nongeohitc;
             reflect = false;
             break;
           }
@@ -197,37 +199,72 @@ public:
 
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
-          geohitc += 1;
-          const auto &primID = rayHit.hit.primID;
-          const auto materialID = mGeometry.getMaterialId(primID);
+          ++geohitc;
+          std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
-          particle->surfaceCollision(rayWeight, rayDir, geomNormal, primID,
-                                     materialID, myLocalData, globalData,
-                                     RngState5);
-
-          // Check for additional intersections
-          std::vector<unsigned int> intIds;
-          for (const auto &id : mGeometry.getNeighborIndicies(primID)) {
-            const auto matID = mGeometry.getMaterialId(id);
-
-            if (checkLocalIntersection(ray, id)) {
-              const auto normal = mGeometry.getPrimNormal(id);
-              particle->surfaceCollision(rayWeight, rayDir, normal, id, matID,
-                                         myLocalData, globalData, RngState5);
-              if (calcFlux)
-                intIds.push_back(id);
+#ifdef VIENNARAY_USE_WDIST
+          std::vector<rtcNumericType>
+              impactDistances; // distances between point of impact and disk
+                               // origins of hit disks
+          {                    // distance on first disk hit
+            const auto &disk = mGeometry.getPrimRef(rayHit.hit.primID);
+            const auto &diskOrigin =
+                *reinterpret_cast<rayTriple<rtcNumericType> const *>(&disk);
+            impactDistances.push_back(
+                rayInternal::Distance({xx, yy, zz}, diskOrigin) +
+                1e-6f); // add eps to avoid division by 0
+          }
+#endif
+          // check for additional intersections
+          for (const auto &id :
+               mGeometry.getNeighborIndicies(rayHit.hit.primID)) {
+            rtcNumericType distance;
+            if (checkLocalIntersection(ray, id, distance)) {
+              hitDiskIds.push_back(id);
+#ifdef VIENNARAY_USE_WDIST
+              impactDistances.push_back(distance + 1e-6f);
+#endif
             }
           }
+          const size_t numDisksHit = hitDiskIds.size();
 
-          const auto stickingnDirection =
-              particle->surfaceReflection(rayWeight, rayDir, geomNormal, primID,
-                                          materialID, globalData, RngState5);
-          const auto valueToDrop = rayWeight * stickingnDirection.first;
+#ifdef VIENNARAY_USE_WDIST
+          rtcNumericType invDistanceWeightSum = 0;
+          for (const auto &d : impactDistances)
+            invDistanceWeightSum += 1 / d;
+#endif
+          // for each disk hit
+          for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
+            const auto matID = mGeometry.getMaterialId(hitDiskIds[diskId]);
+            const auto normal = mGeometry.getPrimNormal(hitDiskIds[diskId]);
+#ifdef VIENNARAY_USE_WDIST
+            auto distRayWeight =
+                rayWeight / impactDistances[diskId] / invDistanceWeightSum;
+#else
+            auto distRayWeight = rayWeight / numDisksHit;
+#endif
+            particle->surfaceCollision(distRayWeight, rayDir, normal,
+                                       hitDiskIds[diskId], matID, myLocalData,
+                                       globalData, RngState5);
+          }
+
+          // get sticking probability and reflection direction
+          const auto stickingnDirection = particle->surfaceReflection(
+              rayWeight, rayDir, geomNormal, rayHit.hit.primID,
+              mGeometry.getMaterialId(rayHit.hit.primID), globalData,
+              RngState5);
+          auto valueToDrop = rayWeight * stickingnDirection.first;
+
           if (calcFlux) {
-            for (const auto &id : intIds) {
-              myHitCounter.use(id, valueToDrop);
+            for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
+#ifdef VIENNARAY_USE_WDIST
+              auto distRayWeight =
+                  valueToDrop / impactDistances[diskId] / invDistanceWeightSum;
+#else
+              auto distRayWeight = valueToDrop / numDisksHit;
+#endif
+              myHitCounter.use(hitDiskIds[diskId], distRayWeight);
             }
-            myHitCounter.use(primID, valueToDrop);
           }
 
           // Update ray weight
@@ -240,7 +277,7 @@ public:
             break;
           }
 
-          // Update ray
+          // Update ray direction and origin
 #ifdef ARCH_X86
           reinterpret_cast<__m128 &>(rayHit.ray) =
               _mm_set_ps(1e-4f, zz, yy, xx);
@@ -260,11 +297,14 @@ public:
           rayHit.ray.time = 0.0f;
 #endif
         } while (reflect);
-      }
+      } // end ray tracing for loop
 
       auto discAreas = computeDiscAreas();
       myHitCounter.setDiscAreas(discAreas);
-    }
+    } // end parallel section
+
+    auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
+
     // merge hit counters
     for (int i = 0; i < numThreads; ++i) {
       hitCounter->merge(threadLocalHitCounter[i], calcFlux);
@@ -332,18 +372,13 @@ public:
       }
     }
 
-    if constexpr (PRINT_RESULT) {
-      std::cout << "==== Ray tracing result ====\n"
-                << "Elapsed time: "
-                << (rayInternal::timeStampNow<std::chrono::milliseconds>() -
-                    time) *
-                       1e-3
-                << " s\n"
-                << "Number of rays: " << mNumRays << std::endl
-                << "Surface hits: " << geohitc << std::endl
-                << "Non-geometry hits: " << nongeohitc << std::endl
-                << "Total number of disc hits " << hitCounter->getTotalCounts()
-                << std::endl;
+    if (mTraceInfo != nullptr) {
+      mTraceInfo->numRays = mNumRays;
+      mTraceInfo->totalRaysTraced = totaltraces;
+      mTraceInfo->totalDiskHits = hitCounter->getTotalCounts();
+      mTraceInfo->nonGeometryHits = nongeohitc;
+      mTraceInfo->geometryHits = geohitc;
+      mTraceInfo->time = (endTime - time) * 1e-3;
     }
 
     rtcReleaseGeometry(rtcGeometry);
@@ -363,6 +398,8 @@ public:
   void setHitCounter(rayHitCounter<NumericType> *phitCounter) {
     hitCounter = phitCounter;
   }
+
+  void setRayTraceInfo(rayTraceInfo *pTraceInfo) { mTraceInfo = pTraceInfo; }
 
 private:
   bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
@@ -455,7 +492,8 @@ private:
     progressCount += 1;
   }
 
-  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID) {
+  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
+                              rtcNumericType &impactDistance) {
     auto const &rayOrigin =
         *reinterpret_cast<rayTriple<rtcNumericType> const *>(&ray.org_x);
     auto const &rayDirection =
@@ -497,6 +535,7 @@ private:
     auto distance = rayInternal::Norm(discOrigin2HitPoint);
     auto const &radius = disc[3];
     if (radius > distance) {
+      impactDistance = distance;
       return true;
     }
     return false;
@@ -513,6 +552,7 @@ private:
   rayTracingData<NumericType> *localData = nullptr;
   const rayTracingData<NumericType> *globalData = nullptr;
   rayHitCounter<NumericType> *hitCounter = nullptr;
+  rayTraceInfo *mTraceInfo = nullptr;
 };
 
 #endif // RAY_TRACEKERNEL_HPP

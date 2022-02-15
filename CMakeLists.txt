@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4)
 
 project(
   "ViennaRay"
-  VERSION 0.0.1)
+  VERSION 1.1.0)
 
 add_definitions(-DVIENNARAY_VERSION=${PROJECT_VERSION})
 
@@ -51,6 +51,11 @@ include(ExternalProject)
 add_subdirectory(external/upstream)
 
 set(VIENNARAY_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
+
+option(VIENNARAY_USE_WDIST "Use weighted distribution of ray weights." ON)
+if(VIENNARAY_USE_WDIST)
+  add_compile_definitions(VIENNARAY_USE_WDIST)
+endif(VIENNARAY_USE_WDIST)
 
 
 #################################################
