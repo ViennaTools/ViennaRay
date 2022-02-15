@@ -64,6 +64,7 @@ public:
         mLocalData.setVectorData(i, numPoints, 0., localDataLabes[i]);
       }
     }
+    mFlux.clear();
 
     auto tracer = rayTraceKernel<NumericType, D>(
         mDevice, mGeometry, boundary, raySource, mParticle,
@@ -77,8 +78,6 @@ public:
     tracer.apply();
 
     boundary.releaseGeometry();
-    if (mCalcFlux)
-      extractFlux();
   }
 
   /// Set the particle type used for ray tracing
@@ -169,10 +168,16 @@ public:
 
   /// Returns the total flux on each disc normalized by the disc area and
   /// averaged over the neighborhood.
-  std::vector<NumericType> getTotalFlux() const { return mFlux; }
+  std::vector<NumericType> getTotalFlux() const {
+    return mHitCounter.getValues();
+  }
 
   /// Returns the flux normalized to the maximum flux value.
-  std::vector<NumericType> getNormalizedFlux() { return normalizeFlux(); }
+  std::vector<NumericType> getNormalizedFlux(rayNormalizationType normalization,
+                                             bool averageNeighborhood = false) {
+    extractFlux(averageNeighborhood);
+    return normalizeFlux(normalization);
+  }
 
   /// Returns the total number of hits for each geometry point.
   std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
@@ -194,20 +199,23 @@ public:
   rayTraceInfo getRayTraceInfo() { return mRTInfo; }
 
 private:
-  void extractFlux() {
+  void extractFlux(bool averageNeighborhood) {
     assert(mHitCounter.getTotalCounts() > 0 && "Invalid trace result");
+    if (!mFlux.empty())
+      return;
+
     auto values = mHitCounter.getValues();
-    auto discAreas = mHitCounter.getDiscAreas();
-    mFlux.clear();
+    auto diskArea = mHitCounter.getDiscAreas();
+    const auto totalDiskArea = mDiscRadius * mDiscRadius * rayInternal::PI;
     mFlux.reserve(values.size());
-    // Account for area and average over the neighborhood
+    // Account for disk area
     for (size_t idx = 0; idx < values.size(); ++idx) {
-      auto vv = values[idx] / discAreas[idx];
-      {
-        // Average over the neighborhood
+      auto vv = values[idx] * (totalDiskArea / diskArea[idx]);
+      // Average over neighborhood
+      if (averageNeighborhood) {
         auto neighborhood = mGeometry.getNeighborIndicies(idx);
         for (auto const &nbi : neighborhood) {
-          vv += values[nbi] / discAreas[nbi];
+          vv += values[nbi] * (totalDiskArea / diskArea[nbi]);
         }
         vv /= (neighborhood.size() + 1);
       }
@@ -215,13 +223,58 @@ private:
     }
   }
 
-  std::vector<NumericType> normalizeFlux() {
+  std::vector<NumericType> normalizeFlux(rayNormalizationType norm) {
     assert(mFlux.size() > 0 && "No flux calculated");
     std::vector<NumericType> normalizedFlux(mFlux.size(), 0);
 
-    auto maxv = *std::max_element(mFlux.begin(), mFlux.end());
-    for (size_t idx = 0; idx < mFlux.size(); ++idx) {
-      normalizedFlux[idx] = mFlux[idx] / maxv;
+    switch (norm) {
+    case rayNormalizationType::MAX: {
+      auto maxv = *std::max_element(mFlux.begin(), mFlux.end());
+      for (size_t idx = 0; idx < mFlux.size(); ++idx) {
+        normalizedFlux[idx] = mFlux[idx] / maxv;
+      }
+      break;
+    }
+
+    case rayNormalizationType::SOURCE: {
+      auto boundingBox = mGeometry.getBoundingBox();
+      NumericType normFactor = 0;
+      NumericType sourceGridPoints = 0;
+      auto numTotalRays = mNumberOfRaysFixed == 0
+                              ? mFlux.size() * mNumberOfRaysPerPoint
+                              : mNumberOfRaysFixed;
+      if (mSourceDirection == rayTraceDirection::NEG_X ||
+          mSourceDirection == rayTraceDirection::POS_X) {
+        sourceGridPoints = (boundingBox[1][1] - boundingBox[0][1]) / mGridDelta;
+        if constexpr (D == 3) {
+          sourceGridPoints *=
+              (boundingBox[1][2] - boundingBox[0][2]) / mGridDelta;
+        }
+      } else if (mSourceDirection == rayTraceDirection::NEG_Y ||
+                 mSourceDirection == rayTraceDirection::POS_Y) {
+        sourceGridPoints = (boundingBox[1][0] - boundingBox[0][0]) / mGridDelta;
+        if constexpr (D == 3) {
+          sourceGridPoints *=
+              (boundingBox[1][2] - boundingBox[0][2]) / mGridDelta;
+        }
+      } else if (mSourceDirection == rayTraceDirection::NEG_Z ||
+                 mSourceDirection == rayTraceDirection::POS_Z) {
+        assert(D == 3 && "Error in flux normalization");
+        sourceGridPoints = (boundingBox[1][0] - boundingBox[0][0]) / mGridDelta;
+        sourceGridPoints *=
+            (boundingBox[1][1] - boundingBox[0][1]) / mGridDelta;
+      }
+
+      normFactor = sourceGridPoints / numTotalRays;
+      for (size_t idx = 0; idx < mFlux.size(); ++idx) {
+        normalizedFlux[idx] = mFlux[idx] * normFactor;
+      }
+
+      break;
+    }
+
+    default:
+      break;
     }
 
     return normalizedFlux;

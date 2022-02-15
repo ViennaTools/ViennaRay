@@ -22,6 +22,11 @@ template <typename NumericType> using rayQuadruple = std::array<NumericType, 4>;
 // embree uses float internally
 using rtcNumericType = float;
 
+enum struct rayNormalizationType : unsigned {
+  SOURCE = 0,
+  MAX = 1
+};
+
 struct rayTraceInfo {
   size_t numRays;
   size_t totalRaysTraced;
@@ -376,7 +381,7 @@ void writeVTK(std::string filename,
     f << 1 << std::endl;
 
   f << "CELL_DATA " << mcestimates.size() << std::endl;
-  f << "SCALARS mc-estimates float" << std::endl;
+  f << "SCALARS flux float" << std::endl;
   f << "LOOKUP_TABLE default" << std::endl;
   for (unsigned j = 0; j < mcestimates.size(); ++j) {
     f << ((std::abs(mcestimates[j]) < 1e-6) ? 0.0 : mcestimates[j])
