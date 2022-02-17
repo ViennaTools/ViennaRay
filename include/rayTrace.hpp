@@ -179,6 +179,19 @@ public:
     return normalizeFlux(normalization);
   }
 
+  void smoothFlux(std::vector<NumericType> &flux) {
+    assert(flux.size() ==  mGeometry.getNumPoints() && "Error in smoothFlux");
+    auto oldFlux = flux;
+#pragma omp parallel for
+    for(size_t idx = 0; idx < mGeometry.getNumPoints(); idx++) {
+      auto neighborhood = mGeometry.getNeighborIndicies(idx);
+      for (auto const &nbi : neighborhood) {
+        flux[idx] += oldFlux[nbi];
+      }
+      flux[idx] /= (neighborhood.size() + 1);
+    }
+  }
+
   /// Returns the total number of hits for each geometry point.
   std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
 
