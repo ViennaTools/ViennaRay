@@ -45,15 +45,15 @@ int main() {
 
   // Ray settings
   rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
-  rayTracer.setNumberOfRaysPerPoint(1000);
+  rayTracer.setNumberOfRaysPerPoint(2000);
 
   // Run the ray tracer
   rayTracer.apply();
 
   // Extract the normalized hit counts for each geometry point
-  auto mcEstimates = rayTracer.getNormalizedFlux();
+  auto normalizedFlux = rayTracer.getNormalizedFlux(rayNormalizationType::SOURCE);
   rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points,
-                                        mcEstimates);
+                                        normalizedFlux);
 
   return 0;
 }
