@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.4)
 
-project("discAreas")
+project("diskAreas")
 
 add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC "${VIENNARAY_INCLUDE_DIRS}")

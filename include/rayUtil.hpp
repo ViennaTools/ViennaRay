@@ -22,10 +22,7 @@ template <typename NumericType> using rayQuadruple = std::array<NumericType, 4>;
 // embree uses float internally
 using rtcNumericType = float;
 
-enum struct rayNormalizationType : unsigned {
-  SOURCE = 0,
-  MAX = 1
-};
+enum struct rayNormalizationType : unsigned { SOURCE = 0, MAX = 1 };
 
 struct rayTraceInfo {
   size_t numRays;
@@ -38,7 +35,7 @@ struct rayTraceInfo {
 
 namespace rayInternal {
 constexpr double PI = 3.14159265358979323846;
-constexpr double mDiscFactor = 0.5 * 1.7320508 * (1 + 1e-5);
+constexpr double DiskFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
 /* ------------- Vector operation functions ------------- */
 template <typename NumericType>

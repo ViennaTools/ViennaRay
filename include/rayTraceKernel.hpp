@@ -20,12 +20,16 @@ public:
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
                  std::unique_ptr<rayAbstractParticle<NumericType>> &pParticle,
-                 const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed)
+                 const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed,
+                 const bool pUseRandomSeed, const bool pCalcFlux,
+                 const size_t pRunNumber)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mBoundary(pRTCBoundary),
         mSource(pSource), mParticle(pParticle->clone()),
         mNumRays(pNumOfRayFixed == 0
                      ? pSource.getNumPoints() * pNumOfRayPerPoint
-                     : pNumOfRayFixed) {
+                     : pNumOfRayFixed),
+        mUseRandomSeeds(pUseRandomSeed), mRunNumber(pRunNumber),
+        mCalcFlux(pCalcFlux) {
     assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
@@ -95,8 +99,8 @@ public:
         }
       } else {
         for (size_t i = 0; i < numRngStates; ++i) {
-          seeds[i] =
-              static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 + i);
+          seeds[i] = static_cast<unsigned int>((omp_get_thread_num() + 1) * 31 +
+                                               i + mRunNumber);
         }
       }
       // It seems really important to use two separate seeds / states for
@@ -175,9 +179,9 @@ public:
           const auto geomNormal = mGeometry.getPrimNormal(rayHit.hit.primID);
           if (rayInternal::DotProduct(rayDir, geomNormal) > 0) {
             // If the dot product of the ray direction and the surface normal is
-            // greater than zero, then we hit the back face of the disc.
+            // greater than zero, then we hit the back face of the disk.
             if (hitFromBack) {
-              // if hitFromback == true, then the ray hits the back of a disc
+              // if hitFromback == true, then the ray hits the back of a disk
               // the second time. In this case we ignore the ray.
               break;
             }
@@ -299,8 +303,8 @@ public:
         } while (reflect);
       } // end ray tracing for loop
 
-      auto discAreas = computeDiscAreas();
-      myHitCounter.setDiscAreas(discAreas);
+      auto diskAreas = computeDiskAreas();
+      myHitCounter.setDiskAreas(diskAreas);
     } // end parallel section
 
     auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
@@ -385,10 +389,6 @@ public:
     rtcReleaseGeometry(rtcBoundary);
   }
 
-  void useRandomSeeds(bool use) { mUseRandomSeeds = use; }
-
-  void calcFlux(bool calc) { mCalcFlux = calc; }
-
   void setTracingData(rayTracingData<NumericType> *plocalData,
                       const rayTracingData<NumericType> *pglobalData) {
     localData = plocalData;
@@ -429,7 +429,7 @@ private:
     return true;
   }
 
-  std::vector<NumericType> computeDiscAreas() {
+  std::vector<NumericType> computeDiskAreas() {
     constexpr double eps = 1e-3;
     auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
@@ -438,17 +438,17 @@ private:
 
 #pragma omp for
     for (long idx = 0; idx < numOfPrimitives; ++idx) {
-      auto const &disc = mGeometry.getPrimRef(idx);
-      areas[idx] = disc[3] * disc[3] * (NumericType)rayInternal::PI;
-      if (std::fabs(disc[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
-          std::fabs(disc[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
+      auto const &disk = mGeometry.getPrimRef(idx);
+      areas[idx] = disk[3] * disk[3] * (NumericType)rayInternal::PI;
+      if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
+          std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
         areas[idx] /= 2;
       }
 
       if constexpr (D == 3) {
-        if (std::fabs(disc[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
+        if (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
                 eps ||
-            std::fabs(disc[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
+            std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
                 eps) {
           areas[idx] /= 2;
         }
@@ -500,25 +500,25 @@ private:
         *reinterpret_cast<rayTriple<rtcNumericType> const *>(&ray.dir_x);
 
     const auto &normal = mGeometry.getNormalRef(primID);
-    const auto &disc = mGeometry.getPrimRef(primID);
-    const auto &discOrigin =
-        *reinterpret_cast<rayTriple<rtcNumericType> const *>(&disc);
+    const auto &disk = mGeometry.getPrimRef(primID);
+    const auto &diskOrigin =
+        *reinterpret_cast<rayTriple<rtcNumericType> const *>(&disk);
 
     auto prodOfDirections = rayInternal::DotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
-      // Disc normal is pointing away from the ray direction,
+      // Disk normal is pointing away from the ray direction,
       // i.e., this might be a hit from the back or no hit at all.
       return false;
     }
 
     constexpr auto eps = 1e-6f;
     if (std::fabs(prodOfDirections) < eps) {
-      // Ray is parallel to disc surface
+      // Ray is parallel to disk surface
       return false;
     }
 
     // TODO: Memoize ddneg
-    auto ddneg = rayInternal::DotProduct(discOrigin, normal);
+    auto ddneg = rayInternal::DotProduct(diskOrigin, normal);
     auto tt =
         (ddneg - rayInternal::DotProduct(normal, rayOrigin)) / prodOfDirections;
     if (tt <= 0) {
@@ -531,9 +531,9 @@ private:
         rayDirection[0], rayDirection[1], rayDirection[2]};
     rayInternal::Scale(tt, rayDirectionC);
     auto hitpoint = rayInternal::Sum(rayOrigin, rayDirectionC);
-    auto discOrigin2HitPoint = rayInternal::Diff(hitpoint, discOrigin);
-    auto distance = rayInternal::Norm(discOrigin2HitPoint);
-    auto const &radius = disc[3];
+    auto diskOrigin2HitPoint = rayInternal::Diff(hitpoint, diskOrigin);
+    auto distance = rayInternal::Norm(diskOrigin2HitPoint);
+    auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;
       return true;
@@ -547,8 +547,9 @@ private:
   raySource<NumericType, D> &mSource;
   std::unique_ptr<rayAbstractParticle<NumericType>> const mParticle = nullptr;
   const long long mNumRays;
-  bool mUseRandomSeeds = false;
-  bool mCalcFlux = true;
+  const bool mUseRandomSeeds;
+  const size_t mRunNumber;
+  const bool mCalcFlux;
   rayTracingData<NumericType> *localData = nullptr;
   const rayTracingData<NumericType> *globalData = nullptr;
   rayHitCounter<NumericType> *hitCounter = nullptr;

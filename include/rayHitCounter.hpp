@@ -9,18 +9,18 @@ public:
 
   // elements initialized to 0.
   rayHitCounter(size_t size)
-      : mCnts(size, 0), mTotalCnts(0), mDiscAreas(size, 0), mS1s(size, 0),
+      : mCnts(size, 0), mTotalCnts(0), mDiskAreas(size, 0), mS1s(size, 0),
         mS2s(size, 0) {}
 
   // copy construct the vector members
   rayHitCounter(rayHitCounter<NumericType> const &pA)
-      : mCnts(pA.mCnts), mTotalCnts(pA.mTotalCnts), mDiscAreas(pA.mDiscAreas),
+      : mCnts(pA.mCnts), mTotalCnts(pA.mTotalCnts), mDiskAreas(pA.mDiskAreas),
         mS1s(pA.mS1s), mS2s(pA.mS2s) {}
 
   // move the vector members
   rayHitCounter(rayHitCounter<NumericType> const &&pA)
       : mCnts(std::move(pA.mCnts)), mTotalCnts(std::move(pA.mTotalCnts)),
-        mDiscAreas(std::move(pA.mDiscAreas)), mS1s(std::move(pA.mS1s)),
+        mDiskAreas(std::move(pA.mDiskAreas)), mS1s(std::move(pA.mS1s)),
         mS2s(std::move(pA.mS2s)) {}
 
   // A copy constructor which can accumulate values from two instances
@@ -35,10 +35,10 @@ public:
     }
 
     mTotalCnts = pA1.mTotalCnts + pA2.mTotalCnts;
-    for (size_t idx = 0; idx < pA1.mDiscAreas.size(); ++idx) {
-      mDiscAreas[idx] = pA1.mDiscAreas[idx] > pA2.mDiscAreas[idx]
-                            ? pA1.mDiscAreas[idx]
-                            : pA2.mDiscAreas[idx];
+    for (size_t idx = 0; idx < pA1.mDiskAreas.size(); ++idx) {
+      mDiskAreas[idx] = pA1.mDiskAreas[idx] > pA2.mDiskAreas[idx]
+                            ? pA1.mDiskAreas[idx]
+                            : pA2.mDiskAreas[idx];
     }
   }
 
@@ -49,8 +49,8 @@ public:
       mCnts.clear();
       mCnts = pOther.mCnts;
       mTotalCnts = pOther.mTotalCnts;
-      mDiscAreas.clear();
-      mDiscAreas = pOther.mDiscAreas;
+      mDiskAreas.clear();
+      mDiskAreas = pOther.mDiskAreas;
       mS1s.clear();
       mS1s = pOther.mS1s;
       mS2s.clear();
@@ -66,8 +66,8 @@ public:
       mCnts.clear();
       mCnts = std::move(pOther.mCnts);
       mTotalCnts = pOther.mTotalCnts;
-      mDiscAreas.clear();
-      mDiscAreas = std::move(pOther.mDiscAreas);
+      mDiskAreas.clear();
+      mDiskAreas = std::move(pOther.mDiskAreas);
       mS1s.clear();
       mS1s = std::move(pOther.mS1s);
       mS2s.clear();
@@ -93,15 +93,15 @@ public:
     }
 
     mTotalCnts += pOther.mTotalCnts;
-    for (size_t idx = 0; idx < mDiscAreas.size(); ++idx) {
-      mDiscAreas[idx] = mDiscAreas[idx] > pOther.mDiscAreas[idx]
-                            ? mDiscAreas[idx]
-                            : pOther.mDiscAreas[idx];
+    for (size_t idx = 0; idx < mDiskAreas.size(); ++idx) {
+      mDiskAreas[idx] = mDiskAreas[idx] > pOther.mDiskAreas[idx]
+                            ? mDiskAreas[idx]
+                            : pOther.mDiskAreas[idx];
     }
   }
 
   void resize(const size_t numPoints, const bool calcFlux) {
-    mDiscAreas.resize(numPoints);
+    mDiskAreas.resize(numPoints);
     mTotalCnts = 0;
     if (calcFlux) {
       mCnts.resize(numPoints);
@@ -111,7 +111,7 @@ public:
   }
 
   void clear() {
-    mDiscAreas.clear();
+    mDiskAreas.clear();
     mCnts.clear();
     mS1s.clear();
     mS2s.clear();
@@ -123,7 +123,7 @@ public:
 
   size_t getTotalCounts() const { return mTotalCnts; }
 
-  const std::vector<NumericType> &getDiscAreas() const { return mDiscAreas; }
+  const std::vector<NumericType> &getDiskAreas() const { return mDiskAreas; }
 
   std::vector<NumericType> getRelativeError() {
     auto result = std::vector<NumericType>(
@@ -146,14 +146,14 @@ public:
     return result;
   }
 
-  void setDiscAreas(std::vector<NumericType> &pDiscAreas) {
-    mDiscAreas = pDiscAreas;
+  void setDiskAreas(std::vector<NumericType> &pDiskAreas) {
+    mDiskAreas = pDiskAreas;
   }
 
 private:
   std::vector<size_t> mCnts;
   size_t mTotalCnts;
-  std::vector<NumericType> mDiscAreas;
+  std::vector<NumericType> mDiskAreas;
 
   // S1 denotes the sum of sample values
   std::vector<NumericType> mS1s;
