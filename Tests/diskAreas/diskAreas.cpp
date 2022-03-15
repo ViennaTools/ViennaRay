@@ -15,7 +15,6 @@ int main() {
   NumericType extent = 2;
   NumericType gridDelta = 1.;
   NumericType eps = 1e-6;
-  static constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
 
   std::vector<std::array<NumericType, D>> points;
   std::vector<std::array<NumericType, D>> normals;
@@ -28,12 +27,12 @@ int main() {
   rayHitCounter<NumericType> hitCounter;
 
   rayGeometry<NumericType, D> geometry;
-  auto discRadius = gridDelta * discFactor;
-  geometry.initGeometry(device, points, normals, discRadius);
+  auto diskRadius = gridDelta * rayInternal::DiskFactor;
+  geometry.initGeometry(device, points, normals, diskRadius);
 
   auto boundingBox = geometry.getBoundingBox();
   rayInternal::adjustBoundingBox<NumericType, D>(
-      boundingBox, rayTraceDirection::POS_Z, discRadius);
+      boundingBox, rayTraceDirection::POS_Z, diskRadius);
   rayInternal::printBoundingBox(boundingBox);
   auto traceSettings = rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
 
@@ -46,46 +45,46 @@ int main() {
   rayTestParticle<NumericType> particle;
   auto cp = particle.clone();
 
-  auto tracer = rayTraceKernel<NumericType, D>(device, geometry, boundary,
-                                               raySource, cp, 1, 0);
+  auto tracer = rayTraceKernel<NumericType, D>(
+      device, geometry, boundary, raySource, cp, 1, 0, false, true, 0);
   tracer.setTracingData(&localData, &globalData);
   tracer.setHitCounter(&hitCounter);
   tracer.apply();
-  auto discAreas = hitCounter.getDiscAreas();
+  auto diskAreas = hitCounter.getDiskAreas();
 
   auto boundaryDirs = boundary.getDirs();
-  auto wholeDiscArea = discRadius * discRadius * rayInternal::PI;
+  auto wholeDiskArea = diskRadius * diskRadius * rayInternal::PI;
   for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
-    auto const &disc = geometry.getPrimRef(idx);
-    if (std::fabs(disc[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <
+    auto const &disk = geometry.getPrimRef(idx);
+    if (std::fabs(disk[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <
             eps ||
-        std::fabs(disc[boundaryDirs[0]] - boundingBox[1][boundaryDirs[0]]) <
+        std::fabs(disk[boundaryDirs[0]] - boundingBox[1][boundaryDirs[0]]) <
             eps) {
-      if (std::fabs(disc[boundaryDirs[1]] - boundingBox[0][boundaryDirs[1]]) <
+      if (std::fabs(disk[boundaryDirs[1]] - boundingBox[0][boundaryDirs[1]]) <
               eps ||
-          std::fabs(disc[boundaryDirs[1]] - boundingBox[1][boundaryDirs[1]]) <
+          std::fabs(disk[boundaryDirs[1]] - boundingBox[1][boundaryDirs[1]]) <
               eps) {
-        RAYTEST_ASSERT_ISCLOSE(discAreas[idx], wholeDiscArea / 4, eps)
+        RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
         continue;
       }
-      RAYTEST_ASSERT_ISCLOSE(discAreas[idx], wholeDiscArea / 2, eps)
+      RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
       continue;
     }
-    if (std::fabs(disc[boundaryDirs[1]] - boundingBox[0][boundaryDirs[1]]) <
+    if (std::fabs(disk[boundaryDirs[1]] - boundingBox[0][boundaryDirs[1]]) <
             eps ||
-        std::fabs(disc[boundaryDirs[1]] - boundingBox[1][boundaryDirs[1]]) <
+        std::fabs(disk[boundaryDirs[1]] - boundingBox[1][boundaryDirs[1]]) <
             eps) {
-      if (std::fabs(disc[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <
+      if (std::fabs(disk[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <
               eps ||
-          std::fabs(disc[boundaryDirs[0]] - boundingBox[1][boundaryDirs[0]]) <
+          std::fabs(disk[boundaryDirs[0]] - boundingBox[1][boundaryDirs[0]]) <
               eps) {
-        RAYTEST_ASSERT_ISCLOSE(discAreas[idx], wholeDiscArea / 4, eps)
+        RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
         continue;
       }
-      RAYTEST_ASSERT_ISCLOSE(discAreas[idx], wholeDiscArea / 2, eps)
+      RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
       continue;
     }
-    RAYTEST_ASSERT_ISCLOSE(discAreas[idx], wholeDiscArea, eps)
+    RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea, eps)
   }
 
   geometry.releaseGeometry();
