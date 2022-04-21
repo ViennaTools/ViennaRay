@@ -40,6 +40,9 @@ if(DEFINED ${embree_DIR})
   set(embree_DIR ${embree_DIR} CACHE PATH "Path to embree installation")
 endif()
 
+# Enable Ray Masking if embree is compiled with ray masking enabled
+set(VIENNARAY_USE_RAY_MASKING EMBREE_RAY_MASK)
+
 ##########################################################################################
 ### If one wants to uses an Intel SPMD Compiler, the one has to set that here
 ##########################################################################################

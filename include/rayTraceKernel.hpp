@@ -137,6 +137,10 @@ public:
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
 
+#ifdef VIENNARAY_USE_RAY_MASKING
+        rayHit.ray.mask = -1;
+#endif
+
         if constexpr (PRINT_PROGRESS) {
           printProgress(progressCount);
         }

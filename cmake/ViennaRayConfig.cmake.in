@@ -32,4 +32,9 @@ set(embree_DIR @embree_DIR@)
 find_package(embree 3.0 PATHS ${embree_DIR} REQUIRED)
 list(APPEND VIENNARAY_LIBRARIES embree)
 
+# Enable Ray Masking if embree is compiled with ray masking enabled
+if(@VIENNARAY_USE_RAY_MASKING@)
+  add_compile_definitions(VIENNARAY_USE_RAY_MASKING)
+endif(@VIENNARAY_USE_RAY_MASKING@)
+
 check_required_components("@PROJECT_NAME@")
