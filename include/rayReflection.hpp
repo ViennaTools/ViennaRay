@@ -6,6 +6,40 @@
 #include <rayUtil.hpp>
 
 template <typename NumericType>
+static rayTriple<NumericType> PickRandomPointOnUnitSphere(rayRNG &RNG) { // better
+  std::uniform_real_distribution<NumericType> uniDist;
+  NumericType x, y, z, x2, y2, x2py2;
+  do {
+    x = 2 * uniDist(RNG) - 1.;
+    x2 = x * x;
+    y = 2 * uniDist(RNG) - 1.;
+    y2 = y * y;
+    x2py2 = x2 + y2;
+  } while (x2py2 >= 1.);
+  NumericType tmp = 2 * std::sqrt(1. - x2py2);
+  x *= tmp;
+  y *= tmp;
+  z = 1. - 2 * x2py2;
+  return rayTriple<NumericType>{x, y, z};
+}
+
+template <typename NumericType>
+static rayTriple<NumericType> PickRandomPointOnUnitCircle(rayRNG &RNG) { // better on AMD
+  std::uniform_real_distribution<NumericType> uniDist;
+  NumericType a, b, x, y, x2, y2, x2py2;
+  do {
+    x = uniDist(RNG) - 0.5;
+    x2 = x * x;
+    y = uniDist(RNG) - 0.5;
+    y2 = y * y;
+    x2py2 = x2 + y2;
+  } while ((x2py2 >= 0.25) || (x2py2 <= 1e-10));
+  a = (x2 - y2) / x2py2;
+  b = 2 * ((x * y) / x2py2);
+  return rayTriple<NumericType>{x, y, 0.};
+}
+
+template <typename NumericType>
 static rayTriple<NumericType>
 rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
                       const rayTriple<NumericType> &geomNormal) {
@@ -39,7 +73,7 @@ rayReflectionConedCosine(NumericType coneAngle,
     sqrt_1m_u = std::sqrt(1. - u);
     angle = coneAngle * sqrt_1m_u; // random angle between 0 and specular angle
   } while (uniDist(RNG) * angle * u >
-           std::cos(rayInternal::PI/2. * sqrt_1m_u) * std::sin(angle));
+           std::cos(rayInternal::PI / 2. * sqrt_1m_u) * std::sin(angle));
 
   NumericType costheta = std::cos(angle);
 
@@ -52,8 +86,8 @@ rayReflectionConedCosine(NumericType coneAngle,
     r2 = cosphi * cosphi + sinphi * sinphi;
   } while (r2 >= 0.25 || r2 <= 1e-10);
 
-  //Rotate(AverageDirection, RandomDirection, sinphi, cosphi, costheta, r2);
-  
+  // Rotate(AverageDirection, RandomDirection, sinphi, cosphi, costheta, r2);
+
   rayTriple<NumericType> randomDir;
   costheta = std::min(costheta, 1.);
 
@@ -76,10 +110,8 @@ rayReflectionConedCosine(NumericType coneAngle,
   const NumericType costheta_p_a0_tmp_sinphi = costheta + a0 * tmp_sinphi;
 
   randomDir[0] = a0 * costheta - a0_a0_m1 * tmp_sinphi;
-  randomDir[1] =
-      a1 * costheta_p_a0_tmp_sinphi + specDirection[2] * tmp_cosphi;
-  randomDir[2] =
-      specDirection[2] * costheta_p_a0_tmp_sinphi - a1 * tmp_cosphi;
+  randomDir[1] = a1 * costheta_p_a0_tmp_sinphi + specDirection[2] * tmp_cosphi;
+  randomDir[2] = specDirection[2] * costheta_p_a0_tmp_sinphi - a1 * tmp_cosphi;
 
   if (a0 != specDirection[0])
     std::swap(randomDir[0], randomDir[1]);
@@ -131,6 +163,47 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
 
     return newDirection;
   }
+}
+
+template <typename NumericType, int D>
+static rayTriple<NumericType>
+rayReflectionDiffuse2(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
+  assert(rayInternal::IsNormalized(geomNormal) &&
+         "rayReflectionDiffuse: Surface normal is not normalized");
+
+  NumericType tmp;
+  auto randomDirection = rayTriple<NumericType>{0., 0., 0.};
+  if constexpr (D == 3) {
+    randomDirection = PickRandomPointOnUnitSphere<NumericType>(RNG);
+    randomDirection[0] += geomNormal[0];
+    randomDirection[1] += geomNormal[1];
+    randomDirection[2] += geomNormal[2];
+    tmp = std::sqrt(randomDirection[0] * randomDirection[0] +
+                    randomDirection[1] * randomDirection[1] +
+                    randomDirection[2] * randomDirection[2]);
+
+    randomDirection[0] /= tmp;
+    randomDirection[1] /= tmp;
+    randomDirection[2] /= tmp;
+  }
+  else{
+    randomDirection = PickRandomPointOnUnitCircle<NumericType>(RNG);
+    randomDirection[0] += geomNormal[0];
+    randomDirection[1] += geomNormal[1];
+    randomDirection[2] += geomNormal[2];
+    tmp = std::sqrt(randomDirection[0] * randomDirection[0] +
+                    randomDirection[1] * randomDirection[1] +
+                    randomDirection[2] * randomDirection[2]);
+
+    randomDirection[0] /= tmp;
+    randomDirection[1] /= tmp;
+    randomDirection[2] /= tmp;
+  }
+  assert(rayInternal::IsNormalized(randomDirection) &&
+        "rayReflectionDiffuse: New direction is not normalized");
+
+  
+    return randomDirection;
 }
 
 #endif // RAY_REFLECTION_HPP
