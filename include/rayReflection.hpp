@@ -24,6 +24,26 @@ static rayTriple<NumericType> PickRandomPointOnUnitSphere(rayRNG &RNG) {
 }
 
 template <typename NumericType>
+static rayTriple<NumericType>
+rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
+                      const rayTriple<NumericType> &geomNormal) {
+  assert(rayInternal::IsNormalized(geomNormal) &&
+         "rayReflectionSpecular: Surface normal is not normalized");
+  assert(rayInternal::IsNormalized(rayDir) &&
+         "rayReflectionSpecular: Surface normal is not normalized");
+
+  auto dirOldInv = rayInternal::Inv(rayDir);
+
+  // Compute new direction
+  auto direction = rayInternal::Diff(
+      rayInternal::Scale(2 * rayInternal::DotProduct(geomNormal, dirOldInv),
+                         geomNormal),
+      dirOldInv);
+
+  return direction;
+}
+
+template <typename NumericType>
 static rayTriple<NumericType> rayReflectionConedCosine(
     NumericType avgReflAngle, const rayTriple<NumericType> &rayDir,
     const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
