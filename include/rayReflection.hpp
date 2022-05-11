@@ -24,54 +24,8 @@ static rayTriple<NumericType> PickRandomPointOnUnitSphere(rayRNG &RNG) {
 }
 
 template <typename NumericType>
-static rayTriple<NumericType> PickRandomPointOnUnitCircle(rayRNG &RNG) {
-  std::uniform_real_distribution<NumericType> uniDist;
-  NumericType a, b, x, y, x2, y2, x2py2;
-  do {
-    x = uniDist(RNG) - 0.5;
-    x2 = x * x;
-    y = uniDist(RNG) - 0.5;
-    y2 = y * y;
-    x2py2 = x2 + y2;
-  } while ((x2py2 >= 0.25) || (x2py2 <= 1e-10));
-  a = (x2 - y2) / x2py2;
-  b = 2 * ((x * y) / x2py2);
-  return rayTriple<NumericType>{a, b, 0.};
-}
-
-template <typename NumericType>
-static rayTriple<NumericType> PickRandomPointOnUnitCircle2(rayRNG &RNG) {
-  std::uniform_real_distribution<NumericType> uniDist;
-  NumericType a, b, x, y, x2, y2, x2py2;
-  NumericType phi = uniDist(RNG) * 2 * M_PI;
-  a = std::cos(phi);
-  b = std::sin(phi);
-  return rayTriple<NumericType>{a, b, 0.};
-}
-
-template <typename NumericType>
-static rayTriple<NumericType>
-rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
-                      const rayTriple<NumericType> &geomNormal) {
-  assert(rayInternal::IsNormalized(geomNormal) &&
-         "rayReflectionSpecular: Surface normal is not normalized");
-  assert(rayInternal::IsNormalized(rayDir) &&
-         "rayReflectionSpecular: Surface normal is not normalized");
-
-  auto dirOldInv = rayInternal::Inv(rayDir);
-
-  // Compute new direction
-  auto direction = rayInternal::Diff(
-      rayInternal::Scale(2 * rayInternal::DotProduct(geomNormal, dirOldInv),
-                         geomNormal),
-      dirOldInv);
-
-  return direction;
-}
-
-template <typename NumericType>
 static rayTriple<NumericType> rayReflectionConedCosine(
-    NumericType coneAngle, const rayTriple<NumericType> &rayDir,
+    NumericType avgReflAngle, const rayTriple<NumericType> &rayDir,
     const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
 
   assert(rayInternal::IsNormalized(geomNormal) &&
@@ -99,7 +53,7 @@ static rayTriple<NumericType> rayReflectionConedCosine(
     do { // generate a random angle between 0 and specular angle
       u = std::sqrt(uniDist(RNG));
       sqrt_1m_u = std::sqrt(1. - u);
-      angle = coneAngle * sqrt_1m_u;
+      angle = avgReflAngle * sqrt_1m_u;
     } while (uniDist(RNG) * angle * u >
              std::cos(rayInternal::PI / 2. * sqrt_1m_u) * std::sin(angle));
 
@@ -175,7 +129,7 @@ rayReflectionConedCosine2(const rayTriple<NumericType> &rayDir,
 
   const NumericType incAngle = std::acos(std::max(std::min(cosTheta, 1.), 0.));
 
-  NumericType coneAngle =
+  NumericType avgReflAngle =
       std::max(rayInternal::PI / 2. - incAngle, minAvgConeAngle);
 
   std::uniform_real_distribution<NumericType> uniDist;
@@ -185,7 +139,7 @@ rayReflectionConedCosine2(const rayTriple<NumericType> &rayDir,
   do {
     u = std::sqrt(uniDist(RNG));
     sqrt_1m_u = std::sqrt(1. - u);
-    angle = coneAngle * sqrt_1m_u;
+    angle = avgReflAngle * sqrt_1m_u;
   } while (uniDist(RNG) * angle * u >
            std::cos(rayInternal::PI / 2. * sqrt_1m_u) * std::sin(angle));
 
@@ -280,6 +234,7 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
   }
 }
 
+// New diffuse reflection
 template <typename NumericType, int D>
 static rayTriple<NumericType>
 rayReflectionDiffuse2(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
