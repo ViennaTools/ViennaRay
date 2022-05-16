@@ -214,6 +214,10 @@ private:
       primNormals[idx] = triNorm;
     }
 
+#ifdef VIENNARAY_USE_RAY_MASKING
+    rtcSetGeometryMask(mRtcBoundary, -1);
+#endif
+
     rtcCommitGeometry(mRtcBoundary);
     assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
            "RTC Error: rtcCommitGeometry");

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4)
 
 project(
   "ViennaRay"
-  VERSION 1.0.0)
+  VERSION 1.1.0)
 
 add_definitions(-DVIENNARAY_VERSION=${PROJECT_VERSION})
 
@@ -43,7 +43,12 @@ if(DEFINED ${embree_DIR})
   set(embree_DIR ${embree_DIR} CACHE PATH "Path to embree installation")
 endif()
 
-# If one wants to uses an Intel SPMD Compiler, the one has to set that here
+# Enable Ray Masking if embree is compiled with ray masking enabled
+set(VIENNARAY_USE_RAY_MASKING EMBREE_RAY_MASK)
+
+##########################################################################################
+### If one wants to uses an Intel SPMD Compiler, the one has to set that here
+##########################################################################################
 set(EMBREE_ISPC_SUPPORT OFF CACHE BOOL "Set whether or not you use Intel's SPMD Compiler")
 
 if(DEFINED ${pybind11_DIR})
@@ -56,6 +61,11 @@ include(ExternalProject)
 add_subdirectory(external/upstream)
 
 set(VIENNARAY_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
+
+option(VIENNARAY_USE_WDIST "Use weighted distribution of ray weights." ON)
+if(VIENNARAY_USE_WDIST)
+  add_compile_definitions(VIENNARAY_USE_WDIST)
+endif(VIENNARAY_USE_WDIST)
 
 
 #################################################

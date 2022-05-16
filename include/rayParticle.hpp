@@ -58,6 +58,8 @@ public:
 
   /// Set the power of the cosine source distribution for this particle.
   virtual NumericType getSourceDistributionPower() const = 0;
+
+  virtual std::vector<std::string> getLocalDataLabels() const = 0;
 };
 
 /// This CRTP class implements clone() for the derived particle class.
@@ -91,6 +93,9 @@ public:
   }
   virtual int getRequiredLocalDataSize() const override { return 0; }
   virtual NumericType getSourceDistributionPower() const override { return 1.; }
+  virtual std::vector<std::string> getLocalDataLabels() const override {
+    return std::vector<std::string>(getRequiredLocalDataSize(), "localData");
+  }
 
 protected:
   // We make clear rayParticle class needs to be inherited
@@ -127,6 +132,10 @@ public:
   int getRequiredLocalDataSize() const override final { return 0; }
 
   NumericType getSourceDistributionPower() const override final { return 1.; }
+
+  std::vector<std::string> getLocalDataLabels() const override final {
+    return std::vector<std::string>{};
+  }
 };
 
 #endif // RAY_PARTICLE_HPP

@@ -86,6 +86,10 @@ public:
       }
     }
 
+#ifdef VIENNARAY_USE_RAY_MASKING
+    rtcSetGeometryMask(mRTCGeometry, -1);
+#endif
+
     rtcCommitGeometry(mRTCGeometry);
     assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
            "RTC Error: rtcCommitGeometry");
