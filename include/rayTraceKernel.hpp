@@ -90,7 +90,7 @@ public:
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
       const int threadID = omp_get_thread_num();
-      constexpr int numRngStates = 6;
+      constexpr int numRngStates = 8;
       unsigned int seeds[numRngStates];
       if (mUseRandomSeeds) {
         std::random_device rd;
@@ -112,6 +112,8 @@ public:
       rayRNG RngState4(seeds[3]);
       rayRNG RngState5(seeds[4]);
       rayRNG RngState6(seeds[5]);
+      rayRNG RngState7(seeds[6]);
+      rayRNG RngState8(seeds[7]);
 
       // thread-local particle object
       auto particle = mParticle->clone();
@@ -120,7 +122,7 @@ public:
       auto &myHitCounter = threadLocalHitCounter[threadID];
 
       // probabilistic weight
-      constexpr NumericType initialRayWeight = 1.;
+      const NumericType initialRayWeight = 1.;
 
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
@@ -129,11 +131,11 @@ public:
 
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < mNumRays; ++idx) {
-        particle->initNew(RngState6);
+        particle->initNew(RngState8);
         NumericType rayWeight = initialRayWeight;
 
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
-                        RngState4);
+                        RngState4); // fills also tnear
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;
@@ -244,10 +246,10 @@ public:
             const auto matID = mGeometry.getMaterialId(hitDiskIds[diskId]);
             const auto normal = mGeometry.getPrimNormal(hitDiskIds[diskId]);
 #ifdef VIENNARAY_USE_WDIST
-            auto distRayWeight =
-                rayWeight / impactDistances[diskId] / invDistanceWeightSum;
+            auto distRayWeight = rayWeight / impactDistances[diskId] /
+                                 invDistanceWeightSum * numDisksHit;
 #else
-            auto distRayWeight = rayWeight / numDisksHit;
+            auto distRayWeight = rayWeight;
 #endif
             particle->surfaceCollision(distRayWeight, rayDir, normal,
                                        hitDiskIds[diskId], matID, myLocalData,
@@ -264,10 +266,10 @@ public:
           if (calcFlux) {
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
 #ifdef VIENNARAY_USE_WDIST
-              auto distRayWeight =
-                  valueToDrop / impactDistances[diskId] / invDistanceWeightSum;
+              auto distRayWeight = valueToDrop / impactDistances[diskId] /
+                                   invDistanceWeightSum * numDisksHit;
 #else
-              auto distRayWeight = valueToDrop / numDisksHit;
+              auto distRayWeight = valueToDrop;
 #endif
               myHitCounter.use(hitDiskIds[diskId], distRayWeight);
             }
@@ -278,10 +280,7 @@ public:
           if (rayWeight <= 0) {
             break;
           }
-
-          // If the ray weight is above the lower threshold
-          // we reflect
-          reflect = rayWeight > mLowerThreshold;
+          reflect = rejectionControl(rayWeight, initialRayWeight, RngState6);
           if (!reflect) {
             break;
           }
