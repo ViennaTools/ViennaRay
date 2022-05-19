@@ -246,10 +246,10 @@ public:
             const auto matID = mGeometry.getMaterialId(hitDiskIds[diskId]);
             const auto normal = mGeometry.getPrimNormal(hitDiskIds[diskId]);
 #ifdef VIENNARAY_USE_WDIST
-            auto distRayWeight =
-                rayWeight / impactDistances[diskId] / invDistanceWeightSum;
+            auto distRayWeight = rayWeight / impactDistances[diskId] /
+                                 invDistanceWeightSum * numDisksHit;
 #else
-            auto distRayWeight = rayWeight / numDisksHit;
+            auto distRayWeight = rayWeight;
 #endif
             particle->surfaceCollision(distRayWeight, rayDir, normal,
                                        hitDiskIds[diskId], matID, myLocalData,
@@ -266,10 +266,10 @@ public:
           if (calcFlux) {
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
 #ifdef VIENNARAY_USE_WDIST
-              auto distRayWeight =
-                  valueToDrop / impactDistances[diskId] / invDistanceWeightSum;
+              auto distRayWeight = valueToDrop / impactDistances[diskId] /
+                                   invDistanceWeightSum * numDisksHit;
 #else
-              auto distRayWeight = valueToDrop / numDisksHit;
+              auto distRayWeight = valueToDrop;
 #endif
               myHitCounter.use(hitDiskIds[diskId], distRayWeight);
             }
