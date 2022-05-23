@@ -51,7 +51,8 @@ int main() {
   rayTracer.apply();
 
   // Extract the normalized hit counts for each geometry point
-  auto normalizedFlux = rayTracer.getNormalizedFlux(rayNormalizationType::SOURCE);
+  auto normalizedFlux =
+      rayTracer.getNormalizedFlux(rayNormalizationType::SOURCE);
   rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points,
                                         normalizedFlux);
 

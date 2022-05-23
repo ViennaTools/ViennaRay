@@ -189,11 +189,21 @@ public:
                               ? flux.size() * mNumberOfRaysPerPoint
                               : mNumberOfRaysFixed;
       NumericType normFactor = sourceArea / numTotalRays;
+      if constexpr (D == 2) {
+        for (size_t idx = 0; idx < flux.size(); ++idx) {
+          if (std::abs(diskArea[idx] - totalDiskArea) > 1e-6) {
+            flux[idx] *= normFactor / mDiskRadius;
+          } else {
+            flux[idx] *= normFactor / (2 * mDiskRadius);
+          }
+        }
+      } else {
 #pragma omp parallel for
-      for (size_t idx = 0; idx < flux.size(); ++idx) {
-        flux[idx] *= normFactor / diskArea[idx];
+        for (size_t idx = 0; idx < flux.size(); ++idx) {
+          flux[idx] *= normFactor / diskArea[idx];
+        }
+        break;
       }
-      break;
     }
 
     default:
