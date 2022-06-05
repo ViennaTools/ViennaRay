@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4)
 
 project(
   "ViennaRay"
-  VERSION 1.1.0)
+  VERSION 1.2.0)
 
 add_definitions(-DVIENNARAY_VERSION=${PROJECT_VERSION})
 

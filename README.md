@@ -10,7 +10,7 @@ IMPORTANT NOTE: ViennaRay is under heavy development and improved daily. If you 
 
 ## Support
 
-[Exmaples](https://github.com/ViennaTools/ViennaRay/tree/main/Examples) can be found on Github. Bug reports and suggestions should be filed on GitHub.
+[Examples](https://github.com/ViennaTools/ViennaRay/tree/main/Examples) can be found on Github. Bug reports and suggestions should be filed on GitHub.
 
 ## Releases
 
