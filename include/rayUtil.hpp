@@ -10,6 +10,7 @@
 #include <iostream>
 #include <omp.h>
 #include <rayMessage.hpp>
+#include <rayRNG.hpp>
 #include <rayTraceDirection.hpp>
 #include <vector>
 
@@ -252,6 +253,24 @@ std::array<int, 5> getTraceSettings(rayTraceDirection sourceDir) {
   return set;
 }
 /* ------------------------------------------------------ */
+
+template <typename NumericType>
+static rayTriple<NumericType> PickRandomPointOnUnitSphere(rayRNG &RNG) {
+  std::uniform_real_distribution<NumericType> uniDist;
+  NumericType x, y, z, x2, y2, x2py2;
+  do {
+    x = 2 * uniDist(RNG) - 1.;
+    x2 = x * x;
+    y = 2 * uniDist(RNG) - 1.;
+    y2 = y * y;
+    x2py2 = x2 + y2;
+  } while (x2py2 >= 1.);
+  NumericType tmp = 2 * std::sqrt(1. - x2py2);
+  x *= tmp;
+  y *= tmp;
+  z = 1. - 2 * x2py2;
+  return rayTriple<NumericType>{x, y, z};
+}
 
 // Returns some orthonormal basis containing a the input vector pVector
 // (possibly scaled) as the first element of the return value.
