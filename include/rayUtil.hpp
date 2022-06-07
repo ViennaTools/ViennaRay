@@ -36,7 +36,9 @@ struct rayTraceInfo {
 
 namespace rayInternal {
 constexpr double PI = 3.14159265358979323846;
-constexpr double DiskFactor = 0.5 * 1.7320508 * (1 + 1e-5);
+
+template<int D>
+constexpr double DiskFactor = 0.5 * (D == 3 ? 1.7320508 : 1.41421356237) * (1 + 1e-5);
 
 /* ------------- Vector operation functions ------------- */
 template <typename NumericType>
