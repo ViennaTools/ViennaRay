@@ -27,7 +27,7 @@ int main() {
   rayHitCounter<NumericType> hitCounter;
 
   rayGeometry<NumericType, D> geometry;
-  auto diskRadius = gridDelta * rayInternal::DiskFactor;
+  auto diskRadius = gridDelta * rayInternal::DiskFactor<D>;
   geometry.initGeometry(device, points, normals, diskRadius);
 
   auto boundingBox = geometry.getBoundingBox();

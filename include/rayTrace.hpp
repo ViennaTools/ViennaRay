@@ -82,7 +82,7 @@ public:
                   "Setting 2D geometry in 3D trace object");
 
     mGridDelta = gridDelta;
-    mDiskRadius = gridDelta * rayInternal::DiskFactor;
+    mDiskRadius = gridDelta * rayInternal::DiskFactor<D>;
     mGeometry.initGeometry(mDevice, points, normals, mDiskRadius);
   }
 
