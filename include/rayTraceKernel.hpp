@@ -443,7 +443,11 @@ private:
 #pragma omp for
     for (long idx = 0; idx < numOfPrimitives; ++idx) {
       auto const &disk = mGeometry.getPrimRef(idx);
-      areas[idx] = disk[3] * disk[3] * (NumericType)rayInternal::PI;
+      if constexpr (D == 3) {
+        areas[idx] = disk[3] * disk[3] * (NumericType)rayInternal::PI;
+      } else {
+        areas[idx] = 2.0 * disk[3];
+      }
       if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
           std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
         areas[idx] /= 2;
