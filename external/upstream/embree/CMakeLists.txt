@@ -1,80 +1,85 @@
-# Override CXX standard, since Embree does not confirm to CXX20.
-set(CMAKE_CXX_STANDARD 17)
+# ##################################################################################################
+# Check embree dependency
+# ##################################################################################################
+if(DEFINED ${embree_DIR})
+  find_package(embree 3.0 REQUIRED PATHS ${embree_DIR})
+  message(STATUS "Found embree at ${embree_DIR}.")
+  add_library(embree_external INTERFACE) # dummy target
+else()
+  # First try to locate any local build
+  find_package(embree 3.0 QUIET PATHS "${DEPENDENCIES_DIR}/Install/embree_external" NO_DEFAULT_PATH)
 
-# This cmake policy is for the git_submodules parameter below
-cmake_policy(SET CMP0097 NEW)
+  # If that fails look for a system installation
+  if(NOT embree_FOUND)
+    find_package(embree 3.0 QUIET)
+  endif()
+  if(embree_FOUND)
+    message(STATUS "Found embree at ${embree_DIR}.")
+    add_library(embree_external INTERFACE) # dummy target
+  else()
+    message(
+      STATUS
+        "Couldn't find embree. Dependency will be built with the buildDependencies target (e.g. `make buildDependencies`)."
+    )
+    # Override CXX standard, since Embree does not confirm to CXX20.
+    set(CMAKE_CXX_STANDARD 17)
 
-externalproject_add(embree-external
-  GIT_REPOSITORY
-    https://github.com/embree/embree.git
-  GIT_TAG
-    ## Hash of tags/v3.5.2
-    #e766297adcdaf8e5d8dd996c15aed753255230fd
-    #
-    ## Hash of tags/v3.6.1
-    #d17aec1491a6c664f4da2f0b8ba03c171cbf36a1
-    #
-    ## tags/v3.10.0
-    #0e78b682dc631575b79f1cc43863931e8d411e3b
-    #
-    ## hash of tags/v3.11.0
-    #cc8c3aac00cdb63fb1acb44bcd0fa89a17139533
-    #
-    ## hash of tags/v3.13.0
-    7c53133eb21424f7f0ae1e25bf357e358feaf6ab
-    #
-  GIT_SHALLOW
-    true
-    # Embree still lists a (an empty) submodule eventhough it does not exist (anymore).
-    # CMake >=3.16 can prevent download (error) of submodules by specifying an empty
-    # string to git_submodule and setting cmake plicy CMP0097 to NEW.
-  GIT_SUBMODULES
-    ""
-  CMAKE_ARGS
-    -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
-    -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
-    -DCMAKE_CXX_STANDARD_REQUIRED=${CMAKE_CXX_STANDARD_REQUIRED}
-    -DCMAKE_SHARED_LINKER_FLAGS=-lstdc++
-    -DEMBREE_TUTORIALS=OFF
-    -DEMBREE_BACKFACE_CULLING=OFF
-    -DEMBREE_FILTER_FUNCTION=ON # setting this option is probably not necessary
+    # This cmake policy is for the git_submodules parameter below
+    cmake_policy(SET CMP0097 NEW)
 
-    #-DCMAKE_BUILD_TYPE=Debug
-  CMAKE_CACHE_ARGS
-    #-DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
-    -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
-    -DEMBREE_ISPC_SUPPORT:BOOL=${EMBREE_ISPC_SUPPORT}
-    # We use OpenMP, Embree calls that internal (eventhough it is external to Embree)
-    -DEMBREE_TASKING_SYSTEM:STRING=INTERNAL
-  # Do not install
-  # If one installes it and tries to use the installed library, then there exists a linkage
-  # problem with TBB. Simply use the generated files in the binary directory.
-  USES_TERMINAL_DOWNLOAD
-    1
-  USES_TERMINAL_UPDATE
-    1
-  GIT_PROGRESS
-    1
-)
+    # Get the number of cores
+    include(ProcessorCount)
+    ProcessorCount(NPROC)
 
-# Get install and build directory from external project
-externalproject_get_property(embree-external INSTALL_DIR BINARY_DIR)
+    ExternalProject_Add(
+      embree_external
+      GIT_REPOSITORY https://github.com/embree/embree.git
+      GIT_TAG # hash of tags/v3.13.0
+              7c53133eb21424f7f0ae1e25bf357e358feaf6ab
+      GIT_SHALLOW true
+      INSTALL_DIR "${DEPENDENCIES_DIR}/Install/embree_external"
+      # Embree still lists a (an empty) submodule even though it does not exist (anymore). CMake
+      # >=3.16 can prevent download (error) of submodules by specifying an empty string to
+      # git_submodule and setting cmake plicy CMP0097 to NEW.
+      GIT_SUBMODULES ""
+      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+                 -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                 -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                 -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
+                 -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
+                 -DCMAKE_CXX_STANDARD_REQUIRED=${CMAKE_CXX_STANDARD_REQUIRED}
+                 -DCMAKE_SHARED_LINKER_FLAGS=-lstdc++
+                 -DEMBREE_TUTORIALS=OFF
+                 -DEMBREE_BACKFACE_CULLING=OFF
+                 -DEMBREE_FILTER_FUNCTION=ON # setting this option is probably not necessary
+                 -DCMAKE_BUILD_TYPE=Release
+      CMAKE_CACHE_ARGS
+        -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
+        -DEMBREE_ISPC_SUPPORT:BOOL=${EMBREE_ISPC_SUPPORT}
+        # We use OpenMP, Embree calls that internal (eventhough it is external to Embree)
+        -DEMBREE_TASKING_SYSTEM:STRING=INTERNAL
+      BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NPROC}
+      # Do not install If one installes it and tries to use the installed library, then there exists
+      # a linkage problem with TBB. Simply use the generated files in the binary directory.
+      USES_TERMINAL_DOWNLOAD 1
+      USES_TERMINAL_UPDATE 1
+      GIT_PROGRESS 1)
 
-set(
-  embree_DIR "${INSTALL_DIR}"
-  CACHE PATH "Path to embree installation"
-  FORCE
-  )
-set(
-  embree_INCLUDEDIR "${embree_DIR}/include"
-  CACHE PATH "Path to embree include directories"
-  FORCE
-  )
-set(
-  embree_LIBRARYDIR "${embree_DIR}/lib"
-  CACHE PATH "Path to embree library directories"
-  FORCE
-  )
+    set(EMBREE_RAY_MASK OFF)
+
+    # Get install and build directory from external project
+    ExternalProject_Get_Property(embree_external INSTALL_DIR BINARY_DIR)
+
+    set(embree_DIR "${INSTALL_DIR}")
+
+    # add to buildDependencies target
+    add_dependencies(buildDependencies embree_external)
+  endif()
+  set(embree_DIR
+      "${embree_DIR}"
+      CACHE PATH "Path to embree installation" FORCE)
+endif()
+
+set(EMBREE_RAY_MASK
+    ${EMBREE_RAY_MASK}
+    CACHE BOOL "Wheter embree uses ray masking" FORCE)
