@@ -44,6 +44,11 @@ public:
            "RTC Error: rtcSetNewGeometryBuffer points");
     mDiscRadii = discRadii;
 
+    for (int i = 0; i < D; i++) {
+      mMinCoords[i] = nummax;
+      mMaxCoords[i] = nummin;
+    }
+
     for (size_t i = 0; i < mNumPoints; ++i) {
       mPointBuffer[i].xx = (float)points[i][0];
       mPointBuffer[i].yy = (float)points[i][1];

@@ -434,7 +434,7 @@ private:
   }
 
   std::vector<NumericType> computeDiskAreas() {
-    constexpr double eps = 1e-3;
+    constexpr double eps = 1e-6;
     auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
     const auto boundaryDirs = mBoundary.getDirs();
@@ -443,22 +443,61 @@ private:
 #pragma omp for
     for (long idx = 0; idx < numOfPrimitives; ++idx) {
       auto const &disk = mGeometry.getPrimRef(idx);
-      areas[idx] = disk[3] * disk[3] * (NumericType)rayInternal::PI;
-      if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) < eps ||
-          std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) < eps) {
-        areas[idx] /= 2;
-      }
 
       if constexpr (D == 3) {
+        areas[idx] =
+            disk[3] * disk[3] * (NumericType)rayInternal::PI; // full disk area
+
+        if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+                eps ||
+            std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+                eps) {
+          // disk intersects boundary in first direction
+          areas[idx] /= 2;
+        }
+
         if (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
                 eps ||
             std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
                 eps) {
+          // disk intersects boundary in second direction
           areas[idx] /= 2;
+        }
+      } else {
+        areas[idx] = 2 * disk[3];
+        auto normal = mGeometry.getNormalRef(idx);
+
+        // test min boundary
+        if (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+            disk[3]) {
+          NumericType insideTest =
+              1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+          if (insideTest > eps) {
+            insideTest =
+                std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) /
+                std::sqrt(insideTest);
+            if (insideTest < disk[3]) {
+              areas[idx] -= disk[3] - insideTest;
+            }
+          }
+        }
+
+        // test max boundary
+        if (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+            disk[3]) {
+          NumericType insideTest =
+              1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+          if (insideTest > eps) {
+            insideTest =
+                std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) /
+                std::sqrt(insideTest);
+            if (insideTest < disk[3]) {
+              areas[idx] -= disk[3] - insideTest;
+            }
+          }
         }
       }
     }
-
     return areas;
   }
 
