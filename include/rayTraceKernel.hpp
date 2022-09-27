@@ -434,7 +434,7 @@ private:
   }
 
   std::vector<NumericType> computeDiskAreas() {
-    constexpr double eps = 1e-6;
+    constexpr double eps = 1e-3;
     auto bdBox = mGeometry.getBoundingBox();
     const auto numOfPrimitives = mGeometry.getNumPoints();
     const auto boundaryDirs = mBoundary.getDirs();
@@ -472,7 +472,7 @@ private:
             disk[3]) {
           NumericType insideTest =
               1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
-          if (insideTest > eps) {
+          if (insideTest > 1e-4) {
             insideTest =
                 std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) /
                 std::sqrt(insideTest);
@@ -487,7 +487,7 @@ private:
             disk[3]) {
           NumericType insideTest =
               1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
-          if (insideTest > eps) {
+          if (insideTest > 1e-4) {
             insideTest =
                 std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) /
                 std::sqrt(insideTest);
