@@ -40,7 +40,7 @@ Since [Embree](https://www.embree.org/) is optimized for CPU's using SSE, AVX, A
 
 Since this is a header only project, it does not require any installation. However, we recommend the following procedure in order to set up all dependencies correctly:
 
-```
+```bash
 git clone github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 mkdir build && cd build
@@ -55,7 +55,7 @@ This will install the necessary headers and CMake files to the specified path. I
 
 If you want to use your own install of Embree, just specify the directory in CMake:
 
-```
+```bash
 git clone github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 mkdir build && cd build
@@ -67,7 +67,7 @@ make install
 
 In order to use this library in your CMake project, add the following lines to the CMakeLists.txt of your project:
 
-```
+```CMake
 set(ViennaRay_DIR "/path/to/your/custom/install/")
 find_package(ViennaRay REQUIRED)
 add_executable(...)
@@ -79,7 +79,7 @@ target_link_libraries(${PROJECT_NAME} ${VIENNARAY_LIBRARIES})
 
 The examples can be built using CMake:
 
-```
+```bash
 mkdir build && cd build
 cmake .. -DVIENNARAY_BUILD_EXAMPLES=ON
 make
@@ -90,7 +90,7 @@ make
 ViennaRay uses CTest to run its tests.
 In order to check whether ViennaRay runs without issues on your system, you can run:
 
-```
+```bash
 git clone github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 mkdir build && cd build
