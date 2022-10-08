@@ -84,7 +84,8 @@ static rayTriple<NumericType> rayReflectionConedCosine(
              std::cos(rayInternal::PI / 2. * sqrt_1m_u) * std::sin(angle));
 
     // Random Azimuthal Rotation
-    NumericType costheta = std::max(std::min(std::cos(angle), 1.), 0.);
+    NumericType costheta =
+        std::max(std::min(std::cos(angle), NumericType(1)), NumericType(0));
     NumericType cosphi, sinphi;
     NumericType r2;
 
@@ -95,7 +96,7 @@ static rayTriple<NumericType> rayReflectionConedCosine(
     } while (r2 >= 0.25 || r2 <= std::numeric_limits<NumericType>::epsilon());
 
     // Rotate
-    costheta = std::min(costheta, 1.);
+    costheta = std::min(costheta, NumericType(1));
 
     NumericType a0;
     NumericType a1;
@@ -109,8 +110,9 @@ static rayTriple<NumericType> rayReflectionConedCosine(
     }
 
     const NumericType a0_a0_m1 = 1. - a0 * a0;
-    const NumericType tmp =
-        std::sqrt(std::max(1. - costheta * costheta, 0.) / (r2 * a0_a0_m1));
+    const NumericType tmp = std::sqrt(
+        std::max(NumericType(1) - costheta * costheta, NumericType(0)) /
+        (r2 * a0_a0_m1));
     const NumericType tmp_sinphi = tmp * sinphi;
     const NumericType tmp_cosphi = tmp * cosphi;
     const NumericType costheta_p_a0_tmp_sinphi = costheta + a0 * tmp_sinphi;
@@ -153,7 +155,8 @@ rayReflectionConedCosine2(const rayTriple<NumericType> &rayDir,
   assert(cosTheta >= 0 && "Hit backside of disc");
   assert(cosTheta <= 1 + 1e-6 && "Error in calculating cos theta");
 
-  const NumericType incAngle = std::acos(std::max(std::min(cosTheta, 1.), 0.));
+  const NumericType incAngle =
+      std::acos(std::max(std::min(cosTheta, NumericType(1)), NumericType(0)));
 
   NumericType avgReflAngle =
       std::max(rayInternal::PI / 2. - incAngle, minAvgConeAngle);
