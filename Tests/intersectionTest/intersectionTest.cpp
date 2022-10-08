@@ -66,6 +66,9 @@ int main() {
     rayhit.ray.org_y = (float)origin[1];
     rayhit.ray.org_z = (float)origin[2];
     rayhit.ray.tnear = 1e-4f;
+#ifdef VIENNARAY_USE_RAY_MASKING
+    rayhit.ray.mask = -1;
+#endif
 
     rayhit.ray.dir_x = (float)direction[0];
     rayhit.ray.dir_y = (float)direction[1];
@@ -94,6 +97,9 @@ int main() {
     rayhit.ray.org_y = (float)origin[1];
     rayhit.ray.org_z = (float)origin[2];
     rayhit.ray.tnear = 1e-4f;
+#ifdef VIENNARAY_USE_RAY_MASKING
+    rayhit.ray.mask = -1;
+#endif
 
     rayhit.ray.dir_x = (float)direction[0];
     rayhit.ray.dir_y = (float)direction[1];
