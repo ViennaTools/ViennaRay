@@ -20,7 +20,7 @@ endif()
 
 list(PREPEND VIENNARAY_INCLUDE_DIRS ${VIENNARAY_BUILD_INCLUDE_DIRS})
 
-# Exclude the buildTests target from the `all` target
+# Exclude the buildExamples target from the `all` target
 set_property(DIRECTORY PROPERTY EXCLUDE_FROM_ALL TRUE)
 
 add_custom_target(buildExamples)

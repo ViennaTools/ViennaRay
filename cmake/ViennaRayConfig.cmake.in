@@ -12,7 +12,7 @@ find_dependency(OpenMP)
 list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  # disable-new-dtags sets RPATH which searches for libs recursively, instead of RUNPATH which does
+  # disable-new-dtags sets RPATH which searches for libs recursively, instead of RUNPATH which is
   # not needed for g++ to link correctly
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
