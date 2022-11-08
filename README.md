@@ -45,7 +45,7 @@ git clone github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/
-make # this will install Embree the first time it is called and might take a while
+make buildDependencies # this will install Embree the first time it is called and might take a while
 make install
 ```
 

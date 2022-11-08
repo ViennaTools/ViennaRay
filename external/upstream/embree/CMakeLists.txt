@@ -1,8 +1,20 @@
 # ##################################################################################################
 # Check embree dependency
 # ##################################################################################################
-if(DEFINED ${embree_DIR})
-  find_package(embree 3.0 REQUIRED PATHS ${embree_DIR})
+# Check if the variable is a cache variable
+get_property(
+  is_cached
+  CACHE embree_DIR
+  PROPERTY TYPE)
+# If it is not from cache and defined at this point, the variable was passed as a -D command line
+# argument
+if("${is_cached}" STREQUAL "" AND DEFINED embree_DIR)
+  # Required for windows to convert backslashes to forward slashes
+  file(TO_CMAKE_PATH "${embree_DIR}" embree_DIR)
+  set(embree_DIR
+      "${embree_DIR}"
+      CACHE PATH "Path to embree installation" FORCE)
+  find_package(embree 3.0 REQUIRED PATHS ${embree_DIR} NO_DEFAULT_PATH)
   message(STATUS "Found embree at ${embree_DIR}.")
   add_library(embree_external INTERFACE) # dummy target
 else()
