@@ -277,14 +277,15 @@ private:
 
   void checkRelativeError() {
     auto error = getRelativeError();
+    const int numPoints = error.size();
     int numThreads = omp_get_max_threads();
     std::vector<bool> passed(numThreads, true);
 
-#pragma omp parallel shared(error, passed)
+#pragma omp parallel shared(error, numPoints, passed)
     {
       int threadId = omp_get_thread_num();
 #pragma omp for
-      for (size_t i = 0; i < error.size(); i++) {
+      for (int i = 0; i < numPoints; i++) {
         if (error[i] > 0.05) {
           passed[threadId] = false;
         }
