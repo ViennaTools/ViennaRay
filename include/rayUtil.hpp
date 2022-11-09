@@ -32,6 +32,8 @@ struct rayTraceInfo {
   size_t nonGeometryHits;
   size_t geometryHits;
   double time;
+  bool warning = false;
+  bool error = false;
 };
 
 namespace rayInternal {

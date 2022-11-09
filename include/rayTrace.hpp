@@ -298,6 +298,7 @@ private:
       }
     }
     if (!allPassed) {
+      mRTInfo.warning = true;
       rayMessage::getInstance()
           .addWarning(
               "Large relative error detected. Consider using more rays.")
@@ -307,19 +308,23 @@ private:
 
   void checkSettings() {
     if (mParticle == nullptr) {
+      mRTInfo.error = true;
       rayMessage::getInstance().addError(
           "No particle was specified in rayTrace. Aborting.");
     }
     if (mGeometry.checkGeometryEmpty()) {
+      mRTInfo.error = true;
       rayMessage::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");
     }
     if ((D == 2 && mSourceDirection == rayTraceDirection::POS_Z) ||
         (D == 2 && mSourceDirection == rayTraceDirection::NEG_Z)) {
+      mRTInfo.error = true;
       rayMessage::getInstance().addError(
           "Invalid source direction in 2D geometry. Aborting.");
     }
     if (mDiskRadius > mGridDelta) {
+      mRTInfo.warning = true;
       rayMessage::getInstance()
           .addWarning("Disk radius should be smaller than grid delta. Hit "
                       "count normalization not correct.")
