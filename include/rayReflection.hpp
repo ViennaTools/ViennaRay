@@ -49,7 +49,7 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
 }
 
 // Coned cosine reflection
-template <typename NumericType>
+template <typename NumericType, int D>
 static rayTriple<NumericType> rayReflectionConedCosine(
     NumericType avgReflAngle, const rayTriple<NumericType> &rayDir,
     const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
@@ -57,7 +57,7 @@ static rayTriple<NumericType> rayReflectionConedCosine(
   assert(rayInternal::IsNormalized(geomNormal) &&
          "rayReflectionSpecular: Surface normal is not normalized");
   assert(rayInternal::IsNormalized(rayDir) &&
-         "rayReflectionSpecular: Surface normal is not normalized");
+         "rayReflectionSpecular: Ray direction is not normalized");
 
   // Calculate specular direction
   auto dirOldInv = rayInternal::Inv(rayDir);
@@ -127,10 +127,18 @@ static rayTriple<NumericType> rayReflectionConedCosine(
       std::swap(randomDir[0], randomDir[1]);
   } while (rayInternal::DotProduct(randomDir, geomNormal) <= 0.);
 
+  if constexpr (D == 2) {
+    randomDir[2] = 0;
+    rayInternal::Normalize(randomDir);
+  }
+
+  assert(rayInternal::IsNormalized(randomDir) &&
+         "rayReflectionCondedCosine: New direction is not normalized");
+
   return randomDir;
 }
 
-template <typename NumericType>
+template <typename NumericType, int D>
 static rayTriple<NumericType>
 rayReflectionConedCosine2(const rayTriple<NumericType> &rayDir,
                           const rayTriple<NumericType> &geomNormal, rayRNG &RNG,
@@ -213,6 +221,14 @@ rayReflectionConedCosine2(const rayTriple<NumericType> &rayDir,
 
   if (a0 != specDirection[0])
     std::swap(randomDir[0], randomDir[1]);
+
+  if constexpr (D == 2) {
+    randomDir[2] = 0;
+    rayInternal::Normalize(randomDir);
+  }
+
+  assert(rayInternal::IsNormalized(randomDir) &&
+         "rayReflectionCondedCosine: New direction is not normalized");
 
   return randomDir;
 }

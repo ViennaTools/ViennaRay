@@ -57,6 +57,9 @@ public:
     tracer.setRayTraceInfo(&mRTInfo);
     tracer.apply();
 
+    if (mCheckError)
+      checkRelativeError();
+
     boundary.releaseGeometry();
   }
 
@@ -145,6 +148,15 @@ public:
   /// functions getTotalFlux(), getNormalizedFlux(), getHitCounts() and
   /// getRelativeError() can not be used.
   void setCalculateFlux(const bool calcFlux) { mCalcFlux = calcFlux; }
+
+  /// Set whether to check the relative error after a tracing. If the relative
+  /// error at a surface point is larger than 0.05 a warning is printed. The
+  /// value 0.05 is reported in: "A General Monte Carlo N-Particle Transport
+  /// Code, Version 5, Vol. I Overview and Theory, LA - UR - 03 - 1987, Los
+  /// Alamos Nat.Lab., Los Alamos, NM"
+  void setCheckRelativeError(const bool checkError) {
+    mCheckError = checkError;
+  }
 
   /// Returns the total flux on each disk.
   std::vector<NumericType> getTotalFlux() const {
@@ -263,21 +275,57 @@ private:
     return sourceArea;
   }
 
+  void checkRelativeError() {
+    auto error = getRelativeError();
+    const int numPoints = error.size();
+    int numThreads = omp_get_max_threads();
+    std::vector<bool> passed(numThreads, true);
+
+#pragma omp parallel shared(error, numPoints, passed)
+    {
+      int threadId = omp_get_thread_num();
+#pragma omp for
+      for (int i = 0; i < numPoints; i++) {
+        if (error[i] > 0.05) {
+          passed[threadId] = false;
+        }
+      }
+    }
+    bool allPassed = true;
+    for (int i = 0; i < numThreads; i++) {
+      if (!passed[i]) {
+        allPassed = false;
+        break;
+      }
+    }
+    if (!allPassed) {
+      mRTInfo.warning = true;
+      rayMessage::getInstance()
+          .addWarning(
+              "Large relative error detected. Consider using more rays.")
+          .print();
+    }
+  }
+
   void checkSettings() {
     if (mParticle == nullptr) {
+      mRTInfo.error = true;
       rayMessage::getInstance().addError(
           "No particle was specified in rayTrace. Aborting.");
     }
     if (mGeometry.checkGeometryEmpty()) {
+      mRTInfo.error = true;
       rayMessage::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");
     }
     if ((D == 2 && mSourceDirection == rayTraceDirection::POS_Z) ||
         (D == 2 && mSourceDirection == rayTraceDirection::NEG_Z)) {
+      mRTInfo.error = true;
       rayMessage::getInstance().addError(
           "Invalid source direction in 2D geometry. Aborting.");
     }
     if (mDiskRadius > mGridDelta) {
+      mRTInfo.warning = true;
       rayMessage::getInstance()
           .addWarning("Disk radius should be smaller than grid delta. Hit "
                       "count normalization not correct.")
@@ -307,6 +355,7 @@ private:
   bool mUseRandomSeeds = false;
   size_t mRunNumber = 0;
   bool mCalcFlux = true;
+  bool mCheckError = true;
   rayHitCounter<NumericType> mHitCounter;
   rayTracingData<NumericType> mLocalData;
   rayTracingData<NumericType> *mGlobalData = nullptr;
