@@ -389,8 +389,7 @@ public:
       mTraceInfo->time = (endTime - time) * 1e-3;
     }
 
-    rtcReleaseGeometry(rtcGeometry);
-    rtcReleaseGeometry(rtcBoundary);
+    rtcReleaseScene(rtcScene);
   }
 
   void setTracingData(rayTracingData<NumericType> *plocalData,
