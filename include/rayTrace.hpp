@@ -8,6 +8,7 @@
 #include <rayHitCounter.hpp>
 #include <rayMessage.hpp>
 #include <raySourceRandom.hpp>
+#include <raySourceRotational.hpp>
 #include <rayTraceDirection.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
@@ -19,6 +20,47 @@ public:
   ~rayTrace() {
     mGeometry.releaseGeometry();
     rtcReleaseDevice(mDevice);
+  }
+
+  /// Run the ray tracer
+  void applyRotational() {
+    checkSettings();
+    initMemoryFlags();
+    auto boundingBox = mGeometry.getBoundingBox();
+    rayInternal::adjustBoundingBox<NumericType, D>(
+        boundingBox, mSourceDirection, mDiskRadius);
+    auto traceSettings = rayInternal::getTraceSettings(mSourceDirection);
+
+    auto boundary = rayBoundary<NumericType, D>(mDevice, boundingBox,
+                                                mBoundaryConds, traceSettings);
+
+    auto raySource = raySourceRotational<NumericType, D>(
+        boundingBox, traceSettings, mGeometry.getNumPoints());
+
+    auto numberOfLocalData = mParticle->getRequiredLocalDataSize();
+    if (numberOfLocalData) {
+      mLocalData.setNumberOfVectorData(numberOfLocalData);
+      auto numPoints = mGeometry.getNumPoints();
+      auto localDataLabes = mParticle->getLocalDataLabels();
+      for (int i = 0; i < numberOfLocalData; ++i) {
+        mLocalData.setVectorData(i, numPoints, 0., localDataLabes[i]);
+      }
+    }
+
+    auto tracer = rayTraceKernel<NumericType, D>(
+        mDevice, mGeometry, boundary, raySource, mParticle,
+        mNumberOfRaysPerPoint, mNumberOfRaysFixed, mUseRandomSeeds, mCalcFlux,
+        mRunNumber++);
+
+    tracer.setTracingData(&mLocalData, mGlobalData);
+    tracer.setHitCounter(&mHitCounter);
+    tracer.setRayTraceInfo(&mRTInfo);
+    tracer.apply();
+
+    if (mCheckError)
+      checkRelativeError();
+
+    boundary.releaseGeometry();
   }
 
   /// Run the ray tracer
