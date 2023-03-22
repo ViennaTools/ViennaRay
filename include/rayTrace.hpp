@@ -255,7 +255,7 @@ public:
     }
   }
 
-   void normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir) {
+  void normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir) {
     assert(flux.size() == mGeometry.getNumPoints() &&
            "Unequal number of points in normalizeFlux");
 
@@ -271,9 +271,7 @@ public:
       auto point = mGeometry.getPoint(idx);
       auto distanceToCenter = point[firstDir];
 
-      std::cout << diskArea[idx] << " " << mDiskRadius <<  std::endl;
-
-      flux[idx] *= normFactor / (2 * distanceToCenter * diskArea[idx]);
+      flux[idx] *= normFactor / (2 * distanceToCenter * diskArea[idx] * M_PI);
     }
   }
 

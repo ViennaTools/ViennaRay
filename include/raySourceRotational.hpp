@@ -1,6 +1,7 @@
 #pragma once
 
 #include <raySource.hpp>
+#include <rayUtil.hpp>
 
 template <typename NumericType, int D = 2>
 class raySourceRotational : public raySource<NumericType, D> {
@@ -15,10 +16,14 @@ public:
         minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
         mRadius(bdBox[1][firstDir] - bdBox[0][firstDir]),
         mNumPoints(pNumPoints) {
-          file.open("directions.txt");
-        }
+    file.open("angles.txt");
+    std::cout << "First dir: " << firstDir << std::endl;
+    std::cout << "Second dir: " << secondDir << std::endl;
+    std::cout << "Ray dir: " << rayDir << std::endl;
+    file << "x,y,z,tmp,radius\n";
+  }
 
-    ~raySourceRotational() { file.close(); }
+  ~raySourceRotational() { file.close(); }
 
   void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState1,
                rayRNG &RngState2, rayRNG &RngState3,
@@ -61,36 +66,41 @@ private:
     return origin;
   }
 
-  rayTriple<NumericType> getDirection(rayRNG &RngState, const rayTriple<NumericType> &origin) {
+  rayTriple<NumericType> getDirection(rayRNG &RngState,
+                                      const rayTriple<NumericType> &origin) {
     rayTriple<NumericType> direction{0., 0., 0.};
 
     NumericType radius = origin[firstDir];
     NumericType theta = 0.;
     NumericType phi = 0.;
-    NumericType tmp= 0.;
-    NumericType W =0.;
-    NumericType testW=0.;
+    NumericType tmp = 0.;
+    NumericType W = 0.;
+    NumericType testW = 0.;
 
-    do{
-        theta = uniDist(RngState) * 2. * M_PI;
-        phi = uniDist(RngState) * 2. * M_PI;
-        W = uniDist(RngState);
-        testW = (radius + torus_r * std::cos(theta)) / (radius + torus_r);
-    } while(W > testW);
+    do {
+      theta = uniDist(RngState) * 2. * M_PI;
+      phi = uniDist(RngState) * 2. * M_PI;
+      W = uniDist(RngState);
+      testW = (radius + torus_r * std::cos(theta)) / (radius + torus_r);
+    } while (W > testW);
 
-    direction[firstDir] = (radius + torus_r * std::cos(theta)) * std::cos(phi);
-    direction[secondDir] = (radius + torus_r * std::cos(theta)) * std::sin(phi);
-    direction[rayDir] = torus_r * std::sin(theta);
+    direction[firstDir] =
+        (radius + torus_r * std::cos(theta)) * std::cos(phi); // x
+    direction[secondDir] =
+        (radius + torus_r * std::cos(theta)) * std::sin(phi); // z
+    direction[rayDir] = torus_r * std::sin(theta);            // y
 
-    tmp = std::sqrt(direction[firstDir] * direction[firstDir] + direction[secondDir] * direction[secondDir]);
+    tmp = std::sqrt(direction[firstDir] * direction[firstDir] +
+                    direction[secondDir] * direction[secondDir]);
 
-    direction[firstDir] = tmp;
+    file << direction[0] << "," << direction[1] << "," << direction[2] << ","
+         << tmp << "," << radius << "\n";
+
+    direction[firstDir] = tmp - radius;
     direction[secondDir] = 0.;
-    direction[rayDir] -= 1.;
+    direction[rayDir] -= torus_r;
 
     rayInternal::Normalize(direction);
-
-    file << direction[0] << " " << direction[1] << " " << direction[2] << "\n";
 
     return direction;
   }

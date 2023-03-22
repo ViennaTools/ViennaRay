@@ -10,7 +10,7 @@
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
-#define PRINT_PROGRESS false
+#define PRINT_PROGRESS true
 #define PRINT_RESULT false
 
 template <typename NumericType, int D> class rayTraceKernel {
@@ -79,6 +79,9 @@ public:
 
     auto time = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
+    std::ofstream dir_file("directions.txt");
+    dir_file << "x,y,z\n";
+
 #pragma omp parallel                 \
     reduction(+                      \
               : geohitc, nongeohitc, totaltraces) \
@@ -136,6 +139,12 @@ public:
 
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
+
+#pragma omp critical
+        {
+          dir_file << rayHit.ray.dir_x << "," << rayHit.ray.dir_y << ","
+                   << rayHit.ray.dir_z << "\n";
+        }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;
@@ -310,6 +319,8 @@ public:
       auto diskAreas = computeDiskAreas();
       myHitCounter.setDiskAreas(diskAreas);
     } // end parallel section
+
+    dir_file.close();
 
     auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
