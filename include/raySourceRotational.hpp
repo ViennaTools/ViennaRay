@@ -11,16 +11,20 @@ public:
                       std::array<int, 5> &pTraceSettings,
                       const size_t pNumPoints)
       : bdBox(pBoundingBox), rayDir(pTraceSettings[0]),
-        firstDir(pTraceSettings[1]), minMax(pTraceSettings[3]),
-        posNeg(pTraceSettings[4]),
+        firstDir(pTraceSettings[1]), secondDir(pTraceSettings[2]),
+        minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
         mRadius(bdBox[1][firstDir] - bdBox[0][firstDir]),
-        mNumPoints(pNumPoints) {}
+        mNumPoints(pNumPoints) {
+          file.open("directions.txt");
+        }
+
+    ~raySourceRotational() { file.close(); }
 
   void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState1,
                rayRNG &RngState2, rayRNG &RngState3,
                rayRNG &RngState4) override final {
     auto origin = getOrigin(RngState1);
-    auto direction = getDirection(RngState3);
+    auto direction = getDirection(RngState3, origin);
 
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(ray) =
@@ -49,32 +53,58 @@ private:
     auto r1 = uniDist(RngState);
 
     origin[rayDir] = bdBox[minMax][rayDir];
-    // origin[firstDir] = mRadius * std::sqrt(r1);
-    origin[firstDir] =
-        bdBox[0][firstDir] + (bdBox[1][firstDir] - bdBox[0][firstDir]) * r1;
+    origin[firstDir] = mRadius * std::sqrt(r1);
+
+    // origin[firstDir] =
+    //     bdBox[0][firstDir] + (bdBox[1][firstDir] - bdBox[0][firstDir]) * r1;
 
     return origin;
   }
 
-  rayTriple<NumericType> getDirection(rayRNG &RngState) {
+  rayTriple<NumericType> getDirection(rayRNG &RngState, const rayTriple<NumericType> &origin) {
     rayTriple<NumericType> direction{0., 0., 0.};
-    auto r1 = uniDist(RngState) * two_pi;
 
-    direction[rayDir] = posNeg * (std::sin(r1) + 1);
-    direction[firstDir] = std::cos(r1);
+    NumericType radius = origin[firstDir];
+    NumericType theta = 0.;
+    NumericType phi = 0.;
+    NumericType tmp= 0.;
+    NumericType W =0.;
+    NumericType testW=0.;
+
+    do{
+        theta = uniDist(RngState) * 2. * M_PI;
+        phi = uniDist(RngState) * 2. * M_PI;
+        W = uniDist(RngState);
+        testW = (radius + torus_r * std::cos(theta)) / (radius + torus_r);
+    } while(W > testW);
+
+    direction[firstDir] = (radius + torus_r * std::cos(theta)) * std::cos(phi);
+    direction[secondDir] = (radius + torus_r * std::cos(theta)) * std::sin(phi);
+    direction[rayDir] = torus_r * std::sin(theta);
+
+    tmp = std::sqrt(direction[firstDir] * direction[firstDir] + direction[secondDir] * direction[secondDir]);
+
+    direction[firstDir] = tmp;
+    direction[secondDir] = 0.;
+    direction[rayDir] -= 1.;
 
     rayInternal::Normalize(direction);
+
+    file << direction[0] << " " << direction[1] << " " << direction[2] << "\n";
 
     return direction;
   }
 
+  std::ofstream file;
   const boundingBoxType bdBox;
   const int rayDir;
   const int firstDir;
+  const int secondDir;
   const int minMax;
   const NumericType posNeg;
   const size_t mNumPoints;
   const NumericType mRadius;
   constexpr static double two_pi = rayInternal::PI * 2;
+  constexpr static double torus_r = 1.;
   std::uniform_real_distribution<NumericType> uniDist;
 };
