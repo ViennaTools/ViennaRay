@@ -61,7 +61,7 @@ private:
     origin[firstDir] = mRadius * std::sqrt(r1);
 
     // origin[firstDir] =
-    //     bdBox[0][firstDir] + (bdBox[1][firstDir] - bdBox[0][firstDir]) * r1;
+        // bdBox[0][firstDir] + (bdBox[1][firstDir] - bdBox[0][firstDir]) * r1;
 
     return origin;
   }
@@ -72,35 +72,47 @@ private:
 
     NumericType radius = origin[firstDir];
     NumericType theta = 0.;
-    NumericType phi = 0.;
+    // NumericType phi = 0.;
     NumericType tmp = 0.;
     NumericType W = 0.;
     NumericType testW = 0.;
 
     do {
       theta = uniDist(RngState) * 2. * M_PI;
-      phi = uniDist(RngState) * 2. * M_PI;
+      // phi = uniDist(RngState) * 2. * M_PI;
       W = uniDist(RngState);
       testW = (radius + torus_r * std::cos(theta)) / (radius + torus_r);
     } while (W > testW);
 
-    direction[firstDir] =
-        (radius + torus_r * std::cos(theta)) * std::cos(phi); // x
-    direction[secondDir] =
-        (radius + torus_r * std::cos(theta)) * std::sin(phi); // z
-    direction[rayDir] = torus_r * std::sin(theta);            // y
+    direction[firstDir] = std::cos(theta); // x
+    // direction[secondDir] =
+        // (radius + torus_r * std::cos(theta)) * std::sin(phi); // z
+    direction[rayDir] = std::sin(theta) - 1;            // y
 
-    tmp = std::sqrt(direction[firstDir] * direction[firstDir] +
-                    direction[secondDir] * direction[secondDir]);
+    // tmp = std::sqrt(direction[firstDir] * direction[firstDir] +
+    //                 direction[secondDir] * direction[secondDir]);
+
+    // direction[firstDir] = tmp - radius;
+    // direction[secondDir] = 0.;
+    // direction[rayDir] -= torus_r;
+
+    // auto r1 = uniDist(RngState);
+    // auto r2 = uniDist(RngState);
+
+    // const NumericType tt = r2;
+    // direction[rayDir] = posNeg * sqrtf(tt);
+    // direction[firstDir] = cosf(two_pi * r1) * sqrtf(1 - tt);
+
+    // if constexpr (D == 2) {
+    //   direction[secondDir] = 0;
+    // } else {
+    //   direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
+    // }
+
+    rayInternal::Normalize(direction);
 
     file << direction[0] << "," << direction[1] << "," << direction[2] << ","
          << tmp << "," << radius << "\n";
-
-    direction[firstDir] = tmp - radius;
-    direction[secondDir] = 0.;
-    direction[rayDir] -= torus_r;
-
-    rayInternal::Normalize(direction);
 
     return direction;
   }

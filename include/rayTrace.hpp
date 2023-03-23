@@ -255,7 +255,7 @@ public:
     }
   }
 
-  void normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir) {
+  std::vector<NumericType> normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir) {
     assert(flux.size() == mGeometry.getNumPoints() &&
            "Unequal number of points in normalizeFlux");
 
@@ -265,14 +265,22 @@ public:
                             ? flux.size() * mNumberOfRaysPerPoint
                             : mNumberOfRaysFixed;
     NumericType normFactor = sourceArea / numTotalRays;
+    std::vector<NumericType> annAreas(flux.size());
 
-#pragma omp parallel for
     for (size_t idx = 0; idx < flux.size(); ++idx) {
-      auto point = mGeometry.getPoint(idx);
-      auto distanceToCenter = point[firstDir];
+      auto distanceToCenter =  mGeometry.getPoint(idx)[firstDir];
+      NumericType annulusArea;
+      if (distanceToCenter < diskArea[idx]) {
+        annulusArea = diskArea[idx] * diskArea[idx] * M_PI;
+      } else {
+        annulusArea = 2 * distanceToCenter * diskArea[idx] * M_PI;
+      }
 
-      flux[idx] *= normFactor / (2 * distanceToCenter * diskArea[idx] * M_PI);
+      flux[idx] *= normFactor / annulusArea;
+      annAreas[idx] = annulusArea;
     }
+
+    return annAreas;
   }
 
   /// Helper function to smooth the recorded flux by averaging over the
