@@ -23,7 +23,7 @@ public:
   }
 
   /// Run the ray tracer
-  void applyRotational() {
+  void applyRotational(const NumericType skewingFactor) {
     checkSettings();
     initMemoryFlags();
     auto boundingBox = mGeometry.getBoundingBox();
@@ -35,7 +35,7 @@ public:
                                                 mBoundaryConds, traceSettings);
 
     auto raySource = raySourceRotational<NumericType, D>(
-        boundingBox, traceSettings, mGeometry.getNumPoints());
+        skewingFactor, boundingBox, traceSettings, mGeometry.getNumPoints());
 
     auto numberOfLocalData = mParticle->getRequiredLocalDataSize();
     if (numberOfLocalData) {
@@ -255,7 +255,8 @@ public:
     }
   }
 
-  std::vector<NumericType> normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir) {
+  std::vector<NumericType>
+  normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir) {
     assert(flux.size() == mGeometry.getNumPoints() &&
            "Unequal number of points in normalizeFlux");
 
@@ -268,7 +269,7 @@ public:
     std::vector<NumericType> annAreas(flux.size());
 
     for (size_t idx = 0; idx < flux.size(); ++idx) {
-      auto distanceToCenter =  mGeometry.getPoint(idx)[firstDir];
+      auto distanceToCenter = mGeometry.getPoint(idx)[firstDir];
       NumericType annulusArea;
       if (distanceToCenter < diskArea[idx]) {
         annulusArea = diskArea[idx] * diskArea[idx] * M_PI;

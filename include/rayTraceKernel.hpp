@@ -140,11 +140,12 @@ public:
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
                         RngState4); // fills also tnear
 
-// #pragma omp critical
-//         {
-//           dir_file << rayHit.ray.dir_x << "," << rayHit.ray.dir_y << ","
-//                    << rayHit.ray.dir_z << "\n";
-//         }
+        // #pragma omp critical
+        //         {
+        //           dir_file << rayHit.ray.dir_x << "," << rayHit.ray.dir_y <<
+        //           ","
+        //                    << rayHit.ray.dir_z << "\n";
+        //         }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;

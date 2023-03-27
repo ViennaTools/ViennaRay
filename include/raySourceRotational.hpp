@@ -8,15 +8,15 @@ class raySourceRotational : public raySource<NumericType, D> {
   typedef rayPair<rayTriple<NumericType>> boundingBoxType;
 
 public:
-  raySourceRotational(boundingBoxType pBoundingBox,
+  raySourceRotational(const NumericType skewingFactor,
+                      boundingBoxType pBoundingBox,
                       std::array<int, 5> &pTraceSettings,
                       const size_t pNumPoints)
       : bdBox(pBoundingBox), rayDir(pTraceSettings[0]),
         firstDir(pTraceSettings[1]), secondDir(pTraceSettings[2]),
         minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
         mRadius(bdBox[1][firstDir] - bdBox[0][firstDir]),
-        mNumPoints(pNumPoints) {
-  }
+        mNumPoints(pNumPoints), torus_r(skewingFactor) {}
 
   void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState1,
                rayRNG &RngState2, rayRNG &RngState3,
@@ -76,7 +76,7 @@ private:
 
     NumericType r_in = std::sqrt(uniDist(RngState)) * torus_r;
     direction[firstDir] = std::cos(theta) * r_in; // x
-    direction[rayDir] = std::sin(theta) * r_in;  // y
+    direction[rayDir] = std::sin(theta) * r_in;   // y
 
     rayInternal::Normalize(direction);
 
@@ -92,6 +92,6 @@ private:
   const size_t mNumPoints;
   const NumericType mRadius;
   constexpr static double two_pi = rayInternal::PI * 2;
-  constexpr static double torus_r = 1.;
+  const double torus_r;
   std::uniform_real_distribution<NumericType> uniDist;
 };
