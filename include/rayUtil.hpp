@@ -59,6 +59,14 @@ rayTriple<NumericType> Sum(const rayTriple<NumericType> &pVecA,
 }
 
 template <typename NumericType>
+rayTriple<NumericType> MultAdd(const rayTriple<NumericType> &pVecA,
+                           const rayTriple<NumericType> &pVecB,
+                           const NumericType &pT) {
+  return {pVecA[0] + pVecB[0]  * pT, pVecA[1] + pVecB[1] * pT,
+          pVecA[2] + pVecB[2] * pT};
+}
+
+template <typename NumericType>
 rayTriple<NumericType> Diff(const rayTriple<NumericType> &pVecA,
                             const rayTriple<NumericType> &pVecB) {
   return {pVecA[0] - pVecB[0], pVecA[1] - pVecB[1], pVecA[2] - pVecB[2]};

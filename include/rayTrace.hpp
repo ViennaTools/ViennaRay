@@ -4,6 +4,7 @@
 #include <embree3/rtcore.h>
 #include <rayBoundCondition.hpp>
 #include <rayBoundary.hpp>
+#include <rayCaptureDistribution.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
 #include <rayMessage.hpp>
@@ -20,6 +21,31 @@ public:
   ~rayTrace() {
     mGeometry.releaseGeometry();
     rtcReleaseDevice(mDevice);
+  }
+
+  void captureDistribution() {
+    checkSettings();
+    initMemoryFlags();
+    auto boundingBox = mGeometry.getBoundingBox();
+    rayInternal::adjustBoundingBox<NumericType, D>(
+        boundingBox, mSourceDirection, mDiskRadius);
+    auto traceSettings = rayInternal::getTraceSettings(mSourceDirection);
+
+    auto boundary = rayBoundary<NumericType, D>(mDevice, boundingBox,
+                                                mBoundaryConds, traceSettings);
+
+    auto raySource = raySourceRandom<NumericType, D>(
+        boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
+        mGeometry.getNumPoints());
+
+    auto tracer = rayCaptureDistribution<NumericType, D>(
+        mDevice, mGeometry, boundary, raySource, mUseRandomSeeds, mRunNumber++,
+        boundingBox, traceSettings);
+    auto distribution = tracer.apply();
+
+    boundary.releaseGeometry();
+
+    distribution.writeToFile("distribution.txt");
   }
 
   /// Run the ray tracer
