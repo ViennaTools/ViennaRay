@@ -15,6 +15,102 @@ public:
   rayGeometry() {}
 
   template <size_t Dim>
+  void initGeometryRotational(
+      RTCDevice &pDevice, std::vector<std::array<NumericType, Dim>> &points,
+      const std::vector<std::array<NumericType, Dim>> &normals,
+      const NumericType discRadii, const NumericType gridDelta) {
+    static_assert(D == 2 && "Setting rotational geometry in 3D trace object");
+
+    assert(points.size() == normals.size() &&
+           "rayGeometry: Points/Normals size missmatch");
+
+    // overwriting the geometry without releasing it beforehand causes the old
+    // buffer to leak
+    releaseGeometry();
+    mRTCGeometry =
+        rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
+    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+           "RTC Error: rtcNewGeometry");
+    mNumPoints = points.size();
+
+    // The buffer data is managed internally (embree) and automatically freed
+    // when the geometry is destroyed.
+    mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(
+        mRTCGeometry, RTC_BUFFER_TYPE_VERTEX,
+        0, // slot
+        RTC_FORMAT_FLOAT4, sizeof(point_4f_t), mNumPoints);
+    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+           "RTC Error: rtcSetNewGeometryBuffer points");
+    mDiscRadii = discRadii;
+
+    for (int i = 0; i < D; i++) {
+      mMinCoords[i] = nummax;
+      mMaxCoords[i] = nummin;
+    }
+
+    for (size_t i = 0; i < mNumPoints; ++i) {
+
+      if (points[i][0] > 1.) {
+        mPointBuffer[i].radius = (float)discRadii;
+      } else {
+        mPointBuffer[i].radius = 2.f * discRadii;
+      }
+
+      mPointBuffer[i].xx = (float)points[i][0];
+      mPointBuffer[i].yy = (float)points[i][1];
+      if (points[i][0] < mMinCoords[0])
+        mMinCoords[0] = points[i][0];
+      if (points[i][1] < mMinCoords[1])
+        mMinCoords[1] = points[i][1];
+      if (points[i][0] > mMaxCoords[0])
+        mMaxCoords[0] = points[i][0];
+      if (points[i][1] > mMaxCoords[1])
+        mMaxCoords[1] = points[i][1];
+      if constexpr (D == 2) {
+        mPointBuffer[i].zz = 0.f;
+        mMinCoords[2] = 0.;
+        mMaxCoords[2] = 0.;
+      } else {
+        mPointBuffer[i].zz = (float)points[i][2];
+        if (points[i][2] < mMinCoords[2])
+          mMinCoords[2] = points[i][2];
+        if (points[i][2] > mMaxCoords[2])
+          mMaxCoords[2] = points[i][2];
+      }
+    }
+
+    mNormalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(
+        mRTCGeometry, RTC_BUFFER_TYPE_NORMAL,
+        0, // slot
+        RTC_FORMAT_FLOAT3, sizeof(normal_vec_3f_t), mNumPoints);
+    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+           "RTC Error: rtcSetNewGeometryBuffer normals");
+
+    for (size_t i = 0; i < mNumPoints; ++i) {
+      mNormalVecBuffer[i].xx = (float)normals[i][0];
+      mNormalVecBuffer[i].yy = (float)normals[i][1];
+      if constexpr (D == 2) {
+        mNormalVecBuffer[i].zz = 0.f;
+      } else {
+        mNormalVecBuffer[i].zz = (float)normals[i][2];
+      }
+    }
+
+#ifdef VIENNARAY_USE_RAY_MASKING
+    rtcSetGeometryMask(mRTCGeometry, -1);
+#endif
+
+    rtcCommitGeometry(mRTCGeometry);
+    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+           "RTC Error: rtcCommitGeometry");
+
+    initPointNeighborhood(points);
+    if (mMaterialIds.empty()) {
+      mMaterialIds.resize(mNumPoints, 0);
+    }
+  }
+
+  template <size_t Dim>
   void initGeometry(RTCDevice &pDevice,
                     std::vector<std::array<NumericType, Dim>> &points,
                     std::vector<std::array<NumericType, Dim>> &normals,

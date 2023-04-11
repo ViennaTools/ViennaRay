@@ -142,6 +142,9 @@ public:
 
         // #pragma omp critical
         //         {
+        //           dir_file << rayHit.ray.org_x << "," << rayHit.ray.org_y <<
+        //           ","
+        //                    << rayHit.ray.org_z << ",";
         //           dir_file << rayHit.ray.dir_x << "," << rayHit.ray.dir_y <<
         //           ","
         //                    << rayHit.ray.dir_z << "\n";

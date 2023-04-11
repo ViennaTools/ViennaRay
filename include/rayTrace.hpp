@@ -23,7 +23,8 @@ public:
     rtcReleaseDevice(mDevice);
   }
 
-  void captureDistribution() {
+  void
+  captureDistribution(raySourceDistribution<NumericType, 2> &distribution) {
     checkSettings();
     initMemoryFlags();
     auto boundingBox = mGeometry.getBoundingBox();
@@ -41,11 +42,53 @@ public:
     auto tracer = rayCaptureDistribution<NumericType, D>(
         mDevice, mGeometry, boundary, raySource, mUseRandomSeeds, mRunNumber++,
         boundingBox, traceSettings);
-    auto distribution = tracer.apply();
+    tracer.apply(distribution);
+    distribution.prepareDistribution();
 
     boundary.releaseGeometry();
+  }
 
-    distribution.writeToFile("distribution.txt");
+  /// Run the ray tracer
+  void applyRotational(raySourceDistribution<NumericType, 2> &distribution) {
+    checkSettings();
+    initMemoryFlags();
+    auto boundingBox = mGeometry.getBoundingBox();
+    rayInternal::adjustBoundingBox<NumericType, D>(
+        boundingBox, mSourceDirection, mDiskRadius);
+
+    auto traceSettings = rayInternal::getTraceSettings(mSourceDirection);
+    boundingBox[0][traceSettings[1]] = -boundingBox[1][traceSettings[1]];
+
+    auto boundary = rayBoundary<NumericType, D>(mDevice, boundingBox,
+                                                mBoundaryConds, traceSettings);
+
+    auto numberOfLocalData = mParticle->getRequiredLocalDataSize();
+    if (numberOfLocalData) {
+      mLocalData.setNumberOfVectorData(numberOfLocalData);
+      auto numPoints = mGeometry.getNumPoints();
+      auto localDataLabes = mParticle->getLocalDataLabels();
+      for (int i = 0; i < numberOfLocalData; ++i) {
+        mLocalData.setVectorData(i, numPoints, 0., localDataLabes[i]);
+      }
+    }
+
+    distribution.init(boundingBox, traceSettings, false);
+    distribution.setNumPoints(mGeometry.getNumPoints());
+
+    auto tracer = rayTraceKernel<NumericType, D>(
+        mDevice, mGeometry, boundary, distribution, mParticle,
+        mNumberOfRaysPerPoint, mNumberOfRaysFixed, mUseRandomSeeds, mCalcFlux,
+        mRunNumber++);
+
+    tracer.setTracingData(&mLocalData, mGlobalData);
+    tracer.setHitCounter(&mHitCounter);
+    tracer.setRayTraceInfo(&mRTInfo);
+    tracer.apply();
+
+    if (mCheckError)
+      checkRelativeError();
+
+    boundary.releaseGeometry();
   }
 
   /// Run the ray tracer
@@ -140,6 +183,21 @@ public:
                                   ParticleType>::value &&
                   "Particle object does not interface correct class");
     mParticle = p->clone();
+  }
+
+  /// Set the ray tracing geometry
+  /// It is possible to set a 2D geometry with 3D points.p
+  /// In this case the last dimension is ignored.
+  template <std::size_t Dim>
+  void setGeometryRotational(std::vector<std::array<NumericType, Dim>> &points,
+                             std::vector<std::array<NumericType, Dim>> &normals,
+                             const NumericType gridDelta) {
+    static_assert(D == 2 && "Setting rotational geometry in 3D trace object");
+
+    mGridDelta = gridDelta;
+    mDiskRadius = gridDelta * rayInternal::DiskFactor<D>;
+    mGeometry.initGeometryRotational(mDevice, points, normals, mDiskRadius,
+                                     mGridDelta);
   }
 
   /// Set the ray tracing geometry
@@ -282,7 +340,8 @@ public:
   }
 
   std::vector<NumericType>
-  normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir) {
+  normalizeFluxRotational(std::vector<NumericType> &flux, int firstDir,
+                          const NumericType extent) {
     assert(flux.size() == mGeometry.getNumPoints() &&
            "Unequal number of points in normalizeFlux");
 
@@ -297,13 +356,39 @@ public:
     for (size_t idx = 0; idx < flux.size(); ++idx) {
       auto distanceToCenter = mGeometry.getPoint(idx)[firstDir];
       NumericType annulusArea;
-      if (distanceToCenter < diskArea[idx]) {
-        annulusArea = diskArea[idx] * diskArea[idx] * M_PI;
+      // NumericType diskRadius = mDiskRadius;
+      // if (distanceToCenter < 1.) {
+      //   diskRadius *= 2;
+      // }
+      // if (distanceToCenter < diskRadius) {
+      //   annulusArea =
+      //       (distanceToCenter + diskRadius) * (distanceToCenter +
+      //       diskRadius);
+      // } else if (distanceToCenter > (extent - diskRadius)) {
+      //   NumericType distanceToBoundary =
+      //       std::max(extent - distanceToCenter, 0.);
+      //   annulusArea =
+      //       (distanceToCenter + distanceToBoundary) *
+      //           (distanceToCenter + distanceToBoundary) -
+      //       (distanceToCenter - diskRadius) * (distanceToCenter -
+      //       diskRadius);
+      // } else {
+      //   annulusArea = 4 * distanceToCenter * diskRadius;
+      // }
+
+      if (distanceToCenter < diskArea[idx] / 2.) {
+        annulusArea =
+            (distanceToCenter + mDiskRadius) * (distanceToCenter + mDiskRadius);
       } else {
-        annulusArea = 2 * distanceToCenter * diskArea[idx] * M_PI;
+        annulusArea = 2 * distanceToCenter * diskArea[idx];
       }
 
-      flux[idx] *= normFactor / annulusArea;
+      // annulusArea *= 1. + 1. / (0.2 + 2 * M_PI * distanceToCenter);
+
+      std::cout << idx << ": " << distanceToCenter << " " << numTotalRays << " "
+                << flux[idx] << " " << annulusArea << std::endl;
+
+      flux[idx] *= normFactor / annulusArea * extent;
       annAreas[idx] = annulusArea;
     }
 
