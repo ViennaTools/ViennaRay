@@ -44,7 +44,7 @@ jobs:
         run: ctest -C ${{env.BUILD_TYPE}}
 
       - name: Trigger Action on ViennaPS Repository
-        if: ${{ github.event_name != 'schedule' }}
+        if: ${{ vars.TRIGGER_VIENNAPS == 1 }} && ${{ github.event_name != 'schedule' }} && ${{ github.event_name != 'pull_request' }}
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.PAT_VIENNAPS }}

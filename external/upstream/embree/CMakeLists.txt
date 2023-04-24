@@ -1,14 +1,8 @@
 # ##################################################################################################
 # Check embree dependency
 # ##################################################################################################
-# Check if the variable is a cache variable
-get_property(
-  is_cached
-  CACHE embree_DIR
-  PROPERTY TYPE)
-# If it is not from cache and defined at this point, the variable was passed as a -D command line
-# argument
-if("${is_cached}" STREQUAL "" AND DEFINED embree_DIR)
+# If the path to an installation was provided by the user
+if(DEFINED embree_DIR AND NOT DEFINED CACHE{embree_DIR})
   # Required for windows to convert backslashes to forward slashes
   file(TO_CMAKE_PATH "${embree_DIR}" embree_DIR)
   set(embree_DIR
@@ -71,8 +65,6 @@ else()
         # We use OpenMP, Embree calls that internal (eventhough it is external to Embree)
         -DEMBREE_TASKING_SYSTEM:STRING=INTERNAL
       BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NPROC}
-      # Do not install If one installes it and tries to use the installed library, then there exists
-      # a linkage problem with TBB. Simply use the generated files in the binary directory.
       USES_TERMINAL_DOWNLOAD 1
       USES_TERMINAL_UPDATE 1
       GIT_PROGRESS 1)
@@ -80,7 +72,7 @@ else()
     set(EMBREE_RAY_MASK OFF)
 
     # Get install and build directory from external project
-    ExternalProject_Get_Property(embree_external INSTALL_DIR BINARY_DIR)
+    ExternalProject_Get_Property(embree_external INSTALL_DIR)
 
     set(embree_DIR "${INSTALL_DIR}")
 

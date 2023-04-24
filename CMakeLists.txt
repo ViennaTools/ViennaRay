@@ -2,12 +2,17 @@ cmake_minimum_required(VERSION 3.14)
 
 project("ViennaRay" VERSION 1.2.0)
 
+# Store version in cache
+set(VIENNARAY_VERSION
+    ${PROJECT_VERSION}
+    CACHE STRING "The version of ViennaRay" FORCE)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD "17")
+
 add_definitions(-DVIENNARAY_VERSION=${PROJECT_VERSION})
 
 include(GNUInstallDirs)
-
-# c++17 for inline constexpr variables
-set(CMAKE_CXX_STANDARD "17")
 
 # set default build type
 set(DEFAULT_BUILD_TYPE "Release")
@@ -28,13 +33,20 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
       CACHE BOOL "Export all symbols")
 endif()
 
-set(ViennaRay_BINARY_DIR
-    ${PROJECT_BINARY_DIR}
-    CACHE PATH "Path to local ViennaRay installation" FORCE)
+# ##################################################################################################
+# CONFIGURATION OPTIONS
+# ##################################################################################################
+# Build the included examples
+option(VIENNARAY_BUILD_EXAMPLES "Build examples." OFF)
 
-# OpenMP Support
-find_package(OpenMP REQUIRED)
-list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
+# Build the included tests
+option(VIENNARAY_BUILD_TESTS "Build tests." OFF)
+
+# Build Python bindings
+option(VIENNARAY_BUILD_PYTHON "Build for python3.x." OFF)
+
+# Enable weighted distribution of ray weights
+option(VIENNARAY_USE_WDIST "Use weighted distribution of ray weights." OFF)
 
 # ##################################################################################################
 # If you want to use the Intel SPMD Compiler, set that here
@@ -42,47 +54,102 @@ list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
 set(EMBREE_ISPC_SUPPORT
     OFF
     CACHE BOOL "Set whether or not you use Intel's SPMD Compiler")
+
+# ##################################################################################################
+# AUTOMATIC DEPENDENCY PREPARATION
 # ##################################################################################################
 
-# build dependencies
-set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/dependencies)
+# With the stampfile mechanism, cmake automatically retriggers the configure step after
+# the buildDependencies targed has been executed. Thus all dependencies that were built
+# with buildDependencies should then be made available by the find_package calls.
+set(STAMPFILE ${CMAKE_BINARY_DIR}/target.stamp)
+# When the buildDependencies target is executed, the stamp file is touched
+add_custom_target(buildDependencies COMMAND ${CMAKE_COMMAND} -E touch ${STAMPFILE})
 
-# Include all external dependencies
+# Include the external dependencies
 include(ExternalProject)
-add_custom_target(buildDependencies)
+set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/dependencies)
 add_subdirectory(external/upstream)
 
+# Create the initial stamp file
+file(TOUCH ${STAMPFILE})
+# Include the stamp file, so that cmake is forced to re-run once the file has been touched
+include(${STAMPFILE})
+
+# Store the binary directory for use in subprojects
+set(ViennaRay_BINARY_DIR
+    ${PROJECT_BINARY_DIR}
+    CACHE PATH "Path to local ViennaRay installation" FORCE)
+
+# ##################################################################################################
+# DEPENDENCY CHECKS
+# ##################################################################################################
+set(DEPENDENCIES_FOUND TRUE)
+
+find_package(OpenMP REQUIRED)
+list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
+
+list(APPEND VIENNARAY_DEPENDENCIES "embree_external")
+find_package(embree 3.0 QUIET CONFIG PATHS ${embree_DIR} NO_DEFAULT_PATH)
+if(NOT embree_FOUND)
+  set(DEPENDENCIES_FOUND FALSE)
+endif()
+
+if(VIENNARAY_BUILD_PYTHON)
+  list(APPEND VIENNARAY_DEPENDENCIES "pybind11_external")
+  find_package(pybind11 QUIET PATHS ${pybind11_DIR} NO_DEFAULT_PATH)
+  if(NOT pybind11_FOUND)
+    set(DEPENDENCIES_FOUND FALSE)
+  endif()
+endif()
+
+if(DEPENDENCIES_FOUND)
+  # Remove the buildDependencies target from the ALL target to prevent unnecessary re-builds
+  set_target_properties(buildDependencies PROPERTIES EXCLUDE_FROM_ALL true)
+else()
+  message(WARNING "Not all dependencies were found. Execute buildDependencies target first.")
+  # Add the buildDependencies target to the ALL target
+  set_target_properties(buildDependencies PROPERTIES EXCLUDE_FROM_ALL false)
+endif()
+
+# ##################################################################################################
+# MAIN LIBRARY TARGET AND ADDITIONAL COMPILE DEFINITIONS
+# ##################################################################################################
 message(STATUS "embree ray masking: ${EMBREE_RAY_MASK}")
 
-# Enable Ray Masking if embree is compiled with ray masking enabled
+# Enables Ray Masking in ViennaRay, if embree is compiled with ray masking enabled
 if(EMBREE_RAY_MASK)
   add_compile_definitions(VIENNARAY_USE_RAY_MASKING)
-endif(EMBREE_RAY_MASK)
+endif()
 
-set(VIENNARAY_BUILD_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
-
-option(VIENNARAY_USE_WDIST "Use weighted distribution of ray weights." OFF)
 if(VIENNARAY_USE_WDIST)
   add_compile_definitions(VIENNARAY_USE_WDIST)
-endif(VIENNARAY_USE_WDIST)
+endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-# set the correct paths for installation
+# ##################################################################################################
+# DIRECTORY CONFIGURATIONS
+# ##################################################################################################
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/")
 endif()
 set(LOCAL_CONFIG_DIR "lib/cmake/${PROJECT_NAME}")
 
+# This variable is used by the example, test, python and precompiled library target, since those are
+# compiled before the project is installed in its proper install location.
+set(VIENNARAY_BUILD_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
+
 # Adding the install interface generator expression makes sure that the include files are installed
 # to the proper location (provided by GNUInstallDirs)
-set(VIENNARAY_BUILD_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
 target_include_directories(
   ${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${VIENNARAY_BUILD_INCLUDE_DIRS}>
                             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_11)
 
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
-
+# ##################################################################################################
+# CMAKE CONFIG FILE SETUP
+# ##################################################################################################
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${PROJECT_NAME}ConfigVersion.cmake"
@@ -96,19 +163,24 @@ configure_package_config_file(
 # ##################################################################################################
 # BUILD EXAMPLES
 # ##################################################################################################
-option(VIENNARAY_BUILD_EXAMPLES "Build examples." OFF)
-if(VIENNARAY_BUILD_EXAMPLES)
+if(VIENNARAY_BUILD_EXAMPLES AND DEPENDENCIES_FOUND)
   add_subdirectory(Examples)
-endif(VIENNARAY_BUILD_EXAMPLES)
+endif()
 
 # ##################################################################################################
 # BUILD TESTS (Smaller examples for testing)
 # ##################################################################################################
-option(VIENNARAY_BUILD_TESTS "Build tests." OFF)
-if(VIENNARAY_BUILD_TESTS)
+if(VIENNARAY_BUILD_TESTS AND DEPENDENCIES_FOUND)
   enable_testing()
   add_subdirectory(Tests)
-endif(VIENNARAY_BUILD_TESTS)
+endif()
+
+# ##################################################################################################
+# BUILD PYTHON MODULE
+# ##################################################################################################
+if(VIENNARAY_BUILD_PYTHON AND DEPENDENCIES_FOUND)
+    add_subdirectory(Python)
+endif()
 
 # ##################################################################################################
 # INSTALL
