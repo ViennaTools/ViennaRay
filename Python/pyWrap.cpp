@@ -30,13 +30,14 @@ PYBIND11_DECLARE_HOLDER_TYPE(TemplateType, lsSmartPointer<TemplateType>);
 // module specification
 PYBIND11_MODULE(VIENNARAY_MODULE_NAME, module) {
   module.doc() =
-      "ViennaRay is a flux calculation library for topography simulations, based on "
-      "Intel®'s ray tracing kernel [Embree](https://www.embree.org/). It is designed "
-      "to provide efficient and high-performance ray tracing, while maintaining a "
-      "simple and easy to use interface. ViennaRay was developed and optimized for "
-      "use in conjunction with [ViennaLS](https://github.com/ViennaTools/ViennaLS), "
-      "which provides the necessary geometry representation. It is however possible "
-      "to use this as a standalone library, with self-designed geometries.";
+      "ViennaRay is a flux calculation library for topography simulations, "
+      "based on Intel®'s ray tracing kernel [Embree](https://www.embree.org/). "
+      "It is designed to provide efficient and high-performance ray "
+      "tracing, while maintaining a simple and easy to use interface. "
+      "ViennaRay was developed and optimized for use in conjunction with "
+      "[ViennaLS](https://github.com/ViennaTools/ViennaLS), which provides "
+      "the necessary geometry representation. It is however possible to "
+      "use this as a standalone library, with self-designed geometries.";
 
   // set version string of python module
   module.attr("__version__") = VIENNARAY_MODULE_VERSION;
