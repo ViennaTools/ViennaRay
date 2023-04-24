@@ -59,9 +59,9 @@ set(EMBREE_ISPC_SUPPORT
 # AUTOMATIC DEPENDENCY PREPARATION
 # ##################################################################################################
 
-# With the stampfile mechanism, cmake automatically retriggers the configure step after
-# the buildDependencies targed has been executed. Thus all dependencies that were built
-# with buildDependencies should then be made available by the find_package calls.
+# With the stampfile mechanism, cmake automatically retriggers the configure step after the
+# buildDependencies targed has been executed. Thus all dependencies that were built with
+# buildDependencies should then be made available by the find_package calls.
 set(STAMPFILE ${CMAKE_BINARY_DIR}/target.stamp)
 # When the buildDependencies target is executed, the stamp file is touched
 add_custom_target(buildDependencies COMMAND ${CMAKE_COMMAND} -E touch ${STAMPFILE})
@@ -90,7 +90,14 @@ find_package(OpenMP REQUIRED)
 list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
 
 list(APPEND VIENNARAY_DEPENDENCIES "embree_external")
-find_package(embree 3.0 QUIET CONFIG PATHS ${embree_DIR} NO_DEFAULT_PATH)
+find_package(
+  embree
+  3.0
+  QUIET
+  CONFIG
+  PATHS
+  ${embree_DIR}
+  NO_DEFAULT_PATH)
 if(NOT embree_FOUND)
   set(DEPENDENCIES_FOUND FALSE)
 endif()
@@ -179,7 +186,7 @@ endif()
 # BUILD PYTHON MODULE
 # ##################################################################################################
 if(VIENNARAY_BUILD_PYTHON AND DEPENDENCIES_FOUND)
-    add_subdirectory(Python)
+  add_subdirectory(Python)
 endif()
 
 # ##################################################################################################
