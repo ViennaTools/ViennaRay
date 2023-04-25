@@ -92,7 +92,6 @@ class CMakeBuild(build_ext):
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
             "-DVIENNARAY_BUILD_PYTHON=ON",
-            "-DVIENNARAY_STATIC_BUILD=ON",
         ]
 
         build_args = []
