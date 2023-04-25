@@ -48,6 +48,10 @@ option(VIENNARAY_BUILD_PYTHON "Build for python3.x." OFF)
 # Enable weighted distribution of ray weights
 option(VIENNARAY_USE_WDIST "Use weighted distribution of ray weights." OFF)
 
+# Statically link dependencies
+option(VIENNARAY_STATIC_BUILD "Build template specialisations in a way that allows static linking."
+       OFF)
+
 # ##################################################################################################
 # If you want to use the Intel SPMD Compiler, set that here
 # ##################################################################################################
