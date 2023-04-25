@@ -34,4 +34,8 @@ if(@EMBREE_RAY_MASK@)
   add_compile_definitions(VIENNARAY_USE_RAY_MASKING)
 endif(@EMBREE_RAY_MASK@)
 
+if(@VIENNARAY_STATIC_BUILD@)
+  set(VIENNARAY_STATIC_BUILD ON)
+endif()
+
 check_required_components("@PROJECT_NAME@")
