@@ -17,15 +17,12 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-// all header files which define API functions
-#include <lsSmartPointer.hpp>
+#include <omp.h>
 
 // always use double for python export
 typedef double T;
 // get dimension from cmake define
 constexpr int D = VIENNARAY_PYTHON_DIMENSION;
-
-PYBIND11_DECLARE_HOLDER_TYPE(TemplateType, lsSmartPointer<TemplateType>);
 
 // module specification
 PYBIND11_MODULE(VIENNARAY_MODULE_NAME, module) {

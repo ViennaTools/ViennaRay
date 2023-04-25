@@ -71,8 +71,8 @@ else()
     ExternalProject_Add(
       embree_external
       GIT_REPOSITORY https://github.com/embree/embree.git
-      GIT_TAG # hash of tags/v3.13.0
-              7c53133eb21424f7f0ae1e25bf357e358feaf6ab
+      # hash of tags/v3.13.5
+      GIT_TAG 698442324ccddd11725fb8875275dc1384f7fb40
       GIT_SHALLOW true
       TMP_DIR "${DEPENDENCIES_DIR}/tmp/${EMBREE_EXTERNAL_INSTALL}"
       STAMP_DIR "${DEPENDENCIES_DIR}/Stamp/${EMBREE_EXTERNAL_INSTALL}"
