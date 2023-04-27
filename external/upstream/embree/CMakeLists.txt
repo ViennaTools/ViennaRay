@@ -1,29 +1,54 @@
 # ##################################################################################################
 # Check embree dependency
 # ##################################################################################################
-# Check if the variable is a cache variable
-get_property(
-  is_cached
-  CACHE embree_DIR
-  PROPERTY TYPE)
-# If it is not from cache and defined at this point, the variable was passed as a -D command line
-# argument
-if("${is_cached}" STREQUAL "" AND DEFINED embree_DIR)
+
+# if this is a static build, also build vtk statically
+if(VIENNARAY_STATIC_BUILD)
+  set(EMBREE_EXTERNAL_INSTALL "static_embree_external")
+  message(STATUS "Static build: Using static embree lib.")
+else()
+  set(EMBREE_EXTERNAL_INSTALL "embree_external")
+endif()
+
+# If the path to an installation was provided by the user
+if(DEFINED embree_DIR AND NOT DEFINED CACHE{embree_DIR})
   # Required for windows to convert backslashes to forward slashes
   file(TO_CMAKE_PATH "${embree_DIR}" embree_DIR)
   set(embree_DIR
       "${embree_DIR}"
       CACHE PATH "Path to embree installation" FORCE)
   find_package(embree 3.0 REQUIRED PATHS ${embree_DIR} NO_DEFAULT_PATH)
+  if(VIENNARAY_STATIC_BUILD)
+    # Check if the library can be statically linked
+    check_all_type(ALL_STATIC "STATIC_LIBRARY" "embree")
+    if(NOT ${ALL_STATIC})
+      message(
+        FATAL_ERROR
+          "The detected installation of embree was not built using EMBREE_STATIC_LIB=ON. A static version of the embree library will be built from source."
+      )
+    endif()
+  endif()
   message(STATUS "Found embree at ${embree_DIR}.")
   add_library(embree_external INTERFACE) # dummy target
 else()
   # First try to locate any local build
-  find_package(embree 3.0 QUIET PATHS "${DEPENDENCIES_DIR}/Install/embree_external" NO_DEFAULT_PATH)
+  find_package(embree 3.0 QUIET PATHS "${DEPENDENCIES_DIR}/Install/${EMBREE_EXTERNAL_INSTALL}"
+               NO_DEFAULT_PATH)
 
   # If that fails look for a system installation
   if(NOT embree_FOUND)
     find_package(embree 3.0 QUIET)
+  endif()
+  if(VIENNARAY_STATIC_BUILD)
+    # Check if the library can be statically linked
+    check_all_type(ALL_STATIC "STATIC_LIBRARY" "embree")
+    if(NOT ${ALL_STATIC})
+      set(embree_FOUND FALSE)
+      message(
+        STATUS
+          "The detected installation of embree was not built using EMBREE_STATIC_LIB=ON. A static version of the embree library will be built from source."
+      )
+    endif()
   endif()
   if(embree_FOUND)
     message(STATUS "Found embree at ${embree_DIR}.")
@@ -46,15 +71,20 @@ else()
     ExternalProject_Add(
       embree_external
       GIT_REPOSITORY https://github.com/embree/embree.git
-      GIT_TAG # hash of tags/v3.13.0
-              7c53133eb21424f7f0ae1e25bf357e358feaf6ab
+      # hash of tags/v3.13.5
+      GIT_TAG 698442324ccddd11725fb8875275dc1384f7fb40
       GIT_SHALLOW true
-      INSTALL_DIR "${DEPENDENCIES_DIR}/Install/embree_external"
+      TMP_DIR "${DEPENDENCIES_DIR}/tmp/${EMBREE_EXTERNAL_INSTALL}"
+      STAMP_DIR "${DEPENDENCIES_DIR}/Stamp/${EMBREE_EXTERNAL_INSTALL}"
+      BINARY_DIR "${DEPENDENCIES_DIR}/Build/${EMBREE_EXTERNAL_INSTALL}"
+      INSTALL_DIR "${DEPENDENCIES_DIR}/Install/${EMBREE_EXTERNAL_INSTALL}"
       # Embree still lists a (an empty) submodule even though it does not exist (anymore). CMake
       # >=3.16 can prevent download (error) of submodules by specifying an empty string to
       # git_submodule and setting cmake plicy CMP0097 to NEW.
       GIT_SUBMODULES ""
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+                 -DEMBREE_STATIC_LIB=${VIENNARAY_STATIC_BUILD}
+                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                  -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
@@ -64,15 +94,12 @@ else()
                  -DEMBREE_TUTORIALS=OFF
                  -DEMBREE_BACKFACE_CULLING=OFF
                  -DEMBREE_FILTER_FUNCTION=ON # setting this option is probably not necessary
-                 -DCMAKE_BUILD_TYPE=Release
       CMAKE_CACHE_ARGS
         -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
         -DEMBREE_ISPC_SUPPORT:BOOL=${EMBREE_ISPC_SUPPORT}
         # We use OpenMP, Embree calls that internal (eventhough it is external to Embree)
         -DEMBREE_TASKING_SYSTEM:STRING=INTERNAL
       BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NPROC}
-      # Do not install If one installes it and tries to use the installed library, then there exists
-      # a linkage problem with TBB. Simply use the generated files in the binary directory.
       USES_TERMINAL_DOWNLOAD 1
       USES_TERMINAL_UPDATE 1
       GIT_PROGRESS 1)
@@ -80,7 +107,7 @@ else()
     set(EMBREE_RAY_MASK OFF)
 
     # Get install and build directory from external project
-    ExternalProject_Get_Property(embree_external INSTALL_DIR BINARY_DIR)
+    ExternalProject_Get_Property(embree_external INSTALL_DIR)
 
     set(embree_DIR "${INSTALL_DIR}")
 

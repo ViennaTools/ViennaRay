@@ -189,7 +189,7 @@ public:
     case rayNormalizationType::MAX: {
       auto maxv = *std::max_element(flux.begin(), flux.end());
 #pragma omp parallel for
-      for (size_t idx = 0; idx < flux.size(); ++idx) {
+      for (int idx = 0; idx < flux.size(); ++idx) {
         flux[idx] *= (totalDiskArea / diskArea[idx]) / maxv;
       }
       break;
@@ -202,7 +202,7 @@ public:
                               : mNumberOfRaysFixed;
       NumericType normFactor = sourceArea / numTotalRays;
 #pragma omp parallel for
-      for (size_t idx = 0; idx < flux.size(); ++idx) {
+      for (int idx = 0; idx < flux.size(); ++idx) {
         flux[idx] *= normFactor / diskArea[idx];
       }
       break;
@@ -220,7 +220,7 @@ public:
            "Unequal number of points in smoothFlux");
     auto oldFlux = flux;
 #pragma omp parallel for
-    for (size_t idx = 0; idx < mGeometry.getNumPoints(); idx++) {
+    for (int idx = 0; idx < mGeometry.getNumPoints(); idx++) {
       auto neighborhood = mGeometry.getNeighborIndicies(idx);
       for (auto const &nbi : neighborhood) {
         flux[idx] += oldFlux[nbi];
