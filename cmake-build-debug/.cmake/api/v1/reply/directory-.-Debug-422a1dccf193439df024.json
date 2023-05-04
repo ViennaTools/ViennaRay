@@ -1,0 +1,102 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 212,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 217,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 223,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/ViennaRay",
+			"exportName" : "ViennaRay_Targets",
+			"exportTargets" : 
+			[
+				{
+					"id" : "ViennaRay::@6890427a1f51a3e7e1df",
+					"index" : 0
+				}
+			],
+			"paths" : 
+			[
+				"CMakeFiles/Export/7471169fd5746c54cfb614c12f18548e/ViennaRayTargets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/ViennaRay",
+			"paths" : 
+			[
+				"cmake-build-debug/ViennaRayConfig.cmake",
+				"cmake-build-debug/ViennaRayConfigVersion.cmake"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "include",
+			"paths" : 
+			[
+				"include/rayBoundCondition.hpp",
+				"include/rayBoundary.hpp",
+				"include/rayGeometry.hpp",
+				"include/rayHitCounter.hpp",
+				"include/rayMessage.hpp",
+				"include/rayMetaGeometry.hpp",
+				"include/rayParticle.hpp",
+				"include/rayPreCompileMacros.hpp",
+				"include/rayRNG.hpp",
+				"include/rayReflection.hpp",
+				"include/raySource.hpp",
+				"include/raySourceGrid.hpp",
+				"include/raySourceRandom.hpp",
+				"include/rayTestAsserts.hpp",
+				"include/rayTrace.hpp",
+				"include/rayTraceDirection.hpp",
+				"include/rayTraceKernel.hpp",
+				"include/rayTracingData.hpp",
+				"include/rayUtil.hpp"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	}
+}
