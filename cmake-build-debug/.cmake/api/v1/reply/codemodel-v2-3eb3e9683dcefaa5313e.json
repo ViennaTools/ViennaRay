@@ -1,0 +1,105 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-422a1dccf193439df024.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "external/upstream",
+					"childIndexes" : 
+					[
+						2
+					],
+					"jsonFile" : "directory-external.upstream-Debug-e67784a13066f70026d7.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "external/upstream"
+				},
+				{
+					"build" : "external/upstream/embree",
+					"jsonFile" : "directory-external.upstream.embree-Debug-41497d5f270ea303dd21.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.14"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "external/upstream/embree",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2
+					],
+					"name" : "ViennaRay",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "buildDependencies::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-buildDependencies-Debug-dd8ff0c238a6454d072e.json",
+					"name" : "buildDependencies",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "embree_external::@4fc2967c5dd7525d5b2e",
+					"jsonFile" : "target-embree_external-Debug-72ddb1c8d68a62674898.json",
+					"name" : "embree_external",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/serb/Desktop/ViennaRay/cmake-build-debug",
+		"source" : "/home/serb/Desktop/ViennaRay"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 4
+	}
+}

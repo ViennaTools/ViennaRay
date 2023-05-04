@@ -1,0 +1,13 @@
+# Target labels
+ embree_external
+# Source files and their labels
+/home/serb/Desktop/ViennaRay/cmake-build-debug/external/upstream/embree/CMakeFiles/embree_external
+/home/serb/Desktop/ViennaRay/cmake-build-debug/external/upstream/embree/CMakeFiles/embree_external.rule
+/home/serb/Desktop/ViennaRay/cmake-build-debug/external/upstream/embree/CMakeFiles/embree_external-complete.rule
+/home/serb/Desktop/ViennaRay/dependencies/Stamp/embree_external/embree_external-build.rule
+/home/serb/Desktop/ViennaRay/dependencies/Stamp/embree_external/embree_external-configure.rule
+/home/serb/Desktop/ViennaRay/dependencies/Stamp/embree_external/embree_external-download.rule
+/home/serb/Desktop/ViennaRay/dependencies/Stamp/embree_external/embree_external-install.rule
+/home/serb/Desktop/ViennaRay/dependencies/Stamp/embree_external/embree_external-mkdir.rule
+/home/serb/Desktop/ViennaRay/dependencies/Stamp/embree_external/embree_external-patch.rule
+/home/serb/Desktop/ViennaRay/dependencies/Stamp/embree_external/embree_external-update.rule
