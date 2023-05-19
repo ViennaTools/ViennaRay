@@ -1,6 +1,7 @@
 #ifndef RAY_PARTICLE_HPP
 #define RAY_PARTICLE_HPP
 
+#include <rayDataLog.hpp>
 #include <rayRNG.hpp>
 #include <rayReflection.hpp>
 #include <rayTracingData.hpp>
@@ -60,6 +61,8 @@ public:
   virtual NumericType getSourceDistributionPower() const = 0;
 
   virtual std::vector<std::string> getLocalDataLabels() const = 0;
+
+  virtual void logData(rayDataLog<NumericType> &log) = 0;
 };
 
 /// This CRTP class implements clone() for the derived particle class.
@@ -96,6 +99,7 @@ public:
   virtual std::vector<std::string> getLocalDataLabels() const override {
     return std::vector<std::string>(getRequiredLocalDataSize(), "localData");
   }
+  virtual void logData(rayDataLog<NumericType> &log) override {}
 
 protected:
   // We make clear rayParticle class needs to be inherited
@@ -136,6 +140,8 @@ public:
   std::vector<std::string> getLocalDataLabels() const override final {
     return std::vector<std::string>{};
   }
+
+  void logData(rayDataLog<NumericType> &log) override final {}
 };
 
 #endif // RAY_PARTICLE_HPP

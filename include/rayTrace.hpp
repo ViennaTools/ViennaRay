@@ -48,7 +48,7 @@ public:
     }
 
     auto tracer = rayTraceKernel<NumericType, D>(
-        mDevice, mGeometry, boundary, raySource, mParticle,
+        mDevice, mGeometry, boundary, raySource, mParticle, mDataLog,
         mNumberOfRaysPerPoint, mNumberOfRaysFixed, mUseRandomSeeds, mCalcFlux,
         mRunNumber++);
 
@@ -248,6 +248,8 @@ public:
 
   rayTraceInfo getRayTraceInfo() { return mRTInfo; }
 
+  rayDataLog<NumericType> &getDataLog() { return mDataLog; }
+
 private:
   NumericType getSourceArea() {
     const auto boundingBox = mGeometry.getBoundingBox();
@@ -360,6 +362,7 @@ private:
   rayTracingData<NumericType> mLocalData;
   rayTracingData<NumericType> *mGlobalData = nullptr;
   rayTraceInfo mRTInfo;
+  rayDataLog<NumericType> mDataLog;
 };
 
 #endif // RAY_TRACE_HPP
