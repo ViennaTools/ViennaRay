@@ -20,6 +20,7 @@ public:
                  rayBoundary<NumericType, D> &pRTCBoundary,
                  raySource<NumericType, D> &pSource,
                  std::unique_ptr<rayAbstractParticle<NumericType>> &pParticle,
+                 rayDataLog<NumericType> &pDataLog,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed,
                  const bool pUseRandomSeed, const bool pCalcFlux,
                  const size_t pRunNumber)
@@ -29,7 +30,7 @@ public:
                      ? pSource.getNumPoints() * pNumOfRayPerPoint
                      : pNumOfRayFixed),
         mUseRandomSeeds(pUseRandomSeed), mRunNumber(pRunNumber),
-        mCalcFlux(pCalcFlux) {
+        mCalcFlux(pCalcFlux), dataLog(pDataLog) {
     assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
@@ -64,6 +65,16 @@ public:
     std::vector<rayTracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *localData;
+    }
+
+    // thread local data log
+    std::vector<rayDataLog<NumericType>> threadLocalDataLog(numThreads);
+    for (auto &data : threadLocalDataLog) {
+      data = dataLog;
+      assert(data.data.size() == dataLog.data.size());
+      for (auto &d : data.data) {
+        std::fill(d.begin(), d.end(), 0.);
+      }
     }
 
     // hit counters
@@ -120,6 +131,7 @@ public:
 
       auto &myLocalData = threadLocalData[threadID];
       auto &myHitCounter = threadLocalHitCounter[threadID];
+      auto &myDataLog = threadLocalDataLog[threadID];
 
       // probabilistic weight
       const NumericType initialRayWeight = 1.;
@@ -132,6 +144,7 @@ public:
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < mNumRays; ++idx) {
         particle->initNew(RngState8);
+        particle->logData(myDataLog);
         NumericType rayWeight = initialRayWeight;
 
         mSource.fillRay(rayHit.ray, idx, RngState1, RngState2, RngState3,
@@ -313,9 +326,10 @@ public:
 
     auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
-    // merge hit counters
+    // merge hit counters and  data logs
     for (int i = 0; i < numThreads; ++i) {
       hitCounter->merge(threadLocalHitCounter[i], calcFlux);
+      dataLog.merge(threadLocalDataLog[i]);
     }
     // merge local data
     if (!localData->getVectorData().empty()) {
@@ -596,6 +610,7 @@ private:
   const rayTracingData<NumericType> *globalData = nullptr;
   rayHitCounter<NumericType> *hitCounter = nullptr;
   rayTraceInfo *mTraceInfo = nullptr;
+  rayDataLog<NumericType> &dataLog;
 };
 
 #endif // RAY_TRACEKERNEL_HPP
