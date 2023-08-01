@@ -222,10 +222,17 @@ public:
 #pragma omp parallel for
     for (size_t idx = 0; idx < mGeometry.getNumPoints(); idx++) {
       auto neighborhood = mGeometry.getNeighborIndicies(idx);
+      NumericType sum = 1.;
+      auto diskNormal = mGeometry.getPrimNormal(idx);
       for (auto const &nbi : neighborhood) {
-        flux[idx] += oldFlux[nbi];
+        auto weight =
+            rayInternal::DotProduct(diskNormal, mGeometry.getPrimNormal(nbi));
+        if (weight > 0.) {
+          flux[idx] += weight * oldFlux[nbi];
+          sum += weight;
+        }
       }
-      flux[idx] /= (neighborhood.size() + 1);
+      flux[idx] /= sum;
     }
   }
 
