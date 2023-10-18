@@ -587,8 +587,7 @@ private:
         rayDirection[0], rayDirection[1], rayDirection[2]};
     rayInternal::Scale(tt, rayDirectionC);
     auto hitpoint = rayInternal::Sum(rayOrigin, rayDirectionC);
-    auto diskOrigin2HitPoint = rayInternal::Diff(hitpoint, diskOrigin);
-    auto distance = rayInternal::Norm(diskOrigin2HitPoint);
+    auto distance = rayInternal::Distance(hitpoint, diskOrigin);
     auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;
