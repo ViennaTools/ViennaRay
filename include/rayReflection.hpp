@@ -48,9 +48,68 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
   return randomDirection;
 }
 
-// Coned cosine reflection
 template <typename NumericType, int D>
 static rayTriple<NumericType> rayReflectionConedCosine(
+    const rayTriple<NumericType> &rayDir,
+    const rayTriple<NumericType> &geomNormal, rayRNG &RNG,
+    const NumericType maxConeAngle /*max opening angle of the cone*/) {
+  using namespace rayInternal;
+  // Generate a random direction within a cone
+  // (https://math.stackexchange.com/a/182936)
+  std::uniform_real_distribution<NumericType> uniDist;
+
+  rayTriple<NumericType> direction;
+
+  do {
+
+    // sample phi uniformy in [0, 2pi]
+    NumericType phi = uniDist(RNG) * 2 * PI;
+    // theta on sphere
+    assert(maxConeAngle >= 0. && maxConeAngle <= PI / 2. &&
+           "Cone angle not allowed");
+    NumericType cosTheta = std::cos(maxConeAngle);
+    // sample z uniformly on [cos(theta),1]
+    NumericType z = uniDist(RNG) * (1 - cosTheta) + cosTheta;
+
+    // compute specular direction
+    auto dirOldInv = Inv(rayDir);
+    auto specDirection = Diff(
+        Scale(2 * DotProduct(geomNormal, dirOldInv), geomNormal), dirOldInv);
+
+    // rotate
+    auto basis = getOrthonormalBasis(specDirection);
+    NumericType theta = std::acos(z);
+    cosTheta = std::cos(theta);
+    NumericType sinTheta = std::sin(theta);
+    NumericType cosPhi = std::cos(phi);
+    NumericType sinPhi = std::sin(phi);
+
+    // direction = Sum(
+    //     Scale(sinTheta, Sum(Scale(cosPhi, basis[1]), Scale(sinPhi,
+    //     basis[2]))), Scale(cosTheta, basis[0]));
+    direction[0] = sinTheta * (cosPhi * basis[1][0] + sinPhi * basis[2][0]) +
+                   cosTheta * basis[0][0];
+    direction[1] = sinTheta * (cosPhi * basis[1][1] + sinPhi * basis[2][1]) +
+                   cosTheta * basis[0][1];
+    direction[2] = sinTheta * (cosPhi * basis[1][2] + sinPhi * basis[2][2]) +
+                   cosTheta * basis[0][2];
+
+    if constexpr (D == 2) {
+      direction[2] = 0;
+      Normalize(direction);
+    }
+    assert(IsNormalized(direction) && "Coned cosine reflection not normalized");
+
+  } while (DotProduct(direction, geomNormal) < 0.);
+
+  return direction;
+}
+
+namespace rayInternal {
+
+// Coned cosine reflection (deprecated)
+template <typename NumericType, int D>
+static rayTriple<NumericType> rayReflectionConedCosineOld(
     NumericType avgReflAngle, const rayTriple<NumericType> &rayDir,
     const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
 
@@ -140,9 +199,9 @@ static rayTriple<NumericType> rayReflectionConedCosine(
 
 template <typename NumericType, int D>
 static rayTriple<NumericType>
-rayReflectionConedCosine2(const rayTriple<NumericType> &rayDir,
-                          const rayTriple<NumericType> &geomNormal, rayRNG &RNG,
-                          NumericType &minAvgConeAngle = 0.) {
+rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
+                             const rayTriple<NumericType> &geomNormal,
+                             rayRNG &RNG, NumericType &minAvgConeAngle = 0.) {
 
   assert(rayInternal::IsNormalized(geomNormal) &&
          "rayReflectionSpecular: Surface normal is not normalized");
@@ -232,61 +291,6 @@ rayReflectionConedCosine2(const rayTriple<NumericType> &rayDir,
 
   return randomDir;
 }
-
-template <typename NumericType, int D>
-static rayTriple<NumericType>
-rayReflectionConedCosine3(const rayTriple<NumericType> &rayDir,
-                          const rayTriple<NumericType> &geomNormal, rayRNG &RNG,
-                          const NumericType coneAngle) {
-  using namespace rayInternal;
-  // Generate a random direction within a cone
-  // (https://math.stackexchange.com/a/182936)
-  std::uniform_real_distribution<NumericType> uniDist;
-
-  rayTriple<NumericType> direction;
-
-  do {
-
-    // sample phi uniformy in [0, 2pi]
-    NumericType phi = uniDist(RNG) * 2 * PI;
-    // theta on sphere
-    assert(coneAngle >= 0. && coneAngle <= PI / 2. && "Cone angle not allowed");
-    NumericType cosTheta = std::cos(coneAngle);
-    // sample z uniformly on [cos(theta),1]
-    NumericType z = uniDist(RNG) * (1 - cosTheta) + cosTheta;
-
-    // compute specular direction
-    auto dirOldInv = Inv(rayDir);
-    auto specDirection = Diff(
-        Scale(2 * DotProduct(geomNormal, dirOldInv), geomNormal), dirOldInv);
-
-    // rotate
-    auto basis = getOrthonormalBasis(specDirection);
-    NumericType theta = std::acos(z);
-    cosTheta = std::cos(theta);
-    NumericType sinTheta = std::sin(theta);
-    NumericType cosPhi = std::cos(phi);
-    NumericType sinPhi = std::sin(phi);
-
-    // direction = Sum(
-    //     Scale(sinTheta, Sum(Scale(cosPhi, basis[1]), Scale(sinPhi,
-    //     basis[2]))), Scale(cosTheta, basis[0]));
-    direction[0] = sinTheta * (cosPhi * basis[1][0] + sinPhi * basis[2][0]) +
-                   cosTheta * basis[0][0];
-    direction[1] = sinTheta * (cosPhi * basis[1][1] + sinPhi * basis[2][1]) +
-                   cosTheta * basis[0][1];
-    direction[2] = sinTheta * (cosPhi * basis[1][2] + sinPhi * basis[2][2]) +
-                   cosTheta * basis[0][2];
-
-    if constexpr (D == 2) {
-      direction[2] = 0;
-      Normalize(direction);
-    }
-    assert(IsNormalized(direction) && "Coned cosine reflection not normalized");
-
-  } while (DotProduct(direction, geomNormal) < 0.);
-
-  return direction;
-}
+} // namespace rayInternal
 
 #endif // RAY_REFLECTION_HPP
