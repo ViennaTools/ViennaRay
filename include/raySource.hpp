@@ -9,9 +9,7 @@
 template <typename NumericType, int D> class raySource {
 public:
   virtual ~raySource() {}
-  virtual void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState1,
-                       rayRNG &RngState2, rayRNG &RngState3,
-                       rayRNG &RngState4) {}
+  virtual void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) {}
   virtual size_t getNumPoints() const { return 0; }
   virtual void printIndexCounter(){};
 };

@@ -53,13 +53,12 @@ public:
                                 const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) = 0;
 
-  /// Set the number of required data vectors for this particle to
-  /// collect data.
-  virtual int getRequiredLocalDataSize() const = 0;
-
   /// Set the power of the cosine source distribution for this particle.
   virtual NumericType getSourceDistributionPower() const = 0;
 
+  /// Set the number of required data vectors for this particle to
+  /// collect data. If an empty vector is returned, no local data will be
+  /// provided
   virtual std::vector<std::string> getLocalDataLabels() const = 0;
 
   virtual void logData(rayDataLog<NumericType> &log) = 0;
@@ -94,10 +93,9 @@ public:
                    const rayTracingData<NumericType> *globalData,
                    rayRNG &Rng) override { // collect data for this hit
   }
-  virtual int getRequiredLocalDataSize() const override { return 0; }
   virtual NumericType getSourceDistributionPower() const override { return 1.; }
   virtual std::vector<std::string> getLocalDataLabels() const override {
-    return std::vector<std::string>(getRequiredLocalDataSize(), "localData");
+    return {};
   }
   virtual void logData(rayDataLog<NumericType> &log) override {}
 
@@ -133,12 +131,10 @@ public:
                         const rayTracingData<NumericType> *globalData,
                         rayRNG &Rng) override final {}
 
-  int getRequiredLocalDataSize() const override final { return 0; }
-
   NumericType getSourceDistributionPower() const override final { return 1.; }
 
   std::vector<std::string> getLocalDataLabels() const override final {
-    return std::vector<std::string>{};
+    return {};
   }
 
   void logData(rayDataLog<NumericType> &log) override final {}
