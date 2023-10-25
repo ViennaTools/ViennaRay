@@ -37,12 +37,12 @@ public:
         boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
         mGeometry.getNumPoints());
 
-    auto numberOfLocalData = mParticle->getRequiredLocalDataSize();
-    if (numberOfLocalData) {
-      mLocalData.setNumberOfVectorData(numberOfLocalData);
+    auto localDataLabes = mParticle->getLocalDataLabels();
+    if (!localDataLabels.empty()) {
+      mLocalData.setNumberOfVectorData(localDataLabes.size());
       auto numPoints = mGeometry.getNumPoints();
       auto localDataLabes = mParticle->getLocalDataLabels();
-      for (int i = 0; i < numberOfLocalData; ++i) {
+      for (int i = 0; i < localDataLabes.size(); ++i) {
         mLocalData.setVectorData(i, numPoints, 0., localDataLabes[i]);
       }
     }
