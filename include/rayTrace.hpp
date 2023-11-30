@@ -30,12 +30,15 @@ public:
         boundingBox, mSourceDirection, mDiskRadius);
     auto traceSettings = rayInternal::getTraceSettings(mSourceDirection);
 
-    auto boundary = rayBoundary<NumericType, D>(mDevice, boundingBox,
-                                                mBoundaryConds, traceSettings);
+    auto boundary = rayBoundary<NumericType, D>(
+        mDevice, boundingBox, mBoundaryConditions, traceSettings);
 
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    if (usePrimaryDirection)
+      orthoBasis = rayInternal::getOrthonormalBasis(primaryDirection);
     auto raySource = raySourceRandom<NumericType, D>(
         boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
-        mGeometry.getNumPoints(), restrictSourceAngle);
+        mGeometry.getNumPoints(), usePrimaryDirection, orthoBasis);
 
     auto localDataLabels = mParticle->getLocalDataLabels();
     if (!localDataLabels.empty()) {
@@ -113,9 +116,9 @@ public:
   /// There has to be a boundary condition defined for each space dimension,
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
-  void setBoundaryConditions(rayTraceBoundary pBoundaryConds[D]) {
+  void setBoundaryConditions(rayTraceBoundary pBoundaryConditions[D]) {
     for (size_t i = 0; i < D; ++i) {
-      mBoundaryConds[i] = pBoundaryConds[i];
+      mBoundaryConditions[i] = pBoundaryConditions[i];
     }
   }
 
@@ -139,10 +142,11 @@ public:
     mSourceDirection = pDirection;
   }
 
-  /// Restrict the source distribution to some angle. Angles specify the
-  /// interval of angles which should be removed.
-  void restrictSource(const std::pair<NumericType, NumericType> angles) {
-    restrictSourceAngle = angles;
+  /// Set the primary direction of the source distribution. This can be used to
+  /// obtain a tilted source distribution.
+  void setPrimaryDirection(const rayTriple<NumericType> pPrimaryDirection) {
+    primaryDirection = pPrimaryDirection;
+    usePrimaryDirection = true;
   }
 
   /// Set whether random seeds for the internal random number generators
@@ -358,9 +362,10 @@ private:
   size_t mNumberOfRaysFixed = 0;
   NumericType mDiskRadius = 0;
   NumericType mGridDelta = 0;
-  rayTraceBoundary mBoundaryConds[D] = {};
+  rayTraceBoundary mBoundaryConditions[D] = {};
   rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
-  std::pair<NumericType, NumericType> restrictSourceAngle = {0., 0.};
+  rayTriple<NumericType> primaryDirection = {0.};
+  bool usePrimaryDirection = false;
   bool mUseRandomSeeds = false;
   size_t mRunNumber = 0;
   bool mCalcFlux = true;

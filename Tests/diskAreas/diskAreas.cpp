@@ -39,8 +39,10 @@ int main() {
   rayTraceBoundary boundaryConds[D] = {};
   auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
                                               boundaryConds, traceSettings);
+  std::array<rayTriple<NumericType>, 3> orthoBasis;
   auto raySource = raySourceRandom<NumericType, D>(
-      boundingBox, 1., traceSettings, geometry.getNumPoints());
+      boundingBox, 1., traceSettings, geometry.getNumPoints(), false,
+      orthoBasis);
 
   rayTestParticle<NumericType> particle;
   auto cp = particle.clone();
