@@ -35,7 +35,7 @@ public:
 
     auto raySource = raySourceRandom<NumericType, D>(
         boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
-        mGeometry.getNumPoints());
+        mGeometry.getNumPoints(), restrictSourceAngle);
 
     auto localDataLabels = mParticle->getLocalDataLabels();
     if (!localDataLabels.empty()) {
@@ -137,6 +137,12 @@ public:
   /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const rayTraceDirection pDirection) {
     mSourceDirection = pDirection;
+  }
+
+  /// Restrict the source distribution to some angle. Angles specify the
+  /// interval of angles which should be removed.
+  void restrictSource(const std::pair<NumericType, NumericType> angles) {
+    restrictSourceAngle = angles;
   }
 
   /// Set whether random seeds for the internal random number generators
@@ -354,6 +360,7 @@ private:
   NumericType mGridDelta = 0;
   rayTraceBoundary mBoundaryConds[D] = {};
   rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
+  std::pair<NumericType, NumericType> restrictSourceAngle = {0., 0.};
   bool mUseRandomSeeds = false;
   size_t mRunNumber = 0;
   bool mCalcFlux = true;

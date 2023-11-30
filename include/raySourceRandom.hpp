@@ -9,11 +9,14 @@ class raySourceRandom : public raySource<NumericType, D> {
 
 public:
   raySourceRandom(boundingBoxType pBoundingBox, NumericType pCosinePower,
-                  std::array<int, 5> &pTraceSettings, const size_t pNumPoints)
+                  std::array<int, 5> &pTraceSettings, const size_t pNumPoints,
+                  const std::pair<NumericType, NumericType> &pRestrictAngles)
       : bdBox(pBoundingBox), rayDir(pTraceSettings[0]),
         firstDir(pTraceSettings[1]), secondDir(pTraceSettings[2]),
         minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
-        ee(((NumericType)2) / (pCosinePower + 1)), mNumPoints(pNumPoints) {}
+        ee(((NumericType)2) / (pCosinePower + 1)), mNumPoints(pNumPoints),
+        restrictAngles(pRestrictAngles),
+        restrictDirection(pRestrictAngles.first == pRestrictAngles.second) {}
 
   void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) override final {
     auto origin = getOrigin(RngState);
@@ -64,20 +67,28 @@ private:
   rayTriple<NumericType> getDirection(rayRNG &RngState) {
     rayTriple<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
-    auto r1 = uniDist(RngState);
-    auto r2 = uniDist(RngState);
+    NumericType polarAngle;
 
-    const NumericType tt = pow(r2, ee);
-    direction[rayDir] = posNeg * sqrtf(tt);
-    direction[firstDir] = cosf(two_pi * r1) * sqrtf(1 - tt);
+    do {
+      auto r1 = uniDist(RngState);
+      auto r2 = uniDist(RngState);
+
+      const NumericType tt = pow(r2, ee);
+      direction[rayDir] = posNeg * sqrtf(tt);
+      direction[firstDir] = cosf(two_pi * r1) * sqrtf(1 - tt);
+      direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
+
+      if (restrictDirection) {
+        polarAngle = std::atan2(direction[secondDir], direction[firstDir]);
+      }
+
+    } while (restrictDirection && (polarAngle >= restrictAngles.first &&
+                                   polarAngle <= restrictAngles.second));
 
     if constexpr (D == 2) {
       direction[secondDir] = 0;
-    } else {
-      direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
+      rayInternal::Normalize(direction);
     }
-
-    rayInternal::Normalize(direction);
 
     return direction;
   }
@@ -91,6 +102,8 @@ private:
   const NumericType ee;
   const size_t mNumPoints;
   constexpr static double two_pi = rayInternal::PI * 2;
+  const std::pair<NumericType, NumericType> &restrictAngles;
+  const bool restrictDirection = false;
 };
 
 #endif // RAY_SOURCERANDOM_HPP
