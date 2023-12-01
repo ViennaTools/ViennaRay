@@ -98,7 +98,7 @@ configure_package_config_file(
 # ##################################################################################################
 option(VIENNARAY_BUILD_EXAMPLES "Build examples." OFF)
 if(VIENNARAY_BUILD_EXAMPLES)
-  add_subdirectory(Examples)
+  add_subdirectory(examples)
 endif(VIENNARAY_BUILD_EXAMPLES)
 
 # ##################################################################################################
@@ -107,7 +107,7 @@ endif(VIENNARAY_BUILD_EXAMPLES)
 option(VIENNARAY_BUILD_TESTS "Build tests." OFF)
 if(VIENNARAY_BUILD_TESTS)
   enable_testing()
-  add_subdirectory(Tests)
+  add_subdirectory(tests)
 endif(VIENNARAY_BUILD_TESTS)
 
 # ##################################################################################################

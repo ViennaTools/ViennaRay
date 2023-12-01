@@ -143,7 +143,10 @@ public:
   }
 
   /// Set the primary direction of the source distribution. This can be used to
-  /// obtain a tilted source distribution.
+  /// obtain a tilted source distribution. Setting the primary direction does
+  /// not change the position of the source plane. Therefore, one has the be
+  /// careful that the resulting distribution does not lie completely above the
+  /// source plane.
   void setPrimaryDirection(const rayTriple<NumericType> pPrimaryDirection) {
     primaryDirection = pPrimaryDirection;
     usePrimaryDirection = true;
