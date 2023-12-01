@@ -15,7 +15,7 @@ public:
 
   /// Initialize a new particle. This function gets called every time
   /// new particle is traced from the source plane.
-  /// Rng: randon number generator (standard library conform)
+  /// Rng: random number generator (standard library conform)
   virtual void initNew(rayRNG &Rng) = 0;
 
   /// Surface reflection. This function gets called whenever a ray is reflected
@@ -26,7 +26,7 @@ public:
   /// primId: ID fo the hit disc;
   /// materialId: ID of material at hit disc;
   /// globalData: constant user-defined data;
-  /// Rng: thread-safe randon number generator (standard library conform);
+  /// Rng: thread-safe random number generator (standard library conform);
   /// Returns pair: 1. sticking coefficient, 2. ray direction after reflection
   virtual std::pair<NumericType, rayTriple<NumericType>>
   surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
@@ -44,7 +44,7 @@ public:
   /// materialId: ID of material at hit disc;
   /// localData: user-defined data;
   /// globalData: constant user-defined data;
-  /// Rng: thread-safe randon number generator (standard library conform);
+  /// Rng: thread-safe random number generator (standard library conform);
   virtual void surfaceCollision(NumericType rayWeight,
                                 const rayTriple<NumericType> &rayDir,
                                 const rayTriple<NumericType> &geomNormal,

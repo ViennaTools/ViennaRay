@@ -1,9 +1,6 @@
 #include <embree3/rtcore.h>
-#include <rayBoundCondition.hpp>
-#include <rayBoundary.hpp>
-#include <rayGeometry.hpp>
 #include <rayTestAsserts.hpp>
-#include <rayUtil.hpp>
+#include <rayTrace.hpp>
 
 int main() {
   using NumericType = float;
@@ -21,7 +18,7 @@ int main() {
   rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
-  rayTraceBoundary mBoundaryConds[D] = {};
+  rayBoundaryCondition mBoundaryConds[D] = {};
 
   {
     // build boundary in y and z directions

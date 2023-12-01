@@ -27,7 +27,7 @@ int main() {
 
   auto rtcDevice = rtcNewDevice("");
   auto sourceDirection = rayTraceDirection::POS_Z;
-  rayTraceBoundary boundaryConds[D] = {};
+  rayBoundaryCondition boundaryConds[D] = {};
 
   constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
   auto discRadius = gridDelta * discFactor;

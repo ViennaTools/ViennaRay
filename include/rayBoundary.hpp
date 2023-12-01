@@ -1,11 +1,16 @@
 #ifndef RAY_BOUNDARY_HPP
 #define RAY_BOUNDARY_HPP
 
-#include <rayBoundCondition.hpp>
 #include <rayMetaGeometry.hpp>
 #include <rayPreCompileMacros.hpp>
 #include <rayReflection.hpp>
 #include <rayTraceDirection.hpp>
+
+enum class rayBoundaryCondition : unsigned {
+  REFLECTIVE = 0,
+  PERIODIC = 1,
+  IGNORE = 2
+};
 
 template <typename NumericType, int D>
 class rayBoundary : public rayMetaGeometry<NumericType, D> {
@@ -13,7 +18,7 @@ class rayBoundary : public rayMetaGeometry<NumericType, D> {
 
 public:
   rayBoundary(RTCDevice &pDevice, const boundingBoxType &pBoundingBox,
-              rayTraceBoundary pBoundaryConds[D],
+              rayBoundaryCondition pBoundaryConds[D],
               std::array<int, 5> &pTraceSettings)
       : mbdBox(pBoundingBox), firstDir(pTraceSettings[1]),
         secondDir(pTraceSettings[2]),
@@ -27,11 +32,11 @@ public:
     if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
-      if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
+      if (mBoundaryConds[0] == rayBoundaryCondition::REFLECTIVE) {
         reflectRay(rayHit);
         reflect = true;
         return;
-      } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
+      } else if (mBoundaryConds[0] == rayBoundaryCondition::PERIODIC) {
         auto impactCoords = this->getNewOrigin(rayHit.ray);
         // periodically move ray origin
         if (primID == 0 || primID == 1) {
@@ -53,12 +58,12 @@ public:
       assert(false && "Correctness Assumption");
     } else {
       if (primID == 0 || primID == 1 || primID == 2 || primID == 3) {
-        if (mBoundaryConds[0] == rayTraceBoundary::REFLECTIVE) {
+        if (mBoundaryConds[0] == rayBoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (mBoundaryConds[0] == rayTraceBoundary::PERIODIC) {
+        } else if (mBoundaryConds[0] == rayBoundaryCondition::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 0 || primID == 1) {
@@ -77,12 +82,12 @@ public:
           return;
         }
       } else if (primID == 4 || primID == 5 || primID == 6 || primID == 7) {
-        if (mBoundaryConds[1] == rayTraceBoundary::REFLECTIVE) {
+        if (mBoundaryConds[1] == rayBoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (mBoundaryConds[1] == rayTraceBoundary::PERIODIC) {
+        } else if (mBoundaryConds[1] == rayBoundaryCondition::PERIODIC) {
           auto impactCoords = this->getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 4 || primID == 5) {
@@ -301,7 +306,7 @@ private:
   const boundingBoxType mbdBox;
   const int firstDir = 0;
   const int secondDir = 1;
-  const std::array<rayTraceBoundary, 2> mBoundaryConds = {};
+  const std::array<rayBoundaryCondition, 2> mBoundaryConds = {};
   static constexpr size_t numTriangles = 8;
   static constexpr size_t numVertices = 8;
   std::array<rayTriple<NumericType>, numTriangles> primNormals;

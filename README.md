@@ -1,7 +1,7 @@
 # ViennaRay
 [![Linux Actions Test](https://github.com/ViennaTools/ViennaRay/actions/workflows/linux_test.yml/badge.svg?branch=main)](https://github.com/ViennaTools/ViennaRay/actions/workflows/linux_test.yml)
 [![macOS Actions Test](https://github.com/ViennaTools/ViennaRay/actions/workflows/macos_test.yml/badge.svg?branch=main)](https://github.com/ViennaTools/ViennaRay/actions/workflows/macos_test.yml)
-[![Windos Actions Test](https://github.com/ViennaTools/ViennaRay/actions/workflows/windows_test.yml/badge.svg?branch=main)](https://github.com/ViennaTools/ViennaRay/actions/workflows/windows_test.yml)
+[![Windows Actions Test](https://github.com/ViennaTools/ViennaRay/actions/workflows/windows_test.yml/badge.svg?branch=main)](https://github.com/ViennaTools/ViennaRay/actions/workflows/windows_test.yml)
 
 
 ViennaRay is a flux calculation library for topography simulations, based in Intel®'s ray tracing kernel [Embree](https://www.embree.org/). It is designed to provide efficient and high-performance ray tracing, while maintaining a simple and easy to use interface. ViennaRay was developed and optimized for use in conjunction with [ViennaLS](https://github.com/ViennaTools/ViennaLS), which provides the necessary geometry representation. It is however possible to use this as a standalone library, with self-designed geometries.
@@ -105,7 +105,7 @@ If you want to contribute to ViennaRay, make sure to follow the [LLVM Coding gui
 
 ## Authors
 
-Current contributors: Tobias Reiter, Xaver Klemenschits, Alexander Scharinger
+Current contributors: Tobias Reiter
 
 Contact us via: viennatools@iue.tuwien.ac.at
 

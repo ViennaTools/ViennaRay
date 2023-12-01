@@ -13,10 +13,12 @@ int main() {
   std::vector<std::array<NumericType, D>> normals;
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-  rayTraceBoundary boundaryConds[D];
-  boundaryConds[0] = rayTraceBoundary::REFLECTIVE;
-  boundaryConds[1] = rayTraceBoundary::REFLECTIVE;
-  boundaryConds[2] = rayTraceBoundary::REFLECTIVE;
+  std::vector<NumericType> matIds(points.size(), 0);
+
+  rayBoundaryCondition boundaryConds[D];
+  boundaryConds[0] = rayBoundaryCondition::REFLECTIVE;
+  boundaryConds[1] = rayBoundaryCondition::REFLECTIVE;
+  boundaryConds[2] = rayBoundaryCondition::REFLECTIVE;
   auto particle = std::make_unique<rayTestParticle<NumericType>>();
 
   rayTrace<NumericType, D> rayTracer;
@@ -26,10 +28,11 @@ int main() {
   rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setUseRandomSeeds(false);
+  rayTracer.setMaterialIds(matIds);
   rayTracer.apply();
 
   auto info = rayTracer.getRayTraceInfo();
-  RAYTEST_ASSERT(info.warning);
+  RAYTEST_ASSERT(info.numRays == 4410);
 
   return 0;
 }

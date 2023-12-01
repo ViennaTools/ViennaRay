@@ -41,8 +41,10 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                                  geometry.getNumPoints());
+                                                  geometry.getNumPoints(),
+                                                  false, orthoBasis);
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -54,13 +56,15 @@ int main() {
 
   {
     auto direction = rayTraceDirection::NEG_Z;
-    // build source in positive z direction;
+    // build source in negative z direction;
     auto boundingBox = geometry.getBoundingBox();
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                                  geometry.getNumPoints());
+                                                  geometry.getNumPoints(),
+                                                  false, orthoBasis);
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -72,13 +76,15 @@ int main() {
 
   {
     auto direction = rayTraceDirection::POS_X;
-    // build source in positive z direction;
+    // build source in positive x direction;
     auto boundingBox = geometry.getBoundingBox();
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                                  geometry.getNumPoints());
+                                                  geometry.getNumPoints(),
+                                                  false, orthoBasis);
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -90,13 +96,15 @@ int main() {
 
   {
     auto direction = rayTraceDirection::NEG_X;
-    // build source in positive z direction;
+    // build source in negative x direction;
     auto boundingBox = geometry.getBoundingBox();
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                                  geometry.getNumPoints());
+                                                  geometry.getNumPoints(),
+                                                  false, orthoBasis);
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -108,13 +116,15 @@ int main() {
 
   {
     auto direction = rayTraceDirection::POS_Y;
-    // build source in positive z direction;
+    // build source in positive y direction;
     auto boundingBox = geometry.getBoundingBox();
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                                  geometry.getNumPoints());
+                                                  geometry.getNumPoints(),
+                                                  false, orthoBasis);
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -126,19 +136,44 @@ int main() {
 
   {
     auto direction = rayTraceDirection::NEG_Y;
-    // build source in positive z direction;
+    // build source in negative y direction;
     auto boundingBox = geometry.getBoundingBox();
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                                  geometry.getNumPoints());
+                                                  geometry.getNumPoints(),
+                                                  false, orthoBasis);
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
       source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_y > 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (-1. - 2 * gridDelta), eps)
+    }
+  }
+
+  // test tilted source
+  {
+    auto direction = rayTraceDirection::POS_Z;
+    // build source in positive z direction;
+    auto boundingBox = geometry.getBoundingBox();
+    rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
+                                                   gridDelta);
+    auto traceSetting = rayInternal::getTraceSettings(direction);
+    rayTriple<NumericType> primaryDir = {1., 1., -1.};
+    rayInternal::Normalize(primaryDir);
+    auto orthoBasis = rayInternal::getOrthonormalBasis(primaryDir);
+    auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                                  geometry.getNumPoints(), true,
+                                                  orthoBasis);
+    alignas(128) auto rayhit =
+        RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (size_t i = 0; i < 10; ++i) {
+      source.fillRay(rayhit.ray, 0, rngstate1);
+      RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
+      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
     }
   }
 

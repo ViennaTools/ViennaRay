@@ -62,7 +62,7 @@ static rayTriple<NumericType> rayReflectionConedCosine(
   rayTriple<NumericType> direction;
 
   do {
-    // sample phi uniformy in [0, 2pi]
+    // sample phi uniformly in [0, 2pi]
     NumericType phi = uniDist(RNG) * 2 * PI;
     // theta on sphere
     assert(maxConeAngle >= 0. && maxConeAngle <= PI / 2. &&
@@ -189,7 +189,7 @@ static rayTriple<NumericType> rayReflectionConedCosineOld(
   }
 
   assert(rayInternal::IsNormalized(randomDir) &&
-         "rayReflectionCondedCosine: New direction is not normalized");
+         "rayReflectionConedCosine: New direction is not normalized");
 
   return randomDir;
 }
@@ -284,7 +284,7 @@ rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
   }
 
   assert(rayInternal::IsNormalized(randomDir) &&
-         "rayReflectionCondedCosine: New direction is not normalized");
+         "rayReflectionConedCosine: New direction is not normalized");
 
   return randomDir;
 }

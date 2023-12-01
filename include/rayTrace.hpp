@@ -2,7 +2,6 @@
 #define RAY_TRACE_HPP
 
 #include <embree3/rtcore.h>
-#include <rayBoundCondition.hpp>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
@@ -30,12 +29,15 @@ public:
         boundingBox, mSourceDirection, mDiskRadius);
     auto traceSettings = rayInternal::getTraceSettings(mSourceDirection);
 
-    auto boundary = rayBoundary<NumericType, D>(mDevice, boundingBox,
-                                                mBoundaryConds, traceSettings);
+    auto boundary = rayBoundary<NumericType, D>(
+        mDevice, boundingBox, mBoundaryConditions, traceSettings);
 
+    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    if (usePrimaryDirection)
+      orthoBasis = rayInternal::getOrthonormalBasis(primaryDirection);
     auto raySource = raySourceRandom<NumericType, D>(
         boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
-        mGeometry.getNumPoints());
+        mGeometry.getNumPoints(), usePrimaryDirection, orthoBasis);
 
     auto localDataLabels = mParticle->getLocalDataLabels();
     if (!localDataLabels.empty()) {
@@ -113,9 +115,9 @@ public:
   /// There has to be a boundary condition defined for each space dimension,
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
-  void setBoundaryConditions(rayTraceBoundary pBoundaryConds[D]) {
+  void setBoundaryConditions(rayBoundaryCondition pBoundaryConditions[D]) {
     for (size_t i = 0; i < D; ++i) {
-      mBoundaryConds[i] = pBoundaryConds[i];
+      mBoundaryConditions[i] = pBoundaryConditions[i];
     }
   }
 
@@ -137,6 +139,16 @@ public:
   /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const rayTraceDirection pDirection) {
     mSourceDirection = pDirection;
+  }
+
+  /// Set the primary direction of the source distribution. This can be used to
+  /// obtain a tilted source distribution. Setting the primary direction does
+  /// not change the position of the source plane. Therefore, one has the be
+  /// careful that the resulting distribution does not lie completely above the
+  /// source plane.
+  void setPrimaryDirection(const rayTriple<NumericType> pPrimaryDirection) {
+    primaryDirection = pPrimaryDirection;
+    usePrimaryDirection = true;
   }
 
   /// Set whether random seeds for the internal random number generators
@@ -352,8 +364,10 @@ private:
   size_t mNumberOfRaysFixed = 0;
   NumericType mDiskRadius = 0;
   NumericType mGridDelta = 0;
-  rayTraceBoundary mBoundaryConds[D] = {};
+  rayBoundaryCondition mBoundaryConditions[D] = {};
   rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
+  rayTriple<NumericType> primaryDirection = {0.};
+  bool usePrimaryDirection = false;
   bool mUseRandomSeeds = false;
   size_t mRunNumber = 0;
   bool mCalcFlux = true;

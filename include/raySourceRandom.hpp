@@ -8,16 +8,26 @@ class raySourceRandom : public raySource<NumericType, D> {
   typedef rayPair<rayTriple<NumericType>> boundingBoxType;
 
 public:
-  raySourceRandom(boundingBoxType pBoundingBox, NumericType pCosinePower,
-                  std::array<int, 5> &pTraceSettings, const size_t pNumPoints)
+  raySourceRandom(
+      boundingBoxType pBoundingBox, NumericType pCosinePower,
+      std::array<int, 5> &pTraceSettings, const size_t pNumPoints,
+      const bool pCustomDirection,
+      const std::array<std::array<NumericType, 3>, 3> &pOrthonormalBasis)
       : bdBox(pBoundingBox), rayDir(pTraceSettings[0]),
         firstDir(pTraceSettings[1]), secondDir(pTraceSettings[2]),
         minMax(pTraceSettings[3]), posNeg(pTraceSettings[4]),
-        ee(((NumericType)2) / (pCosinePower + 1)), mNumPoints(pNumPoints) {}
+        ee(((NumericType)2) / (pCosinePower + 1)), mNumPoints(pNumPoints),
+        customDirection(pCustomDirection), orthonormalBasis(pOrthonormalBasis) {
+  }
 
   void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) override final {
     auto origin = getOrigin(RngState);
-    auto direction = getDirection(RngState);
+    rayTriple<NumericType> direction;
+    if (customDirection) {
+      direction = getCustomDirection(RngState);
+    } else {
+      direction = getDirection(RngState);
+    }
 
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(ray) =
@@ -73,11 +83,44 @@ private:
 
     if constexpr (D == 2) {
       direction[secondDir] = 0;
+      rayInternal::Normalize(direction);
     } else {
       direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
     }
 
-    rayInternal::Normalize(direction);
+    return direction;
+  }
+
+  rayTriple<NumericType> getCustomDirection(rayRNG &RngState) {
+    rayTriple<NumericType> direction;
+    std::uniform_real_distribution<NumericType> uniDist;
+
+    do {
+      rayTriple<NumericType> rndDirection{0., 0., 0.};
+      auto r1 = uniDist(RngState);
+      auto r2 = uniDist(RngState);
+
+      const NumericType tt = pow(r2, ee);
+      rndDirection[0] = sqrtf(tt);
+      rndDirection[1] = cosf(two_pi * r1) * sqrtf(1 - tt);
+      rndDirection[2] = sinf(two_pi * r1) * sqrtf(1 - tt);
+
+      direction[0] = orthonormalBasis[0][0] * rndDirection[0] +
+                     orthonormalBasis[1][0] * rndDirection[1] +
+                     orthonormalBasis[2][0] * rndDirection[2];
+      direction[1] = orthonormalBasis[0][1] * rndDirection[0] +
+                     orthonormalBasis[1][1] * rndDirection[1] +
+                     orthonormalBasis[2][1] * rndDirection[2];
+      direction[2] = orthonormalBasis[0][2] * rndDirection[0] +
+                     orthonormalBasis[1][2] * rndDirection[1] +
+                     orthonormalBasis[2][2] * rndDirection[2];
+    } while ((posNeg < 0. && direction[rayDir] > 0.) ||
+             (posNeg > 0. && direction[rayDir] < 0.));
+
+    if constexpr (D == 2) {
+      direction[secondDir] = 0;
+      rayInternal::Normalize(direction);
+    }
 
     return direction;
   }
@@ -91,6 +134,8 @@ private:
   const NumericType ee;
   const size_t mNumPoints;
   constexpr static double two_pi = rayInternal::PI * 2;
+  const bool customDirection = false;
+  const std::array<rayTriple<NumericType>, 3> &orthonormalBasis;
 };
 
 #endif // RAY_SOURCERANDOM_HPP

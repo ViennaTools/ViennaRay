@@ -24,13 +24,19 @@ public:
 
   rayMessage &addWarning(std::string s) {
 #pragma omp critical
-    { message += "\n" + std::string(tabWidth, ' ') + "WARNING: " + s + "\n"; }
+    {
+      message +=
+          "\n[ViennaRay]" + std::string(tabWidth, ' ') + "WARNING: " + s + "\n";
+    }
     return *this;
   }
 
   rayMessage &addError(std::string s, bool shouldAbort = true) {
 #pragma omp critical
-    { message += "\n" + std::string(tabWidth, ' ') + "ERROR: " + s + "\n"; }
+    {
+      message +=
+          "\n[ViennaRay]" + std::string(tabWidth, ' ') + "ERROR: " + s + "\n";
+    }
     // always abort once error message should be printed
     error = true;
     // abort now if asked
@@ -41,7 +47,10 @@ public:
 
   rayMessage &addDebug(std::string s) {
 #pragma omp critical
-    { message += std::string(tabWidth, ' ') + "DEBUG: " + s + "\n"; }
+    {
+      message +=
+          "[ViennaRay]" + std::string(tabWidth, ' ') + "DEBUG: " + s + "\n";
+    }
     return *this;
   }
 
