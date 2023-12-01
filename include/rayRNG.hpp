@@ -9,7 +9,7 @@ typedef std::mt19937_64 rayRNG;
 
 namespace rayInternal {
 
-// tiny encryption algortihm
+// tiny encryption algorithm
 template <unsigned int N>
 static unsigned int tea(unsigned int val0, unsigned int val1) {
   unsigned int v0 = val0;

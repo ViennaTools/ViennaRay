@@ -2,7 +2,6 @@
 #define RAY_GEOMETRY_HPP
 
 #include <embree3/rtcore.h>
-#include <rayMessage.hpp>
 #include <rayMetaGeometry.hpp>
 #include <rayUtil.hpp>
 

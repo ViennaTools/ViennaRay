@@ -52,7 +52,7 @@ else()
       INSTALL_DIR "${DEPENDENCIES_DIR}/Install/embree_external"
       # Embree still lists a (an empty) submodule even though it does not exist (anymore). CMake
       # >=3.16 can prevent download (error) of submodules by specifying an empty string to
-      # git_submodule and setting cmake plicy CMP0097 to NEW.
+      # git_submodule and setting cmake policy CMP0097 to NEW.
       GIT_SUBMODULES ""
       CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -68,10 +68,10 @@ else()
       CMAKE_CACHE_ARGS
         -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
         -DEMBREE_ISPC_SUPPORT:BOOL=${EMBREE_ISPC_SUPPORT}
-        # We use OpenMP, Embree calls that internal (eventhough it is external to Embree)
+        # We use OpenMP, Embree calls that internal (even though it is external to Embree)
         -DEMBREE_TASKING_SYSTEM:STRING=INTERNAL
       BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NPROC}
-      # Do not install If one installes it and tries to use the installed library, then there exists
+      # Do not install If one installs it and tries to use the installed library, then there exists
       # a linkage problem with TBB. Simply use the generated files in the binary directory.
       USES_TERMINAL_DOWNLOAD 1
       USES_TERMINAL_UPDATE 1
@@ -94,4 +94,4 @@ endif()
 
 set(EMBREE_RAY_MASK
     ${EMBREE_RAY_MASK}
-    CACHE BOOL "Wheter embree uses ray masking" FORCE)
+    CACHE BOOL "Whether embree uses ray masking" FORCE)
