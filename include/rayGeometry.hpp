@@ -22,7 +22,7 @@ public:
                   "Setting 2D geometry in 3D trace object");
 
     assert(points.size() == normals.size() &&
-           "rayGeometry: Points/Normals size missmatch");
+           "rayGeometry: Points/Normals size mismatch");
 
     // overwriting the geometry without releasing it beforehand causes the old
     // buffer to leak
@@ -107,7 +107,7 @@ public:
   template <typename MatIdType>
   void setMaterialIds(std::vector<MatIdType> &pMaterialIds) {
     assert(pMaterialIds.size() == mNumPoints &&
-           "rayGeometry: Material IDs size missmatch");
+           "rayGeometry: Material IDs size mismatch");
     mMaterialIds.clear();
     mMaterialIds.reserve(mNumPoints);
     for (const auto id : pMaterialIds) {
@@ -247,9 +247,9 @@ private:
     }
 
     // Corner case
-    // The pivot element should actually be inbetween min and max.
+    // The pivot element should actually be between min and max.
     if (pivot == min[dirs[dirIdx]] || pivot == max[dirs[dirIdx]]) {
-      // In this case the points are extremly close to each other (with respect
+      // In this case the points are extremely close to each other (with respect
       // to the floating point precision).
       assert((min[dirs[dirIdx]] + max[dirs[dirIdx]]) / 2 == pivot &&
              "Characterization of corner case");

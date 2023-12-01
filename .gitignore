@@ -1,5 +1,5 @@
 *a.out
-build*
+build/*
 install*
 dependencies*
 *.vtk

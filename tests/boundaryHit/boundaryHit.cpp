@@ -1,8 +1,8 @@
 #include <embree3/rtcore.h>
-#include <rayBoundCondition.hpp>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayTestAsserts.hpp>
+#include <rayTrace.hpp>
 #include <rayUtil.hpp>
 
 int main() {
@@ -22,11 +22,11 @@ int main() {
 
     rayGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rayTraceBoundary boundCons[D];
+    rayBoundaryCondition boundCons[D];
     {
-      boundCons[0] = rayTraceBoundary::REFLECTIVE;
-      boundCons[1] = rayTraceBoundary::PERIODIC;
-      boundCons[2] = rayTraceBoundary::PERIODIC;
+      boundCons[0] = rayBoundaryCondition::REFLECTIVE;
+      boundCons[1] = rayBoundaryCondition::PERIODIC;
+      boundCons[2] = rayBoundaryCondition::PERIODIC;
       auto boundingBox = geometry.getBoundingBox();
       auto traceSetting =
           rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
@@ -83,11 +83,11 @@ int main() {
 
     rayGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rayTraceBoundary boundCons[D];
+    rayBoundaryCondition boundCons[D];
     {
-      boundCons[0] = rayTraceBoundary::PERIODIC;
-      boundCons[1] = rayTraceBoundary::PERIODIC;
-      boundCons[2] = rayTraceBoundary::REFLECTIVE;
+      boundCons[0] = rayBoundaryCondition::PERIODIC;
+      boundCons[1] = rayBoundaryCondition::PERIODIC;
+      boundCons[2] = rayBoundaryCondition::REFLECTIVE;
       auto boundingBox = geometry.getBoundingBox();
       auto traceSetting =
           rayInternal::getTraceSettings(rayTraceDirection::POS_Y);
@@ -144,11 +144,11 @@ int main() {
 
     rayGeometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rayTraceBoundary boundCons[D];
+    rayBoundaryCondition boundCons[D];
     {
-      boundCons[0] = rayTraceBoundary::PERIODIC;
-      boundCons[1] = rayTraceBoundary::PERIODIC;
-      boundCons[2] = rayTraceBoundary::PERIODIC;
+      boundCons[0] = rayBoundaryCondition::PERIODIC;
+      boundCons[1] = rayBoundaryCondition::PERIODIC;
+      boundCons[2] = rayBoundaryCondition::PERIODIC;
       auto boundingBox = geometry.getBoundingBox();
       auto traceSetting =
           rayInternal::getTraceSettings(rayTraceDirection::POS_Z);

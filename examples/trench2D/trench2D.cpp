@@ -25,9 +25,9 @@ int main() {
   // There has to be a boundary condition defined for each space dimension,
   // however the boundary condition in direction of the tracing direction will
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
-  rayTraceBoundary boundaryConds[D];
-  boundaryConds[0] = rayTraceBoundary::PERIODIC; // x
-  boundaryConds[1] = rayTraceBoundary::PERIODIC; // y
+  rayBoundaryCondition boundaryConds[D];
+  boundaryConds[0] = rayBoundaryCondition::PERIODIC; // x
+  boundaryConds[1] = rayBoundaryCondition::PERIODIC; // y
 
   // ParticleType: The particle types provides the sticking probability and
   // the reflection process for each surface hit. This class can be user

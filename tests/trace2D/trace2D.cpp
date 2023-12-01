@@ -17,9 +17,9 @@ int main() {
 
   std::vector<int> materialIds(points.size(), 0);
 
-  rayTraceBoundary boundaryConds[D];
-  boundaryConds[0] = rayTraceBoundary::REFLECTIVE;
-  boundaryConds[1] = rayTraceBoundary::REFLECTIVE;
+  rayBoundaryCondition boundaryConds[D];
+  boundaryConds[0] = rayBoundaryCondition::REFLECTIVE;
+  boundaryConds[1] = rayBoundaryCondition::REFLECTIVE;
   auto particle = std::make_unique<rayTestParticle<NumericType>>();
 
   rayTrace<NumericType, D> rayTracer;

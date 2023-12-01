@@ -1,5 +1,4 @@
 #include <embree3/rtcore.h>
-#include <rayBoundCondition.hpp>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayTestAsserts.hpp>
@@ -10,7 +9,7 @@ int main() {
   constexpr int D = 2;
 
   auto device = rtcNewDevice("");
-  rayTraceBoundary boundCons[D] = {};
+  rayBoundaryCondition boundCons[D] = {};
 
   NumericType extent = 2;
   NumericType gridDelta = 0.5;
@@ -30,7 +29,7 @@ int main() {
   rayGeometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
-  boundCons[1] = rayTraceBoundary::REFLECTIVE;
+  boundCons[1] = rayBoundaryCondition::REFLECTIVE;
   {
     // build reflective boundary in y and z directions
     auto dir = rayTraceDirection::POS_X;
@@ -79,7 +78,7 @@ int main() {
     RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
-  boundCons[1] = rayTraceBoundary::PERIODIC;
+  boundCons[1] = rayBoundaryCondition::PERIODIC;
   {
     // build periodic boundary in y and z directions
     auto dir = rayTraceDirection::POS_X;
@@ -142,7 +141,7 @@ int main() {
 
   rayGeometry<NumericType, D> geometry2;
   geometry2.initGeometry(device, points, normals, gridDelta);
-  boundCons[0] = rayTraceBoundary::REFLECTIVE;
+  boundCons[0] = rayBoundaryCondition::REFLECTIVE;
   {
     // build periodic boundary in x and z directions
     auto dir = rayTraceDirection::POS_Y;
@@ -191,7 +190,7 @@ int main() {
     RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
-  boundCons[0] = rayTraceBoundary::PERIODIC;
+  boundCons[0] = rayBoundaryCondition::PERIODIC;
   {
     // build periodic boundary in x and z directions
     auto dir = rayTraceDirection::POS_Y;

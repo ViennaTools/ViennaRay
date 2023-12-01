@@ -2,7 +2,6 @@
 #define RAY_TRACE_HPP
 
 #include <embree3/rtcore.h>
-#include <rayBoundCondition.hpp>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
@@ -116,7 +115,7 @@ public:
   /// There has to be a boundary condition defined for each space dimension,
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
-  void setBoundaryConditions(rayTraceBoundary pBoundaryConditions[D]) {
+  void setBoundaryConditions(rayBoundaryCondition pBoundaryConditions[D]) {
     for (size_t i = 0; i < D; ++i) {
       mBoundaryConditions[i] = pBoundaryConditions[i];
     }
@@ -365,7 +364,7 @@ private:
   size_t mNumberOfRaysFixed = 0;
   NumericType mDiskRadius = 0;
   NumericType mGridDelta = 0;
-  rayTraceBoundary mBoundaryConditions[D] = {};
+  rayBoundaryCondition mBoundaryConditions[D] = {};
   rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
   rayTriple<NumericType> primaryDirection = {0.};
   bool usePrimaryDirection = false;

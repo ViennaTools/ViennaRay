@@ -1,5 +1,4 @@
 #include <omp.h>
-#include <rayBoundCondition.hpp>
 #include <rayParticle.hpp>
 #include <rayTrace.hpp>
 
@@ -26,10 +25,10 @@ int main() {
   // There has to be a boundary condition defined for each space dimension,
   // however the boundary condition in direction of the tracing direction will
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
-  rayTraceBoundary boundaryConds[D];
-  boundaryConds[0] = rayTraceBoundary::PERIODIC; // x
-  boundaryConds[1] = rayTraceBoundary::PERIODIC; // y
-  boundaryConds[2] = rayTraceBoundary::PERIODIC; // z
+  rayBoundaryCondition boundaryConds[D];
+  boundaryConds[0] = rayBoundaryCondition::PERIODIC; // x
+  boundaryConds[1] = rayBoundaryCondition::PERIODIC; // y
+  boundaryConds[2] = rayBoundaryCondition::PERIODIC; // z
 
   // ParticleType: The particle types provides the sticking probability and
   // the reflection process for each surface hit. This class can be user
