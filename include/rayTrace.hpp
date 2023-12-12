@@ -295,7 +295,7 @@ private:
     int numThreads = omp_get_max_threads();
     std::vector<bool> passed(numThreads, true);
 
-#pragma omp parallel shared(error, numPoints, passed)
+#pragma omp parallel shared(error, passed)
     {
       int threadId = omp_get_thread_num();
 #pragma omp for
