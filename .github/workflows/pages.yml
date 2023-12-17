@@ -9,7 +9,7 @@ name: Deploy Jekyll site to Pages
 on:
   push:
     branches: 
-      - "documentation"
+      - "doc"
     paths:
       # The following glob pattern matches any file in the docs/ folder
       # or a subfolder, and the README in the root
