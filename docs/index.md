@@ -12,7 +12,7 @@ Top-Down Flux Calculation Library
 
 ---
 
-ViennaRay is a flux calculation library for topography simulations, based in Intel®'s ray tracing kernel [Embree](https://www.embree.org/). It is designed to provide efficient and high-performance ray tracing, while maintaining a simple and easy to use interface. ViennaRay was developed and optimized for use in conjunction with [ViennaLS](https://github.com/ViennaTools/ViennaLS), which provides the necessary geometry representation. It is however possible to use this as a standalone library, with self-designed geometries.
+ViennaRay stands as a dedicated flux calculation library tailored for topography simulations, leveraging Intel®'s powerful ray tracing kernel, [Embree](https://www.embree.org/). Crafted with a focus on delivering efficient and high-performance ray tracing capabilities, ViennaRay maintains a user-friendly interface for seamless integration into various applications. While specifically optimized for synergy with [ViennaLS](https://github.com/ViennaTools/ViennaLS), where it complements the essential geometry representation, ViennaRay is versatile enough to function independently. Users have the flexibility to employ it as a standalone library, accommodating custom geometries for diverse simulation needs.
 
 {: .note }
 > ViennaRay is under heavy development and improved daily. If you do have suggestions or find bugs, please let us know on [GitHub][ViennaRay issues] or contact us directly at [viennatools@iue.tuwien.ac.at](mailto:viennatools@iue.tuwien.ac.at)!

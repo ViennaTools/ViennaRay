@@ -21,7 +21,11 @@ nav_order: 3
 
 * C++17 Compiler with OpenMP support
 
-## Installing
+## Dependencies
+
+* [Embree](https://www.embree.org/)
+
+## Installing the Library
 
 Since this is a header only project, it does not require any installation. However, we recommend the following procedure in order to set up all dependencies correctly:
 
@@ -39,7 +43,7 @@ This will install the necessary headers and CMake files to the specified path. I
 ## Installing with Embree already installed on the system
 
 {: .warning}
-> ViennaRay does currently not support Embree > 4.0. If you want to use your installation of Embree make sure the version is > 3.13 and < 4.0.
+> ViennaRay does currently NOT support Embree > 4.0. If you want to use a local installation of Embree make sure the version is > 3.11 and < 4.0. The pinned version when building with the library is 3.13.0.
 
 If you want to use your own install of Embree, just specify the directory in CMake:
 
@@ -52,7 +56,7 @@ make install
 ```
 
 {: .note}
-> If you have a system wide installation (e.g. through a package manager such apt/brew) you don't need to specify a path. CMake will automatically detect a suitable system wide installation of Embree.
+> If you have a system-wide installation, for instance, through a package manager like apt or brew, specifying a path is unnecessary. CMake will automatically identify and utilize an existing, suitable system-wide installation of Embree.
 
 ## Integration in CMake projects
 

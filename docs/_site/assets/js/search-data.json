@@ -1,17 +1,17 @@
 {"0": {
-    "doc": "Dependencies",
-    "title": "Dependencies",
-    "content": ". ",
-    "url": "/deps.html",
+    "doc": "Advanced Example",
+    "title": "Advanced Example",
+    "content": ". Coming Soong . ",
+    "url": "/particle/advanced.html",
     
-    "relUrl": "/deps.html"
+    "relUrl": "/particle/advanced.html"
   },"1": {
-    "doc": "Dependencies",
-    "title": "Embree",
-    "content": "Coming Soong . ",
-    "url": "/deps.html#embree",
+    "doc": "Basic Example",
+    "title": "Basic Example",
+    "content": ". Coming Soong . ",
+    "url": "/particle/basic.html",
     
-    "relUrl": "/deps.html#embree"
+    "relUrl": "/particle/basic.html"
   },"2": {
     "doc": "Examples",
     "title": "Examples",
@@ -41,90 +41,97 @@
     
     "relUrl": "/geometry.html"
   },"6": {
-    "doc": "Miscellaneous",
-    "title": "Miscellaneous",
-    "content": " ",
-    "url": "/misc/",
-    
-    "relUrl": "/misc/"
-  },"7": {
     "doc": "Home",
     "title": "ViennaRay",
-    "content": "Top-Down Flux Calculation Library . ViennaRay is a flux calculation library for topography simulations, based in Intel®’s ray tracing kernel Embree. It is designed to provide efficient and high-performance ray tracing, while maintaining a simple and easy to use interface. ViennaRay was developed and optimized for use in conjunction with ViennaLS, which provides the necessary geometry representation. It is however possible to use this as a standalone library, with self-designed geometries. ViennaRay is under heavy development and improved daily. If you do have suggestions or find bugs, please let us know on GitHub or contact us directly at viennatools@iue.tuwien.ac.at! . ",
+    "content": "Top-Down Flux Calculation Library . ViennaRay stands as a dedicated flux calculation library tailored for topography simulations, leveraging Intel®’s powerful ray tracing kernel, Embree. Crafted with a focus on delivering efficient and high-performance ray tracing capabilities, ViennaRay maintains a user-friendly interface for seamless integration into various applications. While specifically optimized for synergy with ViennaLS, where it complements the essential geometry representation, ViennaRay is versatile enough to function independently. Users have the flexibility to employ it as a standalone library, accommodating custom geometries for diverse simulation needs. ViennaRay is under heavy development and improved daily. If you do have suggestions or find bugs, please let us know on GitHub or contact us directly at viennatools@iue.tuwien.ac.at! . ",
     "url": "/#viennaray",
     
     "relUrl": "/#viennaray"
-  },"8": {
+  },"7": {
     "doc": "Home",
     "title": "About the project",
     "content": "ViennaRay was developed under the aegis of the Institute for Microelectronics at the TU Wien. Current contributors: Tobias Reiter . Contact us via: viennatools@iue.tuwien.ac.at . Contributing . If you want to contribute to ViennaRay, make sure to follow the LLVM Coding guidelines. Before creating a pull request, make sure ALL files have been formatted by clang-format, which can be done using the format-project.sh script in the root directory. License . See file LICENSE in the base directory. ",
     "url": "/#about-the-project",
     
     "relUrl": "/#about-the-project"
-  },"9": {
+  },"8": {
     "doc": "Home",
     "title": "Home",
     "content": " ",
     "url": "/",
     
     "relUrl": "/"
+  },"9": {
+    "doc": "Particles",
+    "title": "Particles",
+    "content": ". Coming Soong . ",
+    "url": "/particle/",
+    
+    "relUrl": "/particle/"
   },"10": {
+    "doc": "Miscellaneous",
+    "title": "Miscellaneous",
+    "content": "Coming Soong . ",
+    "url": "/misc/",
+    
+    "relUrl": "/misc/"
+  },"11": {
     "doc": "Installing the Library",
     "title": "Installing the Library",
     "content": ". ",
     "url": "/inst.html",
     
     "relUrl": "/inst.html"
-  },"11": {
+  },"12": {
     "doc": "Installing the Library",
     "title": "Supported Operating Systems",
     "content": ". | Windows (Visual Studio) . | Linux (g++ / clang) . | macOS (XCode) . | . ",
     "url": "/inst.html#supported-operating-systems",
     
     "relUrl": "/inst.html#supported-operating-systems"
-  },"12": {
+  },"13": {
     "doc": "Installing the Library",
     "title": "System Requirements",
     "content": ". | C++17 Compiler with OpenMP support | . ",
     "url": "/inst.html#system-requirements",
     
     "relUrl": "/inst.html#system-requirements"
-  },"13": {
-    "doc": "Installing the Library",
-    "title": "Installing",
-    "content": "Since this is a header only project, it does not require any installation. However, we recommend the following procedure in order to set up all dependencies correctly: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ make buildDependencies # this will install Embree the first time it is called and might take a while make install . This will install the necessary headers and CMake files to the specified path. If DCMAKE_INSTALL_PREFIX is not specified, it will be installed to the standard path for your system, usually /usr/local/ . ",
-    "url": "/inst.html#installing",
-    
-    "relUrl": "/inst.html#installing"
   },"14": {
     "doc": "Installing the Library",
+    "title": "Dependencies",
+    "content": ". | Embree | . ",
+    "url": "/inst.html#dependencies",
+    
+    "relUrl": "/inst.html#dependencies"
+  },"15": {
+    "doc": "Installing the Library",
+    "title": "Installing the Library",
+    "content": "Since this is a header only project, it does not require any installation. However, we recommend the following procedure in order to set up all dependencies correctly: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ make buildDependencies # this will install Embree the first time it is called and might take a while make install . This will install the necessary headers and CMake files to the specified path. If DCMAKE_INSTALL_PREFIX is not specified, it will be installed to the standard path for your system, usually /usr/local/ . ",
+    "url": "/inst.html",
+    
+    "relUrl": "/inst.html"
+  },"16": {
+    "doc": "Installing the Library",
     "title": "Installing with Embree already installed on the system",
-    "content": "ViennaRay does currently not support Embree &gt; 4.0. If you want to use your installation of Embree make sure the version is &gt; 3.13 and &lt; 4.0. If you want to use your own install of Embree, just specify the directory in CMake: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ -Dembree_DIR=/path/to/embree/install make install . If you have a system wide installation (e.g. through a package manager such apt/brew) you don’t need to specify a path. CMake will automatically detect a suitable system wide installation of Embree. ",
+    "content": "ViennaRay does currently NOT support Embree &gt; 4.0. If you want to use a local installation of Embree make sure the version is &gt; 3.11 and &lt; 4.0. The pinned version when building with the library is 3.13.0. If you want to use your own install of Embree, just specify the directory in CMake: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ -Dembree_DIR=/path/to/embree/install make install . If you have a system-wide installation, for instance, through a package manager like apt or brew, specifying a path is unnecessary. CMake will automatically identify and utilize an existing, suitable system-wide installation of Embree. ",
     "url": "/inst.html#installing-with-embree-already-installed-on-the-system",
     
     "relUrl": "/inst.html#installing-with-embree-already-installed-on-the-system"
-  },"15": {
+  },"17": {
     "doc": "Installing the Library",
     "title": "Integration in CMake projects",
     "content": "In order to use this library in your CMake project, add the following lines to the CMakeLists.txt of your project: . set(ViennaRay_DIR \"/path/to/your/custom/install/\") find_package(ViennaRay REQUIRED) add_executable(...) target_include_directories(${PROJECT_NAME} PUBLIC ${VIENNARAY_INCLUDE_DIRS}) target_link_libraries(${PROJECT_NAME} ${VIENNARAY_LIBRARIES}) . ",
     "url": "/inst.html#integration-in-cmake-projects",
     
     "relUrl": "/inst.html#integration-in-cmake-projects"
-  },"16": {
+  },"18": {
     "doc": "Installing the Library",
     "title": "Running the Tests",
     "content": "ViennaRay uses CTest to run its tests. In order to check whether ViennaRay runs without issues on your system, you can run: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DVIENNARAY_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=DEBUG make buildTests # build all tests make test # run all tests . ",
     "url": "/inst.html#running-the-tests",
     
     "relUrl": "/inst.html#running-the-tests"
-  },"17": {
-    "doc": "Particle",
-    "title": "Particle",
-    "content": ". Coming Soong . ",
-    "url": "/particle.html",
-    
-    "relUrl": "/particle.html"
-  },"18": {
+  },"19": {
     "doc": "Tracer",
     "title": "Tracer",
     "content": ". Coming Soong . ",

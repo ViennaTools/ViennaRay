@@ -1,10 +1,11 @@
 ---
 layout: default
-title: Particle
+title: Particles
 nav_order: 5
+has_children: true
 ---
 
-# Particle
+# Particles
 {: .fs-9 .fw-700}
 
 ---
