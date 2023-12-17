@@ -1,0 +1,79 @@
+{"0": {
+    "doc": "Miscellaneous",
+    "title": "Miscellaneous",
+    "content": " ",
+    "url": "/misc/",
+    
+    "relUrl": "/misc/"
+  },"1": {
+    "doc": "Geometry",
+    "title": "Geometry",
+    "content": ". ",
+    "url": "/geo/",
+    
+    "relUrl": "/geo/"
+  },"2": {
+    "doc": "Getting Started",
+    "title": "Getting Started",
+    "content": ". ",
+    "url": "/start/",
+    
+    "relUrl": "/start/"
+  },"3": {
+    "doc": "Examples",
+    "title": "Examples",
+    "content": ". ",
+    "url": "/examples/",
+    
+    "relUrl": "/examples/"
+  },"4": {
+    "doc": "Dependencies",
+    "title": "Dependencies",
+    "content": ". ",
+    "url": "/deps/",
+    
+    "relUrl": "/deps/"
+  },"5": {
+    "doc": "Installing the Library",
+    "title": "Installing the Library",
+    "content": ". ",
+    "url": "/inst/",
+    
+    "relUrl": "/inst/"
+  },"6": {
+    "doc": "Installing the Library",
+    "title": "Supported Operating Systems",
+    "content": ". | Windows (Visual Studio) . | Linux (g++ / clang) . | macOS (XCode) . | . ",
+    "url": "/inst/#supported-operating-systems",
+    
+    "relUrl": "/inst/#supported-operating-systems"
+  },"7": {
+    "doc": "Installing the Library",
+    "title": "System Requirements",
+    "content": ". | C++17 Compiler with OpenMP support | . ",
+    "url": "/inst/#system-requirements",
+    
+    "relUrl": "/inst/#system-requirements"
+  },"8": {
+    "doc": "Home",
+    "title": "ViennaRay",
+    "content": "Top-Down Flux Calculation Library . Get started now View it on GitHub . ViennaRay is a flux calculation library for topography simulations, based in Intel®’s ray tracing kernel Embree. It is designed to provide efficient and high-performance ray tracing, while maintaining a simple and easy to use interface. ViennaRay was developed and optimized for use in conjunction with ViennaLS, which provides the necessary geometry representation. It is however possible to use this as a standalone library, with self-designed geometries. ViennaRay is under heavy development and improved daily. If you do have suggestions or find bugs, please let us know on GitHub or contact us directly at viennatools@iue.tuwien.ac.at! . ",
+    "url": "/#viennaray",
+    
+    "relUrl": "/#viennaray"
+  },"9": {
+    "doc": "Home",
+    "title": "About the project",
+    "content": "ViennaRay was developed under the aegis of the Institute for Microelectronics at the TU Wien. Current contributors: Tobias Reiter . Contact us via: viennatools@iue.tuwien.ac.at . Contributing . If you want to contribute to ViennaRay, make sure to follow the LLVM Coding guidelines. Before creating a pull request, make sure ALL files have been formatted by clang-format, which can be done using the format-project.sh script in the root directory. License . See file LICENSE in the base directory. ",
+    "url": "/#about-the-project",
+    
+    "relUrl": "/#about-the-project"
+  },"10": {
+    "doc": "Home",
+    "title": "Home",
+    "content": " ",
+    "url": "/",
+    
+    "relUrl": "/"
+  }
+}
