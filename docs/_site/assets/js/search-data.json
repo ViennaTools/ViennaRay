@@ -1,14 +1,14 @@
 {"0": {
     "doc": "Advanced Example",
     "title": "Advanced Example",
-    "content": ". Coming Soong . ",
+    "content": ". Coming Soon . template &lt;typename NumericType, int D&gt; class Ion : public rayParticle&lt;Ion&lt;NumericType, D&gt;, NumericType&gt; { public: Ion(const NumericType passedMeanEnergy, const NumericType passedSigmaEnergy, const NumericType passedPower) : meanEnergy(passedMeanEnergy), sigmaEnergy(passedSigmaEnergy), power(passedPower) {} void surfaceCollision(NumericType rayWeight, const rayTriple&lt;NumericType&gt; &amp;rayDir, const rayTriple&lt;NumericType&gt; &amp;geomNormal, const unsigned int primID, const int materialId, rayTracingData&lt;NumericType&gt; &amp;localData, const rayTracingData&lt;NumericType&gt; *globalData, rayRNG &amp;Rng) override final { // collect data for this hit const double cosTheta = -rayInternal::DotProduct(rayDir, geomNormal); const double angle = std::acos(std::max(std::min(cosTheta, 1.), 0.)); // angle and energy dependent yield NumericType f_enhanced_theta; if (cosTheta &gt; 0.5) { f_enhanced_theta = 1.; } else { f_enhanced_theta = 3. - 6. * angle / rayInternal::PI; } NumericType f_sp_theta = (1 + 9.3 * (1 - cosTheta * cosTheta)) * cosTheta; double sqrtE = std::sqrt(E); NumericType energy_yield = std::max(sqrtE - thresholdEnergy, 0.) // two fluxes can be calculated from one particle // sputtering yield ionSputteringRate localData.getVectorData(0)[primID] += rayWeight * energy_yield * f_sp_theta; // ion enhanced etching yield ionEnhancedRate localData.getVectorData(1)[primID] += rayWeight * energy_yield * f_enhanced_theta; } std::pair&lt;NumericType, rayTriple&lt;NumericType&gt;&gt; surfaceReflection(NumericType rayWeight, const rayTriple&lt;NumericType&gt; &amp;rayDir, const rayTriple&lt;NumericType&gt; &amp;geomNormal, const unsigned int primId, const int materialId, const rayTracingData&lt;NumericType&gt; *globalData, rayRNG &amp;Rng) override final { // Reflect particle auto cosTheta = -rayInternal::DotProduct(rayDir, geomNormal); NumericType Eref_peak = cosTheta; // Gaussian distribution around the Eref_peak scaled by the particle energy NumericType NewEnergy; std::normal_distribution&lt;NumericType&gt; normalDist(E * Eref_peak, 0.1 * E); do { NewEnergy = normalDist(Rng); } while (NewEnergy &gt; E || NewEnergy &lt; 0.); // Set the flag to stop tracing if the energy is below a minimal energy if (NewEnergy &gt; minEnergy) { E = NewEnergy; auto direction = rayReflectionSpecular&lt;NumericType&gt;(rayDir, geomNormal); return std::pair&lt;NumericType, rayTriple&lt;NumericType&gt;&gt;{1. - Eref_peak, direction}; } else { return std::pair&lt;NumericType, rayTriple&lt;NumericType&gt;&gt;{ 1., rayTriple&lt;NumericType&gt;{0., 0., 0.}}; } } void initNew(rayRNG &amp;RNG) override final { // Initialize energy of particle std::normal_distribution&lt;NumericType&gt; normalDist{meanEnergy, sigmaEnergy}; do { E = normalDist(RNG); } while (E &lt; minEnergy); } NumericType getSourceDistributionPower() const override final { return power; } std::vector&lt;std::string&gt; getLocalDataLabels() const override final { return {\"ionSputteringRate\", \"ionEnhancedRate\"}; } private: // ion energy const NumericType minEnergy = 4.; // Discard particles with energy &lt; 4 const NumericType meanEnergy; const NumericType sigmaEnergy; const NumericType power; NumericType E; }; . ",
     "url": "/particle/advanced.html",
     
     "relUrl": "/particle/advanced.html"
   },"1": {
     "doc": "Basic Example",
     "title": "Basic Example",
-    "content": ". Coming Soong . ",
+    "content": ". Coming Soon . template &lt;typename NumericType, int D&gt; class Particle : public rayParticle&lt;Particle&lt;NumericType, D&gt;, NumericType&gt; { public: Particle(const NumericType passedSticking, const NumericType passedSourcePower) : stickingProbability(passedSticking), sourcePower(passedSourcePower) {} void surfaceCollision(NumericType rayWeight, const rayTriple&lt;NumericType&gt; &amp;rayDir, const rayTriple&lt;NumericType&gt; &amp;geomNormal, const unsigned int primID, const int materialId, rayTracingData&lt;NumericType&gt; &amp;localData, const rayTracingData&lt;NumericType&gt; *globalData, rayRNG &amp;Rng) override final { // accumulated flux at surface point localData.getVectorData(0)[primID] += rayWeight; } std::pair&lt;NumericType, rayTriple&lt;NumericType&gt;&gt; surfaceReflection(NumericType rayWeight, const rayTriple&lt;NumericType&gt; &amp;rayDir, const rayTriple&lt;NumericType&gt; &amp;geomNormal, const unsigned int primID, const int materialId, const rayTracingData&lt;NumericType&gt; *globalData, rayRNG &amp;Rng) override final { // diffuse reflections with given sticking probability auto direction = rayReflectionDiffuse&lt;NumericType, D&gt;(geomNormal, Rng); return std::pair&lt;NumericType, rayTriple&lt;NumericType&gt;&gt;{stickingProbability, direction}; } void initNew(rayRNG &amp;RNG) override final {} NumericType getSourceDistributionPower() const override final { return sourcePower; } std::vector&lt;std::string&gt; getLocalDataLabels() const override final { return {\"particleFlux\"}; } private: const NumericType stickingProbability; const NumericType sourcePower; }; . ",
     "url": "/particle/basic.html",
     
     "relUrl": "/particle/basic.html"
@@ -22,121 +22,219 @@
   },"3": {
     "doc": "Examples",
     "title": "2D Example",
-    "content": "Coming Soong . ",
+    "content": "Coming Soon . ",
     "url": "/examples.html#2d-example",
     
     "relUrl": "/examples.html#2d-example"
   },"4": {
     "doc": "Examples",
     "title": "3D Example",
-    "content": "Coming Soong . ",
+    "content": "Coming Soon . ",
     "url": "/examples.html#3d-example",
     
     "relUrl": "/examples.html#3d-example"
   },"5": {
     "doc": "Geometry",
     "title": "Geometry",
-    "content": ". Coming Soong . ",
+    "content": ". ",
+    "url": "/geometry.html#geometry",
+    
+    "relUrl": "/geometry.html#geometry"
+  },"6": {
+    "doc": "Geometry",
+    "title": "Surface",
+    "content": "In ViennaRay, the geometry is represented by an oriented point cloud. At each point, a disk is positioned with an orientation that aligns its normal with the surface normal. The disk’s radius, denoted as $d_r$, is determined by the grid spacing $d_g$. The default setting for $d_r$ ensures that the surface is closed which may lead to partially overlapping disks and thus intersections can occur on multiple disks. A depiction of a surface represented by oriented disks is shown below. Representation of the surface using disks (lines) in 2D. (Image Source) Representation of a 3D surface using oriented disks. The geometry in ViennaRay can be set through the rayTrace class, using the member function setGeometry, which is explained in detail here. ",
+    "url": "/geometry.html#surface",
+    
+    "relUrl": "/geometry.html#surface"
+  },"7": {
+    "doc": "Geometry",
+    "title": "Source Plane",
+    "content": "Coming Soon . ",
+    "url": "/geometry.html#source-plane",
+    
+    "relUrl": "/geometry.html#source-plane"
+  },"8": {
+    "doc": "Geometry",
+    "title": "Boundary Conditions",
+    "content": "Coming Soon . ",
+    "url": "/geometry.html#boundary-conditions",
+    
+    "relUrl": "/geometry.html#boundary-conditions"
+  },"9": {
+    "doc": "Geometry",
+    "title": "Geometry",
+    "content": " ",
     "url": "/geometry.html",
     
     "relUrl": "/geometry.html"
-  },"6": {
+  },"10": {
+    "doc": "Miscellaneous",
+    "title": "Miscellaneous",
+    "content": "Coming Soon . ",
+    "url": "/misc/",
+    
+    "relUrl": "/misc/"
+  },"11": {
+    "doc": "Particles",
+    "title": "Particles",
+    "content": "#include &lt;rayParticle.hpp&gt; . ",
+    "url": "/particle/",
+    
+    "relUrl": "/particle/"
+  },"12": {
+    "doc": "Particles",
+    "title": "Particle Initialization",
+    "content": "Particles are initialized at random positions on the source plane with random directions according to particle-specific distributions. Coming Soon . virtual void initNew(rayRNG &amp;Rng) override {} . ",
+    "url": "/particle/#particle-initialization",
+    
+    "relUrl": "/particle/#particle-initialization"
+  },"13": {
+    "doc": "Particles",
+    "title": "Initial Distribution of Directions",
+    "content": "Coming Soon . virtual NumericType getSourceDistributionPower() const { return 1.; } . ",
+    "url": "/particle/#initial-distribution-of-directions",
+    
+    "relUrl": "/particle/#initial-distribution-of-directions"
+  },"14": {
+    "doc": "Particles",
+    "title": "Data Containers",
+    "content": "Coming Soon . virtual std::vector&lt;std::string&gt; getLocalDataLabels() const { return {}; } virtual void logData(rayDataLog&lt;NumericType&gt; &amp;log) {} . ",
+    "url": "/particle/#data-containers",
+    
+    "relUrl": "/particle/#data-containers"
+  },"15": {
+    "doc": "Particles",
+    "title": "Surface Collision",
+    "content": "Coming Soon . | Parameter | Description | Type | . | rayWeight | Current weight of the ray. | NumericType | . | rayDir | Direction of the ray. | rayTriple&lt;NumericType&gt; | . | geomNormal | Surface normal at the point of collision. | rayTriple&lt;NumericType&gt; | . | primID | Identifier for the primitive being collided with. | unsigned int | . | materialId | Identifier for the material of the collided primitive. | int | . | localData | Reference to user-defined ray tracing data. | rayTracingData&lt;NumericType&gt;&amp; | . | globalData | Pointer to global ray tracing data. | const rayTracingData&lt;NumericType&gt;* | . | Rng | Reference to a thread-safe random number generator. | rayRNG&amp; | . ",
+    "url": "/particle/#surface-collision",
+    
+    "relUrl": "/particle/#surface-collision"
+  },"16": {
+    "doc": "Particles",
+    "title": "Surface Reflection",
+    "content": "Coming Soon . | Parameter | Description | Type | . | rayWeight | Current weight of the ray. | NumericType | . | rayDir | Direction of the ray before reflection. | rayTriple&lt;NumericType&gt; | . | geomNormal | Surface normal at the point of reflection. | rayTriple&lt;NumericType&gt; | . | primId | Identifier for the primitive being intersected. | unsigned int | . | materialId | Identifier for the material of the intersected primitive. | int | . | globalData | Pointer to global ray tracing data. | const rayTracingData&lt;NumericType&gt;* | . | Rng | Reference to a thread-safe random number generator. | rayRNG&amp; | . ",
+    "url": "/particle/#surface-reflection",
+    
+    "relUrl": "/particle/#surface-reflection"
+  },"17": {
     "doc": "Home",
     "title": "ViennaRay",
     "content": "Top-Down Flux Calculation Library . ViennaRay stands as a dedicated flux calculation library tailored for topography simulations, leveraging Intel®’s powerful ray tracing kernel, Embree. Crafted with a focus on delivering efficient and high-performance ray tracing capabilities, ViennaRay maintains a user-friendly interface for seamless integration into various applications. While specifically optimized for synergy with ViennaLS, where it complements the essential geometry representation, ViennaRay is versatile enough to function independently. Users have the flexibility to employ it as a standalone library, accommodating custom geometries for diverse simulation needs. ViennaRay is under heavy development and improved daily. If you do have suggestions or find bugs, please let us know on GitHub or contact us directly at viennatools@iue.tuwien.ac.at! . ",
     "url": "/#viennaray",
     
     "relUrl": "/#viennaray"
-  },"7": {
+  },"18": {
     "doc": "Home",
     "title": "About the project",
     "content": "ViennaRay was developed under the aegis of the Institute for Microelectronics at the TU Wien. Current contributors: Tobias Reiter . Contact us via: viennatools@iue.tuwien.ac.at . Contributing . If you want to contribute to ViennaRay, make sure to follow the LLVM Coding guidelines. Before creating a pull request, make sure ALL files have been formatted by clang-format, which can be done using the format-project.sh script in the root directory. License . See file LICENSE in the base directory. ",
     "url": "/#about-the-project",
     
     "relUrl": "/#about-the-project"
-  },"8": {
+  },"19": {
     "doc": "Home",
     "title": "Home",
     "content": " ",
     "url": "/",
     
     "relUrl": "/"
-  },"9": {
-    "doc": "Particles",
-    "title": "Particles",
-    "content": ". Coming Soong . ",
-    "url": "/particle/",
-    
-    "relUrl": "/particle/"
-  },"10": {
-    "doc": "Miscellaneous",
-    "title": "Miscellaneous",
-    "content": "Coming Soong . ",
-    "url": "/misc/",
-    
-    "relUrl": "/misc/"
-  },"11": {
+  },"20": {
     "doc": "Installing the Library",
     "title": "Installing the Library",
     "content": ". ",
     "url": "/inst.html",
     
     "relUrl": "/inst.html"
-  },"12": {
+  },"21": {
     "doc": "Installing the Library",
     "title": "Supported Operating Systems",
     "content": ". | Windows (Visual Studio) . | Linux (g++ / clang) . | macOS (XCode) . | . ",
     "url": "/inst.html#supported-operating-systems",
     
     "relUrl": "/inst.html#supported-operating-systems"
-  },"13": {
+  },"22": {
     "doc": "Installing the Library",
     "title": "System Requirements",
     "content": ". | C++17 Compiler with OpenMP support | . ",
     "url": "/inst.html#system-requirements",
     
     "relUrl": "/inst.html#system-requirements"
-  },"14": {
+  },"23": {
     "doc": "Installing the Library",
     "title": "Dependencies",
     "content": ". | Embree | . ",
     "url": "/inst.html#dependencies",
     
     "relUrl": "/inst.html#dependencies"
-  },"15": {
+  },"24": {
     "doc": "Installing the Library",
     "title": "Installing the Library",
     "content": "Since this is a header only project, it does not require any installation. However, we recommend the following procedure in order to set up all dependencies correctly: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ make buildDependencies # this will install Embree the first time it is called and might take a while make install . This will install the necessary headers and CMake files to the specified path. If DCMAKE_INSTALL_PREFIX is not specified, it will be installed to the standard path for your system, usually /usr/local/ . ",
     "url": "/inst.html",
     
     "relUrl": "/inst.html"
-  },"16": {
+  },"25": {
     "doc": "Installing the Library",
     "title": "Installing with Embree already installed on the system",
     "content": "ViennaRay does currently NOT support Embree &gt; 4.0. If you want to use a local installation of Embree make sure the version is &gt; 3.11 and &lt; 4.0. The pinned version when building with the library is 3.13.0. If you want to use your own install of Embree, just specify the directory in CMake: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ -Dembree_DIR=/path/to/embree/install make install . If you have a system-wide installation, for instance, through a package manager like apt or brew, specifying a path is unnecessary. CMake will automatically identify and utilize an existing, suitable system-wide installation of Embree. ",
     "url": "/inst.html#installing-with-embree-already-installed-on-the-system",
     
     "relUrl": "/inst.html#installing-with-embree-already-installed-on-the-system"
-  },"17": {
+  },"26": {
     "doc": "Installing the Library",
     "title": "Integration in CMake projects",
     "content": "In order to use this library in your CMake project, add the following lines to the CMakeLists.txt of your project: . set(ViennaRay_DIR \"/path/to/your/custom/install/\") find_package(ViennaRay REQUIRED) add_executable(...) target_include_directories(${PROJECT_NAME} PUBLIC ${VIENNARAY_INCLUDE_DIRS}) target_link_libraries(${PROJECT_NAME} ${VIENNARAY_LIBRARIES}) . ",
     "url": "/inst.html#integration-in-cmake-projects",
     
     "relUrl": "/inst.html#integration-in-cmake-projects"
-  },"18": {
+  },"27": {
     "doc": "Installing the Library",
     "title": "Running the Tests",
     "content": "ViennaRay uses CTest to run its tests. In order to check whether ViennaRay runs without issues on your system, you can run: . git clone github.com/ViennaTools/ViennaRay.git cd ViennaRay mkdir build &amp;&amp; cd build cmake .. -DVIENNARAY_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=DEBUG make buildTests # build all tests make test # run all tests . ",
     "url": "/inst.html#running-the-tests",
     
     "relUrl": "/inst.html#running-the-tests"
-  },"19": {
+  },"28": {
     "doc": "Tracer",
     "title": "Tracer",
-    "content": ". Coming Soong . ",
+    "content": "#include &lt;rayTrace.hpp&gt; . Coming Soon . ",
     "url": "/tracer.html",
     
     "relUrl": "/tracer.html"
+  },"29": {
+    "doc": "Tracer",
+    "title": "Setting the Geometry",
+    "content": "void setGeometry(std::vector&lt;std::array&lt;NumericType, Dim&gt;&gt; &amp;points, std::vector&lt;std::array&lt;NumericType, Dim&gt;&gt; &amp;normals, const NumericType gridDelta) . template &lt;typename T&gt; void setMaterialIds(std::vector&lt;T&gt; &amp;pMaterialIds) . void setBoundaryConditions(rayBoundaryCondition pBoundaryConditions[D]) . void setSourceDirection(const rayTraceDirection pDirection) . Example usage ... rayTrace&lt;NumericType, 3&gt; tracer; tracer.setGeometry(points, normals, gridDelta); tracer.setMaterialIds(matIds); tracer.setSourceDirection(rayTraceDirection::POS_Z); rayBoundaryCondition boundardyConds[3] = {rayBoundaryCondition::REFLECTIVE}; tracer.setBoundaryConditions(boundaryConds); ... ",
+    "url": "/tracer.html#setting-the-geometry",
+    
+    "relUrl": "/tracer.html#setting-the-geometry"
+  },"30": {
+    "doc": "Tracer",
+    "title": "Setting the Particle",
+    "content": "template &lt;typename ParticleType&gt; void setParticleType(std::unique_ptr&lt;ParticleType&gt; &amp;p) . Set the particle type used for ray tracing. The particle is a user defined object that has to interface the rayParticle class. void setNumberOfRaysPerPoint(const size_t pNum) void setNumberOfRaysFixed(const size_t pNum) . Set the number of rays per geometry point. The total number of traced rays is determined by multiplying the set number with the total number of points in the geometry. Alternatively, you can fix the total number of traced rays, regardless of the geometry. void setPrimaryDirection(const rayTriple&lt;NumericType&gt; pPrimaryDirection) . Set the primary direction of the source distribution. This can be used to obtain a tilted source distribution. Setting the primary direction does not change the position of the source plane. Therefore, one has to be careful that the resulting distribution does not lie completely above the source plane. Example usage ... rayTrace&lt;NumericType, 3&gt; tracer; auto myParticle = std::make_unique&lt;myParticleType&gt;(); tracer.setParticleType(myParticle); tracer.setNumRaysPerPoint(1000); ... ",
+    "url": "/tracer.html#setting-the-particle",
+    
+    "relUrl": "/tracer.html#setting-the-particle"
+  },"31": {
+    "doc": "Tracer",
+    "title": "Local Data and Global Data",
+    "content": " ",
+    "url": "/tracer.html#local-data-and-global-data",
+    
+    "relUrl": "/tracer.html#local-data-and-global-data"
+  },"32": {
+    "doc": "Tracer",
+    "title": "Extracting the Results",
+    "content": " ",
+    "url": "/tracer.html#extracting-the-results",
+    
+    "relUrl": "/tracer.html#extracting-the-results"
+  },"33": {
+    "doc": "Tracer",
+    "title": "Additional Settings",
+    "content": " ",
+    "url": "/tracer.html#additional-settings",
+    
+    "relUrl": "/tracer.html#additional-settings"
   }
 }

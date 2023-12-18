@@ -19,10 +19,10 @@ make
 
 ## 2D Example
 
-Coming Soong
+Coming Soon
 {: .label .label-yellow}
 
 ## 3D Example
 
-Coming Soong
+Coming Soon
 {: .label .label-yellow}

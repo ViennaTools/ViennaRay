@@ -5,5 +5,5 @@ nav_order: 7
 has_children: true
 ---
 
-Coming Soong
+Coming Soon
 {: .label .label-yellow}
