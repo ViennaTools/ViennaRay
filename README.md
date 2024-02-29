@@ -64,7 +64,7 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
   ```
 
 * With a local installation
-  >  In case you have ViennaRay installed in a custom directory, make sure to properly specify the CMAKE_MODULE_PATH or PATHS in your find_package call.
+  >  In case you have ViennaRay installed in a custom directory, make sure to properly specify the `CMAKE_MODULE_PATH` or `PATHS` in your find_package call.
 
   ```cmake
   set(VIENNARAY_PATH "/your/local/installation")
