@@ -11,6 +11,7 @@ project(
 option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
+option(VIENNARAY_COPY_LIBRARIES "Copy the required library files to the built tests and examples" ON)
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
