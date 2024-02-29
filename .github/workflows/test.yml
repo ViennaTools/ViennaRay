@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.os == 'ubuntu-latest' && 'fedora:38' || null }}
 
-    name: '🧪 Test on ${{ matrix.os }} [Config: "${{ matrix.config }}", VTK installed: "${{ matrix.vtk-system }}"]'
+    name: '🧪 Test on ${{ matrix.os }} [Config: "${{ matrix.config }}"]'
 
     steps:
       - name: 📥 Checkout
