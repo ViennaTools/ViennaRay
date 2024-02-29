@@ -68,7 +68,14 @@ CPMAddPackage(
   VERSION 1.11.1
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
-CPMAddPackage(
+CPMFindPackage(
+  NAME tbb
+  VERSION 2020.2
+  GIT_TAG v2021.4.1
+  GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
+)
+
+CPMFindPackage(
   NAME embree
   VERSION 3.0
   GIT_TAG v3.13.0
