@@ -10,18 +10,14 @@ runs:
   using: "composite"
 
   steps:
-    - name: 🩹 Enable Long Paths
-      shell: bash
-      if: ${{ inputs.container == 'windows-latest' }}
-      run: git config --system core.longpaths true && choco install tbb
-
     - name: 📋 Install Dependencies
       shell: bash
       if: ${{ inputs.container == 'ubuntu-latest' }}
-      run: dnf install -y make automake gcc gcc-c++ kernel-devel cmake git tbb-devel
+      run: dnf install -y make automake gcc gcc-c++ kernel-devel cmake git tbb tbb-devel
 
     - name: 📋 Install OpenMP
       shell: bash
       if: ${{ inputs.container == 'macos-latest' }}
       run: |
-        brew reinstall --build-from-source --formula ./.github/homebrew/libomp.rb && brew install tbb
+        brew reinstall --build-from-source --formula ./.github/homebrew/libomp.rb 
+        brew install tbb
