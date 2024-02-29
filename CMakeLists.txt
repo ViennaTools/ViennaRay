@@ -12,7 +12,7 @@ option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
-option(VIENNARAY_COPY_LIBRARIES "Setup Embree Environment for tests" ON)
+option(VIENNARAY_DISABLE_COPY "Disable Embree Environment setup" OFF)
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
@@ -21,6 +21,13 @@ option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 # --------------------------------------------------------------------------------------------------------
 
 include("cmake/openmp.cmake")
+
+find_package(embree 3 QUIET)
+set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
+
+if (NOT VIENNARAY_SYSTEM_EMBREE)
+  message(STATUS "[ViennaRay] Using remote embree")
+endif()
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Library
@@ -66,12 +73,14 @@ CPMAddPackage(
   VERSION 1.11.1
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
-CPMFindPackage(
-  NAME TBB
-  VERSION 2020.0
-  GIT_TAG v2021.11.0
-  GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
-  OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
+if (NOT VIENNARAY_SYSTEM_EMBREE)
+  CPMFindPackage(
+    NAME TBB
+    VERSION 2020.0
+    GIT_TAG v2021.11.0
+    GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
+    OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
+endif()
 
 CPMFindPackage(
   NAME embree

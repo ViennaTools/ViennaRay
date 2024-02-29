@@ -1,5 +1,5 @@
 macro(setup_embree_env TARGET OUTPUT)
-  if(NOT WIN32 OR NOT VIENNARAY_COPY_LIBRARIES)
+  if(VIENNARAY_DISABLE_COPY OR NOT MSVC OR VIENNARAY_SYSTEM_EMBREE)
     message(STATUS "[ViennaRay] Skipping Embree-Environment setup for ${TARGET}")
   else()
     message(STATUS "[ViennaRay] Setting up Embree-Environment for ${TARGET}")
