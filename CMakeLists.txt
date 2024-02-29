@@ -22,10 +22,6 @@ option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
 include("cmake/openmp.cmake")
 
-if(MSVC)
-  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-endif()
-
 # --------------------------------------------------------------------------------------------------------
 # Setup Library
 # --------------------------------------------------------------------------------------------------------
@@ -38,7 +34,8 @@ set_target_properties(
   ${PROJECT_NAME}
   PROPERTIES CXX_STANDARD 17
              CXX_EXTENSIONS OFF
-             CXX_STANDARD_REQUIRED ON)
+             CXX_STANDARD_REQUIRED ON
+             WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 if(VIENNARAY_USE_WDIST)
   message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
@@ -74,11 +71,7 @@ CPMFindPackage(
   VERSION 2020.0
   GIT_TAG v2021.11.0
   GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
-  OPTIONS "TBB_TEST OFF"
-          "TBB_STRICT OFF"
-          # Fixes an issue regarding TBBs Post-Install Script defined here:
-          # https://github.com/oneapi-src/oneTBB/blob/master/cmake/vars_utils.cmake#L30
-          "CMAKE_PROJECT_NAME ViennaRay")
+  OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 
 CPMFindPackage(
   NAME embree
