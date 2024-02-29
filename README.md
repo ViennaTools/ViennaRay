@@ -67,9 +67,14 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
   >  In case you have ViennaRay installed in a custom directory, make sure to properly specify the CMAKE_MODULE_PATH or PATHS in your find_package call.
 
   ```cmake
-  find_package(embree REQUIRED)
-  find_package(ViennaRay PATHS "/your/local/installation")
-  
+  set(VIENNARAY_PATH "/your/local/installation")
+
+  find_package(TBB    REQUIRED)
+  find_package(OpenMP REQUIRED)
+
+  find_package(embree 3    PATHS ${VIENNARAY_PATH})
+  find_package(ViennaRay   PATHS ${VIENNARAY_PATH})
+
   target_link_libraries(${PROJECT_NAME} PUBLIC ViennaTools::ViennaRay)
   ```
 
