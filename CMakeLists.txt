@@ -67,7 +67,7 @@ CPMAddPackage(
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
 CPMFindPackage(
-  NAME tbb
+  NAME TBB
   VERSION 2020.0
   GIT_TAG v2021.11.0
   GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
@@ -114,4 +114,4 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
   INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "embree 3.0; tbb 2020.0")
+  DEPENDENCIES "embree;TBB")
