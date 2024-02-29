@@ -8,12 +8,12 @@ project(
 # Library options
 # --------------------------------------------------------------------------------------------------------
 
-option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler"                OFF)
-option(EMBREE_RAY_MASK     "Enable Embree Ray Masking"                   OFF)
+option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
+option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
-option(VIENNARAY_BUILD_EXAMPLES  "Build examples" OFF)
-option(VIENNARAY_BUILD_TESTS     "Build tests" OFF)
+option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
+option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Configuration
@@ -21,8 +21,8 @@ option(VIENNARAY_BUILD_TESTS     "Build tests" OFF)
 
 include("cmake/openmp.cmake")
 
-if (MSVC)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+if(MSVC)
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -39,14 +39,14 @@ set_target_properties(
              CXX_EXTENSIONS OFF
              CXX_STANDARD_REQUIRED ON)
 
-if (VIENNARAY_USE_WDIST)
-    message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
-    target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_WDIST)
+if(VIENNARAY_USE_WDIST)
+  message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_WDIST)
 endif()
 
-if (EMBREE_RAY_MASK)
-    message(STATUS "[ViennaRay] Using embree ray masking")
-    target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_RAY_MASKING)
+if(EMBREE_RAY_MASK)
+  message(STATUS "[ViennaRay] Using embree ray masking")
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_RAY_MASKING)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -70,19 +70,17 @@ CPMAddPackage(
 
 CPMFindPackage(
   NAME tbb
-  VERSION 2020.2
-  GIT_TAG v2021.4.1
-  GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"#
-  OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF"
-)
+  VERSION 2020.0
+  GIT_TAG v2021.11.0
+  GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
+  OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 
 CPMFindPackage(
   NAME embree
   VERSION 3.0
   GIT_TAG v3.13.0
   GIT_REPOSITORY "https://github.com/embree/embree"
-  OPTIONS "EMBREE_TUTORIALS OFF"
-)
+  OPTIONS "EMBREE_TUTORIALS OFF")
 
 find_package(OpenMP REQUIRED)
 target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX embree)
@@ -118,4 +116,4 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
   INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "embree 3.0")
+  DEPENDENCIES "embree 3.0; tbb 2020.0")

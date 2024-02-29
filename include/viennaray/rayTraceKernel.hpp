@@ -90,10 +90,8 @@ public:
 
     auto time = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
-#pragma omp parallel                 \
-    reduction(+                      \
-              : geohitc, nongeohitc, totaltraces) \
-        shared(threadLocalData, threadLocalHitCounter)
+#pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces)           \
+    shared(threadLocalData, threadLocalHitCounter)
     {
       rtcJoinCommitScene(rtcScene);
 
