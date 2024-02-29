@@ -1,16 +1,19 @@
-# ViennaRay
-[![Linux Actions Test](https://github.com/ViennaTools/ViennaRay/actions/workflows/linux_test.yml/badge.svg?branch=main)](https://github.com/ViennaTools/ViennaRay/actions/workflows/linux_test.yml)
-[![macOS Actions Test](https://github.com/ViennaTools/ViennaRay/actions/workflows/macos_test.yml/badge.svg?branch=main)](https://github.com/ViennaTools/ViennaRay/actions/workflows/macos_test.yml)
-[![Windows Actions Test](https://github.com/ViennaTools/ViennaRay/actions/workflows/windows_test.yml/badge.svg?branch=main)](https://github.com/ViennaTools/ViennaRay/actions/workflows/windows_test.yml)
+<div align="center">
 
+![](https://raw.githubusercontent.com/ViennaTools/ViennaLS/master/assets/logo.png)
+
+<h1>ViennaRay</h1>
+
+</div>
 
 ViennaRay is a flux calculation library for topography simulations, based in Intel®'s ray tracing kernel [Embree](https://www.embree.org/). It is designed to provide efficient and high-performance ray tracing, while maintaining a simple and easy to use interface. ViennaRay was developed and optimized for use in conjunction with [ViennaLS](https://github.com/ViennaTools/ViennaLS), which provides the necessary geometry representation. It is however possible to use this as a standalone library, with self-designed geometries.
 
-IMPORTANT NOTE: ViennaRay is under heavy development and improved daily. If you do have suggestions or find bugs, please let us know!
+> [!NOTE]
+> ViennaRay is under heavy development and improved daily. If you do have suggestions or find bugs, please let us know!
 
 ## Support
 
-[Examples](https://github.com/ViennaTools/ViennaRay/tree/main/Examples) can be found on Github. Bug reports and suggestions should be filed on GitHub.
+[Examples](examples/) can be found on Github. Bug reports and suggestions should be filed on GitHub.
 
 ## Releases
 
@@ -41,48 +44,42 @@ Since [Embree](https://www.embree.org/) is optimized for CPU's using SSE, AVX, A
 Since this is a header only project, it does not require any installation. However, we recommend the following procedure in order to set up all dependencies correctly:
 
 ```bash
-git clone github.com/ViennaTools/ViennaRay.git
+git clone https://github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
-mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/
-make buildDependencies # this will install Embree the first time it is called and might take a while
-make install
+
+cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/
+cmake --install build
 ```
 
-This will install the necessary headers and CMake files to the specified path. If DCMAKE_INSTALL_PREFIX is not specified, it will be installed to the standard path for your system, usually /usr/local/ .
-
-## Installing with Embree already installed on the system
-
-If you want to use your own install of Embree, just specify the directory in CMake:
-
-```bash
-git clone github.com/ViennaTools/ViennaRay.git
-cd ViennaRay
-mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/ -Dembree_DIR=/path/to/embree/install
-make install
-```
+This will install the necessary headers and CMake files to the specified path. If `-DCMAKE_INSTALL_PREFIX` is not specified, it will be installed to the standard path for your system, usually `/usr/local/`.
 
 ## Integration in CMake projects
 
-In order to use this library in your CMake project, add the following lines to the CMakeLists.txt of your project:
+We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consume this library.
 
-```CMake
-set(ViennaRay_DIR "/path/to/your/custom/install/")
-find_package(ViennaRay REQUIRED)
-add_executable(...)
-target_include_directories(${PROJECT_NAME} PUBLIC ${VIENNARAY_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${VIENNARAY_LIBRARIES})
-```
+* Installation with CPM
+
+  ```cmake
+  CPMAddPackage("gh:viennatools/viennaray@2.0.0")
+  ```
+
+* With a local installation
+  >  In case you have ViennaRay installed in a custom directory, make sure to properly specify the CMAKE_MODULE_PATH or PATHS in your find_package call.
+
+  ```cmake
+  find_package(embree REQUIRED)
+  find_package(ViennaRay PATHS "/your/local/installation")
+  
+  target_link_libraries(${PROJECT_NAME} PUBLIC ViennaTools::ViennaRay)
+  ```
 
 ### Building examples
 
 The examples can be built using CMake:
 
 ```bash
-mkdir build && cd build
-cmake .. -DVIENNARAY_BUILD_EXAMPLES=ON
-make
+cmake -B build -DVIENNARAY_BUILD_EXAMPLES=ON
+cmake --build build
 ```
 
 ### Running the Tests
@@ -91,17 +88,17 @@ ViennaRay uses CTest to run its tests.
 In order to check whether ViennaRay runs without issues on your system, you can run:
 
 ```bash
-git clone github.com/ViennaTools/ViennaRay.git
+git clone https://github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
-mkdir build && cd build
-cmake .. -DVIENNARAY_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=DEBUG
-make buildTests # build all tests
-make test # run all tests
+
+cmake -B build -DVIENNARAY_BUILD_TESTS=ON
+cmake --build build
+ctest --test-dir build
 ```
 
 ## Contributing
 
-If you want to contribute to ViennaRay, make sure to follow the [LLVM Coding guidelines](https://llvm.org/docs/CodingStandards.html). Before creating a pull request, make sure ALL files have been formatted by clang-format, which can be done using the format-project.sh script in the root directory.
+If you want to contribute to ViennaRay, make sure to follow the [LLVM Coding guidelines](https://llvm.org/docs/CodingStandards.html). Before creating a pull request, make sure ALL files have been formatted by clang-format, which can be done using the `format-project.sh` script in the root directory.
 
 ## Authors
 
@@ -112,6 +109,5 @@ Contact us via: viennatools@iue.tuwien.ac.at
 ViennaRay was developed under the aegis of the 'Institute for Microelectronics' at the 'TU Wien'.
 http://www.iue.tuwien.ac.at/
 
-License
---------------------------
-See file LICENSE in the base directory.
+## License
+See [LICENSE](LICENSE) file in the base directory.
