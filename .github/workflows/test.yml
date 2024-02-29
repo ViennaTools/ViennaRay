@@ -36,7 +36,7 @@ jobs:
             deps-cache
 
       - name: 🏗️ Compile
-        run: cmake -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DCPM_SOURCE_CACHE=deps-cache -DVIENNARAY_BUILD_TESTS=ON -B build && cmake --build build
+        run: cmake -B build -DCPM_SOURCE_CACHE=deps-cache -DVIENNARAY_BUILD_TESTS=ON && cmake --build build --config ${{ matrix.config }}
 
       - name: 🧪 Test
         run: ctest -C ${{ matrix.config }} --test-dir build
