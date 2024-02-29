@@ -72,7 +72,8 @@ CPMFindPackage(
   NAME tbb
   VERSION 2020.2
   GIT_TAG v2021.4.1
-  GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
+  GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"#
+  OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF"
 )
 
 CPMFindPackage(
