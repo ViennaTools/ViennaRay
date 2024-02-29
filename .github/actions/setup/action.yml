@@ -13,7 +13,7 @@ runs:
     - name: 🩹 Enable Long Paths
       shell: bash
       if: ${{ inputs.container == 'windows-latest' }}
-      run: git config --system core.longpaths true
+      run: git config --system core.longpaths true && choco install tbb
 
     - name: 📋 Install Dependencies
       shell: bash
