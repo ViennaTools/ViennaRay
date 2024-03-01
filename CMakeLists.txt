@@ -25,19 +25,19 @@ include("cmake/openmp.cmake")
 set(VIENNARAY_EMBREE_VERSION 4)
 find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
 set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
-if (VIENNARAY_SYSTEM_EMBREE)
+if(VIENNARAY_SYSTEM_EMBREE)
   message(STATUS "[ViennaRay] Found embree 4 system installation")
 else(VIENNARAY_SYSTEM_EMBREE)
   # look for embree 3
   find_package(embree 3 QUIET)
   set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
-  if (VIENNARAY_SYSTEM_EMBREE)
+  if(VIENNARAY_SYSTEM_EMBREE)
     message(STATUS "[ViennaRay] Found embree 3 system installation")
     set(VIENNARAY_EMBREE_VERSION 3)
   endif()
 endif()
 
-if (NOT VIENNARAY_SYSTEM_EMBREE)
+if(NOT VIENNARAY_SYSTEM_EMBREE)
   message(STATUS "[ViennaRay] Using remote embree")
 endif()
 
@@ -55,6 +55,8 @@ set_target_properties(
              CXX_EXTENSIONS OFF
              CXX_STANDARD_REQUIRED ON
              WINDOWS_EXPORT_ALL_SYMBOLS ON)
+target_compile_definitions(${PROJECT_NAME}
+                           INTERFACE VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION})
 
 if(VIENNARAY_USE_WDIST)
   message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
@@ -64,10 +66,6 @@ endif()
 if(EMBREE_RAY_MASK)
   message(STATUS "[ViennaRay] Using embree ray masking")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_RAY_MASKING)
-endif()
-
-if(VIENNARAY_EMBREE_VERSION)
-  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION}) 
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -89,7 +87,7 @@ CPMAddPackage(
   VERSION 1.11.1
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
-if (NOT VIENNARAY_SYSTEM_EMBREE)
+if(NOT VIENNARAY_SYSTEM_EMBREE)
   CPMFindPackage(
     NAME TBB
     VERSION 2020.0
@@ -98,10 +96,8 @@ if (NOT VIENNARAY_SYSTEM_EMBREE)
     OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 endif()
 
-if (VIENNARAY_EMBREE_VERSION EQUAL 3)
-  CPMFindPackage(
-    NAME embree
-    VERSION ${VIENNARAY_EMBREE_VERSION})
+if(VIENNARAY_EMBREE_VERSION EQUAL 3)
+  CPMFindPackage(NAME embree VERSION ${VIENNARAY_EMBREE_VERSION})
 else(VIENNARAY_EMBREE_VERSION)
   CPMFindPackage(
     NAME embree

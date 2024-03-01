@@ -73,7 +73,7 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
   find_package(TBB    REQUIRED)
   find_package(OpenMP REQUIRED)
 
-  find_package(embree 3    PATHS ${VIENNARAY_PATH})
+  find_package(embree 4    PATHS ${VIENNARAY_PATH})
   find_package(ViennaRay   PATHS ${VIENNARAY_PATH})
 
   target_link_libraries(${PROJECT_NAME} PUBLIC ViennaTools::ViennaRay)
