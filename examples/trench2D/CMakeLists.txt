@@ -1,11 +1,6 @@
-cmake_minimum_required(VERSION 3.4)
+project(trench2D LANGUAGES CXX)
 
-project("trench2D")
+add_executable(${PROJECT_NAME} "${PROJECT_NAME}.cpp")
+target_link_libraries(${PROJECT_NAME} PRIVATE ViennaRay)
 
-add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
-target_include_directories(${PROJECT_NAME} PUBLIC "${VIENNARAY_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PRIVATE ${VIENNARAY_LIBRARIES})
-configure_file(trenchGrid2D.dat ${CMAKE_CURRENT_BINARY_DIR}/trenchGrid2D.dat COPYONLY)
-
-# Add to example target
-add_dependencies(buildExamples ${PROJECT_NAME})
+add_dependencies(ViennaRay_Examples ${PROJECT_NAME})

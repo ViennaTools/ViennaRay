@@ -1,0 +1,23 @@
+name: 🏗️ Setup Environment
+description: Install Dependencies & Deploy Workarounds
+
+inputs:
+  container:
+    required: true
+    description: Build container used
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: 📋 Install Dependencies
+      shell: bash
+      if: ${{ inputs.container == 'ubuntu-latest' }}
+      run: dnf install -y make automake gcc gcc-c++ kernel-devel cmake git tbb tbb-devel
+
+    - name: 📋 Install OpenMP
+      shell: bash
+      if: ${{ inputs.container == 'macos-latest' }}
+      run: |
+        brew reinstall --build-from-source --formula ./.github/homebrew/libomp.rb 
+        brew install tbb

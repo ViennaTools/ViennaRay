@@ -1,0 +1,49 @@
+name: 🧪 Run Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+
+      matrix:
+        config: [Release, Debug]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.os == 'ubuntu-latest' && 'fedora:38' || null }}
+
+    name: '🧪 Test on ${{ matrix.os }} [Config: "${{ matrix.config }}"]'
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v3
+
+      - name: 🖥️ Setup Environment
+        uses: ./.github/actions/setup
+        with:
+          container: ${{ matrix.os }}
+
+      - name: 🦥 Cache Dependencies
+        uses: actions/cache@v3
+        with:
+          key: ${{ matrix.os }}-${{ matrix.config }}-cache
+          path: |
+            deps-cache
+
+      - name: 🦥 Cache Build
+        uses: actions/cache@v3
+        with:
+          key: ${{ matrix.os }}-${{ matrix.config }}-build-cache
+          path: |
+            build
+
+      - name: 🏗️ Compile
+        run: cmake -B build -DCPM_SOURCE_CACHE=deps-cache -DVIENNARAY_BUILD_TESTS=ON && cmake --build build --config ${{ matrix.config }}
+
+      - name: 🧪 Test
+        run: ctest -C ${{ matrix.config }} --test-dir build

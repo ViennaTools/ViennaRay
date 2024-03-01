@@ -1,135 +1,126 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+project(
+  ViennaRay
+  LANGUAGES CXX
+  VERSION 2.0.0)
 
-project("ViennaRay" VERSION 1.2.0)
+# --------------------------------------------------------------------------------------------------------
+# Library options
+# --------------------------------------------------------------------------------------------------------
 
-add_definitions(-DVIENNARAY_VERSION=${PROJECT_VERSION})
+option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
+option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
-include(GNUInstallDirs)
+option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
+option(VIENNARAY_DISABLE_COPY "Disable Embree Environment setup" OFF)
+option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
+option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
-# c++17 for inline constexpr variables
-set(CMAKE_CXX_STANDARD "17")
+# --------------------------------------------------------------------------------------------------------
+# Configuration
+# --------------------------------------------------------------------------------------------------------
 
-# set default build type
-set(DEFAULT_BUILD_TYPE "Release")
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
-  set(CMAKE_BUILD_TYPE
-      "${DEFAULT_BUILD_TYPE}"
-      CACHE STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel"
-                                               "RelWithDebInfo")
+include("cmake/openmp.cmake")
+
+find_package(embree 3 QUIET)
+set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
+
+if (NOT VIENNARAY_SYSTEM_EMBREE)
+  message(STATUS "[ViennaRay] Using remote embree")
 endif()
 
-# tell VS to export all symbols to its dll files
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS
-      TRUE
-      CACHE BOOL "Export all symbols")
-endif()
-
-set(ViennaRay_BINARY_DIR
-    ${PROJECT_BINARY_DIR}
-    CACHE PATH "Path to local ViennaRay installation" FORCE)
-
-# OpenMP Support
-find_package(OpenMP REQUIRED)
-list(APPEND VIENNARAY_LIBRARIES OpenMP::OpenMP_CXX)
-
-# ##################################################################################################
-# If you want to use the Intel SPMD Compiler, set that here
-# ##################################################################################################
-set(EMBREE_ISPC_SUPPORT
-    OFF
-    CACHE BOOL "Set whether or not you use Intel's SPMD Compiler")
-# ##################################################################################################
-
-# build dependencies
-set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/dependencies)
-
-# Include all external dependencies
-include(ExternalProject)
-add_custom_target(buildDependencies)
-add_subdirectory(external/upstream)
-
-message(STATUS "embree ray masking: ${EMBREE_RAY_MASK}")
-
-# Enable Ray Masking if embree is compiled with ray masking enabled
-if(EMBREE_RAY_MASK)
-  add_compile_definitions(VIENNARAY_USE_RAY_MASKING)
-endif(EMBREE_RAY_MASK)
-
-set(VIENNARAY_BUILD_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
-
-option(VIENNARAY_USE_WDIST "Use weighted distribution of ray weights." OFF)
-if(VIENNARAY_USE_WDIST)
-  add_compile_definitions(VIENNARAY_USE_WDIST)
-endif(VIENNARAY_USE_WDIST)
+# --------------------------------------------------------------------------------------------------------
+# Setup Library
+# --------------------------------------------------------------------------------------------------------
 
 add_library(${PROJECT_NAME} INTERFACE)
-
-# set the correct paths for installation
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/")
-endif()
-set(LOCAL_CONFIG_DIR "lib/cmake/${PROJECT_NAME}")
-
-# Adding the install interface generator expression makes sure that the include files are installed
-# to the proper location (provided by GNUInstallDirs)
-set(VIENNARAY_BUILD_INCLUDE_DIRS "${${PROJECT_NAME}_SOURCE_DIR}/include")
-target_include_directories(
-  ${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${VIENNARAY_BUILD_INCLUDE_DIRS}>
-                            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+add_library(ViennaTools::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
+set_target_properties(
+  ${PROJECT_NAME}
+  PROPERTIES CXX_STANDARD 17
+             CXX_EXTENSIONS OFF
+             CXX_STANDARD_REQUIRED ON
+             WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-  "${PROJECT_NAME}ConfigVersion.cmake"
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY AnyNewerVersion)
+if(VIENNARAY_USE_WDIST)
+  message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_WDIST)
+endif()
 
-configure_package_config_file(
-  "${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
-  "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" INSTALL_DESTINATION ${LOCAL_CONFIG_DIR})
+if(EMBREE_RAY_MASK)
+  message(STATUS "[ViennaRay] Using embree ray masking")
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_RAY_MASKING)
+endif()
 
-# ##################################################################################################
-# BUILD EXAMPLES
-# ##################################################################################################
-option(VIENNARAY_BUILD_EXAMPLES "Build examples." OFF)
+# --------------------------------------------------------------------------------------------------------
+# Include directories
+# --------------------------------------------------------------------------------------------------------
+
+target_include_directories(
+  ${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/viennaray>
+                            $<INSTALL_INTERFACE:include/viennaray-${PROJECT_VERSION}>)
+
+# --------------------------------------------------------------------------------------------------------
+# Setup Dependencies
+# --------------------------------------------------------------------------------------------------------
+
+include("cmake/cpm.cmake")
+
+CPMAddPackage(
+  NAME PackageProject
+  VERSION 1.11.1
+  GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
+
+if (NOT VIENNARAY_SYSTEM_EMBREE)
+  CPMFindPackage(
+    NAME TBB
+    VERSION 2020.0
+    GIT_TAG v2021.11.0
+    GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
+    OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
+endif()
+
+CPMFindPackage(
+  NAME embree
+  VERSION 3.0
+  GIT_TAG v3.13.0
+  GIT_REPOSITORY "https://github.com/embree/embree"
+  OPTIONS "EMBREE_TUTORIALS OFF")
+
+find_package(OpenMP REQUIRED)
+target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX embree)
+
+# --------------------------------------------------------------------------------------------------------
+# Setup Examples
+# --------------------------------------------------------------------------------------------------------
+
 if(VIENNARAY_BUILD_EXAMPLES)
+  message(STATUS "[ViennaRay] Building Examples")
   add_subdirectory(examples)
-endif(VIENNARAY_BUILD_EXAMPLES)
+endif()
 
-# ##################################################################################################
-# BUILD TESTS (Smaller examples for testing)
-# ##################################################################################################
-option(VIENNARAY_BUILD_TESTS "Build tests." OFF)
+# --------------------------------------------------------------------------------------------------------
+# Setup Tests
+# --------------------------------------------------------------------------------------------------------
+
 if(VIENNARAY_BUILD_TESTS)
+  message(STATUS "[ViennaRay] Building Tests")
+
   enable_testing()
   add_subdirectory(tests)
-endif(VIENNARAY_BUILD_TESTS)
+endif()
 
-# ##################################################################################################
-# INSTALL
-# ##################################################################################################
-# install config files locations are provided by GNUInstallDirs
-install(
-  TARGETS ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}_Targets
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+# --------------------------------------------------------------------------------------------------------
+# Install Target
+# --------------------------------------------------------------------------------------------------------
 
-install(
-  EXPORT ${PROJECT_NAME}_Targets
-  FILE ${PROJECT_NAME}Targets.cmake
-  DESTINATION ${LOCAL_CONFIG_DIR})
-
-install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-              "${PROJECT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        DESTINATION ${LOCAL_CONFIG_DIR})
-
-# install include files
-file(GLOB_RECURSE HEADER_FILES "${PROJECT_SOURCE_DIR}/include/*.hpp")
-install(FILES ${HEADER_FILES} DESTINATION include)
+packageProject(
+  NAME ${PROJECT_NAME} NAMESPACE ViennaTools
+  VERSION ${PROJECT_VERSION}
+  BINARY_DIR ${PROJECT_BINARY_DIR}
+  INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
+  INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
+  DEPENDENCIES "embree;TBB")
