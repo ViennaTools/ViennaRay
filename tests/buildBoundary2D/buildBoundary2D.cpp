@@ -1,4 +1,3 @@
-#include <embree3/rtcore.h>
 #include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
 

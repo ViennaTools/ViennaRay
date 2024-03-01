@@ -115,7 +115,7 @@ public:
       // probabilistic weight
       const NumericType initialRayWeight = 1.;
 
-#ifdef VIENNARAY_EMBREE_VERSION < 4
+#if VIENNARAY_EMBREE_VERSION < 4
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
 #endif
@@ -152,7 +152,7 @@ public:
           // source
 
           // Run the intersection
-#ifdef VIENNARAY_EMBREE_VERSION < 4
+#if VIENNARAY_EMBREE_VERSION < 4
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
 #else
           rtcIntersect1(rtcScene, &rayHit);

@@ -22,11 +22,11 @@ option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
 include("cmake/openmp.cmake")
 
-find_package(embree 4 QUIET)
+set(VIENNARAY_EMBREE_VERSION 4)
+find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
 set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
 if (VIENNARAY_SYSTEM_EMBREE)
   message(STATUS "[ViennaRay] Found embree 4 system installation")
-  set(VIENNARAY_EMBREE_VERSION 4)
 else(VIENNARAY_SYSTEM_EMBREE)
   # look for embree 3
   find_package(embree 3 QUIET)
@@ -98,11 +98,18 @@ if (NOT VIENNARAY_SYSTEM_EMBREE)
     OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 endif()
 
-CPMFindPackage(
-  NAME embree
-  VERSION ${VIENNARAY_EMBREE_VERSION}
-  GIT_REPOSITORY "https://github.com/embree/embree"
-  OPTIONS "EMBREE_TUTORIALS OFF")
+if (VIENNARAY_EMBREE_VERSION EQUAL 3)
+  CPMFindPackage(
+    NAME embree
+    VERSION ${VIENNARAY_EMBREE_VERSION})
+else(VIENNARAY_EMBREE_VERSION)
+  CPMFindPackage(
+    NAME embree
+    VERSION ${VIENNARAY_EMBREE_VERSION}
+    GIT_TAG v4.3.1
+    GIT_REPOSITORY "https://github.com/embree/embree"
+    OPTIONS "EMBREE_TUTORIALS OFF")
+endif()
 
 find_package(OpenMP REQUIRED)
 target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX embree)

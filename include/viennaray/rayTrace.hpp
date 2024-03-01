@@ -1,7 +1,6 @@
 #ifndef RAY_TRACE_HPP
 #define RAY_TRACE_HPP
 
-#include <embree3/rtcore.h>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>

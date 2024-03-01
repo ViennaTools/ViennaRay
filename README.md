@@ -48,6 +48,7 @@ git clone https://github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 
 cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/
+cmake --build build
 cmake --install build
 ```
 
