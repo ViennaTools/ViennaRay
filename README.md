@@ -4,6 +4,8 @@
 
 <h1>ViennaRay</h1>
 
+[![🧪 Tests](https://github.com/ViennaTools/ViennaRay/actions/workflows/test.yml/badge.svg)](https://github.com/ViennaTools/ViennaRay/actions/workflows/test.yml)
+
 </div>
 
 ViennaRay is a flux calculation library for topography simulations, based in Intel®'s ray tracing kernel [Embree](https://www.embree.org/). It is designed to provide efficient and high-performance ray tracing, while maintaining a simple and easy to use interface. ViennaRay was developed and optimized for use in conjunction with [ViennaLS](https://github.com/ViennaTools/ViennaLS), which provides the necessary geometry representation. It is however possible to use this as a standalone library, with self-designed geometries.
@@ -48,6 +50,7 @@ git clone https://github.com/ViennaTools/ViennaRay.git
 cd ViennaRay
 
 cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to/your/custom/install/
+cmake --build build
 cmake --install build
 ```
 
@@ -60,7 +63,7 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
 * Installation with CPM
 
   ```cmake
-  CPMAddPackage("gh:viennatools/viennaray@2.0.0")
+  CPMAddPackage("gh:viennatools/viennaray@2.0.1")
   ```
 
 * With a local installation
@@ -72,7 +75,7 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
   find_package(TBB    REQUIRED)
   find_package(OpenMP REQUIRED)
 
-  find_package(embree 3    PATHS ${VIENNARAY_PATH})
+  find_package(embree 4    PATHS ${VIENNARAY_PATH})
   find_package(ViennaRay   PATHS ${VIENNARAY_PATH})
 
   target_link_libraries(${PROJECT_NAME} PUBLIC ViennaTools::ViennaRay)

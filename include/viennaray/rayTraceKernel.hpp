@@ -115,8 +115,10 @@ public:
       // probabilistic weight
       const NumericType initialRayWeight = 1.;
 
+#if VIENNARAY_EMBREE_VERSION < 4
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
+#endif
 
       [[maybe_unused]] size_t progressCount = 0;
 
@@ -150,7 +152,12 @@ public:
           // source
 
           // Run the intersection
+#if VIENNARAY_EMBREE_VERSION < 4
           rtcIntersect1(rtcScene, &rtcContext, &rayHit);
+#else
+          rtcIntersect1(rtcScene, &rayHit);
+#endif
+
           ++totaltraces;
 
           /* -------- No hit -------- */

@@ -1,7 +1,11 @@
 #ifndef RAY_METAGEOMETRY_HPP
 #define RAY_METAGEOMETRY_HPP
 
+#if VIENNARAY_EMBREE_VERSION < 4
 #include <embree3/rtcore.h>
+#else
+#include <embree4/rtcore.h>
+#endif
 #include <rayUtil.hpp>
 
 template <typename NumericType, int D> class rayMetaGeometry {

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 2.0.0)
+  VERSION 2.0.1)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -22,10 +22,22 @@ option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
 include("cmake/openmp.cmake")
 
-find_package(embree 3 QUIET)
+set(VIENNARAY_EMBREE_VERSION 4)
+find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
 set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
+if(VIENNARAY_SYSTEM_EMBREE)
+  message(STATUS "[ViennaRay] Found embree 4 system installation")
+else(VIENNARAY_SYSTEM_EMBREE)
+  # look for embree 3
+  find_package(embree 3 QUIET)
+  set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
+  if(VIENNARAY_SYSTEM_EMBREE)
+    message(STATUS "[ViennaRay] Found embree 3 system installation")
+    set(VIENNARAY_EMBREE_VERSION 3)
+  endif()
+endif()
 
-if (NOT VIENNARAY_SYSTEM_EMBREE)
+if(NOT VIENNARAY_SYSTEM_EMBREE)
   message(STATUS "[ViennaRay] Using remote embree")
 endif()
 
@@ -43,15 +55,17 @@ set_target_properties(
              CXX_EXTENSIONS OFF
              CXX_STANDARD_REQUIRED ON
              WINDOWS_EXPORT_ALL_SYMBOLS ON)
+target_compile_definitions(${PROJECT_NAME}
+                           INTERFACE VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION})
 
 if(VIENNARAY_USE_WDIST)
   message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
-  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_WDIST)
+  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
 endif()
 
-if(EMBREE_RAY_MASK)
+if(EMBREE_RAY_MASK OR VIENNARAY_EMBREE_VERSION EQUAL 4)
   message(STATUS "[ViennaRay] Using embree ray masking")
-  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_RAY_MASKING)
+  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_RAY_MASKING)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -73,7 +87,7 @@ CPMAddPackage(
   VERSION 1.11.1
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
-if (NOT VIENNARAY_SYSTEM_EMBREE)
+if(NOT VIENNARAY_SYSTEM_EMBREE)
   CPMFindPackage(
     NAME TBB
     VERSION 2020.0
@@ -82,12 +96,16 @@ if (NOT VIENNARAY_SYSTEM_EMBREE)
     OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 endif()
 
-CPMFindPackage(
-  NAME embree
-  VERSION 3.0
-  GIT_TAG v3.13.0
-  GIT_REPOSITORY "https://github.com/embree/embree"
-  OPTIONS "EMBREE_TUTORIALS OFF")
+if(VIENNARAY_EMBREE_VERSION EQUAL 3)
+  CPMFindPackage(NAME embree VERSION ${VIENNARAY_EMBREE_VERSION})
+else(VIENNARAY_EMBREE_VERSION)
+  CPMFindPackage(
+    NAME embree
+    VERSION ${VIENNARAY_EMBREE_VERSION}
+    GIT_TAG v4.3.1
+    GIT_REPOSITORY "https://github.com/embree/embree"
+    OPTIONS "EMBREE_TUTORIALS OFF")
+endif()
 
 find_package(OpenMP REQUIRED)
 target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX embree)

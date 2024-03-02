@@ -1,4 +1,3 @@
-#include <embree3/rtcore.h>
 #include <rayGeometry.hpp>
 #include <rayRNG.hpp>
 #include <raySourceGrid.hpp>

@@ -1,4 +1,3 @@
-#include <embree3/rtcore.h>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayTestAsserts.hpp>
@@ -51,8 +50,10 @@ int main() {
   auto geometryID = rtcAttachGeometry(rtcscene, rtcgeometry);
   rtcJoinCommitScene(rtcscene);
 
+#if VIENNARAY_EMBREE_VERSION < 4
   auto rtccontext = RTCIntersectContext{};
   rtcInitIntersectContext(&rtccontext);
+#endif
   RAYTEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
   {
@@ -79,7 +80,11 @@ int main() {
     rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
     rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
 
+#if VIENNARAY_EMBREE_VERSION < 4
     rtcIntersect1(rtcscene, &rtccontext, &rayhit);
+#else
+    rtcIntersect1(rtcscene, &rayhit);
+#endif
 
     RAYTEST_ASSERT(rayhit.hit.geomID == geometryID)
     RAYTEST_ASSERT(rayhit.hit.primID == 840)
@@ -110,7 +115,11 @@ int main() {
     rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
     rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
 
+#if VIENNARAY_EMBREE_VERSION < 4
     rtcIntersect1(rtcscene, &rtccontext, &rayhit);
+#else
+    rtcIntersect1(rtcscene, &rayhit);
+#endif
 
     RAYTEST_ASSERT(rayhit.hit.geomID == boundaryID)
     RAYTEST_ASSERT(rayhit.hit.primID == 7)

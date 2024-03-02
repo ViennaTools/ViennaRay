@@ -1,4 +1,3 @@
-#include <embree3/rtcore.h>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayTestAsserts.hpp>
