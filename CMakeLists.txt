@@ -63,7 +63,7 @@ if(VIENNARAY_USE_WDIST)
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
 endif()
 
-if(EMBREE_RAY_MASK)
+if(EMBREE_RAY_MASK OR VIENNARAY_EMBREE_VERSION EQUAL 4)
   message(STATUS "[ViennaRay] Using embree ray masking")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_RAY_MASKING)
 endif()
