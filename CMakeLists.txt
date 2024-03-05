@@ -5,7 +5,7 @@ project(
   VERSION 2.0.1)
 
 # --------------------------------------------------------------------------------------------------------
-# Library options
+# Library switches
 # --------------------------------------------------------------------------------------------------------
 
 option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
@@ -17,25 +17,39 @@ option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
 # --------------------------------------------------------------------------------------------------------
+# Library options
+# --------------------------------------------------------------------------------------------------------
+
+set(VIENNARAY_EMBREE_VERSION
+    4
+    CACHE STRING "The embree version to use")
+
+set(VIENNARAY_EMBREE_TAG
+    "Default"
+    CACHE STRING "The remote embree version to use")
+
+if(VIENNARAY_EMBREE_TAG STREQUAL "Default")
+  if(VIENNARAY_EMBREE_VERSION EQUAL 4)
+    set(VIENNARAY_EMBREE_TAG "v4.3.1")
+  elseif(VIENNARAY_EMBREE_VERSION EQUAL 3)
+    set(VIENNARAY_EMBREE_TAG "v3.13.0")
+  else()
+    message(WARNING "[ViennaRay] Please manually specify VIENNARAY_EMBREE_TAG")
+  endif()
+endif()
+
+if(EMBREE_RAY_MASK)
+  set(EMBREE_RAY_MASK ON)
+endif()
+
+# --------------------------------------------------------------------------------------------------------
 # Configuration
 # --------------------------------------------------------------------------------------------------------
 
 include("cmake/openmp.cmake")
 
-set(VIENNARAY_EMBREE_VERSION 4)
 find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
 set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
-if(VIENNARAY_SYSTEM_EMBREE)
-  message(STATUS "[ViennaRay] Found embree 4 system installation")
-else(VIENNARAY_SYSTEM_EMBREE)
-  # look for embree 3
-  find_package(embree 3 QUIET)
-  set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
-  if(VIENNARAY_SYSTEM_EMBREE)
-    message(STATUS "[ViennaRay] Found embree 3 system installation")
-    set(VIENNARAY_EMBREE_VERSION 3)
-  endif()
-endif()
 
 if(NOT VIENNARAY_SYSTEM_EMBREE)
   message(STATUS "[ViennaRay] Using remote embree")
@@ -49,21 +63,22 @@ add_library(${PROJECT_NAME} INTERFACE)
 add_library(ViennaTools::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
+target_compile_definitions(${PROJECT_NAME}
+                           INTERFACE VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION})
+
 set_target_properties(
   ${PROJECT_NAME}
   PROPERTIES CXX_STANDARD 17
              CXX_EXTENSIONS OFF
              CXX_STANDARD_REQUIRED ON
              WINDOWS_EXPORT_ALL_SYMBOLS ON)
-target_compile_definitions(${PROJECT_NAME}
-                           INTERFACE VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION})
 
 if(VIENNARAY_USE_WDIST)
   message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
 endif()
 
-if(EMBREE_RAY_MASK OR VIENNARAY_EMBREE_VERSION EQUAL 4)
+if(EMBREE_RAY_MASK)
   message(STATUS "[ViennaRay] Using embree ray masking")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_RAY_MASKING)
 endif()
@@ -96,16 +111,12 @@ if(NOT VIENNARAY_SYSTEM_EMBREE)
     OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 endif()
 
-if(VIENNARAY_EMBREE_VERSION EQUAL 3)
-  CPMFindPackage(NAME embree VERSION ${VIENNARAY_EMBREE_VERSION})
-else(VIENNARAY_EMBREE_VERSION)
-  CPMFindPackage(
-    NAME embree
-    VERSION ${VIENNARAY_EMBREE_VERSION}
-    GIT_TAG v4.3.1
-    GIT_REPOSITORY "https://github.com/embree/embree"
-    OPTIONS "EMBREE_TUTORIALS OFF")
-endif()
+CPMFindPackage(
+  NAME embree
+  VERSION ${VIENNARAY_EMBREE_VERSION}
+  GIT_TAG ${VIENNARAY_EMBREE_TAG}
+  GIT_REPOSITORY "https://github.com/embree/embree"
+  OPTIONS "EMBREE_TUTORIALS OFF")
 
 find_package(OpenMP REQUIRED)
 target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX embree)
