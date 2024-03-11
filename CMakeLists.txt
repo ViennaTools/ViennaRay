@@ -38,7 +38,8 @@ if(VIENNARAY_EMBREE_TAG STREQUAL "Default")
   endif()
 endif()
 
-if(EMBREE_RAY_MASK)
+if(VIENNARAY_EMBREE_VERSION GREATER_EQUAL 4)
+  message(STATUS "[ViennaRay] Using Embree Ray Masking on Embree >= 4")
   set(EMBREE_RAY_MASK ON)
 endif()
 
