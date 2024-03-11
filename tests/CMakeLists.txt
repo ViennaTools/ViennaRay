@@ -1,7 +1,9 @@
 add_custom_target(ViennaRay_Tests ALL)
 
-include("../cmake/embree.cmake")
-setup_embree_env(ViennaRay_Tests "tests")
+if (WIN32 AND NOT VIENNARAY_DISABLE_COPY AND NOT VIENNARAY_SYSTEM_EMBREE)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${PROJECT_BINARY_DIR}/tests>)
+  setup_embree_env(ViennaRay_Tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+endif()
 
 file(
   GLOB entries
