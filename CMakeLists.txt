@@ -8,11 +8,13 @@ project(
 # Library switches
 # --------------------------------------------------------------------------------------------------------
 
+option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
 option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
-option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
+option(VIENNARAY_EXCLUDE_DEPENDENCIES "Exclude dependencies from install" OFF)
 option(VIENNARAY_DISABLE_COPY "Disable Embree Environment setup" OFF)
+
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
@@ -110,6 +112,7 @@ if(NOT VIENNARAY_SYSTEM_EMBREE)
     VERSION 2020.0
     GIT_TAG v2021.11.0
     GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
+    EXCLUDE_FROM_ALL ${VIENNARAY_EXCLUDE_DEPENDENCIES}
     OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 endif()
 
@@ -118,6 +121,7 @@ CPMFindPackage(
   VERSION ${VIENNARAY_EMBREE_VERSION}
   GIT_TAG ${VIENNARAY_EMBREE_TAG}
   GIT_REPOSITORY "https://github.com/embree/embree"
+  EXCLUDE_FROM_ALL ${VIENNARAY_EXCLUDE_DEPENDENCIES}
   OPTIONS "EMBREE_TUTORIALS OFF")
 
 find_package(OpenMP REQUIRED)
