@@ -51,11 +51,14 @@ include("cmake/openmp.cmake")
 include("cmake/embree.cmake")
 
 find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
-set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND} CACHE INTERNAL "")
+set(VIENNARAY_SYSTEM_EMBREE
+    ${embree_FOUND}
+    CACHE INTERNAL "")
 
-if(NOT VIENNARAY_SYSTEM_EMBREE)
-  message(STATUS "[ViennaRay] Using remote embree")
-endif()
+find_package(TBB QUIET)
+set(VIENNARAY_SYSTEM_TBB
+    ${TBB_FOUND}
+    CACHE INTERNAL "")
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Library
