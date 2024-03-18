@@ -49,6 +49,7 @@ endif()
 
 include("cmake/openmp.cmake")
 include("cmake/embree.cmake")
+include("cmake/tbb.cmake")
 
 find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
 set(VIENNARAY_SYSTEM_EMBREE
