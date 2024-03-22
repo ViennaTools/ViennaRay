@@ -1,8 +1,15 @@
 add_custom_target(ViennaRay_Tests ALL)
 
-if (WIN32 AND NOT VIENNARAY_DISABLE_COPY AND NOT VIENNARAY_SYSTEM_EMBREE)
+if(WIN32 AND NOT VIENNARAY_DISABLE_COPY)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${PROJECT_BINARY_DIR}/tests>)
-  setup_embree_env(ViennaRay_Tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+
+  if(NOT VIENNARAY_SYSTEM_EMBREE)
+    setup_embree_env(ViennaRay_Tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  endif()
+
+  if(NOT VIENNARAY_SYSTEM_TBB)
+    setup_tbb_env(ViennaRay_Tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  endif()
 endif()
 
 file(

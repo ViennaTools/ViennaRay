@@ -49,13 +49,17 @@ endif()
 
 include("cmake/openmp.cmake")
 include("cmake/embree.cmake")
+include("cmake/tbb.cmake")
 
 find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
-set(VIENNARAY_SYSTEM_EMBREE ${embree_FOUND})
+set(VIENNARAY_SYSTEM_EMBREE
+    ${embree_FOUND}
+    CACHE INTERNAL "")
 
-if(NOT VIENNARAY_SYSTEM_EMBREE)
-  message(STATUS "[ViennaRay] Using remote embree")
-endif()
+find_package(TBB QUIET)
+set(VIENNARAY_SYSTEM_TBB
+    ${TBB_FOUND}
+    CACHE INTERNAL "")
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Library
@@ -154,4 +158,4 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
   INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "embree;TBB")
+  DEPENDENCIES "embree;TBB;OpenMP")
