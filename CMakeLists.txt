@@ -11,10 +11,19 @@ project(
 option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
-option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
 option(VIENNARAY_DISABLE_COPY "Disable Embree Environment setup" OFF)
+option(VIENNARAY_LEGACY_OPENMP "Use legacy OpenMP flags" OFF)
+
+option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
+
+if (VIENNARAY_LEGACY_OPENMP)
+  message(STATUS "[ViennaRay] Using legacy OpenMP flags")
+
+  find_package(OpenMP REQUIRED)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -124,8 +133,12 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/embree/embree"
   OPTIONS "EMBREE_TUTORIALS OFF")
 
-find_package(OpenMP REQUIRED)
-target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX embree)
+if (NOT VIENNARAY_LEGACY_OPENMP)
+  find_package(OpenMP REQUIRED)
+  target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX)
+endif()
+
+target_link_libraries(${PROJECT_NAME} INTERFACE embree)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Examples
