@@ -117,7 +117,7 @@ CPMAddPackage(
   VERSION 1.11.1
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
-if(NOT VIENNARAY_SYSTEM_EMBREE)
+if(NOT VIENNARAY_SYSTEM_TBB)
   CPMFindPackage(
     NAME TBB
     VERSION 2020.0
