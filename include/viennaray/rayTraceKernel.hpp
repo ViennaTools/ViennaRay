@@ -141,7 +141,8 @@ public:
         bool reflect = false;
         bool hitFromBack = false;
         do {
-          rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
+          rayHit.ray.tfar =
+              std::numeric_limits<rayInternal::rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
           // rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle
@@ -171,9 +172,12 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const rtcNumericType xx = ray.org_x + ray.dir_x * ray.tfar;
-          const rtcNumericType yy = ray.org_y + ray.dir_y * ray.tfar;
-          const rtcNumericType zz = ray.org_z + ray.dir_z * ray.tfar;
+          const rayInternal::rtcNumericType xx =
+              ray.org_x + ray.dir_x * ray.tfar;
+          const rayInternal::rtcNumericType yy =
+              ray.org_y + ray.dir_y * ray.tfar;
+          const rayInternal::rtcNumericType zz =
+              ray.org_z + ray.dir_z * ray.tfar;
 
           /* -------- Hit from back -------- */
           const auto rayDir =
@@ -209,13 +213,13 @@ public:
           std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
 #ifdef VIENNARAY_USE_WDIST
-          std::vector<rtcNumericType>
+          std::vector<rayInternal::rtcNumericType>
               impactDistances; // distances between point of impact and disk
                                // origins of hit disks
           {                    // distance on first disk hit
             const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
-            const auto &diskOrigin =
-                *reinterpret_cast<rayTriple<rtcNumericType> const *>(&disk);
+            const auto &diskOrigin = *reinterpret_cast<
+                rayTriple<rayInternal::rtcNumericType> const *>(&disk);
             impactDistances.push_back(
                 rayInternal::Distance({xx, yy, zz}, diskOrigin) +
                 1e-6f); // add eps to avoid division by 0
@@ -224,7 +228,7 @@ public:
           // check for additional intersections
           for (const auto &id :
                geometry_.getNeighborIndicies(rayHit.hit.primID)) {
-            rtcNumericType distance;
+            rayInternal::rtcNumericType distance;
             if (checkLocalIntersection(ray, id, distance)) {
               hitDiskIds.push_back(id);
 #ifdef VIENNARAY_USE_WDIST
@@ -235,7 +239,7 @@ public:
           const size_t numDisksHit = hitDiskIds.size();
 
 #ifdef VIENNARAY_USE_WDIST
-          rtcNumericType invDistanceWeightSum = 0;
+          rayInternal::rtcNumericType invDistanceWeightSum = 0;
           for (const auto &d : impactDistances)
             invDistanceWeightSum += 1 / d;
 #endif
@@ -287,19 +291,22 @@ public:
 #ifdef ARCH_X86
           reinterpret_cast<__m128 &>(rayHit.ray) =
               _mm_set_ps(1e-4f, zz, yy, xx);
-          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
-              _mm_set_ps(0.0f, (rtcNumericType)stickingDirection.second[2],
-                         (rtcNumericType)stickingDirection.second[1],
-                         (rtcNumericType)stickingDirection.second[0]);
+          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
+              0.0f, (rayInternal::rtcNumericType)stickingDirection.second[2],
+              (rayInternal::rtcNumericType)stickingDirection.second[1],
+              (rayInternal::rtcNumericType)stickingDirection.second[0]);
 #else
           rayHit.ray.org_x = xx;
           rayHit.ray.org_y = yy;
           rayHit.ray.org_z = zz;
           rayHit.ray.tnear = 1e-4f;
 
-          rayHit.ray.dir_x = (rtcNumericType)stickingDirection.second[0];
-          rayHit.ray.dir_y = (rtcNumericType)stickingDirection.second[1];
-          rayHit.ray.dir_z = (rtcNumericType)stickingDirection.second[2];
+          rayHit.ray.dir_x =
+              (rayInternal::rtcNumericType)stickingDirection.second[0];
+          rayHit.ray.dir_y =
+              (rayInternal::rtcNumericType)stickingDirection.second[1];
+          rayHit.ray.dir_z =
+              (rayInternal::rtcNumericType)stickingDirection.second[2];
           rayHit.ray.time = 0.0f;
 #endif
         } while (reflect);
@@ -503,11 +510,11 @@ private:
     constexpr auto emptySymbol = '-';
     constexpr auto barEndSymbol = ']';
     constexpr auto percentageStringFormatLength = 3; // 3 digits
-    if (progressCount % (int)std::ceil((rtcNumericType)numRays_ /
+    if (progressCount % (int)std::ceil((NumericType)numRays_ /
                                        omp_get_num_threads() / barLength) ==
         0) {
       auto fillLength =
-          (int)std::ceil(progressCount / ((rtcNumericType)numRays_ /
+          (int)std::ceil(progressCount / ((NumericType)numRays_ /
                                           omp_get_num_threads() / barLength));
       auto percentageString = std::to_string((fillLength * 100) / barLength);
       percentageString =
@@ -527,17 +534,21 @@ private:
     progressCount += 1;
   }
 
-  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
-                              rtcNumericType &impactDistance) const {
+  bool
+  checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
+                         rayInternal::rtcNumericType &impactDistance) const {
     auto const &rayOrigin =
-        *reinterpret_cast<rayTriple<rtcNumericType> const *>(&ray.org_x);
+        *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> const *>(
+            &ray.org_x);
     auto const &rayDirection =
-        *reinterpret_cast<rayTriple<rtcNumericType> const *>(&ray.dir_x);
+        *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> const *>(
+            &ray.dir_x);
 
     const auto &normal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
     const auto &diskOrigin =
-        *reinterpret_cast<rayTriple<rtcNumericType> const *>(&disk);
+        *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> const *>(
+            &disk);
 
     auto prodOfDirections = rayInternal::DotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
@@ -562,7 +573,7 @@ private:
     }
 
     // copy ray direction
-    auto rayDirectionC = rayTriple<rtcNumericType>{
+    auto rayDirectionC = rayTriple<rayInternal::rtcNumericType>{
         rayDirection[0], rayDirection[1], rayDirection[2]};
     rayInternal::Scale(tt, rayDirectionC);
     auto hitpoint = rayInternal::Sum(rayOrigin, rayDirectionC);

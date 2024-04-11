@@ -195,7 +195,7 @@ public:
            "Unequal number of points in normalizeFlux");
 
     auto diskArea = hitCounter_.getDiskAreas();
-    const auto totalDiskArea = diskRadius_ * diskRadius_ * rayInternal::PI;
+    const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
 
     switch (norm) {
     case rayNormalizationType::MAX: {

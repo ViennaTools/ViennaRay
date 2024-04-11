@@ -139,7 +139,7 @@ public:
   rayPair<int> getDirs() const { return {firstDir_, secondDir_}; }
 
 private:
-  static rayTriple<rtcNumericType> getNewOrigin(RTCRay &ray) {
+  static rayTriple<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
     assert(rayInternal::IsNormalized(
                rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
            "MetaGeometry: direction not normalized");
@@ -247,22 +247,20 @@ private:
   }
 
   void reflectRay(RTCRayHit &rayHit) const {
-    auto dir =
-        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.ray.dir_x);
-    auto normal =
-        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.hit.Ng_x);
+    auto dir = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
+        &rayHit.ray.dir_x);
+    auto normal = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
+        &rayHit.hit.Ng_x);
     rayInternal::Normalize(dir);
     rayInternal::Normalize(normal);
-    dir = rayReflectionSpecular<rtcNumericType>(dir, normal);
+    dir = rayReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
     // normal gets reused for new origin here
     normal = getNewOrigin(rayHit.ray);
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
-        _mm_set_ps(1e-4f, (rtcNumericType)normal[2], (rtcNumericType)normal[1],
-                   (rtcNumericType)normal[0]);
+        _mm_set_ps(1e-4f, normal[2], normal[1], normal[0]);
     reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
-        _mm_set_ps(0.0f, (rtcNumericType)dir[2], (rtcNumericType)dir[1],
-                   (rtcNumericType)dir[0]);
+        _mm_set_ps(0.0f, dir[2], dir[1], dir[0]);
 #else
     rayHit.ray.org_x = normal[0];
     rayHit.ray.org_y = normal[1];
@@ -276,12 +274,14 @@ private:
 #endif
   }
 
-  void assignRayCoords(RTCRayHit &rayHit,
-                       const rayTriple<rtcNumericType> &coords) const {
+  void
+  assignRayCoords(RTCRayHit &rayHit,
+                  const rayTriple<rayInternal::rtcNumericType> &coords) const {
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
-        _mm_set_ps(1e-4f, (rtcNumericType)coords[2], (rtcNumericType)coords[1],
-                   (rtcNumericType)coords[0]);
+        _mm_set_ps(1e-4f, (rayInternal::rtcNumericType)coords[2],
+                   (rayInternal::rtcNumericType)coords[1],
+                   (rayInternal::rtcNumericType)coords[0]);
     rayHit.ray.time = 0.0f;
 #else
     rayHit.ray.org_x = coords[0];

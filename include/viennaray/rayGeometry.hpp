@@ -143,15 +143,15 @@ public:
             (NumericType)normal.zz};
   }
 
-  rayQuadruple<rtcNumericType> &getPrimRef(unsigned int primID) {
+  rayQuadruple<rayInternal::rtcNumericType> &getPrimRef(unsigned int primID) {
     assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rayQuadruple<rtcNumericType> *>(
+    return *reinterpret_cast<rayQuadruple<rayInternal::rtcNumericType> *>(
         &pPointBuffer_[primID]);
   }
 
-  rayTriple<rtcNumericType> &getNormalRef(unsigned int primID) {
+  rayTriple<rayInternal::rtcNumericType> &getNormalRef(unsigned int primID) {
     assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rayTriple<rtcNumericType> *>(
+    return *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
         &pNormalVecBuffer_[primID]);
   }
 

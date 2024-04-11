@@ -56,7 +56,7 @@ int main() {
   auto diskAreas = hitCounter.getDiskAreas();
 
   auto boundaryDirs = boundary.getDirs();
-  auto wholeDiskArea = diskRadius * diskRadius * rayInternal::PI;
+  auto wholeDiskArea = diskRadius * diskRadius * M_PI;
   for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto const &disk = geometry.getPrimRef(idx);
     if (std::fabs(disk[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <

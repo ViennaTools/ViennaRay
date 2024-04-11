@@ -32,7 +32,7 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
          "rayReflectionDiffuse: Surface normal is not normalized");
 
   auto randomDirection =
-      rayInternal::PickRandomPointOnUnitSphere<NumericType>(RNG);
+      rayInternal::pickRandomPointOnUnitSphere<NumericType>(RNG);
   randomDirection[0] += geomNormal[0];
   randomDirection[1] += geomNormal[1];
   if constexpr (D == 3)
@@ -61,9 +61,9 @@ static rayTriple<NumericType> rayReflectionConedCosine(
 
   do {
     // sample phi uniformly in [0, 2pi]
-    NumericType phi = uniDist(RNG) * 2 * PI;
+    NumericType phi = uniDist(RNG) * 2 * M_PI;
     // theta on sphere
-    assert(maxConeAngle >= 0. && maxConeAngle <= PI / 2. &&
+    assert(maxConeAngle >= 0. && maxConeAngle <= M_PI / 2. &&
            "Cone angle not allowed");
     NumericType cosTheta = std::cos(maxConeAngle);
     // sample z uniformly on [cos(theta),1]
@@ -135,7 +135,7 @@ static rayTriple<NumericType> rayReflectionConedCosineOld(
       sqrt_1m_u = std::sqrt(1. - u);
       angle = avgReflAngle * sqrt_1m_u;
     } while (uniDist(RNG) * angle * u >
-             std::cos(rayInternal::PI / 2. * sqrt_1m_u) * std::sin(angle));
+             std::cos(M_PI_2 * sqrt_1m_u) * std::sin(angle));
 
     // Random Azimuthal Rotation
     NumericType costheta =
@@ -220,8 +220,7 @@ rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
 
   const NumericType incAngle = std::acos(std::max(std::min(cosTheta, 1.), 0.));
 
-  NumericType avgReflAngle =
-      std::max(rayInternal::PI / 2. - incAngle, minAvgConeAngle);
+  NumericType avgReflAngle = std::max(M_PI_2 - incAngle, minAvgConeAngle);
 
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType u, sqrt_1m_u;
@@ -232,7 +231,7 @@ rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
     sqrt_1m_u = std::sqrt(1. - u);
     angle = avgReflAngle * sqrt_1m_u;
   } while (uniDist(RNG) * angle * u >
-           std::cos(rayInternal::PI / 2. * sqrt_1m_u) * std::sin(angle));
+           std::cos(M_PI_2 * sqrt_1m_u) * std::sin(angle));
 
   cosTheta = std::cos(angle);
 
