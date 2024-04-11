@@ -1,7 +1,6 @@
-#ifndef RAY_TRACEDIRECTION_HPP
-#define RAY_TRACEDIRECTION_HPP
+#pragma once
 
-enum struct rayTraceDirection : unsigned {
+enum class rayTraceDirection : unsigned {
   POS_X = 0,
   NEG_X = 1,
   POS_Y = 2,
@@ -9,5 +8,3 @@ enum struct rayTraceDirection : unsigned {
   POS_Z = 4,
   NEG_Z = 5
 };
-
-#endif

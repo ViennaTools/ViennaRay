@@ -54,10 +54,9 @@ public:
 
     rayTraceKernel tracer(device_, geometry_, boundary, raySource, pParticle_,
                           dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_,
-                          useRandomSeeds_, calcFlux_, runNumber_++);
+                          useRandomSeeds_, calcFlux_, runNumber_++, hitCounter_,
+                          RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
-    tracer.setHitCounter(&hitCounter_);
-    tracer.setRayTraceInfo(&RTInfo_);
     tracer.apply();
 
     if (checkError_)

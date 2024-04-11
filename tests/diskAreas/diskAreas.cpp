@@ -48,10 +48,10 @@ int main() {
   auto cp = particle.clone();
 
   rayDataLog<NumericType> log;
+  rayTraceInfo info;
   auto tracer = rayTraceKernel(device, geometry, boundary, raySource, cp, log,
-                               1, 0, false, true, 0);
+                               1, 0, false, true, 0, hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
-  tracer.setHitCounter(&hitCounter);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();
 
