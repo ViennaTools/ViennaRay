@@ -1,6 +1,5 @@
 #pragma once
 
-#define _USE_MATH_DEFINES
 #include <rayMessage.hpp>
 #include <rayRNG.hpp>
 
@@ -25,6 +24,10 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 template <typename NumericType> using rayPair = std::array<NumericType, 2>;
 

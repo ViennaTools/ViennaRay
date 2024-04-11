@@ -1,4 +1,3 @@
-#include <omp.h>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayParticle.hpp>
