@@ -6,7 +6,12 @@
 #else
 #include <embree4/rtcore.h>
 #endif
-#include <rayPreCompileMacros.hpp>
+
+#if defined(__x86_64__) || defined(_M_X64)
+#define ARCH_X86
+#include <immintrin.h>
+#endif
+
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 

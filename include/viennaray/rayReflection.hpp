@@ -1,7 +1,6 @@
 #ifndef RAY_REFLECTION_HPP
 #define RAY_REFLECTION_HPP
 
-#include <rayPreCompileMacros.hpp>
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 

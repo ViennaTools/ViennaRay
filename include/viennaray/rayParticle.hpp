@@ -1,5 +1,4 @@
-#ifndef RAY_PARTICLE_HPP
-#define RAY_PARTICLE_HPP
+#pragma once
 
 #include <rayDataLog.hpp>
 #include <rayRNG.hpp>
@@ -139,5 +138,3 @@ public:
 
   void logData(rayDataLog<NumericType> &log) override final {}
 };
-
-#endif // RAY_PARTICLE_HPP
