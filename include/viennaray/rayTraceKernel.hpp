@@ -74,7 +74,6 @@ public:
     }
 
     // hit counters
-    assert(hitCounter_ != nullptr && "Hit counter is nullptr");
     std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
     if (calcFlux_) {
       hitCounter_.clear();
