@@ -48,11 +48,9 @@ public:
       }
     }
 
-    auto tracer = rayTraceKernel<NumericType, D>(
-        mDevice, mGeometry, boundary, raySource, mParticle, mDataLog,
-        mNumberOfRaysPerPoint, mNumberOfRaysFixed, mUseRandomSeeds, mCalcFlux,
-        mRunNumber++);
-
+    rayTraceKernel tracer(mDevice, mGeometry, boundary, raySource, mParticle,
+                          mDataLog, mNumberOfRaysPerPoint, mNumberOfRaysFixed,
+                          mUseRandomSeeds, mCalcFlux, mRunNumber++);
     tracer.setTracingData(&mLocalData, mGlobalData);
     tracer.setHitCounter(&mHitCounter);
     tracer.setRayTraceInfo(&mRTInfo);

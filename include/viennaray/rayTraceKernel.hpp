@@ -13,12 +13,13 @@
 #define PRINT_PROGRESS false
 #define PRINT_RESULT false
 
-template <typename NumericType, int D> class rayTraceKernel {
+template <typename SourceType, typename NumericType, int D>
+class rayTraceKernel {
 
 public:
   rayTraceKernel(RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
                  rayBoundary<NumericType, D> &pRTCBoundary,
-                 raySource<NumericType, D> &pSource,
+                 raySource<SourceType> &pSource,
                  std::unique_ptr<rayAbstractParticle<NumericType>> &pParticle,
                  rayDataLog<NumericType> &pDataLog,
                  const size_t pNumOfRayPerPoint, const size_t pNumOfRayFixed,
@@ -587,7 +588,7 @@ private:
   RTCDevice &mDevice;
   rayGeometry<NumericType, D> &mGeometry;
   rayBoundary<NumericType, D> &mBoundary;
-  raySource<NumericType, D> &mSource;
+  raySource<SourceType> &mSource;
   std::unique_ptr<rayAbstractParticle<NumericType>> const mParticle = nullptr;
   const long long mNumRays;
   const bool mUseRandomSeeds;

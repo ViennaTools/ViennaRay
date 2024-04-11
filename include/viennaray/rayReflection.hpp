@@ -1,11 +1,10 @@
-#ifndef RAY_REFLECTION_HPP
-#define RAY_REFLECTION_HPP
+#pragma once
 
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 
 // Specular reflection
-template <typename NumericType>
+template <typename NumericType, int D = 3>
 static rayTriple<NumericType>
 rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
                       const rayTriple<NumericType> &geomNormal) {
@@ -288,5 +287,3 @@ rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
   return randomDir;
 }
 } // namespace rayInternal
-
-#endif // RAY_REFLECTION_HPP
