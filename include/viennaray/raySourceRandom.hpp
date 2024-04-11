@@ -2,6 +2,8 @@
 
 #include <raySource.hpp>
 
+#include <cmath>
+
 template <typename NumericType, int D>
 class raySourceRandom : public raySource<raySourceRandom<NumericType, D>> {
   using boundingBoxType = rayPair<rayTriple<NumericType>>;
