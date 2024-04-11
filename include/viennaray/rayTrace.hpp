@@ -5,9 +5,9 @@
 #include <rayHitCounter.hpp>
 #include <rayMessage.hpp>
 #include <raySourceRandom.hpp>
-#include <rayTraceDirection.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
+#include <rayUtil.hpp>
 
 template <class NumericType, int D> class rayTrace {
 public:

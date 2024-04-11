@@ -2,7 +2,19 @@
 
 #include <rayMessage.hpp>
 #include <rayRNG.hpp>
-#include <rayTraceDirection.hpp>
+
+#if VIENNARAY_EMBREE_VERSION < 4
+#include <embree3/rtcore.h>
+#else
+#include <embree4/rtcore.h>
+#endif
+
+#if defined(__x86_64__) || defined(_M_X64)
+#define ARCH_X86
+#include <immintrin.h>
+#endif
+
+#include <omp.h>
 
 #include <algorithm>
 #include <array>
@@ -11,7 +23,6 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <omp.h>
 #include <vector>
 
 template <typename NumericType> using rayPair = std::array<NumericType, 2>;
@@ -21,6 +32,32 @@ template <typename NumericType> using rayTriple = std::array<NumericType, 3>;
 template <typename NumericType> using rayQuadruple = std::array<NumericType, 4>;
 
 enum class rayNormalizationType : unsigned { SOURCE = 0, MAX = 1 };
+
+enum class rayTraceDirection : unsigned {
+  POS_X = 0,
+  NEG_X = 1,
+  POS_Y = 2,
+  NEG_Y = 3,
+  POS_Z = 4,
+  NEG_Z = 5
+};
+
+template <class NumericType> struct rayDataLog {
+
+  std::vector<std::vector<NumericType>> data;
+
+  void merge(rayDataLog<NumericType> &pOther) {
+    assert(pOther.data.size() == data.size() &&
+           "Size mismatch when merging logs");
+    for (std::size_t i = 0; i < data.size(); i++) {
+      assert(pOther.data[i].size() == data[i].size() &&
+             "Size mismatch when merging log data");
+      for (std::size_t j = 0; j < data[i].size(); j++) {
+        data[i][j] += pOther.data[i][j];
+      }
+    }
+  }
+};
 
 struct rayTraceInfo {
   size_t numRays;

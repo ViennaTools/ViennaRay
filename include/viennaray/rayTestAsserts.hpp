@@ -1,7 +1,6 @@
 #pragma once
-#include <cmath>
+
 #include <rayUtil.hpp>
-#include <string>
 
 #ifdef _MSC_VER
 #define __PRETTY_FUNCTION__ __FUNCSIG__

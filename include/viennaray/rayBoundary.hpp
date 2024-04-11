@@ -1,19 +1,7 @@
-#ifndef RAY_BOUNDARY_HPP
-#define RAY_BOUNDARY_HPP
-
-#if VIENNARAY_EMBREE_VERSION < 4
-#include <embree3/rtcore.h>
-#else
-#include <embree4/rtcore.h>
-#endif
-
-#if defined(__x86_64__) || defined(_M_X64)
-#define ARCH_X86
-#include <immintrin.h>
-#endif
+#pragma once
 
 #include <rayReflection.hpp>
-#include <rayTraceDirection.hpp>
+#include <rayUtil.hpp>
 
 enum class rayBoundaryCondition : unsigned {
   REFLECTIVE = 0,
@@ -316,5 +304,3 @@ private:
   static constexpr size_t numTriangles_ = 8;
   static constexpr size_t numVertices_ = 8;
 };
-
-#endif // RAY_BOUNDARY_HPP

@@ -1,6 +1,9 @@
 #pragma once
 
-#include <rayUtil.hpp>
+#include <rayMessage.hpp>
+
+#include <utility>
+#include <vector>
 
 enum class rayTracingDataMergeEnum : unsigned {
   SUM = 0,

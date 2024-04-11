@@ -1,6 +1,5 @@
 #pragma once
 
-#include <rayDataLog.hpp>
 #include <rayRNG.hpp>
 #include <rayReflection.hpp>
 #include <rayTracingData.hpp>

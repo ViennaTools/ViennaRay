@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 
 /// Singleton class for thread-safe logging.
 class rayMessage {

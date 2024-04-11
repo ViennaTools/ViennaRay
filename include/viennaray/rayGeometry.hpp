@@ -1,11 +1,5 @@
 #pragma once
 
-#if VIENNARAY_EMBREE_VERSION < 4
-#include <embree3/rtcore.h>
-#else
-#include <embree4/rtcore.h>
-#endif
-
 #include <rayUtil.hpp>
 
 template <typename NumericType, int D> class rayGeometry {
