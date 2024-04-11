@@ -20,6 +20,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <fstream>
 #include <iostream>

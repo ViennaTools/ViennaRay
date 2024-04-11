@@ -2,8 +2,6 @@
 
 #include <raySource.hpp>
 
-#include <cmath>
-
 template <typename NumericType, int D>
 class raySourceGrid : public raySource<raySourceGrid<NumericType, D>> {
 public:
