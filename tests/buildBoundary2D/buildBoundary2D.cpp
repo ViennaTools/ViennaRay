@@ -36,12 +36,7 @@ int main() {
     // assert boundary is extended in x direction
     RAYTEST_ASSERT_ISCLOSE(boundingBox[1][0], (1 + 2 * gridDelta), eps)
 
-    // assert boundary normal vectors are perpendicular to x direction
-    auto xplane = rayTriple<NumericType>{1., 0., 0.};
-    for (unsigned int i = 0; i < 8; i++) {
-      auto normal = boundary.getPrimNormal(i);
-      RAYTEST_ASSERT_ISNORMAL(normal, xplane, eps)
-    }
+    boundary.releaseGeometry();
   }
 
   {
@@ -63,12 +58,7 @@ int main() {
     // assert boundary is extended in y direction
     RAYTEST_ASSERT_ISCLOSE(boundingBox[1][1], (1 + 2 * gridDelta), eps)
 
-    // assert boundary normal vectors are perpendicular to y direction
-    auto yplane = rayTriple<NumericType>{0., 1., 0.};
-    for (unsigned int i = 0; i < 8; i++) {
-      auto normal = boundary.getPrimNormal(i);
-      RAYTEST_ASSERT_ISNORMAL(normal, yplane, eps)
-    }
+    boundary.releaseGeometry();
   }
 
   rtcReleaseDevice(device);

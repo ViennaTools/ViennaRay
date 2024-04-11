@@ -1,11 +1,15 @@
 #ifndef RAY_GEOMETRY_HPP
 #define RAY_GEOMETRY_HPP
 
-#include <rayMetaGeometry.hpp>
+#if VIENNARAY_EMBREE_VERSION < 4
+#include <embree3/rtcore.h>
+#else
+#include <embree4/rtcore.h>
+#endif
+
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D>
-class rayGeometry : public rayMetaGeometry<NumericType, D> {
+template <typename NumericType, int D> class rayGeometry {
 private:
   typedef std::vector<std::vector<unsigned int>> pointNeighborhoodType;
 
@@ -133,10 +137,9 @@ public:
 
   NumericType getDiscRadius() const { return mDiscRadii; }
 
-  RTCGeometry &getRTCGeometry() override final { return mRTCGeometry; }
+  RTCGeometry &getRTCGeometry() { return mRTCGeometry; }
 
-  rayTriple<NumericType>
-  getPrimNormal(const unsigned int primID) override final {
+  rayTriple<NumericType> getPrimNormal(const unsigned int primID) {
     assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
     auto const &normal = mNormalVecBuffer[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,
@@ -157,7 +160,7 @@ public:
 
   std::vector<int> &getMaterialIds() { return mMaterialIds; }
 
-  int getMaterialId(const unsigned int primID) const override final {
+  int getMaterialId(const unsigned int primID) const {
     assert(primID < mNumPoints && "rayGeometry Prim ID out of bounds");
     return mMaterialIds[primID];
   }
