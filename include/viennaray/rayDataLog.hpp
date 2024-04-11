@@ -1,5 +1,4 @@
-#ifndef RAY_DATA_LOG
-#define RAY_DATA_LOG
+#pragma once
 
 #include <cassert>
 #include <vector>
@@ -20,5 +19,3 @@ template <class NumericType> struct rayDataLog {
     }
   }
 };
-
-#endif // RAY_DATA_LOG

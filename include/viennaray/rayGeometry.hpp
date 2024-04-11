@@ -1,5 +1,4 @@
-#ifndef RAY_GEOMETRY_HPP
-#define RAY_GEOMETRY_HPP
+#pragma once
 
 #if VIENNARAY_EMBREE_VERSION < 4
 #include <embree3/rtcore.h>
@@ -10,14 +9,11 @@
 #include <rayUtil.hpp>
 
 template <typename NumericType, int D> class rayGeometry {
-private:
-  typedef std::vector<std::vector<unsigned int>> pointNeighborhoodType;
+  using pointNeighborhoodType = std::vector<std::vector<unsigned int>>;
 
 public:
-  rayGeometry() {}
-
   template <size_t Dim>
-  void initGeometry(RTCDevice &pDevice,
+  void initGeometry(RTCDevice &device,
                     std::vector<std::array<NumericType, Dim>> &points,
                     std::vector<std::array<NumericType, Dim>> &normals,
                     NumericType discRadii) {
@@ -30,144 +26,143 @@ public:
     // overwriting the geometry without releasing it beforehand causes the old
     // buffer to leak
     releaseGeometry();
-    mRTCGeometry =
-        rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
-    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+    pRtcGeometry_ =
+        rtcNewGeometry(device, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcNewGeometry");
-    mNumPoints = points.size();
+    numPoints_ = points.size();
 
     // The buffer data is managed internally (embree) and automatically freed
     // when the geometry is destroyed.
-    mPointBuffer = (point_4f_t *)rtcSetNewGeometryBuffer(
-        mRTCGeometry, RTC_BUFFER_TYPE_VERTEX,
+    pPointBuffer_ = (point_4f_t *)rtcSetNewGeometryBuffer(
+        pRtcGeometry_, RTC_BUFFER_TYPE_VERTEX,
         0, // slot
-        RTC_FORMAT_FLOAT4, sizeof(point_4f_t), mNumPoints);
-    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+        RTC_FORMAT_FLOAT4, sizeof(point_4f_t), numPoints_);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcSetNewGeometryBuffer points");
-    mDiscRadii = discRadii;
+    discRadii_ = discRadii;
 
     for (int i = 0; i < D; i++) {
-      mMinCoords[i] = nummax;
-      mMaxCoords[i] = nummin;
+      minCoords_[i] = std::numeric_limits<NumericType>::max();
+      maxCoords_[i] = std::numeric_limits<NumericType>::lowest();
     }
 
-    for (size_t i = 0; i < mNumPoints; ++i) {
-      mPointBuffer[i].xx = (float)points[i][0];
-      mPointBuffer[i].yy = (float)points[i][1];
-      mPointBuffer[i].radius = (float)discRadii;
-      if (points[i][0] < mMinCoords[0])
-        mMinCoords[0] = points[i][0];
-      if (points[i][1] < mMinCoords[1])
-        mMinCoords[1] = points[i][1];
-      if (points[i][0] > mMaxCoords[0])
-        mMaxCoords[0] = points[i][0];
-      if (points[i][1] > mMaxCoords[1])
-        mMaxCoords[1] = points[i][1];
+    for (size_t i = 0; i < numPoints_; ++i) {
+      pPointBuffer_[i].xx = (float)points[i][0];
+      pPointBuffer_[i].yy = (float)points[i][1];
+      pPointBuffer_[i].radius = (float)discRadii_;
+      if (points[i][0] < minCoords_[0])
+        minCoords_[0] = points[i][0];
+      if (points[i][1] < minCoords_[1])
+        minCoords_[1] = points[i][1];
+      if (points[i][0] > maxCoords_[0])
+        maxCoords_[0] = points[i][0];
+      if (points[i][1] > maxCoords_[1])
+        maxCoords_[1] = points[i][1];
       if constexpr (D == 2) {
-        mPointBuffer[i].zz = 0.f;
-        mMinCoords[2] = 0.;
-        mMaxCoords[2] = 0.;
+        pPointBuffer_[i].zz = 0.f;
+        minCoords_[2] = 0.;
+        maxCoords_[2] = 0.;
       } else {
-        mPointBuffer[i].zz = (float)points[i][2];
-        if (points[i][2] < mMinCoords[2])
-          mMinCoords[2] = points[i][2];
-        if (points[i][2] > mMaxCoords[2])
-          mMaxCoords[2] = points[i][2];
+        pPointBuffer_[i].zz = (float)points[i][2];
+        if (points[i][2] < minCoords_[2])
+          minCoords_[2] = points[i][2];
+        if (points[i][2] > maxCoords_[2])
+          maxCoords_[2] = points[i][2];
       }
     }
 
-    mNormalVecBuffer = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(
-        mRTCGeometry, RTC_BUFFER_TYPE_NORMAL,
+    pNormalVecBuffer_ = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(
+        pRtcGeometry_, RTC_BUFFER_TYPE_NORMAL,
         0, // slot
-        RTC_FORMAT_FLOAT3, sizeof(normal_vec_3f_t), mNumPoints);
-    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+        RTC_FORMAT_FLOAT3, sizeof(normal_vec_3f_t), numPoints_);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcSetNewGeometryBuffer normals");
 
-    for (size_t i = 0; i < mNumPoints; ++i) {
-      mNormalVecBuffer[i].xx = (float)normals[i][0];
-      mNormalVecBuffer[i].yy = (float)normals[i][1];
+    for (size_t i = 0; i < numPoints_; ++i) {
+      pNormalVecBuffer_[i].xx = (float)normals[i][0];
+      pNormalVecBuffer_[i].yy = (float)normals[i][1];
       if constexpr (D == 2) {
-        mNormalVecBuffer[i].zz = 0.f;
+        pNormalVecBuffer_[i].zz = 0.f;
       } else {
-        mNormalVecBuffer[i].zz = (float)normals[i][2];
+        pNormalVecBuffer_[i].zz = (float)normals[i][2];
       }
     }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
-    rtcSetGeometryMask(mRTCGeometry, -1);
+    rtcSetGeometryMask(pRtcGeometry_, -1);
 #endif
 
-    rtcCommitGeometry(mRTCGeometry);
-    assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
+    rtcCommitGeometry(pRtcGeometry_);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcCommitGeometry");
 
     initPointNeighborhood(points);
-    if (mMaterialIds.empty()) {
-      mMaterialIds.resize(mNumPoints, 0);
+    if (materialIds_.empty()) {
+      materialIds_.resize(numPoints_, 0);
     }
   }
 
   template <typename MatIdType>
   void setMaterialIds(std::vector<MatIdType> &pMaterialIds) {
-    assert(pMaterialIds.size() == mNumPoints &&
+    assert(pMaterialIds.size() == numPoints_ &&
            "rayGeometry: Material IDs size mismatch");
-    mMaterialIds.clear();
-    mMaterialIds.reserve(mNumPoints);
+    materialIds_.clear();
+    materialIds_.reserve(numPoints_);
     for (const auto id : pMaterialIds) {
-      mMaterialIds.push_back(static_cast<int>(id));
+      materialIds_.push_back(static_cast<int>(id));
     }
   }
 
   rayPair<rayTriple<NumericType>> getBoundingBox() const {
-    return {mMinCoords, mMaxCoords};
+    return {minCoords_, maxCoords_};
   }
 
   rayTriple<NumericType> getPoint(const unsigned int primID) const {
-    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
-    auto const &pnt = mPointBuffer[primID];
+    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
+    auto const &pnt = pPointBuffer_[primID];
     return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
   }
 
-  std::vector<unsigned int> getNeighborIndicies(const unsigned int idx) const {
-    assert(idx < mNumPoints && "rayGeometry: Index out of bounds");
-    return mPointNeighborhood[idx];
+  std::vector<unsigned int> const &
+  getNeighborIndicies(const unsigned int idx) const {
+    assert(idx < numPoints_ && "rayGeometry: Index out of bounds");
+    return pointNeighborhood_[idx];
   }
 
-  size_t getNumPoints() const { return mNumPoints; }
+  size_t getNumPoints() const { return numPoints_; }
 
-  NumericType getDiscRadius() const { return mDiscRadii; }
+  NumericType getDiscRadius() const { return discRadii_; }
 
-  RTCGeometry &getRTCGeometry() { return mRTCGeometry; }
+  RTCGeometry const &getRTCGeometry() const { return pRtcGeometry_; }
 
-  rayTriple<NumericType> getPrimNormal(const unsigned int primID) {
-    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
-    auto const &normal = mNormalVecBuffer[primID];
+  rayTriple<NumericType> getPrimNormal(const unsigned int primID) const {
+    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
+    auto const &normal = pNormalVecBuffer_[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,
             (NumericType)normal.zz};
   }
 
   rayQuadruple<rtcNumericType> &getPrimRef(unsigned int primID) {
-    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
+    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
     return *reinterpret_cast<rayQuadruple<rtcNumericType> *>(
-        &mPointBuffer[primID]);
+        &pPointBuffer_[primID]);
   }
 
   rayTriple<rtcNumericType> &getNormalRef(unsigned int primID) {
-    assert(primID < mNumPoints && "rayGeometry: Prim ID out of bounds");
+    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
     return *reinterpret_cast<rayTriple<rtcNumericType> *>(
-        &mNormalVecBuffer[primID]);
+        &pNormalVecBuffer_[primID]);
   }
-
-  std::vector<int> &getMaterialIds() { return mMaterialIds; }
 
   int getMaterialId(const unsigned int primID) const {
-    assert(primID < mNumPoints && "rayGeometry Prim ID out of bounds");
-    return mMaterialIds[primID];
+    assert(primID < numPoints_ && "rayGeometry Prim ID out of bounds");
+    return materialIds_[primID];
   }
 
-  bool checkGeometryEmpty() {
-    if (mPointBuffer == nullptr || mNormalVecBuffer == nullptr ||
-        mRTCGeometry == nullptr) {
+  bool checkGeometryEmpty() const {
+    if (pPointBuffer_ == nullptr || pNormalVecBuffer_ == nullptr ||
+        pRtcGeometry_ == nullptr) {
       return true;
     }
     return false;
@@ -177,14 +172,14 @@ public:
     // Attention:
     // This function must not be called when the RTCGeometry reference count is
     // > 1. Doing so leads to leaked memory buffers
-    if (mPointBuffer == nullptr || mNormalVecBuffer == nullptr ||
-        mRTCGeometry == nullptr) {
+    if (pPointBuffer_ == nullptr || pNormalVecBuffer_ == nullptr ||
+        pRtcGeometry_ == nullptr) {
       return;
     } else {
-      rtcReleaseGeometry(mRTCGeometry);
-      mPointBuffer = nullptr;
-      mNormalVecBuffer = nullptr;
-      mRTCGeometry = nullptr;
+      rtcReleaseGeometry(pRtcGeometry_);
+      pPointBuffer_ = nullptr;
+      pNormalVecBuffer_ = nullptr;
+      pRtcGeometry_ = nullptr;
     }
   }
 
@@ -192,16 +187,16 @@ private:
   template <size_t Dim>
   void
   initPointNeighborhood(std::vector<std::array<NumericType, Dim>> &points) {
-    mPointNeighborhood.clear();
-    mPointNeighborhood.resize(mNumPoints, std::vector<unsigned int>{});
+    pointNeighborhood_.clear();
+    pointNeighborhood_.resize(numPoints_, std::vector<unsigned int>{});
 
     if constexpr (D == 3) {
       std::vector<unsigned int> side1;
       std::vector<unsigned int> side2;
 
       // create copy of bounding box
-      rayTriple<NumericType> min = mMinCoords;
-      rayTriple<NumericType> max = mMaxCoords;
+      rayTriple<NumericType> min = minCoords_;
+      rayTriple<NumericType> max = maxCoords_;
 
       std::vector<int> dirs;
       for (int i = 0; i < 3; ++i) {
@@ -215,7 +210,7 @@ private:
       NumericType pivot = (max[dirs[dirIdx]] + min[dirs[dirIdx]]) / 2;
 
       // divide point data
-      for (unsigned int idx = 0; idx < mNumPoints; ++idx) {
+      for (unsigned int idx = 0; idx < numPoints_; ++idx) {
         if (points[idx][dirs[dirIdx]] <= pivot) {
           side1.push_back(idx);
         } else {
@@ -225,11 +220,11 @@ private:
       createNeighborhood(points, side1, side2, min, max, dirIdx, dirs, pivot);
     } else {
       // TODO: 2D divide and conquer algorithm
-      for (unsigned int idx1 = 0; idx1 < mNumPoints; ++idx1) {
-        for (unsigned int idx2 = idx1 + 1; idx2 < mNumPoints; ++idx2) {
-          if (checkDistance(points[idx1], points[idx2], 2 * mDiscRadii)) {
-            mPointNeighborhood[idx1].push_back(idx2);
-            mPointNeighborhood[idx2].push_back(idx1);
+      for (unsigned int idx1 = 0; idx1 < numPoints_; ++idx1) {
+        for (unsigned int idx2 = idx1 + 1; idx2 < numPoints_; ++idx2) {
+          if (checkDistance(points[idx1], points[idx2], 2 * discRadii_)) {
+            pointNeighborhood_[idx1].push_back(idx2);
+            pointNeighborhood_[idx2].push_back(idx1);
           }
         }
       }
@@ -263,8 +258,8 @@ private:
           auto const &pi1 = sides[idx1];
           auto const &pi2 = sides[idx2];
           assert(pi1 != pi2 && "Assumption");
-          mPointNeighborhood[pi1].push_back(pi2);
-          mPointNeighborhood[pi2].push_back(pi1);
+          pointNeighborhood_[pi1].push_back(pi2);
+          pointNeighborhood_[pi2].push_back(pi1);
         }
       }
       return;
@@ -291,7 +286,7 @@ private:
       } else {
         s1r2set.push_back(side1[idx]);
       }
-      if (point[dirs[dirIdx]] + 2 * mDiscRadii <= pivot) {
+      if (point[dirs[dirIdx]] + 2 * discRadii_ <= pivot) {
         continue;
       }
       side1Cand.push_back(side1[idx]);
@@ -304,7 +299,7 @@ private:
       } else {
         s2r2set.push_back(side2[idx]);
       }
-      if (point[dirs[dirIdx]] - 2 * mDiscRadii >= pivot) {
+      if (point[dirs[dirIdx]] - 2 * discRadii_ >= pivot) {
         continue;
       }
       side2Cand.push_back(side2[idx]);
@@ -318,11 +313,11 @@ private:
           const auto &point2 = points[side2Cand[ci2]];
 
           assert(std::abs(point1[dirs[dirIdx]] - point2[dirs[dirIdx]]) <=
-                     (4 * mDiscRadii) &&
+                     (4 * discRadii_) &&
                  "Correctness Assertion");
-          if (checkDistance(point1, point2, 2 * mDiscRadii)) {
-            mPointNeighborhood[side1Cand[ci1]].push_back(side2Cand[ci2]);
-            mPointNeighborhood[side2Cand[ci2]].push_back(side1Cand[ci1]);
+          if (checkDistance(point1, point2, 2 * discRadii_)) {
+            pointNeighborhood_[side1Cand[ci1]].push_back(side2Cand[ci2]);
+            pointNeighborhood_[side2Cand[ci2]].push_back(side1Cand[ci1]);
           }
         }
       }
@@ -344,9 +339,9 @@ private:
   }
 
   template <size_t Dim>
-  bool checkDistance(const std::array<NumericType, Dim> &p1,
-                     const std::array<NumericType, Dim> &p2,
-                     const NumericType &dist) {
+  static bool checkDistance(const std::array<NumericType, Dim> &p1,
+                            const std::array<NumericType, Dim> &p2,
+                            const NumericType &dist) {
     for (int i = 0; i < D; ++i) {
       if (std::abs(p1[i] - p2[i]) >= dist)
         return false;
@@ -357,6 +352,7 @@ private:
     return false;
   }
 
+private:
   // "RTC_GEOMETRY_TYPE_POINT:
   // The vertex buffer stores each control vertex in the form of a single
   // precision position and radius stored in (x, y, z, r) order in memory
@@ -366,7 +362,7 @@ private:
   struct point_4f_t {
     float xx, yy, zz, radius;
   };
-  point_4f_t *mPointBuffer = nullptr;
+  point_4f_t *pPointBuffer_ = nullptr;
 
   // "RTC_GEOMETRY_TYPE_POINT:
   // [...] the normal buffer stores a single precision normal per control
@@ -375,19 +371,14 @@ private:
   struct normal_vec_3f_t {
     float xx, yy, zz;
   };
-  normal_vec_3f_t *mNormalVecBuffer = nullptr;
+  normal_vec_3f_t *pNormalVecBuffer_ = nullptr;
 
-  RTCGeometry mRTCGeometry = nullptr;
+  RTCGeometry pRtcGeometry_ = nullptr;
 
-  size_t mNumPoints;
-  NumericType mDiscRadii;
-  constexpr static NumericType nummax = std::numeric_limits<NumericType>::max();
-  constexpr static NumericType nummin =
-      std::numeric_limits<NumericType>::lowest();
-  rayTriple<NumericType> mMinCoords{nummax, nummax, nummax};
-  rayTriple<NumericType> mMaxCoords{nummin, nummin, nummin};
-  pointNeighborhoodType mPointNeighborhood;
-  std::vector<int> mMaterialIds;
+  size_t numPoints_;
+  NumericType discRadii_;
+  rayTriple<NumericType> minCoords_;
+  rayTriple<NumericType> maxCoords_;
+  pointNeighborhoodType pointNeighborhood_;
+  std::vector<int> materialIds_;
 };
-
-#endif // RAY_GEOMETRY_HPP
