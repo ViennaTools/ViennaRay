@@ -1,14 +1,14 @@
-#ifndef RAY_MESSAGE_HPP
-#define RAY_MESSAGE_HPP
+#pragma once
 
 #include <iostream>
+#include <string>
 
 /// Singleton class for thread-safe logging.
 class rayMessage {
-  std::string message;
+  std::string message_;
 
-  bool error = false;
-  const unsigned tabWidth = 2;
+  bool error_ = false;
+  constexpr static unsigned tabWidth_ = 4;
 
   rayMessage() {}
 
@@ -25,8 +25,8 @@ public:
   rayMessage &addWarning(std::string s) {
 #pragma omp critical
     {
-      message +=
-          "\n[ViennaRay]" + std::string(tabWidth, ' ') + "WARNING: " + s + "\n";
+      message_ += "\n[ViennaRay]" + std::string(tabWidth_, ' ') +
+                  "WARNING: " + s + "\n";
     }
     return *this;
   }
@@ -34,11 +34,11 @@ public:
   rayMessage &addError(std::string s, bool shouldAbort = true) {
 #pragma omp critical
     {
-      message +=
-          "\n[ViennaRay]" + std::string(tabWidth, ' ') + "ERROR: " + s + "\n";
+      message_ +=
+          "\n[ViennaRay]" + std::string(tabWidth_, ' ') + "ERROR: " + s + "\n";
     }
     // always abort once error message should be printed
-    error = true;
+    error_ = true;
     // abort now if asked
     if (shouldAbort)
       print();
@@ -48,18 +48,16 @@ public:
   rayMessage &addDebug(std::string s) {
 #pragma omp critical
     {
-      message +=
-          "[ViennaRay]" + std::string(tabWidth, ' ') + "DEBUG: " + s + "\n";
+      message_ +=
+          "[ViennaRay]" + std::string(tabWidth_, ' ') + "DEBUG: " + s + "\n";
     }
     return *this;
   }
 
   void print(std::ostream &out = std::cout) {
-    out << message;
-    message.clear();
-    if (error)
+    out << message_;
+    message_.clear();
+    if (error_)
       abort();
   }
 };
-
-#endif // RAY_MESSAGE_HPP

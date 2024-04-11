@@ -1,64 +1,65 @@
-#ifndef RAY_TRACE_HPP
-#define RAY_TRACE_HPP
+#pragma once
 
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
 #include <rayMessage.hpp>
 #include <raySourceRandom.hpp>
-#include <rayTraceDirection.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
+#include <rayUtil.hpp>
 
 template <class NumericType, int D> class rayTrace {
 public:
-  rayTrace() : mDevice(rtcNewDevice("hugepages=1")) {}
+  rayTrace() : device_(rtcNewDevice("hugepages=1")) {}
+
+  rayTrace(const rayTrace &) = delete;
+  rayTrace &operator=(const rayTrace &) = delete;
+  rayTrace(rayTrace &&) = delete;
+  rayTrace &operator=(rayTrace &&) = delete;
 
   ~rayTrace() {
-    mGeometry.releaseGeometry();
-    rtcReleaseDevice(mDevice);
+    geometry_.releaseGeometry();
+    rtcReleaseDevice(device_);
   }
 
   /// Run the ray tracer
   void apply() {
     checkSettings();
     initMemoryFlags();
-    auto boundingBox = mGeometry.getBoundingBox();
+    auto boundingBox = geometry_.getBoundingBox();
     rayInternal::adjustBoundingBox<NumericType, D>(
-        boundingBox, mSourceDirection, mDiskRadius);
-    auto traceSettings = rayInternal::getTraceSettings(mSourceDirection);
+        boundingBox, sourceDirection_, diskRadius_);
+    auto traceSettings = rayInternal::getTraceSettings(sourceDirection_);
 
     auto boundary = rayBoundary<NumericType, D>(
-        mDevice, boundingBox, mBoundaryConditions, traceSettings);
+        device_, boundingBox, boundaryConditions_, traceSettings);
 
-    std::array<rayTriple<NumericType>, 3> orthoBasis;
-    if (usePrimaryDirection)
-      orthoBasis = rayInternal::getOrthonormalBasis(primaryDirection);
+    std::array<rayTriple<NumericType>, 3> orthonormalBasis;
+    if (usePrimaryDirection_)
+      orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
     auto raySource = raySourceRandom<NumericType, D>(
-        boundingBox, mParticle->getSourceDistributionPower(), traceSettings,
-        mGeometry.getNumPoints(), usePrimaryDirection, orthoBasis);
+        boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
+        geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
 
-    auto localDataLabels = mParticle->getLocalDataLabels();
+    auto localDataLabels = pParticle_->getLocalDataLabels();
     if (!localDataLabels.empty()) {
-      mLocalData.setNumberOfVectorData(localDataLabels.size());
-      auto numPoints = mGeometry.getNumPoints();
-      auto localDataLabels = mParticle->getLocalDataLabels();
+      localData_.setNumberOfVectorData(localDataLabels.size());
+      auto numPoints = geometry_.getNumPoints();
+      auto localDataLabels = pParticle_->getLocalDataLabels();
       for (int i = 0; i < localDataLabels.size(); ++i) {
-        mLocalData.setVectorData(i, numPoints, 0., localDataLabels[i]);
+        localData_.setVectorData(i, numPoints, 0., localDataLabels[i]);
       }
     }
 
-    auto tracer = rayTraceKernel<NumericType, D>(
-        mDevice, mGeometry, boundary, raySource, mParticle, mDataLog,
-        mNumberOfRaysPerPoint, mNumberOfRaysFixed, mUseRandomSeeds, mCalcFlux,
-        mRunNumber++);
-
-    tracer.setTracingData(&mLocalData, mGlobalData);
-    tracer.setHitCounter(&mHitCounter);
-    tracer.setRayTraceInfo(&mRTInfo);
+    rayTraceKernel tracer(device_, geometry_, boundary, raySource, pParticle_,
+                          dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_,
+                          useRandomSeeds_, calcFlux_, runNumber_++, hitCounter_,
+                          RTInfo_);
+    tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
-    if (mCheckError)
+    if (checkError_)
       checkRelativeError();
 
     boundary.releaseGeometry();
@@ -67,12 +68,12 @@ public:
   /// Set the particle type used for ray tracing
   /// The particle is a user defined object that has to interface the
   /// rayParticle class.
-  template <typename ParticleType>
-  void setParticleType(std::unique_ptr<ParticleType> &p) {
-    static_assert(std::is_base_of<rayAbstractParticle<NumericType>,
-                                  ParticleType>::value &&
-                  "Particle object does not interface correct class");
-    mParticle = p->clone();
+  template <typename ParticleType,
+            std::enable_if_t<std::is_base_of_v<rayAbstractParticle<NumericType>,
+                                               ParticleType>,
+                             bool> = true>
+  void setParticleType(std::unique_ptr<ParticleType> &particle) {
+    pParticle_ = particle->clone();
   }
 
   /// Set the ray tracing geometry
@@ -85,9 +86,9 @@ public:
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
 
-    mGridDelta = gridDelta;
-    mDiskRadius = gridDelta * rayInternal::DiskFactor<D>;
-    mGeometry.initGeometry(mDevice, points, normals, mDiskRadius);
+    gridDelta_ = gridDelta;
+    diskRadius_ = gridDelta * rayInternal::DiskFactor<D>;
+    geometry_.initGeometry(device_, points, normals, diskRadius_);
   }
 
   /// Set the ray tracing geometry
@@ -99,45 +100,45 @@ public:
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
 
-    mGridDelta = gridDelta;
-    mDiskRadius = diskRadii;
-    mGeometry.initGeometry(mDevice, points, normals, mDiskRadius);
+    gridDelta_ = gridDelta;
+    diskRadius_ = diskRadii;
+    geometry_.initGeometry(device_, points, normals, diskRadius_);
   }
 
   /// Set material ID's for each geometry point.
   /// If not set, all material ID's are default 0.
-  template <typename T> void setMaterialIds(std::vector<T> &pMaterialIds) {
-    mGeometry.setMaterialIds(pMaterialIds);
+  template <typename T> void setMaterialIds(std::vector<T> &materialIds) {
+    geometry_.setMaterialIds(materialIds);
   }
 
   /// Set the boundary conditions.
   /// There has to be a boundary condition defined for each space dimension,
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
-  void setBoundaryConditions(rayBoundaryCondition pBoundaryConditions[D]) {
+  void setBoundaryConditions(rayBoundaryCondition boundaryConditions[D]) {
     for (size_t i = 0; i < D; ++i) {
-      mBoundaryConditions[i] = pBoundaryConditions[i];
+      boundaryConditions_[i] = boundaryConditions[i];
     }
   }
 
   /// Set the number of rays per geometry point.
   /// The total number of rays, that are traced, is the set number set here
   /// times the number of points in the geometry.
-  void setNumberOfRaysPerPoint(const size_t pNum) {
-    mNumberOfRaysPerPoint = pNum;
-    mNumberOfRaysFixed = 0;
+  void setNumberOfRaysPerPoint(const size_t numRaysPerPoint) {
+    numberOfRaysPerPoint_ = numRaysPerPoint;
+    numberOfRaysFixed_ = 0;
   }
 
   /// Set the number of total rays traced to a fixed amount,
   /// independent of the geometry
-  void setNumberOfRaysFixed(const size_t pNum) {
-    mNumberOfRaysFixed = pNum;
-    mNumberOfRaysPerPoint = 0;
+  void setNumberOfRaysFixed(const size_t numRaysFixed) {
+    numberOfRaysFixed_ = numRaysFixed;
+    numberOfRaysPerPoint_ = 0;
   }
 
   /// Set the source direction, where the rays should be traced from.
-  void setSourceDirection(const rayTraceDirection pDirection) {
-    mSourceDirection = pDirection;
+  void setSourceDirection(const rayTraceDirection direction) {
+    sourceDirection_ = direction;
   }
 
   /// Set the primary direction of the source distribution. This can be used to
@@ -145,20 +146,20 @@ public:
   /// not change the position of the source plane. Therefore, one has the be
   /// careful that the resulting distribution does not lie completely above the
   /// source plane.
-  void setPrimaryDirection(const rayTriple<NumericType> pPrimaryDirection) {
-    primaryDirection = pPrimaryDirection;
-    usePrimaryDirection = true;
+  void setPrimaryDirection(const rayTriple<NumericType> primaryDirection) {
+    primaryDirection_ = primaryDirection;
+    usePrimaryDirection_ = true;
   }
 
   /// Set whether random seeds for the internal random number generators
   /// should be used.
-  void setUseRandomSeeds(const bool useRand) { mUseRandomSeeds = useRand; }
+  void setUseRandomSeeds(const bool useRand) { useRandomSeeds_ = useRand; }
 
   /// Set whether the flux and hit counts should be recorded. If not needed,
   /// this should be turned off to increase performance. If set to false, the
   /// functions getTotalFlux(), getNormalizedFlux(), getHitCounts() and
   /// getRelativeError() can not be used.
-  void setCalculateFlux(const bool calcFlux) { mCalcFlux = calcFlux; }
+  void setCalculateFlux(const bool calcFlux) { calcFlux_ = calcFlux; }
 
   /// Set whether to check the relative error after a tracing. If the relative
   /// error at a surface point is larger than 0.05 a warning is printed. The
@@ -166,18 +167,18 @@ public:
   /// Code, Version 5, Vol. I Overview and Theory, LA - UR - 03 - 1987, Los
   /// Alamos Nat.Lab., Los Alamos, NM"
   void setCheckRelativeError(const bool checkError) {
-    mCheckError = checkError;
+    checkError_ = checkError;
   }
 
   /// Returns the total flux on each disk.
   std::vector<NumericType> getTotalFlux() const {
-    return mHitCounter.getValues();
+    return hitCounter_.getValues();
   }
 
   /// Returns the normalized flux on each disk.
   std::vector<NumericType> getNormalizedFlux(rayNormalizationType normalization,
                                              bool averageNeighborhood = false) {
-    auto flux = mHitCounter.getValues();
+    auto flux = hitCounter_.getValues();
     normalizeFlux(flux, normalization);
     if (averageNeighborhood) {
       smoothFlux(flux);
@@ -190,11 +191,11 @@ public:
   /// value.
   void normalizeFlux(std::vector<NumericType> &flux,
                      rayNormalizationType norm = rayNormalizationType::SOURCE) {
-    assert(flux.size() == mGeometry.getNumPoints() &&
+    assert(flux.size() == geometry_.getNumPoints() &&
            "Unequal number of points in normalizeFlux");
 
-    auto diskArea = mHitCounter.getDiskAreas();
-    const auto totalDiskArea = mDiskRadius * mDiskRadius * rayInternal::PI;
+    auto diskArea = hitCounter_.getDiskAreas();
+    const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
 
     switch (norm) {
     case rayNormalizationType::MAX: {
@@ -208,9 +209,9 @@ public:
 
     case rayNormalizationType::SOURCE: {
       NumericType sourceArea = getSourceArea();
-      auto numTotalRays = mNumberOfRaysFixed == 0
-                              ? flux.size() * mNumberOfRaysPerPoint
-                              : mNumberOfRaysFixed;
+      auto numTotalRays = numberOfRaysFixed_ == 0
+                              ? flux.size() * numberOfRaysPerPoint_
+                              : numberOfRaysFixed_;
       NumericType normFactor = sourceArea / numTotalRays;
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
@@ -227,12 +228,12 @@ public:
   /// Helper function to smooth the recorded flux by averaging over the
   /// neighborhood in a post-processing step.
   void smoothFlux(std::vector<NumericType> &flux) {
-    assert(flux.size() == mGeometry.getNumPoints() &&
+    assert(flux.size() == geometry_.getNumPoints() &&
            "Unequal number of points in smoothFlux");
     auto oldFlux = flux;
 #pragma omp parallel for
-    for (int idx = 0; idx < mGeometry.getNumPoints(); idx++) {
-      auto neighborhood = mGeometry.getNeighborIndicies(idx);
+    for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
+      auto neighborhood = geometry_.getNeighborIndicies(idx);
       for (auto const &nbi : neighborhood) {
         flux[idx] += oldFlux[nbi];
       }
@@ -241,45 +242,47 @@ public:
   }
 
   /// Returns the total number of hits for each geometry point.
-  std::vector<size_t> getHitCounts() const { return mHitCounter.getCounts(); }
+  std::vector<size_t> getHitCounts() const { return hitCounter_.getCounts(); }
 
   /// Returns the relative error of the flux for each geometry point
   std::vector<NumericType> getRelativeError() {
-    return mHitCounter.getRelativeError();
+    return hitCounter_.getRelativeError();
   }
 
   /// Returns the disk area for each geometry point
-  std::vector<NumericType> getDiskAreas() { return mHitCounter.getDiskAreas(); }
+  std::vector<NumericType> getDiskAreas() { return hitCounter_.getDiskAreas(); }
 
-  rayTracingData<NumericType> &getLocalData() { return mLocalData; }
+  rayTracingData<NumericType> &getLocalData() { return localData_; }
 
-  rayTracingData<NumericType> *getGlobalData() { return mGlobalData; }
+  rayTracingData<NumericType> *getGlobalData() { return pGlobalData_; }
 
-  void setGlobalData(rayTracingData<NumericType> &data) { mGlobalData = &data; }
+  void setGlobalData(rayTracingData<NumericType> &data) {
+    pGlobalData_ = &data;
+  }
 
-  rayTraceInfo getRayTraceInfo() { return mRTInfo; }
+  rayTraceInfo getRayTraceInfo() { return RTInfo_; }
 
-  rayDataLog<NumericType> &getDataLog() { return mDataLog; }
+  rayDataLog<NumericType> &getDataLog() { return dataLog_; }
 
 private:
   NumericType getSourceArea() {
-    const auto boundingBox = mGeometry.getBoundingBox();
+    const auto boundingBox = geometry_.getBoundingBox();
     NumericType sourceArea = 0;
 
-    if (mSourceDirection == rayTraceDirection::NEG_X ||
-        mSourceDirection == rayTraceDirection::POS_X) {
+    if (sourceDirection_ == rayTraceDirection::NEG_X ||
+        sourceDirection_ == rayTraceDirection::POS_X) {
       sourceArea = (boundingBox[1][1] - boundingBox[0][1]);
       if constexpr (D == 3) {
         sourceArea *= (boundingBox[1][2] - boundingBox[0][2]);
       }
-    } else if (mSourceDirection == rayTraceDirection::NEG_Y ||
-               mSourceDirection == rayTraceDirection::POS_Y) {
+    } else if (sourceDirection_ == rayTraceDirection::NEG_Y ||
+               sourceDirection_ == rayTraceDirection::POS_Y) {
       sourceArea = (boundingBox[1][0] - boundingBox[0][0]);
       if constexpr (D == 3) {
         sourceArea *= (boundingBox[1][2] - boundingBox[0][2]);
       }
-    } else if (mSourceDirection == rayTraceDirection::NEG_Z ||
-               mSourceDirection == rayTraceDirection::POS_Z) {
+    } else if (sourceDirection_ == rayTraceDirection::NEG_Z ||
+               sourceDirection_ == rayTraceDirection::POS_Z) {
       assert(D == 3 && "Error in flux normalization");
       sourceArea = (boundingBox[1][0] - boundingBox[0][0]);
       sourceArea *= (boundingBox[1][1] - boundingBox[0][1]);
@@ -312,7 +315,7 @@ private:
       }
     }
     if (!allPassed) {
-      mRTInfo.warning = true;
+      RTInfo_.warning = true;
       rayMessage::getInstance()
           .addWarning(
               "Large relative error detected. Consider using more rays.")
@@ -321,24 +324,24 @@ private:
   }
 
   void checkSettings() {
-    if (mParticle == nullptr) {
-      mRTInfo.error = true;
+    if (pParticle_ == nullptr) {
+      RTInfo_.error = true;
       rayMessage::getInstance().addError(
           "No particle was specified in rayTrace. Aborting.");
     }
-    if (mGeometry.checkGeometryEmpty()) {
-      mRTInfo.error = true;
+    if (geometry_.checkGeometryEmpty()) {
+      RTInfo_.error = true;
       rayMessage::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");
     }
-    if ((D == 2 && mSourceDirection == rayTraceDirection::POS_Z) ||
-        (D == 2 && mSourceDirection == rayTraceDirection::NEG_Z)) {
-      mRTInfo.error = true;
+    if ((D == 2 && sourceDirection_ == rayTraceDirection::POS_Z) ||
+        (D == 2 && sourceDirection_ == rayTraceDirection::NEG_Z)) {
+      RTInfo_.error = true;
       rayMessage::getInstance().addError(
           "Invalid source direction in 2D geometry. Aborting.");
     }
-    if (mDiskRadius > mGridDelta) {
-      mRTInfo.warning = true;
+    if (diskRadius_ > gridDelta_) {
+      RTInfo_.warning = true;
       rayMessage::getInstance()
           .addWarning("Disk radius should be smaller than grid delta. Hit "
                       "count normalization not correct.")
@@ -356,26 +359,24 @@ private:
   }
 
 private:
-  RTCDevice mDevice;
-  rayGeometry<NumericType, D> mGeometry;
-  std::unique_ptr<rayAbstractParticle<NumericType>> mParticle = nullptr;
-  size_t mNumberOfRaysPerPoint = 1000;
-  size_t mNumberOfRaysFixed = 0;
-  NumericType mDiskRadius = 0;
-  NumericType mGridDelta = 0;
-  rayBoundaryCondition mBoundaryConditions[D] = {};
-  rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
-  rayTriple<NumericType> primaryDirection = {0.};
-  bool usePrimaryDirection = false;
-  bool mUseRandomSeeds = false;
-  size_t mRunNumber = 0;
-  bool mCalcFlux = true;
-  bool mCheckError = true;
-  rayHitCounter<NumericType> mHitCounter;
-  rayTracingData<NumericType> mLocalData;
-  rayTracingData<NumericType> *mGlobalData = nullptr;
-  rayTraceInfo mRTInfo;
-  rayDataLog<NumericType> mDataLog;
+  RTCDevice device_;
+  rayGeometry<NumericType, D> geometry_;
+  std::unique_ptr<rayAbstractParticle<NumericType>> pParticle_ = nullptr;
+  size_t numberOfRaysPerPoint_ = 1000;
+  size_t numberOfRaysFixed_ = 0;
+  NumericType diskRadius_ = 0;
+  NumericType gridDelta_ = 0;
+  rayBoundaryCondition boundaryConditions_[D] = {};
+  rayTraceDirection sourceDirection_ = rayTraceDirection::POS_Z;
+  rayTriple<NumericType> primaryDirection_ = {0.};
+  bool usePrimaryDirection_ = false;
+  bool useRandomSeeds_ = false;
+  size_t runNumber_ = 0;
+  bool calcFlux_ = true;
+  bool checkError_ = true;
+  rayHitCounter<NumericType> hitCounter_;
+  rayTracingData<NumericType> localData_;
+  rayTracingData<NumericType> *pGlobalData_ = nullptr;
+  rayTraceInfo RTInfo_;
+  rayDataLog<NumericType> dataLog_;
 };
-
-#endif // RAY_TRACE_HPP

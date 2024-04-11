@@ -1,5 +1,20 @@
-#ifndef RAY_UTIL_HPP
-#define RAY_UTIL_HPP
+#pragma once
+
+#include <rayMessage.hpp>
+#include <rayRNG.hpp>
+
+#if VIENNARAY_EMBREE_VERSION < 4
+#include <embree3/rtcore.h>
+#else
+#include <embree4/rtcore.h>
+#endif
+
+#if defined(__x86_64__) || defined(_M_X64)
+#define ARCH_X86
+#include <immintrin.h>
+#endif
+
+#include <omp.h>
 
 #include <algorithm>
 #include <array>
@@ -8,11 +23,11 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <omp.h>
-#include <rayMessage.hpp>
-#include <rayRNG.hpp>
-#include <rayTraceDirection.hpp>
 #include <vector>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 template <typename NumericType> using rayPair = std::array<NumericType, 2>;
 
@@ -20,10 +35,33 @@ template <typename NumericType> using rayTriple = std::array<NumericType, 3>;
 
 template <typename NumericType> using rayQuadruple = std::array<NumericType, 4>;
 
-// embree uses float internally
-using rtcNumericType = float;
+enum class rayNormalizationType : unsigned { SOURCE = 0, MAX = 1 };
 
-enum struct rayNormalizationType : unsigned { SOURCE = 0, MAX = 1 };
+enum class rayTraceDirection : unsigned {
+  POS_X = 0,
+  NEG_X = 1,
+  POS_Y = 2,
+  NEG_Y = 3,
+  POS_Z = 4,
+  NEG_Z = 5
+};
+
+template <class NumericType> struct rayDataLog {
+
+  std::vector<std::vector<NumericType>> data;
+
+  void merge(rayDataLog<NumericType> &pOther) {
+    assert(pOther.data.size() == data.size() &&
+           "Size mismatch when merging logs");
+    for (std::size_t i = 0; i < data.size(); i++) {
+      assert(pOther.data[i].size() == data[i].size() &&
+             "Size mismatch when merging log data");
+      for (std::size_t j = 0; j < data[i].size(); j++) {
+        data[i][j] += pOther.data[i][j];
+      }
+    }
+  }
+};
 
 struct rayTraceInfo {
   size_t numRays;
@@ -37,7 +75,9 @@ struct rayTraceInfo {
 };
 
 namespace rayInternal {
-constexpr double PI = 3.14159265358979323846;
+
+// embree uses float internally
+using rtcNumericType = float;
 
 template <int D>
 constexpr double DiskFactor = 0.5 * (D == 3 ? 1.7320508 : 1.41421356237) *
@@ -260,7 +300,7 @@ std::array<int, 5> getTraceSettings(rayTraceDirection sourceDir) {
 /* ------------------------------------------------------ */
 
 template <typename NumericType>
-static rayTriple<NumericType> PickRandomPointOnUnitSphere(rayRNG &RNG) {
+static rayTriple<NumericType> pickRandomPointOnUnitSphere(rayRNG &RNG) {
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType x, y, z, x2, y2, x2py2;
   do {
@@ -277,15 +317,15 @@ static rayTriple<NumericType> PickRandomPointOnUnitSphere(rayRNG &RNG) {
   return rayTriple<NumericType>{x, y, z};
 }
 
-// Returns some orthonormal basis containing a the input vector pVector
+// Returns some orthonormal basis containing a the input vector
 // (possibly scaled) as the first element of the return value.
 // This function is deterministic, i.e., for one input it will return always
 // the same result.
 template <typename NumericType>
 rayTriple<rayTriple<NumericType>>
-getOrthonormalBasis(const rayTriple<NumericType> &pVector) {
+getOrthonormalBasis(const rayTriple<NumericType> &vec) {
   rayTriple<rayTriple<NumericType>> rr;
-  rr[0] = pVector;
+  rr[0] = vec;
 
   // Calculate a vector (rr[1]) which is perpendicular to rr[0]
   // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
@@ -314,12 +354,11 @@ getOrthonormalBasis(const rayTriple<NumericType> &pVector) {
   rayInternal::Normalize(rr[2]);
 
   // Sanity check
-  const double eps = 1e-6;
-  assert(std::abs(rayInternal::DotProduct(rr[0], rr[1])) < eps &&
+  assert(std::abs(rayInternal::DotProduct(rr[0], rr[1])) < 1e-6 &&
          "Error in orthonormal basis computation");
-  assert(std::abs(rayInternal::DotProduct(rr[1], rr[2])) < eps &&
+  assert(std::abs(rayInternal::DotProduct(rr[1], rr[2])) < 1e-6 &&
          "Error in orthonormal basis computation");
-  assert(std::abs(rayInternal::DotProduct(rr[2], rr[0])) < eps &&
+  assert(std::abs(rayInternal::DotProduct(rr[2], rr[0])) < 1e-6 &&
          "Error in orthonormal basis computation");
   return rr;
 }
@@ -376,7 +415,7 @@ void readGridFromFile(std::string fileName, NumericType &gridDelta,
 template <typename NumericType, int D = 3>
 void writeVTK(std::string filename,
               const std::vector<rayTriple<NumericType>> &points,
-              const std::vector<NumericType> &mcestimates) {
+              const std::vector<NumericType> &flux) {
   std::ofstream f(filename.c_str());
 
   f << "# vtk DataFile Version 2.0" << std::endl;
@@ -401,12 +440,11 @@ void writeVTK(std::string filename,
   for (unsigned i = 0; i < points.size(); ++i)
     f << 1 << std::endl;
 
-  f << "CELL_DATA " << mcestimates.size() << std::endl;
+  f << "CELL_DATA " << flux.size() << std::endl;
   f << "SCALARS flux float" << std::endl;
   f << "LOOKUP_TABLE default" << std::endl;
-  for (unsigned j = 0; j < mcestimates.size(); ++j) {
-    f << ((std::abs(mcestimates[j]) < 1e-6) ? 0.0 : mcestimates[j])
-      << std::endl;
+  for (unsigned j = 0; j < flux.size(); ++j) {
+    f << ((std::abs(flux[j]) < 1e-6) ? 0.0 : flux[j]) << std::endl;
   }
 
   f.close();
@@ -489,5 +527,3 @@ void printBoundingBox(const rayPair<rayTriple<NumericType>> &bdBox) {
 }
 /* ------------------------------------------------------- */
 } // namespace rayInternal
-
-#endif // RAY_UTIL_HPP

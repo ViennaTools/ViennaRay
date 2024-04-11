@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 2.0.4)
+  VERSION 2.1.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library switches
@@ -15,10 +15,12 @@ option(VIENNARAY_DISABLE_COPY "Disable Embree Environment setup" OFF)
 option(VIENNARAY_LEGACY_OPENMP "Use legacy OpenMP flags" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
+option(VIENNARAY_PRINT_PROGRESS "Enable progress bar" OFF)
+
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
-if (VIENNARAY_LEGACY_OPENMP)
+if(VIENNARAY_LEGACY_OPENMP)
   message(STATUS "[ViennaRay] Using legacy OpenMP flags")
 
   find_package(OpenMP REQUIRED)
@@ -93,6 +95,10 @@ if(VIENNARAY_USE_WDIST)
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
 endif()
 
+if(VIENNARAY_PRINT_PROGRESS)
+  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_PRINT_PROGRESS)
+endif()
+
 if(EMBREE_RAY_MASK)
   message(STATUS "[ViennaRay] Using embree ray masking")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_RAY_MASKING)
@@ -133,7 +139,7 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/embree/embree"
   OPTIONS "EMBREE_TUTORIALS OFF")
 
-if (NOT VIENNARAY_LEGACY_OPENMP)
+if(NOT VIENNARAY_LEGACY_OPENMP)
   find_package(OpenMP REQUIRED)
   target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX)
 endif()

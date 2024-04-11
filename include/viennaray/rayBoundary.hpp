@@ -1,10 +1,7 @@
-#ifndef RAY_BOUNDARY_HPP
-#define RAY_BOUNDARY_HPP
+#pragma once
 
-#include <rayMetaGeometry.hpp>
-#include <rayPreCompileMacros.hpp>
 #include <rayReflection.hpp>
-#include <rayTraceDirection.hpp>
+#include <rayUtil.hpp>
 
 enum class rayBoundaryCondition : unsigned {
   REFLECTIVE = 0,
@@ -12,41 +9,40 @@ enum class rayBoundaryCondition : unsigned {
   IGNORE = 2
 };
 
-template <typename NumericType, int D>
-class rayBoundary : public rayMetaGeometry<NumericType, D> {
-  typedef rayPair<rayTriple<NumericType>> boundingBoxType;
+template <typename NumericType, int D> class rayBoundary {
+  using boundingBoxType = rayPair<rayTriple<NumericType>>;
 
 public:
-  rayBoundary(RTCDevice &pDevice, const boundingBoxType &pBoundingBox,
-              rayBoundaryCondition pBoundaryConds[D],
-              std::array<int, 5> &pTraceSettings)
-      : mbdBox(pBoundingBox), firstDir(pTraceSettings[1]),
-        secondDir(pTraceSettings[2]),
-        mBoundaryConds({pBoundaryConds[firstDir], pBoundaryConds[secondDir]}) {
-    initBoundary(pDevice);
+  rayBoundary(RTCDevice &device, boundingBoxType const &boundingBox,
+              rayBoundaryCondition boundaryConds[D],
+              std::array<int, 5> &traceSettings)
+      : bdBox_(boundingBox), firstDir_(traceSettings[1]),
+        secondDir_(traceSettings[2]),
+        boundaryConds_({boundaryConds[firstDir_], boundaryConds[secondDir_]}) {
+    initBoundary(device);
   }
 
-  void processHit(RTCRayHit &rayHit, bool &reflect) {
+  void processHit(RTCRayHit &rayHit, bool &reflect) const {
     const auto primID = rayHit.hit.primID;
 
     if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
-      if (mBoundaryConds[0] == rayBoundaryCondition::REFLECTIVE) {
+      if (boundaryConds_[0] == rayBoundaryCondition::REFLECTIVE) {
         reflectRay(rayHit);
         reflect = true;
         return;
-      } else if (mBoundaryConds[0] == rayBoundaryCondition::PERIODIC) {
-        auto impactCoords = this->getNewOrigin(rayHit.ray);
+      } else if (boundaryConds_[0] == rayBoundaryCondition::PERIODIC) {
+        auto impactCoords = getNewOrigin(rayHit.ray);
         // periodically move ray origin
         if (primID == 0 || primID == 1) {
           // hit at x/y min boundary -> move to max x/y
-          impactCoords[firstDir] = mbdBox[1][firstDir];
+          impactCoords[firstDir_] = bdBox_[1][firstDir_];
         } else if (primID == 2 || primID == 3) {
           // hit at x/y max boundary -> move to min x/y
-          impactCoords[firstDir] = mbdBox[0][firstDir];
+          impactCoords[firstDir_] = bdBox_[0][firstDir_];
         }
-        moveRay(rayHit, impactCoords);
+        assignRayCoords(rayHit, impactCoords);
         reflect = true;
         return;
       } else {
@@ -57,23 +53,23 @@ public:
 
       assert(false && "Correctness Assumption");
     } else {
-      if (primID == 0 || primID == 1 || primID == 2 || primID == 3) {
-        if (mBoundaryConds[0] == rayBoundaryCondition::REFLECTIVE) {
+      if (primID >= 0 && primID <= 3) {
+        if (boundaryConds_[0] == rayBoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (mBoundaryConds[0] == rayBoundaryCondition::PERIODIC) {
-          auto impactCoords = this->getNewOrigin(rayHit.ray);
+        } else if (boundaryConds_[0] == rayBoundaryCondition::PERIODIC) {
+          auto impactCoords = getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 0 || primID == 1) {
             // hit at firstDir min boundary -> move to max firstDir
-            impactCoords[firstDir] = mbdBox[1][firstDir];
+            impactCoords[firstDir_] = bdBox_[1][firstDir_];
           } else if (primID == 2 || primID == 3) {
             // hit at firstDir max boundary -> move to min fristDir
-            impactCoords[firstDir] = mbdBox[0][firstDir];
+            impactCoords[firstDir_] = bdBox_[0][firstDir_];
           }
-          moveRay(rayHit, impactCoords);
+          assignRayCoords(rayHit, impactCoords);
           reflect = true;
           return;
         } else {
@@ -81,23 +77,23 @@ public:
           reflect = false;
           return;
         }
-      } else if (primID == 4 || primID == 5 || primID == 6 || primID == 7) {
-        if (mBoundaryConds[1] == rayBoundaryCondition::REFLECTIVE) {
+      } else if (primID >= 4 && primID <= 7) {
+        if (boundaryConds_[1] == rayBoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (mBoundaryConds[1] == rayBoundaryCondition::PERIODIC) {
-          auto impactCoords = this->getNewOrigin(rayHit.ray);
+        } else if (boundaryConds_[1] == rayBoundaryCondition::PERIODIC) {
+          auto impactCoords = getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 4 || primID == 5) {
             // hit at secondDir min boundary -> move to max secondDir
-            impactCoords[secondDir] = mbdBox[1][secondDir];
+            impactCoords[secondDir_] = bdBox_[1][secondDir_];
           } else if (primID == 6 || primID == 7) {
             // hit at secondDir max boundary -> move to min secondDir
-            impactCoords[secondDir] = mbdBox[0][secondDir];
+            impactCoords[secondDir_] = bdBox_[0][secondDir_];
           }
-          moveRay(rayHit, impactCoords);
+          assignRayCoords(rayHit, impactCoords);
           reflect = true;
           return;
         } else {
@@ -111,87 +107,90 @@ public:
     }
   }
 
-  RTCGeometry &getRTCGeometry() override final { return mRtcBoundary; }
+  RTCGeometry const &getRTCGeometry() const { return pRtcBoundary_; }
 
   void releaseGeometry() {
     // Attention:
     // This function must not be called when the RTCGeometry reference count is
     // > 1 Doing so leads to leaked memory buffers
-    if (mTriangleBuffer == nullptr || mVertexBuffer == nullptr ||
-        mRtcBoundary == nullptr) {
+    if (pTriangleBuffer_ == nullptr || pVertexBuffer_ == nullptr ||
+        pRtcBoundary_ == nullptr) {
       return;
     } else {
-      rtcReleaseGeometry(mRtcBoundary);
-      mRtcBoundary = nullptr;
-      mTriangleBuffer = nullptr;
-      mVertexBuffer = nullptr;
+      rtcReleaseGeometry(pRtcBoundary_);
+      pRtcBoundary_ = nullptr;
+      pTriangleBuffer_ = nullptr;
+      pVertexBuffer_ = nullptr;
     }
   }
 
-  rayTriple<NumericType> getPrimNormal(const unsigned int primID) override {
-    assert(primID < numTriangles && "rayBoundary: primID out of bounds");
-    return primNormals[primID];
-  }
-
-  boundingBoxType getBoundingBox() const { return mbdBox; }
-
-  rayPair<int> getDirs() const { return {firstDir, secondDir}; }
+  rayPair<int> getDirs() const { return {firstDir_, secondDir_}; }
 
 private:
+  static rayTriple<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
+    assert(rayInternal::IsNormalized(
+               rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
+           "MetaGeometry: direction not normalized");
+    auto xx = ray.org_x + ray.dir_x * ray.tfar;
+    auto yy = ray.org_y + ray.dir_y * ray.tfar;
+    auto zz = ray.org_z + ray.dir_z * ray.tfar;
+    return {xx, yy, zz};
+  }
+
   void initBoundary(RTCDevice &pDevice) {
-    assert(mVertexBuffer == nullptr && mTriangleBuffer == nullptr &&
+    assert(pVertexBuffer_ == nullptr && pTriangleBuffer_ == nullptr &&
            "Boundary buffer not empty");
-    mRtcBoundary = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_TRIANGLE);
+    pRtcBoundary_ = rtcNewGeometry(pDevice, RTC_GEOMETRY_TYPE_TRIANGLE);
 
-    mVertexBuffer = (vertex_f3_t *)rtcSetNewGeometryBuffer(
-        mRtcBoundary, RTC_BUFFER_TYPE_VERTEX,
+    pVertexBuffer_ = (vertex_f3_t *)rtcSetNewGeometryBuffer(
+        pRtcBoundary_, RTC_BUFFER_TYPE_VERTEX,
         0, // the slot
-        RTC_FORMAT_FLOAT3, sizeof(vertex_f3_t), numVertices);
+        RTC_FORMAT_FLOAT3, sizeof(vertex_f3_t), numVertices_);
 
-    auto xmin = mbdBox[0][0];
-    auto xmax = mbdBox[1][0];
-    auto ymin = mbdBox[0][1];
-    auto ymax = mbdBox[1][1];
-    auto zmin = mbdBox[0][2];
-    auto zmax = mbdBox[1][2];
+    auto xmin = bdBox_[0][0];
+    auto xmax = bdBox_[1][0];
+    auto ymin = bdBox_[0][1];
+    auto ymax = bdBox_[1][1];
+    auto zmin = bdBox_[0][2];
+    auto zmax = bdBox_[1][2];
 
     // Vertices
-    mVertexBuffer[0].xx = (float)xmin;
-    mVertexBuffer[0].yy = (float)ymin;
-    mVertexBuffer[0].zz = (float)zmin;
+    pVertexBuffer_[0].xx = (float)xmin;
+    pVertexBuffer_[0].yy = (float)ymin;
+    pVertexBuffer_[0].zz = (float)zmin;
 
-    mVertexBuffer[1].xx = (float)xmax;
-    mVertexBuffer[1].yy = (float)ymin;
-    mVertexBuffer[1].zz = (float)zmin;
+    pVertexBuffer_[1].xx = (float)xmax;
+    pVertexBuffer_[1].yy = (float)ymin;
+    pVertexBuffer_[1].zz = (float)zmin;
 
-    mVertexBuffer[2].xx = (float)xmax;
-    mVertexBuffer[2].yy = (float)ymax;
-    mVertexBuffer[2].zz = (float)zmin;
+    pVertexBuffer_[2].xx = (float)xmax;
+    pVertexBuffer_[2].yy = (float)ymax;
+    pVertexBuffer_[2].zz = (float)zmin;
 
-    mVertexBuffer[3].xx = (float)xmin;
-    mVertexBuffer[3].yy = (float)ymax;
-    mVertexBuffer[3].zz = (float)zmin;
+    pVertexBuffer_[3].xx = (float)xmin;
+    pVertexBuffer_[3].yy = (float)ymax;
+    pVertexBuffer_[3].zz = (float)zmin;
 
-    mVertexBuffer[4].xx = (float)xmin;
-    mVertexBuffer[4].yy = (float)ymin;
-    mVertexBuffer[4].zz = (float)zmax;
+    pVertexBuffer_[4].xx = (float)xmin;
+    pVertexBuffer_[4].yy = (float)ymin;
+    pVertexBuffer_[4].zz = (float)zmax;
 
-    mVertexBuffer[5].xx = (float)xmax;
-    mVertexBuffer[5].yy = (float)ymin;
-    mVertexBuffer[5].zz = (float)zmax;
+    pVertexBuffer_[5].xx = (float)xmax;
+    pVertexBuffer_[5].yy = (float)ymin;
+    pVertexBuffer_[5].zz = (float)zmax;
 
-    mVertexBuffer[6].xx = (float)xmax;
-    mVertexBuffer[6].yy = (float)ymax;
-    mVertexBuffer[6].zz = (float)zmax;
+    pVertexBuffer_[6].xx = (float)xmax;
+    pVertexBuffer_[6].yy = (float)ymax;
+    pVertexBuffer_[6].zz = (float)zmax;
 
-    mVertexBuffer[7].xx = (float)xmin;
-    mVertexBuffer[7].yy = (float)ymax;
-    mVertexBuffer[7].zz = (float)zmax;
+    pVertexBuffer_[7].xx = (float)xmin;
+    pVertexBuffer_[7].yy = (float)ymax;
+    pVertexBuffer_[7].zz = (float)zmax;
 
-    mTriangleBuffer = (triangle_t *)rtcSetNewGeometryBuffer(
-        mRtcBoundary, RTC_BUFFER_TYPE_INDEX,
+    pTriangleBuffer_ = (triangle_t *)rtcSetNewGeometryBuffer(
+        pRtcBoundary_, RTC_BUFFER_TYPE_INDEX,
         0, // slot
-        RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles);
+        RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles_);
 
     constexpr rayQuadruple<rayTriple<uint32_t>> xMinMaxPlanes = {
         0, 3, 7, 0, 7, 4, 6, 2, 1, 6, 1, 5};
@@ -203,62 +202,53 @@ private:
         xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 
     for (size_t idx = 0; idx < 4; ++idx) {
-      mTriangleBuffer[idx].v0 = Planes[firstDir][idx][0];
-      mTriangleBuffer[idx].v1 = Planes[firstDir][idx][1];
-      mTriangleBuffer[idx].v2 = Planes[firstDir][idx][2];
+      pTriangleBuffer_[idx].v0 = Planes[firstDir_][idx][0];
+      pTriangleBuffer_[idx].v1 = Planes[firstDir_][idx][1];
+      pTriangleBuffer_[idx].v2 = Planes[firstDir_][idx][2];
 
-      mTriangleBuffer[idx + 4].v0 = Planes[secondDir][idx][0];
-      mTriangleBuffer[idx + 4].v1 = Planes[secondDir][idx][1];
-      mTriangleBuffer[idx + 4].v2 = Planes[secondDir][idx][2];
-    }
-
-    for (size_t idx = 0; idx < numTriangles; ++idx) {
-      auto triangle = getTriangleCoords(idx);
-      auto triNorm = rayInternal::ComputeNormal(triangle);
-      rayInternal::Normalize(triNorm);
-      primNormals[idx] = triNorm;
+      pTriangleBuffer_[idx + 4].v0 = Planes[secondDir_][idx][0];
+      pTriangleBuffer_[idx + 4].v1 = Planes[secondDir_][idx][1];
+      pTriangleBuffer_[idx + 4].v2 = Planes[secondDir_][idx][2];
     }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
-    rtcSetGeometryMask(mRtcBoundary, -1);
+    rtcSetGeometryMask(pRtcBoundary_, -1);
 #endif
 
-    rtcCommitGeometry(mRtcBoundary);
+    rtcCommitGeometry(pRtcBoundary_);
     assert(rtcGetDeviceError(pDevice) == RTC_ERROR_NONE &&
            "RTC Error: rtcCommitGeometry");
   }
 
   rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID) {
-    assert(primID < numTriangles && "rtBounday: primID out of bounds");
-    auto tt = mTriangleBuffer[primID];
-    return {(NumericType)mVertexBuffer[tt.v0].xx,
-            (NumericType)mVertexBuffer[tt.v0].yy,
-            (NumericType)mVertexBuffer[tt.v0].zz,
-            (NumericType)mVertexBuffer[tt.v1].xx,
-            (NumericType)mVertexBuffer[tt.v1].yy,
-            (NumericType)mVertexBuffer[tt.v1].zz,
-            (NumericType)mVertexBuffer[tt.v2].xx,
-            (NumericType)mVertexBuffer[tt.v2].yy,
-            (NumericType)mVertexBuffer[tt.v2].zz};
+    assert(primID < numTriangles_ && "rtBounday: primID out of bounds");
+    auto tt = pTriangleBuffer_[primID];
+    return {(NumericType)pVertexBuffer_[tt.v0].xx,
+            (NumericType)pVertexBuffer_[tt.v0].yy,
+            (NumericType)pVertexBuffer_[tt.v0].zz,
+            (NumericType)pVertexBuffer_[tt.v1].xx,
+            (NumericType)pVertexBuffer_[tt.v1].yy,
+            (NumericType)pVertexBuffer_[tt.v1].zz,
+            (NumericType)pVertexBuffer_[tt.v2].xx,
+            (NumericType)pVertexBuffer_[tt.v2].yy,
+            (NumericType)pVertexBuffer_[tt.v2].zz};
   }
 
-  void reflectRay(RTCRayHit &rayHit) {
-    auto dir =
-        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.ray.dir_x);
-    auto normal =
-        *reinterpret_cast<rayTriple<rtcNumericType> *>(&rayHit.hit.Ng_x);
+  void reflectRay(RTCRayHit &rayHit) const {
+    auto dir = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
+        &rayHit.ray.dir_x);
+    auto normal = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
+        &rayHit.hit.Ng_x);
     rayInternal::Normalize(dir);
     rayInternal::Normalize(normal);
-    dir = rayReflectionSpecular<rtcNumericType>(dir, normal);
+    dir = rayReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
     // normal gets reused for new origin here
-    normal = this->getNewOrigin(rayHit.ray);
+    normal = getNewOrigin(rayHit.ray);
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
-        _mm_set_ps(1e-4f, (rtcNumericType)normal[2], (rtcNumericType)normal[1],
-                   (rtcNumericType)normal[0]);
+        _mm_set_ps(1e-4f, normal[2], normal[1], normal[0]);
     reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
-        _mm_set_ps(0.0f, (rtcNumericType)dir[2], (rtcNumericType)dir[1],
-                   (rtcNumericType)dir[0]);
+        _mm_set_ps(0.0f, dir[2], dir[1], dir[0]);
 #else
     rayHit.ray.org_x = normal[0];
     rayHit.ray.org_y = normal[1];
@@ -272,11 +262,14 @@ private:
 #endif
   }
 
-  void moveRay(RTCRayHit &rayHit, const rayTriple<rtcNumericType> &coords) {
+  void
+  assignRayCoords(RTCRayHit &rayHit,
+                  const rayTriple<rayInternal::rtcNumericType> &coords) const {
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
-        _mm_set_ps(1e-4f, (rtcNumericType)coords[2], (rtcNumericType)coords[1],
-                   (rtcNumericType)coords[0]);
+        _mm_set_ps(1e-4f, (rayInternal::rtcNumericType)coords[2],
+                   (rayInternal::rtcNumericType)coords[1],
+                   (rayInternal::rtcNumericType)coords[0]);
     rayHit.ray.time = 0.0f;
 #else
     rayHit.ray.org_x = coords[0];
@@ -293,23 +286,21 @@ private:
     // in single precision floating point types.
     float xx, yy, zz;
   };
-  vertex_f3_t *mVertexBuffer = nullptr;
+  vertex_f3_t *pVertexBuffer_ = nullptr;
 
   struct triangle_t {
     // The triangle geometry uses an index buffer that contains an array
     // of three 32-bit indices per triangle.
     uint32_t v0, v1, v2;
   };
-  triangle_t *mTriangleBuffer = nullptr;
+  triangle_t *pTriangleBuffer_ = nullptr;
 
-  RTCGeometry mRtcBoundary = nullptr;
-  const boundingBoxType mbdBox;
-  const int firstDir = 0;
-  const int secondDir = 1;
-  const std::array<rayBoundaryCondition, 2> mBoundaryConds = {};
-  static constexpr size_t numTriangles = 8;
-  static constexpr size_t numVertices = 8;
-  std::array<rayTriple<NumericType>, numTriangles> primNormals;
+private:
+  RTCGeometry pRtcBoundary_ = nullptr;
+  boundingBoxType const &bdBox_;
+  const int firstDir_ = 0;
+  const int secondDir_ = 1;
+  const std::array<rayBoundaryCondition, 2> boundaryConds_;
+  static constexpr size_t numTriangles_ = 8;
+  static constexpr size_t numVertices_ = 8;
 };
-
-#endif // RAY_BOUNDARY_HPP

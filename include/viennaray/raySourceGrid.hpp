@@ -1,26 +1,20 @@
-#ifndef RAY_SOURCEGRID_HPP
-#define RAY_SOURCEGRID_HPP
+#pragma once
 
-#include <rayGeometry.hpp>
 #include <raySource.hpp>
 
 template <typename NumericType, int D>
-class raySourceGrid : public raySource<NumericType, D> {
+class raySourceGrid : public raySource<raySourceGrid<NumericType, D>> {
 public:
   raySourceGrid(std::vector<rayTriple<NumericType>> &sourceGrid,
-                NumericType passedCosinePower,
-                const std::array<int, 5> &passedTraceSettings)
-      : mSourceGrid(sourceGrid), mNumPoints(sourceGrid.size()),
-        cosinePower(passedCosinePower), rayDir(passedTraceSettings[0]),
-        firstDir(passedTraceSettings[1]), secondDir(passedTraceSettings[2]),
-        minMax(passedTraceSettings[3]), posNeg(passedTraceSettings[4]),
-        ee(((NumericType)2) / (passedCosinePower + 1)),
-        indexCounter(sourceGrid.size(), 0) {}
+                NumericType cosinePower,
+                const std::array<int, 5> &traceSettings)
+      : sourceGrid_(sourceGrid), numPoints_(sourceGrid.size()),
+        rayDir_(traceSettings[0]), firstDir_(traceSettings[1]),
+        secondDir_(traceSettings[2]), minMax_(traceSettings[3]),
+        posNeg_(traceSettings[4]), ee_(((NumericType)2) / (cosinePower + 1)) {}
 
-  void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) override final {
-    auto index = idx % mNumPoints;
-    indexCounter[index]++;
-    auto origin = mSourceGrid[idx % mNumPoints];
+  void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) const {
+    auto origin = sourceGrid_[idx % numPoints_];
     auto direction = getDirection(RngState);
 
 #ifdef ARCH_X86
@@ -42,29 +36,23 @@ public:
 #endif
   }
 
-  size_t getNumPoints() const override final { return mNumPoints; }
-
-  void printIndexCounter() override final {
-    for (const auto &idx : indexCounter) {
-      std::cout << idx << std::endl;
-    }
-  }
+  size_t getNumPoints() const { return numPoints_; }
 
 private:
-  rayTriple<NumericType> getDirection(rayRNG &RngState) {
+  rayTriple<NumericType> getDirection(rayRNG &RngState) const {
     rayTriple<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(RngState);
     auto r2 = uniDist(RngState);
 
-    NumericType tt = pow(r2, ee);
-    direction[rayDir] = posNeg * sqrtf(tt);
-    direction[firstDir] = cosf(two_pi * r1) * sqrtf(1 - tt);
+    NumericType tt = pow(r2, ee_);
+    direction[rayDir_] = posNeg_ * sqrtf(tt);
+    direction[firstDir_] = cosf(M_PI * 2.f * r1) * sqrtf(1.f - tt);
 
     if constexpr (D == 2) {
-      direction[secondDir] = 0;
+      direction[secondDir_] = 0;
     } else {
-      direction[secondDir] = sinf(two_pi * r1) * sqrtf(1 - tt);
+      direction[secondDir_] = sinf(M_PI * 2.f * r1) * sqrtf(1.f - tt);
     }
 
     rayInternal::Normalize(direction);
@@ -72,17 +60,13 @@ private:
     return direction;
   }
 
-  const std::vector<rayTriple<NumericType>> &mSourceGrid;
-  const size_t mNumPoints;
-  const NumericType cosinePower;
-  const int rayDir;
-  const int firstDir;
-  const int secondDir;
-  const int minMax;
-  const NumericType posNeg;
-  const NumericType ee;
-  std::vector<size_t> indexCounter;
-  constexpr static NumericType two_pi = rayInternal::PI * 2;
+private:
+  const std::vector<rayTriple<NumericType>> &sourceGrid_;
+  const size_t numPoints_;
+  const int rayDir_;
+  const int firstDir_;
+  const int secondDir_;
+  const int minMax_;
+  const NumericType posNeg_;
+  const NumericType ee_;
 };
-
-#endif // RT_RAYSOURCE_HPP

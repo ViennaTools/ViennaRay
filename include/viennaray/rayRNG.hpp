@@ -1,11 +1,10 @@
-#ifndef RAY_RNG_HPP
-#define RAY_RNG_HPP
+#pragma once
 
 #include <memory>
 #include <random>
 
 /// Use mersenne twister 19937 as random number generator.
-typedef std::mt19937_64 rayRNG;
+using rayRNG = std::mt19937_64;
 
 namespace rayInternal {
 
@@ -25,5 +24,3 @@ static unsigned int tea(unsigned int val0, unsigned int val1) {
   return v0;
 }
 } // namespace rayInternal
-
-#endif // RAY_RNG_HPP

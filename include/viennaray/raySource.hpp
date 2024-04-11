@@ -1,21 +1,19 @@
-#ifndef RAY_SOURCE_HPP
-#define RAY_SOURCE_HPP
+#pragma once
 
-#if VIENNARAY_EMBREE_VERSION < 4
-#include <embree3/rtcore.h>
-#else
-#include <embree4/rtcore.h>
-#endif
-#include <rayPreCompileMacros.hpp>
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D> class raySource {
-public:
-  virtual ~raySource() {}
-  virtual void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) {}
-  virtual size_t getNumPoints() const { return 0; }
-  virtual void printIndexCounter(){};
-};
+template <typename Derived> class raySource {
+protected:
+  raySource() = default;
+  ~raySource() = default;
 
-#endif // RAY_SOURCE_HPP
+public:
+  Derived &derived() { return static_cast<Derived &>(*this); }
+  const Derived &derived() const { return static_cast<const Derived &>(*this); }
+
+  void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) const {
+    derived().fillRay(ray, idx, RngState);
+  }
+  size_t getNumPoints() const { return derived().getNumPoints(); }
+};

@@ -1,44 +1,44 @@
-#ifndef RAY_HITCOUNTER_HPP
-#define RAY_HITCOUNTER_HPP
+#pragma once
 
 #include <rayUtil.hpp>
 
 template <typename NumericType> class rayHitCounter {
 public:
-  rayHitCounter() : mTotalCnts(0) {}
+  rayHitCounter() : totalCounts_(0) {}
 
   // elements initialized to 0.
   rayHitCounter(size_t size)
-      : mCnts(size, 0), mTotalCnts(0), mDiskAreas(size, 0), mS1s(size, 0),
-        mS2s(size, 0) {}
+      : counts_(size, 0), totalCounts_(0), diskAreas_(size, 0), S1s_(size, 0),
+        S2s_(size, 0) {}
 
   // copy construct the vector members
-  rayHitCounter(rayHitCounter<NumericType> const &pA)
-      : mCnts(pA.mCnts), mTotalCnts(pA.mTotalCnts), mDiskAreas(pA.mDiskAreas),
-        mS1s(pA.mS1s), mS2s(pA.mS2s) {}
+  rayHitCounter(rayHitCounter<NumericType> const &other)
+      : counts_(other.counts_), totalCounts_(other.totalCounts_),
+        diskAreas_(other.diskAreas_), S1s_(other.S1s_), S2s_(other.S2s_) {}
 
   // move the vector members
-  rayHitCounter(rayHitCounter<NumericType> const &&pA)
-      : mCnts(std::move(pA.mCnts)), mTotalCnts(std::move(pA.mTotalCnts)),
-        mDiskAreas(std::move(pA.mDiskAreas)), mS1s(std::move(pA.mS1s)),
-        mS2s(std::move(pA.mS2s)) {}
+  rayHitCounter(rayHitCounter<NumericType> const &&other)
+      : counts_(std::move(other.counts_)),
+        totalCounts_(std::move(other.totalCounts_)),
+        diskAreas_(std::move(other.diskAreas_)), S1s_(std::move(other.S1s_)),
+        S2s_(std::move(other.S2s_)) {}
 
   // A copy constructor which can accumulate values from two instances
   // Precondition: the size of the accumulators are equal
-  rayHitCounter(rayHitCounter<NumericType> const &pA1,
-                rayHitCounter<NumericType> const &pA2)
-      : rayHitCounter(pA1) {
-    for (size_t idx = 0; idx < mCnts.size(); ++idx) {
-      mCnts[idx] += pA2.mCnts[idx];
-      mS1s[idx] += pA2.mS1s[idx];
-      mS2s[idx] += pA2.mS2s[idx];
+  rayHitCounter(rayHitCounter<NumericType> const &A1,
+                rayHitCounter<NumericType> const &A2)
+      : rayHitCounter(A1) {
+    for (size_t idx = 0; idx < counts_.size(); ++idx) {
+      counts_[idx] += A2.counts_[idx];
+      S1s_[idx] += A2.S1s_[idx];
+      S2s_[idx] += A2.S2s_[idx];
     }
 
-    mTotalCnts = pA1.mTotalCnts + pA2.mTotalCnts;
-    for (size_t idx = 0; idx < pA1.mDiskAreas.size(); ++idx) {
-      mDiskAreas[idx] = pA1.mDiskAreas[idx] > pA2.mDiskAreas[idx]
-                            ? pA1.mDiskAreas[idx]
-                            : pA2.mDiskAreas[idx];
+    totalCounts_ = A1.totalCounts_ + A2.totalCounts_;
+    for (size_t idx = 0; idx < A1.diskAreas_.size(); ++idx) {
+      diskAreas_[idx] = A1.diskAreas_[idx] > A2.diskAreas_[idx]
+                            ? A1.diskAreas_[idx]
+                            : A2.diskAreas_[idx];
     }
   }
 
@@ -46,15 +46,15 @@ public:
   operator=(rayHitCounter<NumericType> const &pOther) {
     if (this != &pOther) {
       // copy from pOther to this
-      mCnts.clear();
-      mCnts = pOther.mCnts;
-      mTotalCnts = pOther.mTotalCnts;
-      mDiskAreas.clear();
-      mDiskAreas = pOther.mDiskAreas;
-      mS1s.clear();
-      mS1s = pOther.mS1s;
-      mS2s.clear();
-      mS2s = pOther.mS2s;
+      counts_.clear();
+      counts_ = pOther.counts_;
+      totalCounts_ = pOther.totalCounts_;
+      diskAreas_.clear();
+      diskAreas_ = pOther.diskAreas_;
+      S1s_.clear();
+      S1s_ = pOther.S1s_;
+      S2s_.clear();
+      S2s_ = pOther.S2s_;
     }
     return *this;
   }
@@ -63,77 +63,77 @@ public:
   operator=(rayHitCounter<NumericType> const &&pOther) {
     if (this != &pOther) {
       // move from pOther to this
-      mCnts.clear();
-      mCnts = std::move(pOther.mCnts);
-      mTotalCnts = pOther.mTotalCnts;
-      mDiskAreas.clear();
-      mDiskAreas = std::move(pOther.mDiskAreas);
-      mS1s.clear();
-      mS1s = std::move(pOther.mS1s);
-      mS2s.clear();
-      mS2s = std::move(pOther.mS2s);
+      counts_.clear();
+      counts_ = std::move(pOther.counts_);
+      totalCounts_ = pOther.totalCounts_;
+      diskAreas_.clear();
+      diskAreas_ = std::move(pOther.diskAreas_);
+      S1s_.clear();
+      S1s_ = std::move(pOther.S1s_);
+      S2s_.clear();
+      S2s_ = std::move(pOther.S2s_);
     }
     return *this;
   }
 
   void use(unsigned int primID, NumericType value) {
-    mCnts[primID] += 1;
-    mTotalCnts += 1;
-    mS1s[primID] += value;
-    mS2s[primID] += value * value;
+    counts_[primID] += 1;
+    totalCounts_ += 1;
+    S1s_[primID] += value;
+    S2s_[primID] += value * value;
   }
 
   void merge(rayHitCounter<NumericType> const &pOther, const bool calcFlux) {
     if (calcFlux) {
-      for (size_t idx = 0; idx < mCnts.size(); ++idx) {
-        mCnts[idx] += pOther.mCnts[idx];
-        mS1s[idx] += pOther.mS1s[idx];
-        mS2s[idx] += pOther.mS2s[idx];
+      for (size_t idx = 0; idx < counts_.size(); ++idx) {
+        counts_[idx] += pOther.counts_[idx];
+        S1s_[idx] += pOther.S1s_[idx];
+        S2s_[idx] += pOther.S2s_[idx];
       }
     }
 
-    mTotalCnts += pOther.mTotalCnts;
-    for (size_t idx = 0; idx < mDiskAreas.size(); ++idx) {
-      mDiskAreas[idx] = mDiskAreas[idx] > pOther.mDiskAreas[idx]
-                            ? mDiskAreas[idx]
-                            : pOther.mDiskAreas[idx];
+    totalCounts_ += pOther.totalCounts_;
+    for (size_t idx = 0; idx < diskAreas_.size(); ++idx) {
+      diskAreas_[idx] = diskAreas_[idx] > pOther.diskAreas_[idx]
+                            ? diskAreas_[idx]
+                            : pOther.diskAreas_[idx];
     }
   }
 
   void resize(const size_t numPoints, const bool calcFlux) {
-    mDiskAreas.resize(numPoints);
-    mTotalCnts = 0;
+    diskAreas_.resize(numPoints);
+    totalCounts_ = 0;
     if (calcFlux) {
-      mCnts.resize(numPoints);
-      mS1s.resize(numPoints);
-      mS2s.resize(numPoints);
+      counts_.resize(numPoints);
+      S1s_.resize(numPoints);
+      S2s_.resize(numPoints);
     }
   }
 
   void clear() {
-    mDiskAreas.clear();
-    mCnts.clear();
-    mS1s.clear();
-    mS2s.clear();
+    diskAreas_.clear();
+    counts_.clear();
+    S1s_.clear();
+    S2s_.clear();
   }
 
-  std::vector<NumericType> getValues() const { return mS1s; }
+  std::vector<NumericType> getValues() const { return S1s_; }
 
-  std::vector<size_t> getCounts() const { return mCnts; }
+  std::vector<size_t> getCounts() const { return counts_; }
 
-  size_t getTotalCounts() const { return mTotalCnts; }
+  size_t getTotalCounts() const { return totalCounts_; }
 
-  const std::vector<NumericType> &getDiskAreas() const { return mDiskAreas; }
+  const std::vector<NumericType> &getDiskAreas() const { return diskAreas_; }
 
   std::vector<NumericType> getRelativeError() {
     auto result = std::vector<NumericType>(
-        mS1s.size(),
+        S1s_.size(),
         std::numeric_limits<NumericType>::max()); // size, initial values
-    if (mTotalCnts == 0) {
+    if (totalCounts_ == 0) {
       return result;
     }
     for (size_t idx = 0; idx < result.size(); ++idx) {
-      auto s1square = mS1s[idx] * mS1s[idx];
+      auto s1square = S1s_[idx] * S1s_[idx];
       if (s1square == 0) {
         continue;
       }
@@ -141,25 +141,23 @@ public:
       // sqrt(N) For details and an exact formula see the book Exploring Monte
       // Carlo Methods by Dunn and Shultis page 83 and 84.
       result[idx] =
-          (NumericType)(std::sqrt(mS2s[idx] / s1square - 1.0 / mTotalCnts));
+          (NumericType)(std::sqrt(S2s_[idx] / s1square - 1.0 / totalCounts_));
     }
     return result;
   }
 
   void setDiskAreas(std::vector<NumericType> &pDiskAreas) {
-    mDiskAreas = pDiskAreas;
+    diskAreas_ = pDiskAreas;
   }
 
 private:
-  std::vector<size_t> mCnts;
-  size_t mTotalCnts;
-  std::vector<NumericType> mDiskAreas;
+  std::vector<size_t> counts_;
+  size_t totalCounts_;
+  std::vector<NumericType> diskAreas_;
 
   // S1 denotes the sum of sample values
-  std::vector<NumericType> mS1s;
+  std::vector<NumericType> S1s_;
   // S2 denotes the sum of squared sample values
   // these are need to compute the relative error
-  std::vector<NumericType> mS2s;
+  std::vector<NumericType> S2s_;
 };
-
-#endif // RAY_HITCOUNTER_HPP

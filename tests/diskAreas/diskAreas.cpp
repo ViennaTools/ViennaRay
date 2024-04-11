@@ -1,4 +1,3 @@
-#include <omp.h>
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayParticle.hpp>
@@ -48,15 +47,15 @@ int main() {
   auto cp = particle.clone();
 
   rayDataLog<NumericType> log;
-  auto tracer = rayTraceKernel<NumericType, D>(
-      device, geometry, boundary, raySource, cp, log, 1, 0, false, true, 0);
+  rayTraceInfo info;
+  auto tracer = rayTraceKernel(device, geometry, boundary, raySource, cp, log,
+                               1, 0, false, true, 0, hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
-  tracer.setHitCounter(&hitCounter);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();
 
   auto boundaryDirs = boundary.getDirs();
-  auto wholeDiskArea = diskRadius * diskRadius * rayInternal::PI;
+  auto wholeDiskArea = diskRadius * diskRadius * M_PI;
   for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto const &disk = geometry.getPrimRef(idx);
     if (std::fabs(disk[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <
