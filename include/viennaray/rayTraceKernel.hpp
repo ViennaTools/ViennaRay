@@ -406,8 +406,8 @@ public:
   }
 
 private:
-  bool rejectionControl(NumericType &rayWeight, const NumericType &initWeight,
-                        rayRNG &RNG) const {
+  static bool rejectionControl(NumericType &rayWeight,
+                               const NumericType &initWeight, rayRNG &RNG) {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;

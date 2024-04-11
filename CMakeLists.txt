@@ -15,6 +15,8 @@ option(VIENNARAY_DISABLE_COPY "Disable Embree Environment setup" OFF)
 option(VIENNARAY_LEGACY_OPENMP "Use legacy OpenMP flags" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
+option(VIENNARAY_PRINT_PROGRESS "Enable progress bar" OFF)
+
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
@@ -91,6 +93,10 @@ set_target_properties(
 if(VIENNARAY_USE_WDIST)
   message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
+endif()
+
+if(VIENNARAY_PRINT_PROGRESS)
+  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_PRINT_PROGRESS)
 endif()
 
 if(EMBREE_RAY_MASK)
