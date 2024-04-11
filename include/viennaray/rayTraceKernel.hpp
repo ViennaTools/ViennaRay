@@ -75,9 +75,9 @@ public:
 
     // hit counters
     std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
+    hitCounter_.clear();
+    hitCounter_.resize(geometry_.getNumPoints(), calcFlux_);
     if (calcFlux_) {
-      hitCounter_.clear();
-      hitCounter_.resize(geometry_.getNumPoints(), calcFlux_);
       for (auto &hitC : threadLocalHitCounter) {
         hitC = hitCounter_;
       }
