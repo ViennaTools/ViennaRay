@@ -1,5 +1,6 @@
 #pragma once
 
+#define _USE_MATH_DEFINES
 #include <rayMessage.hpp>
 #include <rayRNG.hpp>
 
@@ -16,7 +17,6 @@
 
 #include <omp.h>
 
-#define _USE_MATH_DEFINES
 #include <algorithm>
 #include <array>
 #include <cassert>
