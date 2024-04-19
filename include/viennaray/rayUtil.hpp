@@ -69,6 +69,7 @@ struct rayTraceInfo {
   size_t totalDiskHits;
   size_t nonGeometryHits;
   size_t geometryHits;
+  size_t particleHits;
   double time;
   bool warning = false;
   bool error = false;
@@ -240,7 +241,7 @@ void adjustBoundingBox(rayPair<rayTriple<NumericType>> &bdBox,
   }
 }
 
-std::array<int, 5> getTraceSettings(rayTraceDirection sourceDir) {
+inline std::array<int, 5> getTraceSettings(rayTraceDirection sourceDir) {
   // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source,
   // posNeg dir
   std::array<int, 5> set{0, 0, 0, 0, 0};

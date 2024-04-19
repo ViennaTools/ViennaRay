@@ -8,9 +8,9 @@ template <typename NumericType, int D> class rayGeometry {
 public:
   template <size_t Dim>
   void initGeometry(RTCDevice &device,
-                    std::vector<std::array<NumericType, Dim>> &points,
-                    std::vector<std::array<NumericType, Dim>> &normals,
-                    NumericType discRadii) {
+                    std::vector<std::array<NumericType, Dim>> const &points,
+                    std::vector<std::array<NumericType, Dim>> const &normals,
+                    NumericType const discRadii) {
     static_assert(!(D == 3 && Dim == 2) &&
                   "Setting 2D geometry in 3D trace object");
 
@@ -98,7 +98,7 @@ public:
   }
 
   template <typename MatIdType>
-  void setMaterialIds(std::vector<MatIdType> &pMaterialIds) {
+  void setMaterialIds(std::vector<MatIdType> const &pMaterialIds) {
     assert(pMaterialIds.size() == numPoints_ &&
            "rayGeometry: Material IDs size mismatch");
     materialIds_.clear();
@@ -179,8 +179,8 @@ public:
 
 private:
   template <size_t Dim>
-  void
-  initPointNeighborhood(std::vector<std::array<NumericType, Dim>> &points) {
+  void initPointNeighborhood(
+      std::vector<std::array<NumericType, Dim>> const &points) {
     pointNeighborhood_.clear();
     pointNeighborhood_.resize(numPoints_, std::vector<unsigned int>{});
 
