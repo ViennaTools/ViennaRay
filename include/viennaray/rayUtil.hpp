@@ -164,12 +164,10 @@ template <typename NumericType>
 }
 
 template <typename NumericType>
-[[nodiscard]] rayTriple<NumericType> Scale(const NumericType pF,
-                                           rayTriple<NumericType> &pT) {
+void Scale(const NumericType pF, rayTriple<NumericType> &pT) {
   pT[0] *= pF;
   pT[1] *= pF;
   pT[2] *= pF;
-  return pT;
 }
 
 template <typename NumericType>

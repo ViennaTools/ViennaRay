@@ -117,15 +117,17 @@ public:
     S2s_.clear();
   }
 
-  std::vector<NumericType> getValues() const { return S1s_; }
+  [[nodiscard]] std::vector<NumericType> getValues() const { return S1s_; }
 
-  std::vector<size_t> getCounts() const { return counts_; }
+  [[nodiscard]] std::vector<size_t> getCounts() const { return counts_; }
 
-  size_t getTotalCounts() const { return totalCounts_; }
+  [[nodiscard]] size_t getTotalCounts() const { return totalCounts_; }
 
-  const std::vector<NumericType> &getDiskAreas() const { return diskAreas_; }
+  [[nodiscard]] const std::vector<NumericType> &getDiskAreas() const {
+    return diskAreas_;
+  }
 
-  std::vector<NumericType> getRelativeError() {
+  [[nodiscard]] std::vector<NumericType> getRelativeError() {
     auto result = std::vector<NumericType>(
         S1s_.size(),
         std::numeric_limits<NumericType>::max()); // size, initial values

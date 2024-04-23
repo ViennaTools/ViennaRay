@@ -173,13 +173,14 @@ public:
   }
 
   /// Returns the total flux on each disk.
-  std::vector<NumericType> getTotalFlux() const {
+  [[nodiscard]] std::vector<NumericType> getTotalFlux() const {
     return hitCounter_.getValues();
   }
 
   /// Returns the normalized flux on each disk.
-  std::vector<NumericType> getNormalizedFlux(rayNormalizationType normalization,
-                                             bool averageNeighborhood = false) {
+  [[nodiscard]] std::vector<NumericType>
+  getNormalizedFlux(rayNormalizationType normalization,
+                    bool averageNeighborhood = false) {
     auto flux = hitCounter_.getValues();
     normalizeFlux(flux, normalization);
     if (averageNeighborhood) {
@@ -244,27 +245,35 @@ public:
   }
 
   /// Returns the total number of hits for each geometry point.
-  std::vector<size_t> getHitCounts() const { return hitCounter_.getCounts(); }
+  [[nodiscard]] std::vector<size_t> getHitCounts() const {
+    return hitCounter_.getCounts();
+  }
 
   /// Returns the relative error of the flux for each geometry point
-  std::vector<NumericType> getRelativeError() {
+  [[nodiscard]] std::vector<NumericType> getRelativeError() {
     return hitCounter_.getRelativeError();
   }
 
   /// Returns the disk area for each geometry point
-  std::vector<NumericType> getDiskAreas() { return hitCounter_.getDiskAreas(); }
+  [[nodiscard]] std::vector<NumericType> getDiskAreas() {
+    return hitCounter_.getDiskAreas();
+  }
 
-  rayTracingData<NumericType> &getLocalData() { return localData_; }
+  [[nodiscard]] rayTracingData<NumericType> &getLocalData() {
+    return localData_;
+  }
 
-  rayTracingData<NumericType> *getGlobalData() { return pGlobalData_; }
+  [[nodiscard]] rayTracingData<NumericType> *getGlobalData() {
+    return pGlobalData_;
+  }
 
   void setGlobalData(rayTracingData<NumericType> &data) {
     pGlobalData_ = &data;
   }
 
-  rayTraceInfo getRayTraceInfo() { return RTInfo_; }
+  [[nodiscard]] rayTraceInfo getRayTraceInfo() { return RTInfo_; }
 
-  rayDataLog<NumericType> &getDataLog() { return dataLog_; }
+  [[nodiscard]] rayDataLog<NumericType> &getDataLog() { return dataLog_; }
 
 private:
   NumericType getSourceArea() {
