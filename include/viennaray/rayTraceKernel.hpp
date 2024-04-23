@@ -183,6 +183,7 @@ public:
               for (int i = 0; i < D; ++i) {
                 direction[i] = 2.f * dist(RngState) - 1.f;
               }
+              rayInternal::Normalize(direction);
 
               // Update ray direction and origin
 #ifdef ARCH_X86
