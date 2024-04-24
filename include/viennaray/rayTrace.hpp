@@ -129,6 +129,9 @@ public:
     pSource_ = std::move(source);
   }
 
+  /// Reset the source to the default random source.
+  void resetSource() { pSource_.reset(); }
+
   /// Set the number of rays per geometry point.
   /// The total number of rays, that are traced, is the set number set here
   /// times the number of points in the geometry.
