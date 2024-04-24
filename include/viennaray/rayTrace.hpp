@@ -54,8 +54,8 @@ public:
 
     rayTraceKernel tracer(device_, geometry_, boundary, raySource, pParticle_,
                           dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_,
-                          useRandomSeeds_, calcFlux_, runNumber_++, hitCounter_,
-                          RTInfo_);
+                          useRandomSeeds_, calcFlux_, lambda_, runNumber_++,
+                          hitCounter_, RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
@@ -80,8 +80,8 @@ public:
   /// It is possible to set a 2D geometry with 3D points.
   /// In this case the last dimension is ignored.
   template <std::size_t Dim>
-  void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
-                   std::vector<std::array<NumericType, Dim>> &normals,
+  void setGeometry(std::vector<std::array<NumericType, Dim>> const &points,
+                   std::vector<std::array<NumericType, Dim>> const &normals,
                    const NumericType gridDelta) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
@@ -94,8 +94,8 @@ public:
   /// Set the ray tracing geometry
   /// Specify the disk radius manually.
   template <std::size_t Dim>
-  void setGeometry(std::vector<std::array<NumericType, Dim>> &points,
-                   std::vector<std::array<NumericType, Dim>> &normals,
+  void setGeometry(std::vector<std::array<NumericType, Dim>> const &points,
+                   std::vector<std::array<NumericType, Dim>> const &normals,
                    const NumericType gridDelta, const NumericType diskRadii) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
@@ -107,7 +107,7 @@ public:
 
   /// Set material ID's for each geometry point.
   /// If not set, all material ID's are default 0.
-  template <typename T> void setMaterialIds(std::vector<T> &materialIds) {
+  template <typename T> void setMaterialIds(std::vector<T> const &materialIds) {
     geometry_.setMaterialIds(materialIds);
   }
 
@@ -151,6 +151,8 @@ public:
     usePrimaryDirection_ = true;
   }
 
+  void setMeanFreePath(const NumericType lambda) { lambda_ = lambda; }
+
   /// Set whether random seeds for the internal random number generators
   /// should be used.
   void setUseRandomSeeds(const bool useRand) { useRandomSeeds_ = useRand; }
@@ -171,13 +173,14 @@ public:
   }
 
   /// Returns the total flux on each disk.
-  std::vector<NumericType> getTotalFlux() const {
+  [[nodiscard]] std::vector<NumericType> getTotalFlux() const {
     return hitCounter_.getValues();
   }
 
   /// Returns the normalized flux on each disk.
-  std::vector<NumericType> getNormalizedFlux(rayNormalizationType normalization,
-                                             bool averageNeighborhood = false) {
+  [[nodiscard]] std::vector<NumericType>
+  getNormalizedFlux(rayNormalizationType normalization,
+                    bool averageNeighborhood = false) {
     auto flux = hitCounter_.getValues();
     normalizeFlux(flux, normalization);
     if (averageNeighborhood) {
@@ -242,27 +245,35 @@ public:
   }
 
   /// Returns the total number of hits for each geometry point.
-  std::vector<size_t> getHitCounts() const { return hitCounter_.getCounts(); }
+  [[nodiscard]] std::vector<size_t> getHitCounts() const {
+    return hitCounter_.getCounts();
+  }
 
   /// Returns the relative error of the flux for each geometry point
-  std::vector<NumericType> getRelativeError() {
+  [[nodiscard]] std::vector<NumericType> getRelativeError() {
     return hitCounter_.getRelativeError();
   }
 
   /// Returns the disk area for each geometry point
-  std::vector<NumericType> getDiskAreas() { return hitCounter_.getDiskAreas(); }
+  [[nodiscard]] std::vector<NumericType> getDiskAreas() {
+    return hitCounter_.getDiskAreas();
+  }
 
-  rayTracingData<NumericType> &getLocalData() { return localData_; }
+  [[nodiscard]] rayTracingData<NumericType> &getLocalData() {
+    return localData_;
+  }
 
-  rayTracingData<NumericType> *getGlobalData() { return pGlobalData_; }
+  [[nodiscard]] rayTracingData<NumericType> *getGlobalData() {
+    return pGlobalData_;
+  }
 
   void setGlobalData(rayTracingData<NumericType> &data) {
     pGlobalData_ = &data;
   }
 
-  rayTraceInfo getRayTraceInfo() { return RTInfo_; }
+  [[nodiscard]] rayTraceInfo getRayTraceInfo() { return RTInfo_; }
 
-  rayDataLog<NumericType> &getDataLog() { return dataLog_; }
+  [[nodiscard]] rayDataLog<NumericType> &getDataLog() { return dataLog_; }
 
 private:
   NumericType getSourceArea() {
@@ -374,6 +385,7 @@ private:
   size_t runNumber_ = 0;
   bool calcFlux_ = true;
   bool checkError_ = true;
+  NumericType lambda_ = -1.;
   rayHitCounter<NumericType> hitCounter_;
   rayTracingData<NumericType> localData_;
   rayTracingData<NumericType> *pGlobalData_ = nullptr;

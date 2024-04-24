@@ -49,7 +49,7 @@ int main() {
   rayDataLog<NumericType> log;
   rayTraceInfo info;
   auto tracer = rayTraceKernel(device, geometry, boundary, raySource, cp, log,
-                               1, 0, false, true, 0, hitCounter, info);
+                               1, 0, false, true, 0.f, 0, hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();

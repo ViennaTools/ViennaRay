@@ -69,6 +69,7 @@ struct rayTraceInfo {
   size_t totalDiskHits;
   size_t nonGeometryHits;
   size_t geometryHits;
+  size_t particleHits;
   double time;
   bool warning = false;
   bool error = false;
@@ -85,40 +86,41 @@ constexpr double DiskFactor = 0.5 * (D == 3 ? 1.7320508 : 1.41421356237) *
 
 /* ------------- Vector operation functions ------------- */
 template <typename NumericType>
-rayTriple<NumericType> Sum(const rayTriple<NumericType> &pVecA,
-                           const rayTriple<NumericType> &pVecB) {
+[[nodiscard]] rayTriple<NumericType> Sum(const rayTriple<NumericType> &pVecA,
+                                         const rayTriple<NumericType> &pVecB) {
   return {pVecA[0] + pVecB[0], pVecA[1] + pVecB[1], pVecA[2] + pVecB[2]};
 }
 
 template <typename NumericType>
-rayTriple<NumericType> Sum(const rayTriple<NumericType> &pVecA,
-                           const rayTriple<NumericType> &pVecB,
-                           const rayTriple<NumericType> &pT) {
+[[nodiscard]] rayTriple<NumericType> Sum(const rayTriple<NumericType> &pVecA,
+                                         const rayTriple<NumericType> &pVecB,
+                                         const rayTriple<NumericType> &pT) {
   return {pVecA[0] + pVecB[0] + pT[0], pVecA[1] + pVecB[1] + pT[1],
           pVecA[2] + pVecB[2] + pT[2]};
 }
 
 template <typename NumericType>
-rayTriple<NumericType> Diff(const rayTriple<NumericType> &pVecA,
-                            const rayTriple<NumericType> &pVecB) {
+[[nodiscard]] rayTriple<NumericType> Diff(const rayTriple<NumericType> &pVecA,
+                                          const rayTriple<NumericType> &pVecB) {
   return {pVecA[0] - pVecB[0], pVecA[1] - pVecB[1], pVecA[2] - pVecB[2]};
 }
 
 template <typename NumericType>
-rayPair<NumericType> Diff(const rayPair<NumericType> &pVecA,
-                          const rayPair<NumericType> &pVecB) {
+[[nodiscard]] rayPair<NumericType> Diff(const rayPair<NumericType> &pVecA,
+                                        const rayPair<NumericType> &pVecB) {
   return {pVecA[0] - pVecB[0], pVecA[1] - pVecB[1]};
 }
 
 template <typename NumericType>
-NumericType DotProduct(const rayTriple<NumericType> &pVecA,
-                       const rayTriple<NumericType> &pVecB) {
+[[nodiscard]] NumericType DotProduct(const rayTriple<NumericType> &pVecA,
+                                     const rayTriple<NumericType> &pVecB) {
   return pVecA[0] * pVecB[0] + pVecA[1] * pVecB[1] + pVecA[2] * pVecB[2];
 }
 
 template <typename NumericType>
-rayTriple<NumericType> CrossProduct(const rayTriple<NumericType> &pVecA,
-                                    const rayTriple<NumericType> &pVecB) {
+[[nodiscard]] rayTriple<NumericType>
+CrossProduct(const rayTriple<NumericType> &pVecA,
+             const rayTriple<NumericType> &pVecB) {
   rayTriple<NumericType> rr;
   rr[0] = pVecA[1] * pVecB[2] - pVecA[2] * pVecB[1];
   rr[1] = pVecA[2] * pVecB[0] - pVecA[0] * pVecB[2];
@@ -127,7 +129,7 @@ rayTriple<NumericType> CrossProduct(const rayTriple<NumericType> &pVecA,
 }
 
 template <typename NumericType, size_t D>
-NumericType Norm(const std::array<NumericType, D> &vec) {
+[[nodiscard]] NumericType Norm(const std::array<NumericType, D> &vec) {
   NumericType norm = 0;
   std::for_each(vec.begin(), vec.end(),
                 [&norm](NumericType entry) { norm += entry * entry; });
@@ -144,7 +146,8 @@ void Normalize(std::array<NumericType, D> &vec) {
 }
 
 template <typename NumericType, size_t D>
-std::array<NumericType, D> Normalize(const std::array<NumericType, D> &vec) {
+[[nodiscard]] std::array<NumericType, D>
+Normalize(const std::array<NumericType, D> &vec) {
   std::array<NumericType, D> normedVec = vec;
   auto norm = 1. / Norm(normedVec);
   if (norm == 1.)
@@ -156,33 +159,32 @@ std::array<NumericType, D> Normalize(const std::array<NumericType, D> &vec) {
 }
 
 template <typename NumericType>
-rayTriple<NumericType> Inv(const rayTriple<NumericType> &vec) {
+[[nodiscard]] rayTriple<NumericType> Inv(const rayTriple<NumericType> &vec) {
   return {-vec[0], -vec[1], -vec[2]};
 }
 
 template <typename NumericType>
-rayTriple<NumericType> Scale(const NumericType pF, rayTriple<NumericType> &pT) {
+void Scale(const NumericType pF, rayTriple<NumericType> &pT) {
   pT[0] *= pF;
   pT[1] *= pF;
   pT[2] *= pF;
-  return pT;
 }
 
 template <typename NumericType>
-rayTriple<NumericType> Scale(const NumericType pF,
-                             const rayTriple<NumericType> &pT) {
+[[nodiscard]] rayTriple<NumericType> Scale(const NumericType pF,
+                                           const rayTriple<NumericType> &pT) {
   return {pF * pT[0], pF * pT[1], pF * pT[2]};
 }
 
 template <typename NumericType, size_t D>
-NumericType Distance(const std::array<NumericType, D> &pVecA,
-                     const std::array<NumericType, D> &pVecB) {
+[[nodiscard]] NumericType Distance(const std::array<NumericType, D> &pVecA,
+                                   const std::array<NumericType, D> &pVecB) {
   auto diff = Diff(pVecA, pVecB);
   return Norm(diff);
 }
 
 template <typename NumericType>
-rayTriple<NumericType>
+[[nodiscard]] rayTriple<NumericType>
 ComputeNormal(const rayTriple<rayTriple<NumericType>> &planeCoords) {
   auto uu = Diff(planeCoords[1], planeCoords[0]);
   auto vv = Diff(planeCoords[2], planeCoords[0]);
@@ -240,7 +242,8 @@ void adjustBoundingBox(rayPair<rayTriple<NumericType>> &bdBox,
   }
 }
 
-std::array<int, 5> getTraceSettings(rayTraceDirection sourceDir) {
+[[nodiscard]] inline std::array<int, 5>
+getTraceSettings(rayTraceDirection sourceDir) {
   // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source,
   // posNeg dir
   std::array<int, 5> set{0, 0, 0, 0, 0};
@@ -300,7 +303,8 @@ std::array<int, 5> getTraceSettings(rayTraceDirection sourceDir) {
 /* ------------------------------------------------------ */
 
 template <typename NumericType>
-static rayTriple<NumericType> pickRandomPointOnUnitSphere(rayRNG &RNG) {
+[[nodiscard]] static rayTriple<NumericType>
+pickRandomPointOnUnitSphere(rayRNG &RNG) {
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType x, y, z, x2, y2, x2py2;
   do {
@@ -322,7 +326,7 @@ static rayTriple<NumericType> pickRandomPointOnUnitSphere(rayRNG &RNG) {
 // This function is deterministic, i.e., for one input it will return always
 // the same result.
 template <typename NumericType>
-rayTriple<rayTriple<NumericType>>
+[[nodiscard]] rayTriple<rayTriple<NumericType>>
 getOrthonormalBasis(const rayTriple<NumericType> &vec) {
   rayTriple<rayTriple<NumericType>> rr;
   rr[0] = vec;
@@ -452,7 +456,7 @@ void writeVTK(std::string filename,
 /* -------------------------------------------------------------- */
 
 template <typename NumericType, int D>
-std::vector<rayTriple<NumericType>>
+[[nodiscard]] std::vector<rayTriple<NumericType>>
 createSourceGrid(const rayPair<rayTriple<NumericType>> &pBdBox,
                  const size_t pNumPoints, const NumericType pGridDelta,
                  const std::array<int, 5> &pTraceSettings) {

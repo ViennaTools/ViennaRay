@@ -18,16 +18,16 @@ public:
                  std::unique_ptr<rayAbstractParticle<NumericType>> &particle,
                  rayDataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
                  const size_t numRaysFixed, const bool useRandomSeed,
-                 const bool calcFlux, const size_t runNumber,
-                 rayHitCounter<NumericType> &hitCounter,
+                 const bool calcFlux, const NumericType lambda,
+                 const size_t runNumber, rayHitCounter<NumericType> &hitCounter,
                  rayTraceInfo &traceInfo)
       : device_(device), geometry_(rtcGeometry), boundary_(rtcBoundary),
         source_(source), pParticle_(particle->clone()),
         numRays_(numRaysFixed == 0 ? source.getNumPoints() * numRaysPerPoint
                                    : numRaysFixed),
         useRandomSeeds_(useRandomSeed), runNumber_(runNumber),
-        calcFlux_(calcFlux), hitCounter_(hitCounter), traceInfo_(traceInfo),
-        dataLog_(dataLog) {
+        calcFlux_(calcFlux), lambda_(lambda), hitCounter_(hitCounter),
+        traceInfo_(traceInfo), dataLog_(dataLog) {
     assert(rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
@@ -55,6 +55,7 @@ public:
     size_t geohitc = 0;
     size_t nongeohitc = 0;
     size_t totaltraces = 0;
+    size_t particlehitc = 0;
 
     // thread local data storage
     const int numThreads = omp_get_max_threads();
@@ -85,7 +86,7 @@ public:
 
     auto time = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
-#pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces)           \
+#pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces, particlehitc)  \
     shared(threadLocalData, threadLocalHitCounter)
     {
       rtcJoinCommitScene(rtcScene);
@@ -161,6 +162,50 @@ public:
             ++nongeohitc;
             reflect = false;
             break;
+          }
+
+          if (lambda_ > 0.) {
+            std::uniform_real_distribution<NumericType> dist(0., 1.);
+            NumericType scatterProbability =
+                1 - std::exp(-rayHit.ray.tfar / lambda_);
+            auto rndm = dist(RngState);
+            if (rndm < scatterProbability) {
+
+              const auto &ray = rayHit.ray;
+              const rayInternal::rtcNumericType xx =
+                  ray.org_x + ray.dir_x * ray.tfar * rndm;
+              const rayInternal::rtcNumericType yy =
+                  ray.org_y + ray.dir_y * ray.tfar * rndm;
+              const rayInternal::rtcNumericType zz =
+                  ray.org_z + ray.dir_z * ray.tfar * rndm;
+
+              std::array<rayInternal::rtcNumericType, 3> direction{0, 0, 0};
+              for (int i = 0; i < D; ++i) {
+                direction[i] = 2.f * dist(RngState) - 1.f;
+              }
+              rayInternal::Normalize(direction);
+
+              // Update ray direction and origin
+#ifdef ARCH_X86
+              reinterpret_cast<__m128 &>(rayHit.ray) =
+                  _mm_set_ps(1e-4f, zz, yy, xx);
+              reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
+                  _mm_set_ps(0.0f, direction[2], direction[1], direction[0]);
+#else
+              rayHit.ray.org_x = xx;
+              rayHit.ray.org_y = yy;
+              rayHit.ray.org_z = zz;
+              rayHit.ray.tnear = 1e-4f;
+
+              rayHit.ray.dir_x = direction[0];
+              rayHit.ray.dir_y = direction[1];
+              rayHit.ray.dir_z = direction[2];
+              rayHit.ray.time = 0.0f;
+#endif
+              particlehitc++;
+              reflect = true;
+              continue;
+            }
           }
 
           /* -------- Boundary hit -------- */
@@ -393,6 +438,7 @@ public:
     traceInfo_.totalDiskHits = hitCounter_.getTotalCounts();
     traceInfo_.nonGeometryHits = nongeohitc;
     traceInfo_.geometryHits = geohitc;
+    traceInfo_.particleHits = particlehitc;
     traceInfo_.time = (endTime - time) * 1e-3;
 
     rtcReleaseScene(rtcScene);
@@ -587,14 +633,19 @@ private:
 
 private:
   RTCDevice &device_;
+
   rayGeometry<NumericType, D> &geometry_;
   rayBoundary<NumericType, D> const &boundary_;
   raySource<SourceType> const &source_;
+
   std::unique_ptr<rayAbstractParticle<NumericType>> const pParticle_ = nullptr;
+
   const long long numRays_;
   const bool useRandomSeeds_;
   const size_t runNumber_;
   const bool calcFlux_;
+  const NumericType lambda_;
+
   rayTracingData<NumericType> *pLocalData_ = nullptr;
   rayTracingData<NumericType> const *pGlobalData_ = nullptr;
   rayHitCounter<NumericType> &hitCounter_;

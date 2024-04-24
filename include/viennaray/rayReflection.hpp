@@ -5,7 +5,7 @@
 
 // Specular reflection
 template <typename NumericType, int D = 3>
-static rayTriple<NumericType>
+[[nodiscard]] rayTriple<NumericType>
 rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
                       const rayTriple<NumericType> &geomNormal) {
   assert(rayInternal::IsNormalized(geomNormal) &&
@@ -26,7 +26,7 @@ rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
 
 // Diffuse reflection
 template <typename NumericType, int D>
-static rayTriple<NumericType>
+[[nodiscard]] rayTriple<NumericType>
 rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
   assert(rayInternal::IsNormalized(geomNormal) &&
          "rayReflectionDiffuse: Surface normal is not normalized");
@@ -48,7 +48,7 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
 
 // Coned specular reflection
 template <typename NumericType, int D>
-static rayTriple<NumericType> rayReflectionConedCosine(
+[[nodiscard]] rayTriple<NumericType> rayReflectionConedCosine(
     const rayTriple<NumericType> &rayDir,
     const rayTriple<NumericType> &geomNormal, rayRNG &RNG,
     const NumericType maxConeAngle /*max opening angle of the cone*/) {
@@ -104,7 +104,7 @@ namespace rayInternal {
 
 // Coned cosine reflection (deprecated)
 template <typename NumericType, int D>
-static rayTriple<NumericType> rayReflectionConedCosineOld(
+[[nodiscard]] rayTriple<NumericType> rayReflectionConedCosineOld(
     NumericType avgReflAngle, const rayTriple<NumericType> &rayDir,
     const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
 
@@ -193,7 +193,7 @@ static rayTriple<NumericType> rayReflectionConedCosineOld(
 }
 
 template <typename NumericType, int D>
-static rayTriple<NumericType>
+[[nodiscard]] rayTriple<NumericType>
 rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
                              const rayTriple<NumericType> &geomNormal,
                              rayRNG &RNG, NumericType &minAvgConeAngle = 0.) {

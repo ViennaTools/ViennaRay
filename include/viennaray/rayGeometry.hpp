@@ -8,9 +8,9 @@ template <typename NumericType, int D> class rayGeometry {
 public:
   template <size_t Dim>
   void initGeometry(RTCDevice &device,
-                    std::vector<std::array<NumericType, Dim>> &points,
-                    std::vector<std::array<NumericType, Dim>> &normals,
-                    NumericType discRadii) {
+                    std::vector<std::array<NumericType, Dim>> const &points,
+                    std::vector<std::array<NumericType, Dim>> const &normals,
+                    NumericType const discRadii) {
     static_assert(!(D == 3 && Dim == 2) &&
                   "Setting 2D geometry in 3D trace object");
 
@@ -98,7 +98,7 @@ public:
   }
 
   template <typename MatIdType>
-  void setMaterialIds(std::vector<MatIdType> &pMaterialIds) {
+  void setMaterialIds(std::vector<MatIdType> const &pMaterialIds) {
     assert(pMaterialIds.size() == numPoints_ &&
            "rayGeometry: Material IDs size mismatch");
     materialIds_.clear();
@@ -108,53 +108,59 @@ public:
     }
   }
 
-  rayPair<rayTriple<NumericType>> getBoundingBox() const {
+  [[nodiscard]] rayPair<rayTriple<NumericType>> getBoundingBox() const {
     return {minCoords_, maxCoords_};
   }
 
-  rayTriple<NumericType> getPoint(const unsigned int primID) const {
+  [[nodiscard]] rayTriple<NumericType>
+  getPoint(const unsigned int primID) const {
     assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
     auto const &pnt = pPointBuffer_[primID];
     return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
   }
 
-  std::vector<unsigned int> const &
+  [[nodiscard]] std::vector<unsigned int> const &
   getNeighborIndicies(const unsigned int idx) const {
     assert(idx < numPoints_ && "rayGeometry: Index out of bounds");
     return pointNeighborhood_[idx];
   }
 
-  size_t getNumPoints() const { return numPoints_; }
+  [[nodiscard]] size_t getNumPoints() const { return numPoints_; }
 
-  NumericType getDiscRadius() const { return discRadii_; }
+  [[nodiscard]] NumericType getDiscRadius() const { return discRadii_; }
 
-  RTCGeometry const &getRTCGeometry() const { return pRtcGeometry_; }
+  [[nodiscard]] RTCGeometry const &getRTCGeometry() const {
+    return pRtcGeometry_;
+  }
 
-  rayTriple<NumericType> getPrimNormal(const unsigned int primID) const {
+  [[nodiscard]] rayTriple<NumericType>
+  getPrimNormal(const unsigned int primID) const {
     assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
     auto const &normal = pNormalVecBuffer_[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,
             (NumericType)normal.zz};
   }
 
-  rayQuadruple<rayInternal::rtcNumericType> &getPrimRef(unsigned int primID) {
+  [[nodiscard]] rayQuadruple<rayInternal::rtcNumericType> &
+  getPrimRef(unsigned int primID) {
     assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
     return *reinterpret_cast<rayQuadruple<rayInternal::rtcNumericType> *>(
         &pPointBuffer_[primID]);
   }
 
-  rayTriple<rayInternal::rtcNumericType> &getNormalRef(unsigned int primID) {
+  [[nodiscard]] rayTriple<rayInternal::rtcNumericType> &
+  getNormalRef(unsigned int primID) {
     assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
     return *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
         &pNormalVecBuffer_[primID]);
   }
 
-  int getMaterialId(const unsigned int primID) const {
+  [[nodiscard]] int getMaterialId(const unsigned int primID) const {
     assert(primID < numPoints_ && "rayGeometry Prim ID out of bounds");
     return materialIds_[primID];
   }
 
-  bool checkGeometryEmpty() const {
+  [[nodiscard]] bool checkGeometryEmpty() const {
     if (pPointBuffer_ == nullptr || pNormalVecBuffer_ == nullptr ||
         pRtcGeometry_ == nullptr) {
       return true;
@@ -179,8 +185,8 @@ public:
 
 private:
   template <size_t Dim>
-  void
-  initPointNeighborhood(std::vector<std::array<NumericType, Dim>> &points) {
+  void initPointNeighborhood(
+      std::vector<std::array<NumericType, Dim>> const &points) {
     pointNeighborhood_.clear();
     pointNeighborhood_.resize(numPoints_, std::vector<unsigned int>{});
 
