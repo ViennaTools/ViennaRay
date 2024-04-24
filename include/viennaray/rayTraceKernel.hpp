@@ -107,9 +107,6 @@ public:
       auto &myHitCounter = threadLocalHitCounter[threadID];
       auto &myDataLog = threadLocalDataLog[threadID];
 
-      // probabilistic weight
-      const NumericType initialRayWeight = 1.;
-
 #if VIENNARAY_EMBREE_VERSION < 4
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
@@ -125,6 +122,9 @@ public:
 
         particle->initNew(RngState);
         particle->logData(myDataLog);
+
+        // probabilistic weight
+        const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
 
         auto originAndDirection =
