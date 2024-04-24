@@ -244,8 +244,8 @@ void adjustBoundingBox(rayPair<rayTriple<NumericType>> &bdBox,
 
 [[nodiscard]] inline std::array<int, 5>
 getTraceSettings(rayTraceDirection sourceDir) {
-  // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox source,
-  // posNeg dir
+  // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox
+  // source, posNeg dir
   std::array<int, 5> set{0, 0, 0, 0, 0};
   switch (sourceDir) {
   case rayTraceDirection::POS_X: {
@@ -300,6 +300,53 @@ getTraceSettings(rayTraceDirection sourceDir) {
 
   return set;
 }
+
+template <typename T1, typename T2>
+void fillRay(RTCRay &ray, const rayTriple<T1> &origin,
+             const rayTriple<T2> &direction, const float tnear = 1e-4f,
+             const float time = 0.0f) {
+#ifdef ARCH_X86
+  reinterpret_cast<__m128 &>(ray) =
+      _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
+
+  reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(
+      time, (float)direction[2], (float)direction[1], (float)direction[0]);
+#else
+  ray.org_x = (float)origin[0];
+  ray.org_y = (float)origin[1];
+  ray.org_z = (float)origin[2];
+  ray.tnear = tnear;
+
+  ray.dir_x = (float)direction[0];
+  ray.dir_y = (float)direction[1];
+  ray.dir_z = (float)direction[2];
+  ray.time = time;
+#endif
+}
+
+template <>
+void fillRay<float>(RTCRay &ray, const rayTriple<float> &origin,
+                    const rayTriple<float> &direction, const float tnear,
+                    const float time) {
+#ifdef ARCH_X86
+  reinterpret_cast<__m128 &>(ray) =
+      _mm_set_ps(tnear, origin[2], origin[1], origin[0]);
+
+  reinterpret_cast<__m128 &>(ray.dir_x) =
+      _mm_set_ps(time, direction[2], direction[1], direction[0]);
+#else
+  ray.org_x = origin[0];
+  ray.org_y = origin[1];
+  ray.org_z = origin[2];
+  ray.tnear = tnear;
+
+  ray.dir_x = direction[0];
+  ray.dir_y = direction[1];
+  ray.dir_z = direction[2];
+  ray.time = time;
+#endif
+}
+
 /* ------------------------------------------------------ */
 
 template <typename NumericType>
@@ -336,8 +383,8 @@ getOrthonormalBasis(const rayTriple<NumericType> &vec) {
   rayTriple<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
   rayTriple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
   rayTriple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
-  // We choose the candidate which maximizes the sum of its components, because
-  // we want to avoid numeric errors and that the result is (0, 0, 0).
+  // We choose the candidate which maximizes the sum of its components,
+  // because we want to avoid numeric errors and that the result is (0, 0, 0).
   std::array<rayTriple<NumericType>, 3> cc = {candidate0, candidate1,
                                               candidate2};
   auto sumFun = [](const rayTriple<NumericType> &oo) {

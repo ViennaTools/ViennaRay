@@ -34,7 +34,9 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < numGridPoints; ++i) {
-      source.fillRay(rayhit.ray, i, rngstate);
+      auto originAndDirection = source.getOriginAndDirection(i, rngstate);
+      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+                           originAndDirection[1]);
 
       RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
