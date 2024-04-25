@@ -39,7 +39,7 @@ int main() {
   auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
                                               boundaryConds, traceSettings);
   std::array<rayTriple<NumericType>, 3> orthoBasis;
-  auto raySource = raySourceRandom<NumericType, D>(
+  auto raySource = std::make_unique<raySourceRandom<NumericType, D>>(
       boundingBox, 1., traceSettings, geometry.getNumPoints(), false,
       orthoBasis);
 
@@ -48,8 +48,9 @@ int main() {
 
   rayDataLog<NumericType> log;
   rayTraceInfo info;
-  auto tracer = rayTraceKernel(device, geometry, boundary, raySource, cp, log,
-                               1, 0, false, true, 0.f, 0, hitCounter, info);
+  rayTraceKernel<NumericType, D> tracer(device, geometry, boundary,
+                                        std::move(raySource), cp, log, 1, 0,
+                                        false, true, 0, hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();

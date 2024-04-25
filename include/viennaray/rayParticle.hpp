@@ -54,6 +54,10 @@ public:
   /// Set the power of the cosine source distribution for this particle.
   virtual NumericType getSourceDistributionPower() const = 0;
 
+  // Set the mean free path of the particle. If the mean free path is negative,
+  // the mean free path is infinite.
+  virtual NumericType getMeanFreePath() const = 0;
+
   /// Set the number of required data vectors for this particle to
   /// collect data. If an empty vector is returned, no local data will be
   /// provided
@@ -92,6 +96,7 @@ public:
                    rayRNG &Rng) override { // collect data for this hit
   }
   virtual NumericType getSourceDistributionPower() const override { return 1.; }
+  virtual NumericType getMeanFreePath() const override { return -1.; }
   virtual std::vector<std::string> getLocalDataLabels() const override {
     return {};
   }

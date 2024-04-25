@@ -2,6 +2,21 @@
 #include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
 
+template <typename NumericType, int D>
+class MySource : public raySource<NumericType, D> {
+public:
+  MySource() {}
+
+  rayPair<std::array<NumericType, D>>
+  getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
+    std::array<NumericType, D> origin = {0., 0., 0.};
+    std::array<NumericType, D> direction = {0., 0., 1.};
+    return {origin, direction};
+  }
+
+  size_t getNumPoints() const override { return 0; }
+};
+
 int main() {
   constexpr int D = 3;
   using NumericType = float;
@@ -29,6 +44,11 @@ int main() {
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setUseRandomSeeds(false);
   rayTracer.setMaterialIds(matIds);
+
+  auto mySource = std::make_unique<MySource<NumericType, D>>();
+  rayTracer.setSource(std::move(mySource));
+  rayTracer.resetSource();
+
   rayTracer.apply();
 
   auto info = rayTracer.getRayTraceInfo();
