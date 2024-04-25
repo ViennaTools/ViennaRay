@@ -17,16 +17,16 @@ public:
                  std::unique_ptr<rayAbstractParticle<NumericType>> &particle,
                  rayDataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
                  const size_t numRaysFixed, const bool useRandomSeed,
-                 const bool calcFlux, const NumericType lambda,
-                 const size_t runNumber, rayHitCounter<NumericType> &hitCounter,
+                 const bool calcFlux, const size_t runNumber,
+                 rayHitCounter<NumericType> &hitCounter,
                  rayTraceInfo &traceInfo)
       : device_(device), geometry_(geometry), boundary_(boundary),
         pSource_(std::move(source)), pParticle_(particle->clone()),
         numRays_(numRaysFixed == 0 ? pSource_->getNumPoints() * numRaysPerPoint
                                    : numRaysFixed),
         useRandomSeeds_(useRandomSeed), runNumber_(runNumber),
-        calcFlux_(calcFlux), lambda_(lambda), hitCounter_(hitCounter),
-        traceInfo_(traceInfo), dataLog_(dataLog) {
+        calcFlux_(calcFlux), hitCounter_(hitCounter), traceInfo_(traceInfo),
+        dataLog_(dataLog) {
     assert(rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
@@ -41,13 +41,12 @@ public:
     // Selecting higher build quality results in better rendering performance
     // but slower scene commit times. The default build quality for a scene is
     // RTC_BUILD_QUALITY_MEDIUM.
-    auto bbquality = RTC_BUILD_QUALITY_HIGH;
-    rtcSetSceneBuildQuality(rtcScene, bbquality);
+    rtcSetSceneBuildQuality(rtcScene, RTC_BUILD_QUALITY_HIGH);
     auto rtcGeometry = geometry_.getRTCGeometry();
     auto rtcBoundary = boundary_.getRTCGeometry();
 
-    auto boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
-    auto geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
+    auto const boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
+    auto const geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
     assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
            "Embree device error");
 
@@ -55,6 +54,7 @@ public:
     size_t nongeohitc = 0;
     size_t totaltraces = 0;
     size_t particlehitc = 0;
+    auto const lambda = pParticle_->getMeanFreePath();
 
     // thread local data storage
     const int numThreads = omp_get_max_threads();
@@ -166,10 +166,10 @@ public:
             break;
           }
 
-          if (lambda_ > 0.) {
+          if (lambda > 0.) {
             std::uniform_real_distribution<NumericType> dist(0., 1.);
             NumericType scatterProbability =
-                1 - std::exp(-rayHit.ray.tfar / lambda_);
+                1 - std::exp(-rayHit.ray.tfar / lambda);
             auto rndm = dist(RngState);
             if (rndm < scatterProbability) {
 
@@ -607,7 +607,6 @@ private:
   const bool useRandomSeeds_;
   const size_t runNumber_;
   const bool calcFlux_;
-  const NumericType lambda_;
 
   rayTracingData<NumericType> *pLocalData_ = nullptr;
   rayTracingData<NumericType> const *pGlobalData_ = nullptr;

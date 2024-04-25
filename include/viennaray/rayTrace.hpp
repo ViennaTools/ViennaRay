@@ -56,7 +56,7 @@ public:
     rayTraceKernel tracer(device_, geometry_, boundary, std::move(pSource_),
                           pParticle_, dataLog_, numberOfRaysPerPoint_,
                           numberOfRaysFixed_, useRandomSeeds_, calcFlux_,
-                          lambda_, runNumber_++, hitCounter_, RTInfo_);
+                          runNumber_++, hitCounter_, RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
@@ -161,8 +161,6 @@ public:
     primaryDirection_ = primaryDirection;
     usePrimaryDirection_ = true;
   }
-
-  void setMeanFreePath(const NumericType lambda) { lambda_ = lambda; }
 
   /// Set whether random seeds for the internal random number generators
   /// should be used.
@@ -391,7 +389,6 @@ private:
   size_t numberOfRaysFixed_ = 0;
   NumericType diskRadius_ = 0;
   NumericType gridDelta_ = 0;
-  NumericType lambda_ = -1.;
 
   rayBoundaryCondition boundaryConditions_[D] = {};
   rayTraceDirection sourceDirection_ = rayTraceDirection::POS_Z;

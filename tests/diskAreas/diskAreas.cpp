@@ -50,7 +50,7 @@ int main() {
   rayTraceInfo info;
   rayTraceKernel<NumericType, D> tracer(device, geometry, boundary,
                                         std::move(raySource), cp, log, 1, 0,
-                                        false, true, 0.f, 0, hitCounter, info);
+                                        false, true, 0, hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();
