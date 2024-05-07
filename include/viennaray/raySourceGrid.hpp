@@ -3,7 +3,7 @@
 #include <raySource.hpp>
 
 template <typename NumericType, int D>
-class raySourceGrid : public raySource<NumericType, D> {
+class raySourceGrid : public raySource<NumericType> {
 public:
   raySourceGrid(std::vector<rayTriple<NumericType>> &sourceGrid,
                 NumericType cosinePower,

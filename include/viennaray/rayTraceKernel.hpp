@@ -13,7 +13,7 @@ template <typename NumericType, int D> class rayTraceKernel {
 public:
   rayTraceKernel(RTCDevice &device, rayGeometry<NumericType, D> &geometry,
                  rayBoundary<NumericType, D> &boundary,
-                 std::unique_ptr<raySource<NumericType, D>> source,
+                 std::shared_ptr<raySource<NumericType>> source,
                  std::unique_ptr<rayAbstractParticle<NumericType>> &particle,
                  rayDataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
                  const size_t numRaysFixed, const bool useRandomSeed,
@@ -21,7 +21,7 @@ public:
                  rayHitCounter<NumericType> &hitCounter,
                  rayTraceInfo &traceInfo)
       : device_(device), geometry_(geometry), boundary_(boundary),
-        pSource_(std::move(source)), pParticle_(particle->clone()),
+        pSource_(source), pParticle_(particle->clone()),
         numRays_(numRaysFixed == 0 ? pSource_->getNumPoints() * numRaysPerPoint
                                    : numRaysFixed),
         useRandomSeeds_(useRandomSeed), runNumber_(runNumber),
@@ -85,7 +85,8 @@ public:
 
     auto time = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
-#pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces, particlehitc)  \
+#pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces,           \
+                                   particlehitc)                               \
     shared(threadLocalData, threadLocalHitCounter)
     {
       rtcJoinCommitScene(rtcScene);
@@ -600,7 +601,7 @@ private:
 
   rayGeometry<NumericType, D> &geometry_;
   rayBoundary<NumericType, D> const &boundary_;
-  std::unique_ptr<raySource<NumericType, D>> const pSource_;
+  std::shared_ptr<raySource<NumericType>> const pSource_;
   std::unique_ptr<rayAbstractParticle<NumericType>> const pParticle_;
 
   const long long numRays_;
