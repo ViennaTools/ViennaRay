@@ -73,7 +73,7 @@ public:
             std::enable_if_t<std::is_base_of_v<rayAbstractParticle<NumericType>,
                                                ParticleType>,
                              bool> = true>
-  void setParticleType(std::unique_ptr<ParticleType> &particle) {
+  void setParticleType(std::unique_ptr<ParticleType> const &particle) {
     pParticle_ = particle->clone();
   }
 
