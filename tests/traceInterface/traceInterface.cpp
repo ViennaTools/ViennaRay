@@ -3,7 +3,7 @@
 #include <rayTrace.hpp>
 
 template <typename NumericType, int D>
-class MySource : public raySource<NumericType, D> {
+class MySource : public raySource<NumericType> {
 public:
   MySource() {}
 
@@ -45,8 +45,8 @@ int main() {
   rayTracer.setUseRandomSeeds(false);
   rayTracer.setMaterialIds(matIds);
 
-  auto mySource = std::make_unique<MySource<NumericType, D>>();
-  rayTracer.setSource(std::move(mySource));
+  auto mySource = std::make_shared<MySource<NumericType, D>>();
+  rayTracer.setSource(mySource);
   rayTracer.resetSource();
 
   rayTracer.apply();
