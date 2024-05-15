@@ -39,7 +39,7 @@ public:
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
     if (!pSource_)
-      pSource_ = std::make_unique<raySourceRandom<NumericType, D>>(
+      pSource_ = std::make_shared<raySourceRandom<NumericType, D>>(
           boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
           geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
 
@@ -53,10 +53,10 @@ public:
       }
     }
 
-    rayTraceKernel tracer(device_, geometry_, boundary, std::move(pSource_),
-                          pParticle_, dataLog_, numberOfRaysPerPoint_,
-                          numberOfRaysFixed_, useRandomSeeds_, calcFlux_,
-                          runNumber_++, hitCounter_, RTInfo_);
+    rayTraceKernel tracer(device_, geometry_, boundary, pSource_, pParticle_,
+                          dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_,
+                          useRandomSeeds_, calcFlux_, runNumber_++, hitCounter_,
+                          RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
