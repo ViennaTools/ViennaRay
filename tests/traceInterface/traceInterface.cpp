@@ -15,6 +15,8 @@ public:
   }
 
   size_t getNumPoints() const override { return 0; }
+
+  NumericType getSourceArea() const override { return 1; }
 };
 
 int main() {

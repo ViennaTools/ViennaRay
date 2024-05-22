@@ -10,5 +10,6 @@ public:
   virtual rayPair<rayTriple<NumericType>>
   getOriginAndDirection(const size_t idx, rayRNG &RngState) const = 0;
   virtual size_t getNumPoints() const = 0;
+  virtual NumericType getSourceArea() const = 0;
   virtual NumericType getInitialRayWeight(const size_t idx) const { return 1.; }
 };

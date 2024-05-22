@@ -171,17 +171,17 @@ public:
             std::uniform_real_distribution<NumericType> dist(0., 1.);
             NumericType scatterProbability =
                 1 - std::exp(-rayHit.ray.tfar / lambda);
-            auto rndm = dist(RngState);
-            if (rndm < scatterProbability) {
+            auto rnd = dist(RngState);
+            if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
               std::array<rayInternal::rtcNumericType, 3> origin = {
                   static_cast<rayInternal::rtcNumericType>(ray.org_x +
-                                                           ray.dir_x * rndm),
+                                                           ray.dir_x * rnd),
                   static_cast<rayInternal::rtcNumericType>(ray.org_y +
-                                                           ray.dir_y * rndm),
+                                                           ray.dir_y * rnd),
                   static_cast<rayInternal::rtcNumericType>(ray.org_z +
-                                                           ray.dir_z * rndm)};
+                                                           ray.dir_z * rnd)};
 
               std::array<rayInternal::rtcNumericType, 3> direction{0, 0, 0};
               for (int i = 0; i < D; ++i) {
@@ -435,9 +435,9 @@ private:
     // We want to set the weight of (the reflection of) the ray to the value of
     // renewWeight. In order to stay unbiased we kill the reflection with a
     // probability of (1 - rayWeight / renewWeight).
-    auto rndm = RNG();
+    auto rnd = RNG();
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rndm < (killProbability * RNG.max())) {
+    if (rnd < (killProbability * RNG.max())) {
       // kill the ray
       return false;
     }
@@ -450,6 +450,7 @@ private:
   std::vector<NumericType> computeDiskAreas() const {
     constexpr double eps = 1e-3;
     auto bdBox = geometry_.getBoundingBox();
+    auto boundaryConds = boundary_.getBoundaryConditions();
     const auto numOfPrimitives = geometry_.getNumPoints();
     const auto boundaryDirs = boundary_.getDirs();
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
@@ -461,18 +462,20 @@ private:
       if constexpr (D == 3) {
         areas[idx] = disk[3] * disk[3] * M_PI; // full disk area
 
-        if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
-                eps ||
-            std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
-                eps) {
+        if ((boundaryConds[boundaryDirs[0]] != rayBoundaryCondition::IGNORE) &&
+            (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+                 eps ||
+             std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+                 eps)) {
           // disk intersects boundary in first direction
           areas[idx] /= 2;
         }
 
-        if (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
-                eps ||
-            std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
-                eps) {
+        if ((boundaryConds[boundaryDirs[1]] != rayBoundaryCondition::IGNORE) &&
+            (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
+                 eps ||
+             std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
+                 eps)) {
           // disk intersects boundary in second direction
           areas[idx] /= 2;
         }
@@ -481,8 +484,9 @@ private:
         auto normal = geometry_.getNormalRef(idx);
 
         // test min boundary
-        if (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
-            disk[3]) {
+        if ((boundaryConds[boundaryDirs[0]] != rayBoundaryCondition::IGNORE) &&
+            (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+             disk[3])) {
           NumericType insideTest =
               1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
           if (insideTest > 1e-4) {
@@ -496,8 +500,9 @@ private:
         }
 
         // test max boundary
-        if (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
-            disk[3]) {
+        if ((boundaryConds[boundaryDirs[0]] != rayBoundaryCondition::IGNORE) &&
+            (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+             disk[3])) {
           NumericType insideTest =
               1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
           if (insideTest > 1e-4) {
@@ -590,8 +595,8 @@ private:
     auto rayDirectionC = rayTriple<rayInternal::rtcNumericType>{
         rayDirection[0], rayDirection[1], rayDirection[2]};
     rayInternal::Scale(tt, rayDirectionC);
-    auto hitpoint = rayInternal::Sum(rayOrigin, rayDirectionC);
-    auto distance = rayInternal::Distance(hitpoint, diskOrigin);
+    auto hitPoint = rayInternal::Sum(rayOrigin, rayDirectionC);
+    auto distance = rayInternal::Distance(hitPoint, diskOrigin);
     auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;

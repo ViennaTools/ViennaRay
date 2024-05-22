@@ -220,7 +220,13 @@ public:
     }
 
     case rayNormalizationType::SOURCE: {
-      NumericType sourceArea = getSourceArea();
+      if (!pSource_) {
+        rayMessage::getInstance()
+            .addWarning("No source was specified in for the normalization.")
+            .print();
+        break;
+      }
+      NumericType sourceArea = pSource_->getSourceArea();
       auto numTotalRays = numberOfRaysFixed_ == 0
                               ? flux.size() * numberOfRaysPerPoint_
                               : numberOfRaysFixed_;
@@ -285,32 +291,6 @@ public:
   [[nodiscard]] rayDataLog<NumericType> &getDataLog() { return dataLog_; }
 
 private:
-  NumericType getSourceArea() {
-    const auto boundingBox = geometry_.getBoundingBox();
-    NumericType sourceArea = 0;
-
-    if (sourceDirection_ == rayTraceDirection::NEG_X ||
-        sourceDirection_ == rayTraceDirection::POS_X) {
-      sourceArea = (boundingBox[1][1] - boundingBox[0][1]);
-      if constexpr (D == 3) {
-        sourceArea *= (boundingBox[1][2] - boundingBox[0][2]);
-      }
-    } else if (sourceDirection_ == rayTraceDirection::NEG_Y ||
-               sourceDirection_ == rayTraceDirection::POS_Y) {
-      sourceArea = (boundingBox[1][0] - boundingBox[0][0]);
-      if constexpr (D == 3) {
-        sourceArea *= (boundingBox[1][2] - boundingBox[0][2]);
-      }
-    } else if (sourceDirection_ == rayTraceDirection::NEG_Z ||
-               sourceDirection_ == rayTraceDirection::POS_Z) {
-      assert(D == 3 && "Error in flux normalization");
-      sourceArea = (boundingBox[1][0] - boundingBox[0][0]);
-      sourceArea *= (boundingBox[1][1] - boundingBox[0][1]);
-    }
-
-    return sourceArea;
-  }
-
   void checkRelativeError() {
     auto error = getRelativeError();
     const int numPoints = error.size();
