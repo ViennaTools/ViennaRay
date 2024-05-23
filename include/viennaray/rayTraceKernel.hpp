@@ -9,6 +9,9 @@
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
+#include <vtTimer.hpp>
+#include <vtUtil.hpp>
+
 template <typename NumericType, int D> class rayTraceKernel {
 public:
   rayTraceKernel(RTCDevice &device, rayGeometry<NumericType, D> &geometry,
@@ -17,16 +20,16 @@ public:
                  std::unique_ptr<rayAbstractParticle<NumericType>> &particle,
                  rayDataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
                  const size_t numRaysFixed, const bool useRandomSeed,
-                 const bool calcFlux, const size_t runNumber,
-                 rayHitCounter<NumericType> &hitCounter,
+                 const bool calcFlux, const bool printProgress,
+                 const size_t runNumber, rayHitCounter<NumericType> &hitCounter,
                  rayTraceInfo &traceInfo)
       : device_(device), geometry_(geometry), boundary_(boundary),
         pSource_(source), pParticle_(particle->clone()),
         numRays_(numRaysFixed == 0 ? pSource_->getNumPoints() * numRaysPerPoint
                                    : numRaysFixed),
         useRandomSeeds_(useRandomSeed), runNumber_(runNumber),
-        calcFlux_(calcFlux), hitCounter_(hitCounter), traceInfo_(traceInfo),
-        dataLog_(dataLog) {
+        calcFlux_(calcFlux), printProgress_(printProgress),
+        hitCounter_(hitCounter), traceInfo_(traceInfo), dataLog_(dataLog) {
     assert(rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
@@ -85,7 +88,8 @@ public:
       }
     }
 
-    // auto time = rayInternal::timeStampNow<std::chrono::milliseconds>();
+    Timer timer;
+    timer.start();
 
 #pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces,           \
                                    particlehitc)                               \
@@ -115,8 +119,6 @@ public:
       rtcInitIntersectContext(&rtcContext);
 #endif
 
-      [[maybe_unused]] size_t progressCount = 0;
-
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < numRays_; ++idx) {
         // particle specific RNG seed
@@ -139,9 +141,9 @@ public:
         rayHit.ray.mask = -1;
 #endif
 
-#ifdef VIENNARAY_PRINT_PROGRESS
-        printProgress(progressCount);
-#endif
+        if (printProgress_ && threadID == 0) {
+          ProgressBar(idx, numRays_);
+        }
 
         bool reflect = false;
         bool hitFromBack = false;
@@ -177,7 +179,7 @@ public:
             if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
-              std::array<rayInternal::rtcNumericType, 3> origin = {
+              Triple<rayInternal::rtcNumericType> origin = {
                   static_cast<rayInternal::rtcNumericType>(ray.org_x +
                                                            ray.dir_x * rnd),
                   static_cast<rayInternal::rtcNumericType>(ray.org_y +
@@ -185,7 +187,7 @@ public:
                   static_cast<rayInternal::rtcNumericType>(ray.org_z +
                                                            ray.dir_z * rnd)};
 
-              std::array<rayInternal::rtcNumericType, 3> direction{0, 0, 0};
+              Triple<rayInternal::rtcNumericType> direction{0, 0, 0};
               for (int i = 0; i < D; ++i) {
                 direction[i] = 2.f * dist(RngState) - 1.f;
               }
@@ -208,7 +210,7 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const std::array<rayInternal::rtcNumericType, 3> hitPoint = {
+          const Triple<rayInternal::rtcNumericType> hitPoint = {
               ray.org_x + ray.dir_x * ray.tfar,
               ray.org_y + ray.dir_y * ray.tfar,
               ray.org_z + ray.dir_z * ray.tfar};
@@ -332,7 +334,7 @@ public:
       myHitCounter.setDiskAreas(diskAreas);
     } // end parallel section
 
-    // auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
+    timer.finish();
 
     // merge hit counters and  data logs
     for (int i = 0; i < numThreads; ++i) {
@@ -411,7 +413,7 @@ public:
     traceInfo_.nonGeometryHits = nongeohitc;
     traceInfo_.geometryHits = geohitc;
     traceInfo_.particleHits = particlehitc;
-    traceInfo_.time = 0.; // (endTime - time) * 1e-3;
+    traceInfo_.time = timer.currentDuration * 1e-9;
 
     rtcReleaseScene(rtcScene);
   }
@@ -522,40 +524,6 @@ private:
     return areas;
   }
 
-  [[maybe_unused]] void printProgress(size_t &progressCount) const {
-    if (omp_get_thread_num() != 0) {
-      return;
-    }
-    constexpr auto barLength = 30;
-    constexpr auto barStartSymbol = '[';
-    constexpr auto fillSymbol = '#';
-    constexpr auto emptySymbol = '-';
-    constexpr auto barEndSymbol = ']';
-    constexpr auto percentageStringFormatLength = 3; // 3 digits
-    if (progressCount % (int)std::ceil((NumericType)numRays_ /
-                                       omp_get_num_threads() / barLength) ==
-        0) {
-      auto fillLength =
-          (int)std::ceil(progressCount / ((NumericType)numRays_ /
-                                          omp_get_num_threads() / barLength));
-      auto percentageString = std::to_string((fillLength * 100) / barLength);
-      percentageString =
-          std::string(percentageStringFormatLength - percentageString.length(),
-                      ' ') +
-          percentageString + "%";
-      auto bar = "" + std::string(1, barStartSymbol) +
-                 std::string(fillLength, fillSymbol) +
-                 std::string(std::max(0, (int)barLength - (int)fillLength),
-                             emptySymbol) +
-                 std::string(1, barEndSymbol) + " " + percentageString;
-      std::cerr << "\r" << bar;
-      if (fillLength >= barLength) {
-        std::cerr << std::endl;
-      }
-    }
-    progressCount += 1;
-  }
-
   bool
   checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
                          rayInternal::rtcNumericType &impactDistance) const {
@@ -617,6 +585,7 @@ private:
   const bool useRandomSeeds_;
   const size_t runNumber_;
   const bool calcFlux_;
+  const bool printProgress_;
 
   rayTracingData<NumericType> *pLocalData_ = nullptr;
   rayTracingData<NumericType> const *pGlobalData_ = nullptr;

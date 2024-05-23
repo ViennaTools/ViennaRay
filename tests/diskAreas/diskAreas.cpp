@@ -48,9 +48,9 @@ int main() {
 
   rayDataLog<NumericType> log;
   rayTraceInfo info;
-  rayTraceKernel<NumericType, D> tracer(device, geometry, boundary,
-                                        std::move(raySource), cp, log, 1, 0,
-                                        false, true, 0, hitCounter, info);
+  rayTraceKernel<NumericType, D> tracer(
+      device, geometry, boundary, std::move(raySource), cp, log, 1, 0, false,
+      true, false, 0, hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();

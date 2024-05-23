@@ -55,8 +55,8 @@ public:
 
     rayTraceKernel tracer(device_, geometry_, boundary, pSource_, pParticle_,
                           dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_,
-                          useRandomSeeds_, calcFlux_, runNumber_++, hitCounter_,
-                          RTInfo_);
+                          useRandomSeeds_, calcFlux_, printProgress_,
+                          runNumber_++, hitCounter_, RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
@@ -131,6 +131,10 @@ public:
 
   /// Reset the source to the default random source.
   void resetSource() { pSource_.reset(); }
+
+  void enableProgressBar() { printProgress_ = true; }
+
+  void disableProgressBar() { printProgress_ = false; }
 
   /// Set the number of rays per geometry point.
   /// The total number of rays, that are traced, is the set number set here
@@ -380,6 +384,7 @@ private:
   size_t runNumber_ = 0;
   bool calcFlux_ = true;
   bool checkError_ = true;
+  bool printProgress_ = false;
 
   rayHitCounter<NumericType> hitCounter_;
   rayTracingData<NumericType> localData_;
