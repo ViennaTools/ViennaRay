@@ -26,15 +26,16 @@ int main() {
   auto grid = rayInternal::createSourceGrid<NumericType, D>(
       boundingBox, points.size(), gridDelta, traceSettings);
 
-  rayRNG rngstate(0);
+  rayRNG rngState(0);
   {
     // build source in positive z direction;
-    auto source = raySourceGrid<NumericType, D>(grid, 1., traceSettings);
+    auto source =
+        raySourceGrid<NumericType, D>(boundingBox, grid, 1., traceSettings);
     auto numGridPoints = source.getNumPoints();
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < numGridPoints; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(i, rngstate);
+      auto originAndDirection = source.getOriginAndDirection(i, rngState);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
 
