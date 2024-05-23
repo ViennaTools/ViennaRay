@@ -1,5 +1,5 @@
-#include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   using NumericType = double;
@@ -29,12 +29,12 @@ int main() {
                                                 boundaryConds, traceSettings);
 
     // assert bounding box is ordered
-    RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
-    RAYTEST_ASSERT(boundingBox[0][1] < boundingBox[1][1])
-    RAYTEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
+    VT_TEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
+    VT_TEST_ASSERT(boundingBox[0][1] < boundingBox[1][1])
+    VT_TEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
 
     // assert boundary is extended in x direction
-    RAYTEST_ASSERT_ISCLOSE(boundingBox[1][0], (1 + 2 * gridDelta), eps)
+    VT_TEST_ASSERT_ISCLOSE(boundingBox[1][0], (1 + 2 * gridDelta), eps)
 
     boundary.releaseGeometry();
   }
@@ -51,12 +51,12 @@ int main() {
                                                 boundaryConds, traceSettings);
 
     // assert bounding box is ordered
-    RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
-    RAYTEST_ASSERT(boundingBox[0][1] < boundingBox[1][1])
-    RAYTEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
+    VT_TEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
+    VT_TEST_ASSERT(boundingBox[0][1] < boundingBox[1][1])
+    VT_TEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
 
     // assert boundary is extended in y direction
-    RAYTEST_ASSERT_ISCLOSE(boundingBox[1][1], (1 + 2 * gridDelta), eps)
+    VT_TEST_ASSERT_ISCLOSE(boundingBox[1][1], (1 + 2 * gridDelta), eps)
 
     boundary.releaseGeometry();
   }

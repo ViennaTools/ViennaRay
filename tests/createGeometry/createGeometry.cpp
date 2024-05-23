@@ -1,5 +1,5 @@
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   using NumericType = double;
@@ -18,16 +18,16 @@ int main() {
   auto boundingBox = geometry.getBoundingBox();
 
   // assert bounding box is ordered
-  RAYTEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
-  RAYTEST_ASSERT(boundingBox[0][1] < boundingBox[1][1])
-  RAYTEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
+  VT_TEST_ASSERT(boundingBox[0][0] < boundingBox[1][0])
+  VT_TEST_ASSERT(boundingBox[0][1] < boundingBox[1][1])
+  VT_TEST_ASSERT(boundingBox[0][2] < boundingBox[1][2])
 
   for (auto min : boundingBox[0]) {
-    RAYTEST_ASSERT_ISCLOSE(min, -1., 1e-6)
+    VT_TEST_ASSERT_ISCLOSE(min, -1., 1e-6)
   }
 
   for (auto max : boundingBox[1]) {
-    RAYTEST_ASSERT_ISCLOSE(max, 1., 1e-6)
+    VT_TEST_ASSERT_ISCLOSE(max, 1., 1e-6)
   }
 
   geometry.releaseGeometry();

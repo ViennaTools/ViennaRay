@@ -1,8 +1,8 @@
 #include <rayGeometry.hpp>
 #include <rayRNG.hpp>
 #include <raySourceGrid.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayUtil.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   constexpr int D = 3;
@@ -39,10 +39,10 @@ int main() {
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
 
-      RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, grid[i][0], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, grid[i][1], eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_z < 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, grid[i][0], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, grid[i][1], eps)
     }
   }
   return 0;

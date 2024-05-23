@@ -1,6 +1,6 @@
 #include <rayParticle.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   constexpr int D = 3;
@@ -29,7 +29,7 @@ int main() {
   rayTracer.apply();
 
   auto info = rayTracer.getRayTraceInfo();
-  RAYTEST_ASSERT(info.warning);
+  VT_TEST_ASSERT(info.warning);
 
   return 0;
 }

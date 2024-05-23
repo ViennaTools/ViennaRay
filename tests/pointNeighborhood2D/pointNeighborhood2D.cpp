@@ -1,5 +1,5 @@
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   using NumericType = float;
@@ -33,10 +33,10 @@ int main() {
     auto neighbors = geometry.getNeighborIndicies(idx);
     if (std::fabs(point[0]) > 1 - eps) {
       // corner point
-      RAYTEST_ASSERT(neighbors.size() == 1)
+      VT_TEST_ASSERT(neighbors.size() == 1)
     } else {
       // inner point
-      RAYTEST_ASSERT(neighbors.size() == 2)
+      VT_TEST_ASSERT(neighbors.size() == 2)
     }
   }
 

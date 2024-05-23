@@ -2,9 +2,9 @@
 #include <rayGeometry.hpp>
 #include <rayParticle.hpp>
 #include <raySourceRandom.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayUtil.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   omp_set_num_threads(1);
@@ -67,10 +67,10 @@ int main() {
               eps ||
           std::fabs(disk[boundaryDirs[1]] - boundingBox[1][boundaryDirs[1]]) <
               eps) {
-        RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
+        VT_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
         continue;
       }
-      RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
+      VT_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
       continue;
     }
     if (std::fabs(disk[boundaryDirs[1]] - boundingBox[0][boundaryDirs[1]]) <
@@ -81,13 +81,13 @@ int main() {
               eps ||
           std::fabs(disk[boundaryDirs[0]] - boundingBox[1][boundaryDirs[0]]) <
               eps) {
-        RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
+        VT_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
         continue;
       }
-      RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
+      VT_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
       continue;
     }
-    RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea, eps)
+    VT_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea, eps)
   }
 
   geometry.releaseGeometry();

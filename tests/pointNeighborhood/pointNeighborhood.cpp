@@ -1,6 +1,6 @@
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayUtil.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   using NumericType = float;
@@ -41,7 +41,7 @@ int main() {
       numNeighbors = 5;
     }
 
-    RAYTEST_ASSERT(numNeighbors == neighbors.size())
+    VT_TEST_ASSERT(numNeighbors == neighbors.size())
   }
   rtcReleaseDevice(device);
   return 0;

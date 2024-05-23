@@ -1,7 +1,7 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayUtil.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   using NumericType = float;
@@ -68,13 +68,13 @@ int main() {
 
     boundary.processHit(rayhit, reflect);
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 2, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 2, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, -direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, -direction[1], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   boundCons[1] = rayBoundaryCondition::PERIODIC;
@@ -117,13 +117,13 @@ int main() {
 
     boundary.processHit(rayhit, reflect);
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, -2, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, -2, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   normal = std::array<NumericType, D>{0., 1.};
@@ -180,13 +180,13 @@ int main() {
 
     boundary.processHit(rayhit, reflect);
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 2, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 2, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, -direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, -direction[0], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   boundCons[0] = rayBoundaryCondition::PERIODIC;
@@ -229,13 +229,13 @@ int main() {
 
     boundary.processHit(rayhit, reflect);
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -2, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -2, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0, eps)
 
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-    RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+    VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
   }
 
   rtcReleaseDevice(device);

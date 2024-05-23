@@ -1,7 +1,7 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayUtil.hpp>
+#include <vtTestAsserts.hpp>
 // void printRay(RTCRayHit &rayHit)
 // {
 //     std::cout << "Origin: ";
@@ -54,7 +54,7 @@ int main() {
   auto rtccontext = RTCIntersectContext{};
   rtcInitIntersectContext(&rtccontext);
 #endif
-  RAYTEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
+  VT_TEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
   {
     auto origin = vieTools::Triple<NumericType>{0., 0., 2 * discRadius};
@@ -86,8 +86,8 @@ int main() {
     rtcIntersect1(rtcscene, &rayhit);
 #endif
 
-    RAYTEST_ASSERT(rayhit.hit.geomID == geometryID)
-    RAYTEST_ASSERT(rayhit.hit.primID == 840)
+    VT_TEST_ASSERT(rayhit.hit.geomID == geometryID)
+    VT_TEST_ASSERT(rayhit.hit.primID == 840)
   }
 
   {
@@ -121,8 +121,8 @@ int main() {
     rtcIntersect1(rtcscene, &rayhit);
 #endif
 
-    RAYTEST_ASSERT(rayhit.hit.geomID == boundaryID)
-    RAYTEST_ASSERT(rayhit.hit.primID == 7)
+    VT_TEST_ASSERT(rayhit.hit.geomID == boundaryID)
+    VT_TEST_ASSERT(rayhit.hit.primID == 7)
   }
 
   rtcReleaseScene(rtcscene);

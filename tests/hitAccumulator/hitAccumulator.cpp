@@ -1,6 +1,6 @@
 #include <omp.h>
 #include <rayHitCounter.hpp>
-#include <rayTestAsserts.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   using NumericType = double;
@@ -39,9 +39,9 @@ int main() {
   auto counts = threadLocalHitCounter[0].getCounts();
   auto values = threadLocalHitCounter[0].getValues();
 
-  RAYTEST_ASSERT(totalCounts == numRuns)
-  RAYTEST_ASSERT(counts[primID] == numRuns)
-  RAYTEST_ASSERT_ISCLOSE(values[primID], 0.1 * numRuns, eps)
+  VT_TEST_ASSERT(totalCounts == numRuns)
+  VT_TEST_ASSERT(counts[primID] == numRuns)
+  VT_TEST_ASSERT_ISCLOSE(values[primID], 0.1 * numRuns, eps)
 
   return 0;
 }

@@ -1,8 +1,8 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
 #include <rayUtil.hpp>
+#include <vtTestAsserts.hpp>
 
 int main() {
   using NumericType = float;
@@ -63,15 +63,15 @@ int main() {
 
       boundary.processHit(rayhit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 1., eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 1., eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(-rayhit.ray.dir_x, direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+      VT_TEST_ASSERT_ISCLOSE(-rayhit.ray.dir_x, direction[0], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
 
-      RAYTEST_ASSERT(reflect)
+      VT_TEST_ASSERT(reflect)
     }
   }
   // reflective bounday on x-z plane
@@ -124,15 +124,15 @@ int main() {
 
       boundary.processHit(rayhit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.25, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 1.0, eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.25, eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 1.0, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(-rayhit.ray.dir_z, direction[2], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+      VT_TEST_ASSERT_ISCLOSE(-rayhit.ray.dir_z, direction[2], eps)
 
-      RAYTEST_ASSERT(reflect)
+      VT_TEST_ASSERT(reflect)
     }
   }
   // periodic boundary on x-y plane
@@ -185,15 +185,15 @@ int main() {
 
       boundary.processHit(rayhit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -1., eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -1., eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
 
-      RAYTEST_ASSERT(reflect)
+      VT_TEST_ASSERT(reflect)
     }
   }
 

@@ -2,8 +2,8 @@
 #include <rayRNG.hpp>
 #include <raySourceGrid.hpp>
 #include <raySourceRandom.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayUtil.hpp>
+#include <vtTestAsserts.hpp>
 
 void printRay(RTCRayHit &rayHit) {
   std::cout << "Origin: ";
@@ -50,8 +50,8 @@ int main() {
       auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_z < 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
     }
   }
 
@@ -72,8 +72,8 @@ int main() {
       auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      RAYTEST_ASSERT(rayhit.ray.dir_z > 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (-1. - 2 * gridDelta), eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_z > 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (-1. - 2 * gridDelta), eps)
     }
   }
 
@@ -94,8 +94,8 @@ int main() {
       auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      RAYTEST_ASSERT(rayhit.ray.dir_x < 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (1. + 2 * gridDelta), eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_x < 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (1. + 2 * gridDelta), eps)
     }
   }
 
@@ -116,8 +116,8 @@ int main() {
       auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      RAYTEST_ASSERT(rayhit.ray.dir_x > 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (-1. - 2 * gridDelta), eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_x > 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (-1. - 2 * gridDelta), eps)
     }
   }
 
@@ -138,8 +138,8 @@ int main() {
       auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      RAYTEST_ASSERT(rayhit.ray.dir_y < 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (1. + 2 * gridDelta), eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_y < 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (1. + 2 * gridDelta), eps)
     }
   }
 
@@ -160,8 +160,8 @@ int main() {
       auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      RAYTEST_ASSERT(rayhit.ray.dir_y > 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (-1. - 2 * gridDelta), eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_y > 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (-1. - 2 * gridDelta), eps)
     }
   }
 
@@ -185,8 +185,8 @@ int main() {
       auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
+      VT_TEST_ASSERT(rayhit.ray.dir_z < 0.)
+      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
     }
   }
 

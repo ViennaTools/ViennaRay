@@ -1,6 +1,6 @@
 #include <rayParticle.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
+#include <vtTestAsserts.hpp>
 
 template <typename NumericType, int D>
 class MySource : public raySource<NumericType> {
@@ -54,7 +54,7 @@ int main() {
   rayTracer.apply();
 
   auto info = rayTracer.getRayTraceInfo();
-  RAYTEST_ASSERT(info.numRays == 4410);
+  VT_TEST_ASSERT(info.numRays == 4410);
 
   return 0;
 }
