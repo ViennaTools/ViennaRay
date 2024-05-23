@@ -57,8 +57,8 @@ int main() {
   RAYTEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
   {
-    auto origin = rayTriple<NumericType>{0., 0., 2 * discRadius};
-    auto direction = rayTriple<NumericType>{0., 0., -1.};
+    auto origin = vieTools::Triple<NumericType>{0., 0., 2 * discRadius};
+    auto direction = vieTools::Triple<NumericType>{0., 0., -1.};
 
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -91,9 +91,9 @@ int main() {
   }
 
   {
-    auto origin = rayTriple<NumericType>{0., 9., 2 * discRadius};
-    auto direction = rayTriple<NumericType>{0., 2., -1.};
-    rayInternal::Normalize(direction);
+    auto origin = vieTools::Triple<NumericType>{0., 9., 2 * discRadius};
+    auto direction = vieTools::Triple<NumericType>{0., 2., -1.};
+    vieTools::Normalize(direction);
 
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

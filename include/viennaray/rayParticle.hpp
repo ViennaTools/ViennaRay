@@ -26,9 +26,10 @@ public:
   /// globalData: constant user-defined data;
   /// Rng: thread-safe random number generator (standard library conform);
   /// Returns pair: 1. sticking coefficient, 2. ray direction after reflection
-  virtual std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  virtual std::pair<NumericType, vieTools::Triple<NumericType>>
+  surfaceReflection(NumericType rayWeight,
+                    const vieTools::Triple<NumericType> &rayDir,
+                    const vieTools::Triple<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
                     const rayTracingData<NumericType> *globalData,
                     rayRNG &Rng) = 0;
@@ -44,8 +45,8 @@ public:
   /// globalData: constant user-defined data;
   /// Rng: thread-safe random number generator (standard library conform);
   virtual void surfaceCollision(NumericType rayWeight,
-                                const rayTriple<NumericType> &rayDir,
-                                const rayTriple<NumericType> &geomNormal,
+                                const vieTools::Triple<NumericType> &rayDir,
+                                const vieTools::Triple<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
                                 rayTracingData<NumericType> &localData,
                                 const rayTracingData<NumericType> *globalData,
@@ -76,20 +77,22 @@ public:
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
   virtual void initNew(rayRNG &Rng) override {}
-  virtual std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  virtual std::pair<NumericType, vieTools::Triple<NumericType>>
+  surfaceReflection(NumericType rayWeight,
+                    const vieTools::Triple<NumericType> &rayDir,
+                    const vieTools::Triple<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
                     const rayTracingData<NumericType> *globalData,
                     rayRNG &Rng) override {
     // return the sticking probability and direction after reflection for this
     // hit
-    return std::pair<NumericType, rayTriple<NumericType>>{
-        1., rayTriple<NumericType>{0., 0., 0.}};
+    return std::pair<NumericType, vieTools::Triple<NumericType>>{
+        1., vieTools::Triple<NumericType>{0., 0., 0.}};
   }
   virtual void
-  surfaceCollision(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                   const rayTriple<NumericType> &geomNormal,
+  surfaceCollision(NumericType rayWeight,
+                   const vieTools::Triple<NumericType> &rayDir,
+                   const vieTools::Triple<NumericType> &geomNormal,
                    const unsigned int primID, const int materialId,
                    rayTracingData<NumericType> &localData,
                    const rayTracingData<NumericType> *globalData,
@@ -115,20 +118,21 @@ class rayTestParticle
 public:
   void initNew(rayRNG &Rng) override final {}
 
-  std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  std::pair<NumericType, vieTools::Triple<NumericType>>
+  surfaceReflection(NumericType rayWeight,
+                    const vieTools::Triple<NumericType> &rayDir,
+                    const vieTools::Triple<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
                     const rayTracingData<NumericType> *globalData,
                     rayRNG &Rng) override final {
     auto direction = rayReflectionSpecular(rayDir, geomNormal);
 
-    return std::pair<NumericType, rayTriple<NumericType>>{.5, direction};
+    return std::pair<NumericType, vieTools::Triple<NumericType>>{.5, direction};
   }
 
   void surfaceCollision(NumericType rayWeight,
-                        const rayTriple<NumericType> &rayDir,
-                        const rayTriple<NumericType> &geomNormal,
+                        const vieTools::Triple<NumericType> &rayDir,
+                        const vieTools::Triple<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
                         rayTracingData<NumericType> &localData,
                         const rayTracingData<NumericType> *globalData,

@@ -39,10 +39,10 @@ int main() {
     auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
                                                 traceSettings);
 
-    auto origin = rayTriple<NumericType>{1., 1., 0.};
-    auto direction = rayTriple<NumericType>{-0.5, 1., 0.};
-    auto distanceToHit = rayInternal::Norm(direction);
-    rayInternal::Normalize(direction);
+    auto origin = vieTools::Triple<NumericType>{1., 1., 0.};
+    auto direction = vieTools::Triple<NumericType>{-0.5, 1., 0.};
+    auto distanceToHit = vieTools::Norm(direction);
+    vieTools::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
@@ -88,10 +88,10 @@ int main() {
     auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
                                                 traceSettings);
 
-    auto origin = rayTriple<NumericType>{1., 1., 0.};
-    auto direction = rayTriple<NumericType>{-0.5, 1., 0.};
-    auto distanceToHit = rayInternal::Norm(direction);
-    rayInternal::Normalize(direction);
+    auto origin = vieTools::Triple<NumericType>{1., 1., 0.};
+    auto direction = vieTools::Triple<NumericType>{-0.5, 1., 0.};
+    auto distanceToHit = vieTools::Norm(direction);
+    vieTools::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
@@ -151,10 +151,10 @@ int main() {
     auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
                                                 traceSettings);
 
-    auto origin = rayTriple<NumericType>{1., 1., 0.};
-    auto direction = rayTriple<NumericType>{1., -0.5, 0.};
-    auto distanceToHit = rayInternal::Norm(direction);
-    rayInternal::Normalize(direction);
+    auto origin = vieTools::Triple<NumericType>{1., 1., 0.};
+    auto direction = vieTools::Triple<NumericType>{1., -0.5, 0.};
+    auto distanceToHit = vieTools::Norm(direction);
+    vieTools::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],
@@ -200,10 +200,10 @@ int main() {
     auto boundary = rayBoundary<NumericType, D>(device, boundingBox, boundCons,
                                                 traceSettings);
 
-    auto origin = rayTriple<NumericType>{1., 1., 0.};
-    auto direction = rayTriple<NumericType>{1., -0.5, 0.};
-    auto distanceToHit = rayInternal::Norm(direction);
-    rayInternal::Normalize(direction);
+    auto origin = vieTools::Triple<NumericType>{1., 1., 0.};
+    auto direction = vieTools::Triple<NumericType>{1., -0.5, 0.};
+    auto distanceToHit = vieTools::Norm(direction);
+    vieTools::Normalize(direction);
     bool reflect = false;
 
     alignas(128) auto rayhit = RTCRayHit{(float)origin[0],

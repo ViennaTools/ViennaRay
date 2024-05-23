@@ -4,11 +4,11 @@
 
 template <typename NumericType, int D>
 class raySourceGrid : public raySource<NumericType> {
-  using boundingBoxType = rayPair<rayTriple<NumericType>>;
+  using boundingBoxType = vieTools::Pair<vieTools::Triple<NumericType>>;
 
 public:
   raySourceGrid(const boundingBoxType &boundingBox,
-                std::vector<rayTriple<NumericType>> &sourceGrid,
+                std::vector<vieTools::Triple<NumericType>> &sourceGrid,
                 NumericType cosinePower,
                 const std::array<int, 5> &traceSettings)
       : bdBox_(boundingBox), sourceGrid_(sourceGrid),
@@ -17,7 +17,7 @@ public:
         minMax_(traceSettings[3]), posNeg_(traceSettings[4]),
         ee_(((NumericType)2) / (cosinePower + 1)) {}
 
-  rayPair<rayTriple<NumericType>>
+  vieTools::Pair<vieTools::Triple<NumericType>>
   getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
     auto origin = sourceGrid_[idx % numPoints_];
     auto direction = getDirection(RngState);
@@ -28,8 +28,8 @@ public:
   size_t getNumPoints() const override { return numPoints_; }
 
 private:
-  rayTriple<NumericType> getDirection(rayRNG &RngState) const {
-    rayTriple<NumericType> direction{0., 0., 0.};
+  vieTools::Triple<NumericType> getDirection(rayRNG &RngState) const {
+    vieTools::Triple<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(RngState);
     auto r2 = uniDist(RngState);
@@ -44,7 +44,7 @@ private:
       direction[secondDir_] = sinf(M_PI * 2.f * r1) * sqrtf(1.f - tt);
     }
 
-    rayInternal::Normalize(direction);
+    vieTools::Normalize(direction);
 
     return direction;
   }
@@ -60,7 +60,7 @@ private:
 
 private:
   const boundingBoxType bdBox_;
-  const std::vector<rayTriple<NumericType>> &sourceGrid_;
+  const std::vector<vieTools::Triple<NumericType>> &sourceGrid_;
   const size_t numPoints_;
   const int rayDir_;
   const int firstDir_;

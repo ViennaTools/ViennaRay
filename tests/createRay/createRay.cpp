@@ -7,11 +7,11 @@
 
 void printRay(RTCRayHit &rayHit) {
   std::cout << "Origin: ";
-  rayInternal::printTriple(
-      rayTriple<float>{rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
+  vieTools::Print(vieTools::Triple<float>{rayHit.ray.org_x, rayHit.ray.org_y,
+                                          rayHit.ray.org_z});
   std::cout << "Direction: ";
-  rayInternal::printTriple(
-      rayTriple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
+  vieTools::Print(vieTools::Triple<float>{rayHit.ray.dir_x, rayHit.ray.dir_y,
+                                          rayHit.ray.dir_z});
 }
 
 int main() {
@@ -20,8 +20,8 @@ int main() {
   NumericType eps = 1e-6f;
 
   NumericType gridDelta;
-  std::vector<rayTriple<NumericType>> points;
-  std::vector<rayTriple<NumericType>> normals;
+  std::vector<vieTools::Triple<NumericType>> points;
+  std::vector<vieTools::Triple<NumericType>> normals;
   rayInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
                                 points, normals);
 
@@ -40,7 +40,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    std::array<vieTools::Triple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                   geometry.getNumPoints(),
                                                   false, orthoBasis);
@@ -62,7 +62,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    std::array<vieTools::Triple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                   geometry.getNumPoints(),
                                                   false, orthoBasis);
@@ -84,7 +84,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    std::array<vieTools::Triple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                   geometry.getNumPoints(),
                                                   false, orthoBasis);
@@ -106,7 +106,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    std::array<vieTools::Triple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                   geometry.getNumPoints(),
                                                   false, orthoBasis);
@@ -128,7 +128,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    std::array<vieTools::Triple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                   geometry.getNumPoints(),
                                                   false, orthoBasis);
@@ -150,7 +150,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<rayTriple<NumericType>, 3> orthoBasis;
+    std::array<vieTools::Triple<NumericType>, 3> orthoBasis;
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                   geometry.getNumPoints(),
                                                   false, orthoBasis);
@@ -173,8 +173,8 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    rayTriple<NumericType> primaryDir = {1., 1., -1.};
-    rayInternal::Normalize(primaryDir);
+    vieTools::Triple<NumericType> primaryDir = {1., 1., -1.};
+    vieTools::Normalize(primaryDir);
     auto orthoBasis = rayInternal::getOrthonormalBasis(primaryDir);
     auto source = raySourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                   geometry.getNumPoints(), true,

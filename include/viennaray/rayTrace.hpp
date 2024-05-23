@@ -3,11 +3,11 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
-#include <rayMessage.hpp>
 #include <raySourceRandom.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
+#include <vtLogger.hpp>
 
 template <class NumericType, int D> class rayTrace {
 public:
@@ -35,7 +35,7 @@ public:
     auto boundary = rayBoundary<NumericType, D>(
         device_, boundingBox, boundaryConditions_, traceSettings);
 
-    std::array<rayTriple<NumericType>, 3> orthonormalBasis;
+    std::array<vieTools::Triple<NumericType>, 3> orthonormalBasis;
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
     if (!pSource_)
@@ -157,7 +157,8 @@ public:
   /// not change the position of the source plane. Therefore, one has the be
   /// careful that the resulting distribution does not lie completely above the
   /// source plane.
-  void setPrimaryDirection(const rayTriple<NumericType> primaryDirection) {
+  void
+  setPrimaryDirection(const vieTools::Triple<NumericType> primaryDirection) {
     primaryDirection_ = primaryDirection;
     usePrimaryDirection_ = true;
   }
@@ -221,7 +222,7 @@ public:
 
     case rayNormalizationType::SOURCE: {
       if (!pSource_) {
-        rayMessage::getInstance()
+        vieTools::Logger::getInstance()
             .addWarning("No source was specified in for the normalization.")
             .print();
         break;
@@ -316,7 +317,7 @@ private:
     }
     if (!allPassed) {
       RTInfo_.warning = true;
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addWarning(
               "Large relative error detected. Consider using more rays.")
           .print();
@@ -326,23 +327,23 @@ private:
   void checkSettings() {
     if (pParticle_ == nullptr) {
       RTInfo_.error = true;
-      rayMessage::getInstance().addError(
+      vieTools::Logger::getInstance().addError(
           "No particle was specified in rayTrace. Aborting.");
     }
     if (geometry_.checkGeometryEmpty()) {
       RTInfo_.error = true;
-      rayMessage::getInstance().addError(
+      vieTools::Logger::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");
     }
     if ((D == 2 && sourceDirection_ == rayTraceDirection::POS_Z) ||
         (D == 2 && sourceDirection_ == rayTraceDirection::NEG_Z)) {
       RTInfo_.error = true;
-      rayMessage::getInstance().addError(
+      vieTools::Logger::getInstance().addError(
           "Invalid source direction in 2D geometry. Aborting.");
     }
     if (diskRadius_ > gridDelta_) {
       RTInfo_.warning = true;
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addWarning("Disk radius should be smaller than grid delta. Hit "
                       "count normalization not correct.")
           .print();
@@ -372,7 +373,7 @@ private:
 
   rayBoundaryCondition boundaryConditions_[D] = {};
   rayTraceDirection sourceDirection_ = rayTraceDirection::POS_Z;
-  rayTriple<NumericType> primaryDirection_ = {0.};
+  vieTools::Triple<NumericType> primaryDirection_ = {0.};
 
   bool usePrimaryDirection_ = false;
   bool useRandomSeeds_ = false;

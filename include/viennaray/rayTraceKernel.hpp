@@ -33,6 +33,8 @@ public:
   }
 
   void apply() {
+    using namespace vieTools;
+
     auto rtcScene = rtcNewScene(device_);
 
     // RTC scene flags
@@ -83,7 +85,7 @@ public:
       }
     }
 
-    auto time = rayInternal::timeStampNow<std::chrono::milliseconds>();
+    // auto time = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
 #pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces,           \
                                    particlehitc)                               \
@@ -187,7 +189,7 @@ public:
               for (int i = 0; i < D; ++i) {
                 direction[i] = 2.f * dist(RngState) - 1.f;
               }
-              rayInternal::Normalize(direction);
+              Normalize(direction);
 
               // Update ray direction and origin
               rayInternal::fillRay(rayHit.ray, origin, direction);
@@ -213,9 +215,9 @@ public:
 
           /* -------- Hit from back -------- */
           const auto rayDir =
-              rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
+              Triple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
-          if (rayInternal::DotProduct(rayDir, geomNormal) > 0) {
+          if (DotProduct(rayDir, geomNormal) > 0) {
             // If the dot product of the ray direction and the surface normal is
             // greater than zero, then we hit the back face of the disk.
             if (hitFromBack) {
@@ -250,8 +252,9 @@ public:
                                // origins of hit disks
           {                    // distance on first disk hit
             const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
-            const auto &diskOrigin = *reinterpret_cast<
-                rayTriple<rayInternal::rtcNumericType> const *>(&disk);
+            const auto &diskOrigin =
+                *reinterpret_cast<Triple<rayInternal::rtcNumericType> const *>(
+                    &disk);
             impactDistances.push_back(
                 rayInternal::Distance(hitPoint, diskOrigin) +
                 1e-6f); // add eps to avoid division by 0
@@ -329,7 +332,7 @@ public:
       myHitCounter.setDiskAreas(diskAreas);
     } // end parallel section
 
-    auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
+    // auto endTime = rayInternal::timeStampNow<std::chrono::milliseconds>();
 
     // merge hit counters and  data logs
     for (int i = 0; i < numThreads; ++i) {
@@ -362,7 +365,7 @@ public:
         }
 
         default: {
-          rayMessage::getInstance()
+          Logger::getInstance()
               .addWarning("Invalid merge type in local vector data.")
               .print();
           break;
@@ -393,7 +396,7 @@ public:
         }
 
         default: {
-          rayMessage::getInstance()
+          Logger::getInstance()
               .addWarning("Invalid merge type in local scalar data.")
               .print();
           break;
@@ -408,7 +411,7 @@ public:
     traceInfo_.nonGeometryHits = nongeohitc;
     traceInfo_.geometryHits = geohitc;
     traceInfo_.particleHits = particlehitc;
-    traceInfo_.time = (endTime - time) * 1e-3;
+    traceInfo_.time = 0.; // (endTime - time) * 1e-3;
 
     rtcReleaseScene(rtcScene);
   }
@@ -556,20 +559,17 @@ private:
   bool
   checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
                          rayInternal::rtcNumericType &impactDistance) const {
-    auto const &rayOrigin =
-        *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> const *>(
-            &ray.org_x);
-    auto const &rayDirection =
-        *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> const *>(
-            &ray.dir_x);
+    auto const &rayOrigin = *reinterpret_cast<
+        vieTools::Triple<rayInternal::rtcNumericType> const *>(&ray.org_x);
+    auto const &rayDirection = *reinterpret_cast<
+        vieTools::Triple<rayInternal::rtcNumericType> const *>(&ray.dir_x);
 
     const auto &normal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
-    const auto &diskOrigin =
-        *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> const *>(
-            &disk);
+    const auto &diskOrigin = *reinterpret_cast<
+        vieTools::Triple<rayInternal::rtcNumericType> const *>(&disk);
 
-    auto prodOfDirections = rayInternal::DotProduct(normal, rayDirection);
+    auto prodOfDirections = vieTools::DotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
       // Disk normal is pointing away from the ray direction,
       // i.e., this might be a hit from the back or no hit at all.
@@ -583,20 +583,20 @@ private:
     }
 
     // TODO: Memoize ddneg
-    auto ddneg = rayInternal::DotProduct(diskOrigin, normal);
+    auto ddneg = vieTools::DotProduct(diskOrigin, normal);
     auto tt =
-        (ddneg - rayInternal::DotProduct(normal, rayOrigin)) / prodOfDirections;
+        (ddneg - vieTools::DotProduct(normal, rayOrigin)) / prodOfDirections;
     if (tt <= 0) {
       // Intersection point is behind or exactly on the ray origin.
       return false;
     }
 
     // copy ray direction
-    auto rayDirectionC = rayTriple<rayInternal::rtcNumericType>{
+    auto rayDirectionC = vieTools::Triple<rayInternal::rtcNumericType>{
         rayDirection[0], rayDirection[1], rayDirection[2]};
-    rayInternal::Scale(tt, rayDirectionC);
-    auto hitPoint = rayInternal::Sum(rayOrigin, rayDirectionC);
-    auto distance = rayInternal::Distance(hitPoint, diskOrigin);
+    vieTools::Scale(tt, rayDirectionC);
+    auto hitPoint = vieTools::Sum(rayOrigin, rayDirectionC);
+    auto distance = vieTools::Distance(hitPoint, diskOrigin);
     auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;

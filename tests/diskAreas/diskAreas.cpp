@@ -32,13 +32,13 @@ int main() {
   auto boundingBox = geometry.getBoundingBox();
   rayInternal::adjustBoundingBox<NumericType, D>(
       boundingBox, rayTraceDirection::POS_Z, diskRadius);
-  rayInternal::printBoundingBox(boundingBox);
+  vieTools::PrintBoundingBox(boundingBox);
   auto traceSettings = rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
 
   rayBoundaryCondition boundaryConds[D] = {};
   auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
                                               boundaryConds, traceSettings);
-  std::array<rayTriple<NumericType>, 3> orthoBasis;
+  std::array<vieTools::Triple<NumericType>, 3> orthoBasis;
   auto raySource = std::make_unique<raySourceRandom<NumericType, D>>(
       boundingBox, 1., traceSettings, geometry.getNumPoints(), false,
       orthoBasis);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rayMessage.hpp>
+#include <vtLogger.hpp>
 
 #include <utility>
 #include <vector>
@@ -83,7 +83,7 @@ public:
   void setScalarData(int num, NumericType value,
                      std::string label = "scalarData") {
     if (num >= vectorData_.size())
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addError("Setting scalar data in rayTracingData out of range.")
           .print();
     scalarData_[num] = value;
@@ -93,7 +93,7 @@ public:
   void setVectorData(int num, std::vector<NumericType> &vector,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addError("Setting vector data in rayTracingData out of range.")
           .print();
     vectorData_[num] = vector;
@@ -103,7 +103,7 @@ public:
   void setVectorData(int num, std::vector<NumericType> &&vector,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addError("Setting vector data in rayTracingData out of range.")
           .print();
     vectorData_[num] = std::move(vector);
@@ -113,7 +113,7 @@ public:
   void setVectorData(int num, size_t size, NumericType value,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addError("Setting vector data in rayTracingData out of range.")
           .print();
     vectorData_[num].resize(size, value);
@@ -123,7 +123,7 @@ public:
   void setVectorData(int num, NumericType value,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addError("Setting vector data in rayTracingData out of range.")
           .print();
     vectorData_[num].fill(vectorData_[num].begin(), vectorData_[num].end(),
@@ -196,7 +196,7 @@ public:
 
   [[nodiscard]] std::string getVectorDataLabel(int i) const {
     if (i >= vectorDataLabels_.size())
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addError("Getting vector data label in rayTracingData out of range.")
           .print();
     return vectorDataLabels_[i];
@@ -204,7 +204,7 @@ public:
 
   [[nodiscard]] std::string getScalarDataLabel(int i) const {
     if (i >= scalarDataLabels_.size())
-      rayMessage::getInstance()
+      vieTools::Logger::getInstance()
           .addError("Getting scalar data label in rayTracingData out of range.")
           .print();
     return scalarDataLabels_[i];
@@ -216,7 +216,7 @@ public:
         return i;
       }
     }
-    rayMessage::getInstance()
+    vieTools::Logger::getInstance()
         .addError("Can not find vector data label in rayTracingData.")
         .print();
     return -1;
@@ -228,7 +228,7 @@ public:
         return i;
       }
     }
-    rayMessage::getInstance()
+    vieTools::Logger::getInstance()
         .addError("Can not find scalar data label in rayTracingData.")
         .print();
     return -1;

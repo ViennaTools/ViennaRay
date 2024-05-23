@@ -10,7 +10,7 @@ enum class rayBoundaryCondition : unsigned {
 };
 
 template <typename NumericType, int D> class rayBoundary {
-  using boundingBoxType = rayPair<rayTriple<NumericType>>;
+  using boundingBoxType = vieTools::Pair<vieTools::Triple<NumericType>>;
 
 public:
   rayBoundary(RTCDevice &device, boundingBoxType const &boundingBox,
@@ -26,11 +26,11 @@ public:
     const auto primID = rayHit.hit.primID;
 
     // Ray hits backside of boundary
-    const auto rayDir = rayTriple<NumericType>{
+    const auto rayDir = vieTools::Triple<NumericType>{
         rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z};
-    const auto boundaryNormal = rayTriple<NumericType>{
+    const auto boundaryNormal = vieTools::Triple<NumericType>{
         rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z};
-    if (rayInternal::DotProduct(rayDir, boundaryNormal) > 0) {
+    if (vieTools::DotProduct(rayDir, boundaryNormal) > 0) {
       // let ray pass through
       reflect = true;
       const auto impactCoords = getNewOrigin(rayHit.ray);
@@ -139,12 +139,13 @@ public:
     }
   }
 
-  rayPair<int> getDirs() const { return {firstDir_, secondDir_}; }
+  vieTools::Pair<int> getDirs() const { return {firstDir_, secondDir_}; }
 
 private:
-  static rayTriple<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
-    assert(rayInternal::IsNormalized(
-               rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
+  static vieTools::Triple<rayInternal::rtcNumericType>
+  getNewOrigin(RTCRay &ray) {
+    assert(vieTools::IsNormalized(vieTools::Triple<NumericType>{
+               ray.dir_x, ray.dir_y, ray.dir_z}) &&
            "MetaGeometry: direction not normalized");
     auto xx = ray.org_x + ray.dir_x * ray.tfar;
     auto yy = ray.org_y + ray.dir_y * ray.tfar;
@@ -207,14 +208,14 @@ private:
         0, // slot
         RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles_);
 
-    constexpr rayQuadruple<rayTriple<uint32_t>> xMinMaxPlanes = {
+    constexpr vieTools::Quadruple<vieTools::Triple<uint32_t>> xMinMaxPlanes = {
         0, 3, 7, 0, 7, 4, 6, 2, 1, 6, 1, 5};
-    constexpr rayQuadruple<rayTriple<uint32_t>> yMinMaxPlanes = {
+    constexpr vieTools::Quadruple<vieTools::Triple<uint32_t>> yMinMaxPlanes = {
         0, 4, 5, 0, 5, 1, 6, 7, 3, 6, 3, 2};
-    constexpr rayQuadruple<rayTriple<uint32_t>> zMinMaxPlanes = {
+    constexpr vieTools::Quadruple<vieTools::Triple<uint32_t>> zMinMaxPlanes = {
         0, 1, 2, 0, 2, 3, 6, 5, 4, 6, 4, 7};
-    constexpr rayTriple<rayQuadruple<rayTriple<uint32_t>>> Planes = {
-        xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
+    constexpr vieTools::Triple<vieTools::Quadruple<vieTools::Triple<uint32_t>>>
+        Planes = {xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 
     for (size_t idx = 0; idx < 4; ++idx) {
       pTriangleBuffer_[idx].v0 = Planes[firstDir_][idx][0];
@@ -235,7 +236,8 @@ private:
            "RTC Error: rtcCommitGeometry");
   }
 
-  rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID) {
+  vieTools::Triple<vieTools::Triple<NumericType>>
+  getTriangleCoords(const size_t primID) {
     assert(primID < numTriangles_ && "rtBoundary: primID out of bounds");
     auto tt = pTriangleBuffer_[primID];
     return {(NumericType)pVertexBuffer_[tt.v0].xx,
@@ -250,12 +252,14 @@ private:
   }
 
   void reflectRay(RTCRayHit &rayHit) const {
-    auto dir = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
-        &rayHit.ray.dir_x);
-    auto normal = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
-        &rayHit.hit.Ng_x);
-    rayInternal::Normalize(dir);
-    rayInternal::Normalize(normal);
+    auto dir =
+        *reinterpret_cast<vieTools::Triple<rayInternal::rtcNumericType> *>(
+            &rayHit.ray.dir_x);
+    auto normal =
+        *reinterpret_cast<vieTools::Triple<rayInternal::rtcNumericType> *>(
+            &rayHit.hit.Ng_x);
+    vieTools::Normalize(dir);
+    vieTools::Normalize(normal);
     dir = rayReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
     // normal gets reused for new origin here
     normal = getNewOrigin(rayHit.ray);
@@ -277,9 +281,9 @@ private:
 #endif
   }
 
-  void
-  assignRayCoords(RTCRayHit &rayHit,
-                  const rayTriple<rayInternal::rtcNumericType> &coords) const {
+  void assignRayCoords(
+      RTCRayHit &rayHit,
+      const vieTools::Triple<rayInternal::rtcNumericType> &coords) const {
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
         _mm_set_ps(1e-4f, (rayInternal::rtcNumericType)coords[2],

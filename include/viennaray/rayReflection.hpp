@@ -5,20 +5,20 @@
 
 // Specular reflection
 template <typename NumericType, int D = 3>
-[[nodiscard]] rayTriple<NumericType>
-rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
-                      const rayTriple<NumericType> &geomNormal) {
-  assert(rayInternal::IsNormalized(geomNormal) &&
+[[nodiscard]] vieTools::Triple<NumericType>
+rayReflectionSpecular(const vieTools::Triple<NumericType> &rayDir,
+                      const vieTools::Triple<NumericType> &geomNormal) {
+  assert(vieTools::IsNormalized(geomNormal) &&
          "rayReflectionSpecular: Surface normal is not normalized");
-  assert(rayInternal::IsNormalized(rayDir) &&
+  assert(vieTools::IsNormalized(rayDir) &&
          "rayReflectionSpecular: Surface normal is not normalized");
 
-  auto dirOldInv = rayInternal::Inv(rayDir);
+  auto dirOldInv = vieTools::Inv(rayDir);
 
   // Compute new direction
-  auto direction = rayInternal::Diff(
-      rayInternal::Scale(2 * rayInternal::DotProduct(geomNormal, dirOldInv),
-                         geomNormal),
+  auto direction = vieTools::Diff(
+      vieTools::Scale(2 * vieTools::DotProduct(geomNormal, dirOldInv),
+                      geomNormal),
       dirOldInv);
 
   return direction;
@@ -26,9 +26,10 @@ rayReflectionSpecular(const rayTriple<NumericType> &rayDir,
 
 // Diffuse reflection
 template <typename NumericType, int D>
-[[nodiscard]] rayTriple<NumericType>
-rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
-  assert(rayInternal::IsNormalized(geomNormal) &&
+[[nodiscard]] vieTools::Triple<NumericType>
+rayReflectionDiffuse(const vieTools::Triple<NumericType> &geomNormal,
+                     rayRNG &RNG) {
+  assert(vieTools::IsNormalized(geomNormal) &&
          "rayReflectionDiffuse: Surface normal is not normalized");
 
   auto randomDirection =
@@ -40,24 +41,24 @@ rayReflectionDiffuse(const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
   else
     randomDirection[2] = 0;
 
-  rayInternal::Normalize(randomDirection);
-  assert(rayInternal::IsNormalized(randomDirection) &&
+  vieTools::Normalize(randomDirection);
+  assert(vieTools::IsNormalized(randomDirection) &&
          "rayReflectionDiffuse: New direction is not normalized");
   return randomDirection;
 }
 
 // Coned specular reflection
 template <typename NumericType, int D>
-[[nodiscard]] rayTriple<NumericType> rayReflectionConedCosine(
-    const rayTriple<NumericType> &rayDir,
-    const rayTriple<NumericType> &geomNormal, rayRNG &RNG,
+[[nodiscard]] vieTools::Triple<NumericType> rayReflectionConedCosine(
+    const vieTools::Triple<NumericType> &rayDir,
+    const vieTools::Triple<NumericType> &geomNormal, rayRNG &RNG,
     const NumericType maxConeAngle /*max opening angle of the cone*/) {
   using namespace rayInternal;
   // Generate a random direction within a cone
   // (https://math.stackexchange.com/a/182936)
   std::uniform_real_distribution<NumericType> uniDist;
 
-  rayTriple<NumericType> direction;
+  vieTools::Triple<NumericType> direction;
 
   do {
     // sample phi uniformly in [0, 2pi]
@@ -104,27 +105,27 @@ namespace rayInternal {
 
 // Coned cosine reflection (deprecated)
 template <typename NumericType, int D>
-[[nodiscard]] rayTriple<NumericType> rayReflectionConedCosineOld(
-    NumericType avgReflAngle, const rayTriple<NumericType> &rayDir,
-    const rayTriple<NumericType> &geomNormal, rayRNG &RNG) {
+[[nodiscard]] vieTools::Triple<NumericType> rayReflectionConedCosineOld(
+    NumericType avgReflAngle, const vieTools::Triple<NumericType> &rayDir,
+    const vieTools::Triple<NumericType> &geomNormal, rayRNG &RNG) {
 
-  assert(rayInternal::IsNormalized(geomNormal) &&
+  assert(vieTools::IsNormalized(geomNormal) &&
          "rayReflectionSpecular: Surface normal is not normalized");
-  assert(rayInternal::IsNormalized(rayDir) &&
+  assert(vieTools::IsNormalized(rayDir) &&
          "rayReflectionSpecular: Ray direction is not normalized");
 
   // Calculate specular direction
-  auto dirOldInv = rayInternal::Inv(rayDir);
+  auto dirOldInv = vieTools::Inv(rayDir);
 
-  auto specDirection = rayInternal::Diff(
-      rayInternal::Scale(2 * rayInternal::DotProduct(geomNormal, dirOldInv),
-                         geomNormal),
+  auto specDirection = vieTools::Diff(
+      vieTools::Scale(2 * vieTools::DotProduct(geomNormal, dirOldInv),
+                      geomNormal),
       dirOldInv);
 
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType u, sqrt_1m_u;
   NumericType angle;
-  rayTriple<NumericType> randomDir;
+  vieTools::Triple<NumericType> randomDir;
 
   //  loop until ray is reflected away from the surface normal
   //  this loop takes care of the case where part of the cone points
@@ -179,41 +180,41 @@ template <typename NumericType, int D>
 
     if (a0 != specDirection[0])
       std::swap(randomDir[0], randomDir[1]);
-  } while (rayInternal::DotProduct(randomDir, geomNormal) <= 0.);
+  } while (vieTools::DotProduct(randomDir, geomNormal) <= 0.);
 
   if constexpr (D == 2) {
     randomDir[2] = 0;
-    rayInternal::Normalize(randomDir);
+    vieTools::Normalize(randomDir);
   }
 
-  assert(rayInternal::IsNormalized(randomDir) &&
+  assert(vieTools::IsNormalized(randomDir) &&
          "rayReflectionConedCosine: New direction is not normalized");
 
   return randomDir;
 }
 
 template <typename NumericType, int D>
-[[nodiscard]] rayTriple<NumericType>
-rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
-                             const rayTriple<NumericType> &geomNormal,
+[[nodiscard]] vieTools::Triple<NumericType>
+rayReflectionConedCosineOld2(const vieTools::Triple<NumericType> &rayDir,
+                             const vieTools::Triple<NumericType> &geomNormal,
                              rayRNG &RNG, NumericType &minAvgConeAngle = 0.) {
 
-  assert(rayInternal::IsNormalized(geomNormal) &&
+  assert(vieTools::IsNormalized(geomNormal) &&
          "rayReflectionSpecular: Surface normal is not normalized");
-  assert(rayInternal::IsNormalized(rayDir) &&
+  assert(vieTools::IsNormalized(rayDir) &&
          "rayReflectionSpecular: Surface normal is not normalized");
 
-  auto dirOldInv = rayInternal::Inv(rayDir);
+  auto dirOldInv = vieTools::Inv(rayDir);
 
   // Compute average direction
-  auto specDirection = rayInternal::Diff(
-      rayInternal::Scale(2 * rayInternal::DotProduct(geomNormal, dirOldInv),
-                         geomNormal),
+  auto specDirection = vieTools::Diff(
+      vieTools::Scale(2 * vieTools::DotProduct(geomNormal, dirOldInv),
+                      geomNormal),
       dirOldInv);
 
   // Compute incidence angle
   double cosTheta =
-      static_cast<double>(-rayInternal::DotProduct(rayDir, geomNormal));
+      static_cast<double>(-vieTools::DotProduct(rayDir, geomNormal));
 
   assert(cosTheta >= 0. && "Hit backside of disc");
   assert(cosTheta <= 1. + 1e-6 && "Error in calculating cos theta");
@@ -245,7 +246,7 @@ rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
     r2 = cosphi * cosphi + sinphi * sinphi;
   } while (r2 >= 0.25 || r2 <= std::numeric_limits<NumericType>::epsilon());
 
-  rayTriple<NumericType> randomDir;
+  vieTools::Triple<NumericType> randomDir;
 
   // Rotate
   cosTheta = std::min(cosTheta, 1.);
@@ -277,10 +278,10 @@ rayReflectionConedCosineOld2(const rayTriple<NumericType> &rayDir,
 
   if constexpr (D == 2) {
     randomDir[2] = 0;
-    rayInternal::Normalize(randomDir);
+    vieTools::Normalize(randomDir);
   }
 
-  assert(rayInternal::IsNormalized(randomDir) &&
+  assert(vieTools::IsNormalized(randomDir) &&
          "rayReflectionConedCosine: New direction is not normalized");
 
   return randomDir;

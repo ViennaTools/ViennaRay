@@ -7,8 +7,8 @@ int main() {
   NumericType eps = 1e-6;
 
   NumericType gridDelta;
-  std::vector<rayTriple<NumericType>> points;
-  std::vector<rayTriple<NumericType>> normals;
+  std::vector<vieTools::Triple<NumericType>> points;
+  std::vector<vieTools::Triple<NumericType>> normals;
 
   rayInternal::readGridFromFile("./../Resources/sphereGrid2D_R1.dat", gridDelta,
                                 points, normals);

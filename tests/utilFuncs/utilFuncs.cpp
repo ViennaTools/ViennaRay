@@ -7,21 +7,21 @@ int main() {
 
   // Sum/Diff
   {
-    rayTriple<NumericType> v1 = {1.2, 2.4, 3.6};
-    rayTriple<NumericType> v2 = {2.8, 3.6, 4.4};
-    rayTriple<NumericType> v3 = {1., 1., 1.};
+    vieTools::Triple<NumericType> v1 = {1.2, 2.4, 3.6};
+    vieTools::Triple<NumericType> v2 = {2.8, 3.6, 4.4};
+    vieTools::Triple<NumericType> v3 = {1., 1., 1.};
 
-    auto result = rayInternal::Sum(v1, v2);
+    auto result = vieTools::Sum(v1, v2);
     RAYTEST_ASSERT_ISCLOSE(result[0], 4., eps)
     RAYTEST_ASSERT_ISCLOSE(result[1], 6., eps)
     RAYTEST_ASSERT_ISCLOSE(result[2], 8., eps)
 
-    result = rayInternal::Sum(v1, v2, v3);
+    result = vieTools::Sum(v1, v2, v3);
     RAYTEST_ASSERT_ISCLOSE(result[0], 5., eps)
     RAYTEST_ASSERT_ISCLOSE(result[1], 7., eps)
     RAYTEST_ASSERT_ISCLOSE(result[2], 9., eps)
 
-    result = rayInternal::Diff(v1, v3);
+    result = vieTools::Diff(v1, v3);
     RAYTEST_ASSERT_ISCLOSE(result[0], 0.2, eps)
     RAYTEST_ASSERT_ISCLOSE(result[1], 1.4, eps)
     RAYTEST_ASSERT_ISCLOSE(result[2], 2.6, eps)
@@ -29,13 +29,13 @@ int main() {
 
   // Dot/Cross product
   {
-    rayTriple<NumericType> v1 = {1., 0., 1.};
-    rayTriple<NumericType> v2 = {1., 0., 0.};
+    vieTools::Triple<NumericType> v1 = {1., 0., 1.};
+    vieTools::Triple<NumericType> v2 = {1., 0., 0.};
 
-    auto dp = rayInternal::DotProduct(v1, v2);
+    auto dp = vieTools::DotProduct(v1, v2);
     RAYTEST_ASSERT_ISCLOSE(dp, 1., eps)
 
-    auto cp = rayInternal::CrossProduct(v1, v2);
+    auto cp = vieTools::CrossProduct(v1, v2);
     RAYTEST_ASSERT_ISCLOSE(cp[0], 0., eps)
     RAYTEST_ASSERT_ISCLOSE(cp[1], 1., eps)
     RAYTEST_ASSERT_ISCLOSE(cp[2], 0., eps)
@@ -43,41 +43,41 @@ int main() {
 
   // Normalization
   {
-    rayTriple<NumericType> v1 = {1., 1., 1.};
+    vieTools::Triple<NumericType> v1 = {1., 1., 1.};
 
-    auto norm = rayInternal::Norm(v1);
+    auto norm = vieTools::Norm(v1);
     RAYTEST_ASSERT_ISCLOSE(norm, 1.73205, eps)
 
-    rayInternal::Normalize(v1);
-    norm = rayInternal::Norm(v1);
+    vieTools::Normalize(v1);
+    norm = vieTools::Norm(v1);
     RAYTEST_ASSERT_ISCLOSE(norm, 1., eps)
-    RAYTEST_ASSERT(rayInternal::IsNormalized(v1))
+    RAYTEST_ASSERT(vieTools::IsNormalized(v1))
   }
 
   // Other
   {
-    rayTriple<NumericType> v1 = {1., 1., 1.};
-    rayTriple<NumericType> v2 = {2., 1., 1.};
-    auto dist = rayInternal::Distance(v1, v2);
+    vieTools::Triple<NumericType> v1 = {1., 1., 1.};
+    vieTools::Triple<NumericType> v2 = {2., 1., 1.};
+    auto dist = vieTools::Distance(v1, v2);
     RAYTEST_ASSERT_ISCLOSE(dist, 1., eps)
 
-    rayInternal::Scale(2.f, v1);
+    vieTools::Scale(2.f, v1);
     RAYTEST_ASSERT_ISCLOSE(v1[0], 2., eps)
     RAYTEST_ASSERT_ISCLOSE(v1[1], 2., eps)
     RAYTEST_ASSERT_ISCLOSE(v1[2], 2., eps)
 
-    auto inv = rayInternal::Inv(v1);
+    auto inv = vieTools::Inv(v1);
     RAYTEST_ASSERT_ISCLOSE(inv[0], -2., eps)
     RAYTEST_ASSERT_ISCLOSE(inv[1], -2., eps)
     RAYTEST_ASSERT_ISCLOSE(inv[2], -2., eps)
   }
 
   {
-    rayTriple<NumericType> p1 = {0., 0., 0.};
-    rayTriple<NumericType> p2 = {1., 0., 1.};
-    rayTriple<NumericType> p3 = {1., 0., 0.};
-    rayTriple<rayTriple<NumericType>> coords = {p1, p2, p3};
-    auto result = rayInternal::ComputeNormal(coords);
+    vieTools::Triple<NumericType> p1 = {0., 0., 0.};
+    vieTools::Triple<NumericType> p2 = {1., 0., 1.};
+    vieTools::Triple<NumericType> p3 = {1., 0., 0.};
+    vieTools::Triple<vieTools::Triple<NumericType>> coords = {p1, p2, p3};
+    auto result = vieTools::ComputeNormal(coords);
     RAYTEST_ASSERT_ISCLOSE(result[0], 0., eps)
     RAYTEST_ASSERT_ISCLOSE(result[1], 1., eps)
     RAYTEST_ASSERT_ISCLOSE(result[2], 0., eps)

@@ -7,7 +7,7 @@ template <typename NumericType> class raySource {
 public:
   virtual ~raySource() = default;
 
-  virtual rayPair<rayTriple<NumericType>>
+  virtual vieTools::Pair<vieTools::Triple<NumericType>>
   getOriginAndDirection(const size_t idx, rayRNG &RngState) const = 0;
   virtual size_t getNumPoints() const = 0;
   virtual NumericType getSourceArea() const = 0;

@@ -123,6 +123,11 @@ CPMAddPackage(
   VERSION 1.11.1
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
+CPMAddPackage(
+  NAME ViennaCore
+  VERSION 0.0.1
+  GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore")
+
 if(NOT VIENNARAY_SYSTEM_TBB)
   CPMFindPackage(
     NAME TBB
@@ -144,7 +149,7 @@ if(NOT VIENNARAY_LEGACY_OPENMP)
   target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX)
 endif()
 
-target_link_libraries(${PROJECT_NAME} INTERFACE embree)
+target_link_libraries(${PROJECT_NAME} INTERFACE embree ViennaTools::ViennaCore)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Examples
