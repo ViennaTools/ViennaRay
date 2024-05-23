@@ -2,12 +2,16 @@
 
 #include <raySource.hpp>
 
+namespace viennaray {
+
+using namespace viennacore;
+
 template <typename NumericType, int D>
-class raySourceRandom : public raySource<NumericType> {
-  using boundingBoxType = vieTools::Pair<vieTools::Triple<NumericType>>;
+class SourceRandom : public Source<NumericType> {
+  using boundingBoxType = Pair<Triple<NumericType>>;
 
 public:
-  raySourceRandom(
+  SourceRandom(
       const boundingBoxType &boundingBox, NumericType cosinePower,
       std::array<int, 5> &pTraceSettings, const size_t numPoints_,
       const bool customDirection,
@@ -19,10 +23,10 @@ public:
         customDirection_(customDirection), orthonormalBasis_(orthonormalBasis) {
   }
 
-  vieTools::Pair<vieTools::Triple<NumericType>>
-  getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
+  Pair<Triple<NumericType>>
+  getOriginAndDirection(const size_t idx, RNG &RngState) const override {
     auto origin = getOrigin(RngState);
-    vieTools::Triple<NumericType> direction;
+    Triple<NumericType> direction;
     if (customDirection_) {
       direction = getCustomDirection(RngState);
     } else {
@@ -44,8 +48,8 @@ public:
   }
 
 private:
-  vieTools::Triple<NumericType> getOrigin(rayRNG &RngState) const {
-    vieTools::Triple<NumericType> origin{0., 0., 0.};
+  Triple<NumericType> getOrigin(RNG &RngState) const {
+    Triple<NumericType> origin{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(RngState);
 
@@ -64,8 +68,8 @@ private:
     return origin;
   }
 
-  vieTools::Triple<NumericType> getDirection(rayRNG &RngState) const {
-    vieTools::Triple<NumericType> direction{0., 0., 0.};
+  Triple<NumericType> getDirection(RNG &RngState) const {
+    Triple<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(RngState);
     auto r2 = uniDist(RngState);
@@ -76,7 +80,7 @@ private:
 
     if constexpr (D == 2) {
       direction[secondDir_] = 0;
-      vieTools::Normalize(direction);
+      Normalize(direction);
     } else {
       direction[secondDir_] = sinf(M_PI * 2.f * r1) * sqrtf(1 - tt);
     }
@@ -84,12 +88,12 @@ private:
     return direction;
   }
 
-  vieTools::Triple<NumericType> getCustomDirection(rayRNG &RngState) const {
-    vieTools::Triple<NumericType> direction;
+  Triple<NumericType> getCustomDirection(RNG &RngState) const {
+    Triple<NumericType> direction;
     std::uniform_real_distribution<NumericType> uniDist;
 
     do {
-      vieTools::Triple<NumericType> rndDirection{0., 0., 0.};
+      Triple<NumericType> rndDirection{0., 0., 0.};
       auto r1 = uniDist(RngState);
       auto r2 = uniDist(RngState);
 
@@ -112,7 +116,7 @@ private:
 
     if constexpr (D == 2) {
       direction[secondDir_] = 0;
-      vieTools::Normalize(direction);
+      Normalize(direction);
     }
 
     return direction;
@@ -128,5 +132,7 @@ private:
   const NumericType ee_;
   const size_t numPoints_;
   const bool customDirection_ = false;
-  const std::array<vieTools::Triple<NumericType>, 3> &orthonormalBasis_;
+  const std::array<Triple<NumericType>, 3> &orthonormalBasis_;
 };
+
+} // namespace viennaray

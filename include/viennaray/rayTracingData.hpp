@@ -1,21 +1,23 @@
 #pragma once
 
-#include <vtLogger.hpp>
+#include <vcLogger.hpp>
 
 #include <utility>
 #include <vector>
 
-enum class rayTracingDataMergeEnum : unsigned {
+namespace viennaray {
+
+enum class TracingDataMergeEnum : unsigned {
   SUM = 0,
   APPEND = 1,
   AVERAGE = 2,
 };
 
-template <typename NumericType> class rayTracingData {
+template <typename NumericType> class TracingData {
 private:
   using scalarDataType = NumericType;
   using vectorDataType = std::vector<NumericType>;
-  using mergeType = std::vector<rayTracingDataMergeEnum>;
+  using mergeType = std::vector<TracingDataMergeEnum>;
 
   std::vector<scalarDataType> scalarData_;
   std::vector<vectorDataType> vectorData_;
@@ -25,16 +27,16 @@ private:
   mergeType vectorDataMerge_;
 
 public:
-  rayTracingData() {}
+  TracingData() {}
 
-  rayTracingData(const rayTracingData &otherData)
+  TracingData(const TracingData &otherData)
       : scalarData_(otherData.scalarData_), vectorData_(otherData.vectorData_),
         scalarDataLabels_(otherData.scalarDataLabels_),
         vectorDataLabels_(otherData.vectorDataLabels_),
         scalarDataMerge_(otherData.scalarDataMerge_),
         vectorDataMerge_(otherData.vectorDataMerge_) {}
 
-  rayTracingData(rayTracingData &&otherData)
+  TracingData(TracingData &&otherData)
       : scalarData_(std::move(otherData.scalarData_)),
         vectorData_(std::move(otherData.vectorData_)),
         scalarDataLabels_(std::move(otherData.scalarDataLabels_)),
@@ -42,7 +44,7 @@ public:
         scalarDataMerge_(std::move(otherData.scalarDataMerge_)),
         vectorDataMerge_(std::move(otherData.vectorDataMerge_)) {}
 
-  rayTracingData &operator=(const rayTracingData &otherData) {
+  TracingData &operator=(const TracingData &otherData) {
     scalarData_ = otherData.scalarData_;
     vectorData_ = otherData.vectorData_;
     scalarDataLabels_ = otherData.scalarDataLabels_;
@@ -52,7 +54,7 @@ public:
     return *this;
   }
 
-  rayTracingData &operator=(rayTracingData &&otherData) {
+  TracingData &operator=(TracingData &&otherData) {
     scalarData_ = std::move(otherData.scalarData_);
     vectorData_ = std::move(otherData.vectorData_);
     scalarDataLabels_ = std::move(otherData.scalarDataLabels_);
@@ -69,22 +71,22 @@ public:
   void setNumberOfVectorData(int size) {
     vectorData_.clear();
     vectorData_.resize(size);
-    vectorDataMerge_.resize(size, rayTracingDataMergeEnum::SUM);
+    vectorDataMerge_.resize(size, TracingDataMergeEnum::SUM);
     vectorDataLabels_.resize(size, "vectorData");
   }
 
   void setNumberOfScalarData(int size) {
     scalarData_.clear();
     scalarData_.resize(size);
-    scalarDataMerge_.resize(size, rayTracingDataMergeEnum::SUM);
+    scalarDataMerge_.resize(size, TracingDataMergeEnum::SUM);
     scalarDataLabels_.resize(size, "scalarData");
   }
 
   void setScalarData(int num, NumericType value,
                      std::string label = "scalarData") {
     if (num >= vectorData_.size())
-      vieTools::Logger::getInstance()
-          .addError("Setting scalar data in rayTracingData out of range.")
+      viennacore::Logger::getInstance()
+          .addError("Setting scalar data in TracingData out of range.")
           .print();
     scalarData_[num] = value;
     scalarDataLabels_[num] = label;
@@ -93,8 +95,8 @@ public:
   void setVectorData(int num, std::vector<NumericType> &vector,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      vieTools::Logger::getInstance()
-          .addError("Setting vector data in rayTracingData out of range.")
+      viennacore::Logger::getInstance()
+          .addError("Setting vector data in TracingData out of range.")
           .print();
     vectorData_[num] = vector;
     vectorDataLabels_[num] = label;
@@ -103,8 +105,8 @@ public:
   void setVectorData(int num, std::vector<NumericType> &&vector,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      vieTools::Logger::getInstance()
-          .addError("Setting vector data in rayTracingData out of range.")
+      viennacore::Logger::getInstance()
+          .addError("Setting vector data in TracingData out of range.")
           .print();
     vectorData_[num] = std::move(vector);
     vectorDataLabels_[num] = label;
@@ -113,8 +115,8 @@ public:
   void setVectorData(int num, size_t size, NumericType value,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      vieTools::Logger::getInstance()
-          .addError("Setting vector data in rayTracingData out of range.")
+      viennacore::Logger::getInstance()
+          .addError("Setting vector data in TracingData out of range.")
           .print();
     vectorData_[num].resize(size, value);
     vectorDataLabels_[num] = label;
@@ -123,8 +125,8 @@ public:
   void setVectorData(int num, NumericType value,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      vieTools::Logger::getInstance()
-          .addError("Setting vector data in rayTracingData out of range.")
+      viennacore::Logger::getInstance()
+          .addError("Setting vector data in TracingData out of range.")
           .print();
     vectorData_[num].fill(vectorData_[num].begin(), vectorData_[num].end(),
                           value);
@@ -138,21 +140,19 @@ public:
     }
   }
 
-  void
-  setVectorMergeType(const std::vector<rayTracingDataMergeEnum> &mergeType) {
+  void setVectorMergeType(const std::vector<TracingDataMergeEnum> &mergeType) {
     vectorDataMerge_ = mergeType;
   }
 
-  void setVectorMergeType(int num, rayTracingDataMergeEnum mergeType) {
+  void setVectorMergeType(int num, TracingDataMergeEnum mergeType) {
     vectorDataMerge_[num] = mergeType;
   }
 
-  void
-  setScalarMergeType(const std::vector<rayTracingDataMergeEnum> &mergeType) {
+  void setScalarMergeType(const std::vector<TracingDataMergeEnum> &mergeType) {
     scalarDataMerge_ = mergeType;
   }
 
-  void setScalarMergeType(int num, rayTracingDataMergeEnum mergeType) {
+  void setScalarMergeType(int num, TracingDataMergeEnum mergeType) {
     scalarDataMerge_[num] = mergeType;
   }
 
@@ -196,16 +196,16 @@ public:
 
   [[nodiscard]] std::string getVectorDataLabel(int i) const {
     if (i >= vectorDataLabels_.size())
-      vieTools::Logger::getInstance()
-          .addError("Getting vector data label in rayTracingData out of range.")
+      viennacore::Logger::getInstance()
+          .addError("Getting vector data label in TracingData out of range.")
           .print();
     return vectorDataLabels_[i];
   }
 
   [[nodiscard]] std::string getScalarDataLabel(int i) const {
     if (i >= scalarDataLabels_.size())
-      vieTools::Logger::getInstance()
-          .addError("Getting scalar data label in rayTracingData out of range.")
+      viennacore::Logger::getInstance()
+          .addError("Getting scalar data label in TracingData out of range.")
           .print();
     return scalarDataLabels_[i];
   }
@@ -216,8 +216,8 @@ public:
         return i;
       }
     }
-    vieTools::Logger::getInstance()
-        .addError("Can not find vector data label in rayTracingData.")
+    viennacore::Logger::getInstance()
+        .addError("Can not find vector data label in TracingData.")
         .print();
     return -1;
   }
@@ -228,19 +228,19 @@ public:
         return i;
       }
     }
-    vieTools::Logger::getInstance()
-        .addError("Can not find scalar data label in rayTracingData.")
+    viennacore::Logger::getInstance()
+        .addError("Can not find scalar data label in TracingData.")
         .print();
     return -1;
   }
 
-  [[nodiscard]] const rayTracingDataMergeEnum
-  getVectorMergeType(int num) const {
+  [[nodiscard]] const TracingDataMergeEnum getVectorMergeType(int num) const {
     return vectorDataMerge_[num];
   }
 
-  [[nodiscard]] const rayTracingDataMergeEnum
-  getScalarMergeType(int num) const {
+  [[nodiscard]] const TracingDataMergeEnum getScalarMergeType(int num) const {
     return scalarDataMerge_[num];
   }
 };
+
+} // namespace viennaray

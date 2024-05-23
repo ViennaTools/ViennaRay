@@ -2,23 +2,26 @@
 
 #include <raySource.hpp>
 
+namespace viennaray {
+
+using namespace viennacore;
+
 template <typename NumericType, int D>
-class raySourceGrid : public raySource<NumericType> {
-  using boundingBoxType = vieTools::Pair<vieTools::Triple<NumericType>>;
+class SourceGrid : public Source<NumericType> {
+  using boundingBoxType = Pair<Triple<NumericType>>;
 
 public:
-  raySourceGrid(const boundingBoxType &boundingBox,
-                std::vector<vieTools::Triple<NumericType>> &sourceGrid,
-                NumericType cosinePower,
-                const std::array<int, 5> &traceSettings)
+  SourceGrid(const boundingBoxType &boundingBox,
+             std::vector<Triple<NumericType>> &sourceGrid,
+             NumericType cosinePower, const std::array<int, 5> &traceSettings)
       : bdBox_(boundingBox), sourceGrid_(sourceGrid),
         numPoints_(sourceGrid.size()), rayDir_(traceSettings[0]),
         firstDir_(traceSettings[1]), secondDir_(traceSettings[2]),
         minMax_(traceSettings[3]), posNeg_(traceSettings[4]),
         ee_(((NumericType)2) / (cosinePower + 1)) {}
 
-  vieTools::Pair<vieTools::Triple<NumericType>>
-  getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
+  Pair<Triple<NumericType>>
+  getOriginAndDirection(const size_t idx, RNG &RngState) const override {
     auto origin = sourceGrid_[idx % numPoints_];
     auto direction = getDirection(RngState);
 
@@ -28,8 +31,8 @@ public:
   size_t getNumPoints() const override { return numPoints_; }
 
 private:
-  vieTools::Triple<NumericType> getDirection(rayRNG &RngState) const {
-    vieTools::Triple<NumericType> direction{0., 0., 0.};
+  Triple<NumericType> getDirection(RNG &RngState) const {
+    Triple<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(RngState);
     auto r2 = uniDist(RngState);
@@ -44,7 +47,7 @@ private:
       direction[secondDir_] = sinf(M_PI * 2.f * r1) * sqrtf(1.f - tt);
     }
 
-    vieTools::Normalize(direction);
+    Normalize(direction);
 
     return direction;
   }
@@ -60,7 +63,7 @@ private:
 
 private:
   const boundingBoxType bdBox_;
-  const std::vector<vieTools::Triple<NumericType>> &sourceGrid_;
+  const std::vector<Triple<NumericType>> &sourceGrid_;
   const size_t numPoints_;
   const int rayDir_;
   const int firstDir_;
@@ -69,3 +72,5 @@ private:
   const NumericType posNeg_;
   const NumericType ee_;
 };
+
+} // namespace viennaray

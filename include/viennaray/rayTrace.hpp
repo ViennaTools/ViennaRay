@@ -7,18 +7,23 @@
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
-#include <vtLogger.hpp>
 
-template <class NumericType, int D> class rayTrace {
+#include <vcLogger.hpp>
+
+namespace viennaray {
+
+using namespace viennacore;
+
+template <class NumericType, int D> class Trace {
 public:
-  rayTrace() : device_(rtcNewDevice("hugepages=1")) {}
+  Trace() : device_(rtcNewDevice("hugepages=1")) {}
 
-  rayTrace(const rayTrace &) = delete;
-  rayTrace &operator=(const rayTrace &) = delete;
-  rayTrace(rayTrace &&) = delete;
-  rayTrace &operator=(rayTrace &&) = delete;
+  Trace(const Trace &) = delete;
+  Trace &operator=(const Trace &) = delete;
+  Trace(Trace &&) = delete;
+  Trace &operator=(Trace &&) = delete;
 
-  ~rayTrace() {
+  ~Trace() {
     geometry_.releaseGeometry();
     rtcReleaseDevice(device_);
   }
@@ -32,14 +37,14 @@ public:
         boundingBox, sourceDirection_, diskRadius_);
     auto traceSettings = rayInternal::getTraceSettings(sourceDirection_);
 
-    auto boundary = rayBoundary<NumericType, D>(
+    auto boundary = Boundary<NumericType, D>(
         device_, boundingBox, boundaryConditions_, traceSettings);
 
-    std::array<vieTools::Triple<NumericType>, 3> orthonormalBasis;
+    Triple<Triple<NumericType>> orthonormalBasis;
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
     if (!pSource_)
-      pSource_ = std::make_shared<raySourceRandom<NumericType, D>>(
+      pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
           boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
           geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
 
@@ -53,10 +58,10 @@ public:
       }
     }
 
-    rayTraceKernel tracer(device_, geometry_, boundary, pSource_, pParticle_,
-                          dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_,
-                          useRandomSeeds_, calcFlux_, printProgress_,
-                          runNumber_++, hitCounter_, RTInfo_);
+    rayInternal::TraceKernel tracer(
+        device_, geometry_, boundary, pSource_, pParticle_, dataLog_,
+        numberOfRaysPerPoint_, numberOfRaysFixed_, useRandomSeeds_, calcFlux_,
+        printProgress_, runNumber_++, hitCounter_, RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
@@ -70,9 +75,9 @@ public:
   /// The particle is a user defined object that has to interface the
   /// rayParticle class.
   template <typename ParticleType,
-            std::enable_if_t<std::is_base_of_v<rayAbstractParticle<NumericType>,
-                                               ParticleType>,
-                             bool> = true>
+            std::enable_if_t<
+                std::is_base_of_v<AbstractParticle<NumericType>, ParticleType>,
+                bool> = true>
   void setParticleType(std::unique_ptr<ParticleType> const &particle) {
     pParticle_ = particle->clone();
   }
@@ -116,7 +121,7 @@ public:
   /// There has to be a boundary condition defined for each space dimension,
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
-  void setBoundaryConditions(rayBoundaryCondition boundaryConditions[D]) {
+  void setBoundaryConditions(BoundaryCondition boundaryConditions[D]) {
     for (size_t i = 0; i < D; ++i) {
       boundaryConditions_[i] = boundaryConditions[i];
     }
@@ -125,7 +130,7 @@ public:
   /// Set a custom source for the ray tracing. Per default a random source is
   /// set up. The source has to be a user defined object that has to interface
   /// the raySource class.
-  void setSource(std::shared_ptr<raySource<NumericType>> source) {
+  void setSource(std::shared_ptr<Source<NumericType>> source) {
     pSource_ = source;
   }
 
@@ -152,7 +157,7 @@ public:
   }
 
   /// Set the source direction, where the rays should be traced from.
-  void setSourceDirection(const rayTraceDirection direction) {
+  void setSourceDirection(const TraceDirection direction) {
     sourceDirection_ = direction;
   }
 
@@ -161,8 +166,7 @@ public:
   /// not change the position of the source plane. Therefore, one has the be
   /// careful that the resulting distribution does not lie completely above the
   /// source plane.
-  void
-  setPrimaryDirection(const vieTools::Triple<NumericType> primaryDirection) {
+  void setPrimaryDirection(const Triple<NumericType> primaryDirection) {
     primaryDirection_ = primaryDirection;
     usePrimaryDirection_ = true;
   }
@@ -193,7 +197,7 @@ public:
 
   /// Returns the normalized flux on each disk.
   [[nodiscard]] std::vector<NumericType>
-  getNormalizedFlux(rayNormalizationType normalization,
+  getNormalizedFlux(NormalizationType normalization,
                     bool averageNeighborhood = false) {
     auto flux = hitCounter_.getValues();
     normalizeFlux(flux, normalization);
@@ -207,7 +211,7 @@ public:
   /// The flux can be normalized to the source flux and the maximum recorded
   /// value.
   void normalizeFlux(std::vector<NumericType> &flux,
-                     rayNormalizationType norm = rayNormalizationType::SOURCE) {
+                     NormalizationType norm = NormalizationType::SOURCE) {
     assert(flux.size() == geometry_.getNumPoints() &&
            "Unequal number of points in normalizeFlux");
 
@@ -215,7 +219,7 @@ public:
     const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
 
     switch (norm) {
-    case rayNormalizationType::MAX: {
+    case NormalizationType::MAX: {
       auto maxv = *std::max_element(flux.begin(), flux.end());
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
@@ -224,9 +228,9 @@ public:
       break;
     }
 
-    case rayNormalizationType::SOURCE: {
+    case NormalizationType::SOURCE: {
       if (!pSource_) {
-        vieTools::Logger::getInstance()
+        Logger::getInstance()
             .addWarning("No source was specified in for the normalization.")
             .print();
         break;
@@ -279,21 +283,17 @@ public:
     return hitCounter_.getDiskAreas();
   }
 
-  [[nodiscard]] rayTracingData<NumericType> &getLocalData() {
-    return localData_;
-  }
+  [[nodiscard]] TracingData<NumericType> &getLocalData() { return localData_; }
 
-  [[nodiscard]] rayTracingData<NumericType> *getGlobalData() {
+  [[nodiscard]] TracingData<NumericType> *getGlobalData() {
     return pGlobalData_;
   }
 
-  void setGlobalData(rayTracingData<NumericType> &data) {
-    pGlobalData_ = &data;
-  }
+  void setGlobalData(TracingData<NumericType> &data) { pGlobalData_ = &data; }
 
-  [[nodiscard]] rayTraceInfo getRayTraceInfo() { return RTInfo_; }
+  [[nodiscard]] TraceInfo getRayTraceInfo() { return RTInfo_; }
 
-  [[nodiscard]] rayDataLog<NumericType> &getDataLog() { return dataLog_; }
+  [[nodiscard]] DataLog<NumericType> &getDataLog() { return dataLog_; }
 
 private:
   void checkRelativeError() {
@@ -321,7 +321,7 @@ private:
     }
     if (!allPassed) {
       RTInfo_.warning = true;
-      vieTools::Logger::getInstance()
+      Logger::getInstance()
           .addWarning(
               "Large relative error detected. Consider using more rays.")
           .print();
@@ -331,23 +331,23 @@ private:
   void checkSettings() {
     if (pParticle_ == nullptr) {
       RTInfo_.error = true;
-      vieTools::Logger::getInstance().addError(
+      Logger::getInstance().addError(
           "No particle was specified in rayTrace. Aborting.");
     }
     if (geometry_.checkGeometryEmpty()) {
       RTInfo_.error = true;
-      vieTools::Logger::getInstance().addError(
+      Logger::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");
     }
-    if ((D == 2 && sourceDirection_ == rayTraceDirection::POS_Z) ||
-        (D == 2 && sourceDirection_ == rayTraceDirection::NEG_Z)) {
+    if ((D == 2 && sourceDirection_ == TraceDirection::POS_Z) ||
+        (D == 2 && sourceDirection_ == TraceDirection::NEG_Z)) {
       RTInfo_.error = true;
-      vieTools::Logger::getInstance().addError(
+      Logger::getInstance().addError(
           "Invalid source direction in 2D geometry. Aborting.");
     }
     if (diskRadius_ > gridDelta_) {
       RTInfo_.warning = true;
-      vieTools::Logger::getInstance()
+      Logger::getInstance()
           .addWarning("Disk radius should be smaller than grid delta. Hit "
                       "count normalization not correct.")
           .print();
@@ -366,18 +366,18 @@ private:
 private:
   RTCDevice device_;
 
-  rayGeometry<NumericType, D> geometry_;
-  std::unique_ptr<rayAbstractParticle<NumericType>> pParticle_ = nullptr;
-  std::shared_ptr<raySource<NumericType>> pSource_ = nullptr;
+  Geometry<NumericType, D> geometry_;
+  std::shared_ptr<Source<NumericType>> pSource_ = nullptr;
+  std::unique_ptr<AbstractParticle<NumericType>> pParticle_ = nullptr;
 
   size_t numberOfRaysPerPoint_ = 1000;
   size_t numberOfRaysFixed_ = 0;
   NumericType diskRadius_ = 0;
   NumericType gridDelta_ = 0;
 
-  rayBoundaryCondition boundaryConditions_[D] = {};
-  rayTraceDirection sourceDirection_ = rayTraceDirection::POS_Z;
-  vieTools::Triple<NumericType> primaryDirection_ = {0.};
+  BoundaryCondition boundaryConditions_[D] = {};
+  TraceDirection sourceDirection_ = TraceDirection::POS_Z;
+  Triple<NumericType> primaryDirection_ = {0.};
 
   bool usePrimaryDirection_ = false;
   bool useRandomSeeds_ = false;
@@ -386,9 +386,11 @@ private:
   bool checkError_ = true;
   bool printProgress_ = false;
 
-  rayHitCounter<NumericType> hitCounter_;
-  rayTracingData<NumericType> localData_;
-  rayTracingData<NumericType> *pGlobalData_ = nullptr;
-  rayTraceInfo RTInfo_;
-  rayDataLog<NumericType> dataLog_;
+  HitCounter<NumericType> hitCounter_;
+  TracingData<NumericType> localData_;
+  TracingData<NumericType> *pGlobalData_ = nullptr;
+  TraceInfo RTInfo_;
+  DataLog<NumericType> dataLog_;
 };
+
+} // namespace viennaray

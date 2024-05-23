@@ -124,7 +124,7 @@ CPMAddPackage(
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 0.0.1
+  VERSION 0.0.2
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore")
 
 if(NOT VIENNARAY_SYSTEM_TBB)

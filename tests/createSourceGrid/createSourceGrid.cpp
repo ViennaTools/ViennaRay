@@ -2,7 +2,9 @@
 #include <rayRNG.hpp>
 #include <raySourceGrid.hpp>
 #include <rayUtil.hpp>
-#include <vtTestAsserts.hpp>
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 int main() {
   constexpr int D = 3;
@@ -10,27 +12,27 @@ int main() {
   NumericType eps = 1e-6;
 
   NumericType gridDelta;
-  std::vector<vieTools::Triple<NumericType>> points;
-  std::vector<vieTools::Triple<NumericType>> normals;
+  std::vector<Triple<NumericType>> points;
+  std::vector<Triple<NumericType>> normals;
   rayInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
                                 points, normals);
 
   auto device = rtcNewDevice("");
-  rayGeometry<NumericType, D> geometry;
+  Geometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
   auto boundingBox = geometry.getBoundingBox();
-  auto traceSettings = rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
+  auto traceSettings = rayInternal::getTraceSettings(TraceDirection::POS_Z);
   rayInternal::adjustBoundingBox<NumericType, D>(
-      boundingBox, rayTraceDirection::POS_Z, gridDelta);
+      boundingBox, TraceDirection::POS_Z, gridDelta);
 
   auto grid = rayInternal::createSourceGrid<NumericType, D>(
       boundingBox, points.size(), gridDelta, traceSettings);
 
-  rayRNG rngState(0);
+  RNG rngState(0);
   {
     // build source in positive z direction;
     auto source =
-        raySourceGrid<NumericType, D>(boundingBox, grid, 1., traceSettings);
+        SourceGrid<NumericType, D>(boundingBox, grid, 1., traceSettings);
     auto numGridPoints = source.getNumPoints();
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -39,10 +41,10 @@ int main() {
       rayInternal::fillRay(rayhit.ray, originAndDirection[0],
                            originAndDirection[1]);
 
-      VT_TEST_ASSERT(rayhit.ray.dir_z < 0.)
-      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
-      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, grid[i][0], eps)
-      VT_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, grid[i][1], eps)
+      VC_TEST_ASSERT(rayhit.ray.dir_z < 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
+      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, grid[i][0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, grid[i][1], eps)
     }
   }
   return 0;

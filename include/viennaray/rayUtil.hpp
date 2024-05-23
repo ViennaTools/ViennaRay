@@ -2,8 +2,8 @@
 
 #include <rayRNG.hpp>
 
-#include <vtLogger.hpp>
-#include <vtVectorUtil.hpp>
+#include <vcLogger.hpp>
+#include <vcVectorUtil.hpp>
 
 #if VIENNARAY_EMBREE_VERSION < 4
 #include <embree3/rtcore.h>
@@ -31,9 +31,13 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-enum class rayNormalizationType : unsigned { SOURCE = 0, MAX = 1 };
+namespace viennaray {
 
-enum class rayTraceDirection : unsigned {
+using namespace viennacore;
+
+enum class NormalizationType : unsigned { SOURCE = 0, MAX = 1 };
+
+enum class TraceDirection : unsigned {
   POS_X = 0,
   NEG_X = 1,
   POS_Y = 2,
@@ -42,11 +46,11 @@ enum class rayTraceDirection : unsigned {
   NEG_Z = 5
 };
 
-template <class NumericType> struct rayDataLog {
+template <class NumericType> struct DataLog {
 
   std::vector<std::vector<NumericType>> data;
 
-  void merge(rayDataLog<NumericType> &pOther) {
+  void merge(DataLog<NumericType> &pOther) {
     assert(pOther.data.size() == data.size() &&
            "Size mismatch when merging logs");
     for (std::size_t i = 0; i < data.size(); i++) {
@@ -59,7 +63,7 @@ template <class NumericType> struct rayDataLog {
   }
 };
 
-struct rayTraceInfo {
+struct TraceInfo {
   size_t numRays;
   size_t totalRaysTraced;
   size_t totalDiskHits;
@@ -71,7 +75,12 @@ struct rayTraceInfo {
   bool error = false;
 };
 
+} // namespace viennaray
+
 namespace rayInternal {
+
+using namespace viennaray;
+using namespace viennacore;
 
 // embree uses float internally
 using rtcNumericType = float;
@@ -82,55 +91,55 @@ constexpr double DiskFactor =
 
 /* -------------- Ray tracing preparation -------------- */
 template <typename NumericType, int D>
-void adjustBoundingBox(vieTools::Pair<vieTools::Triple<NumericType>> &bdBox,
-                       rayTraceDirection direction, NumericType discRadius) {
+void adjustBoundingBox(Pair<Triple<NumericType>> &bdBox,
+                       TraceDirection direction, NumericType discRadius) {
   // For 2D geometries adjust bounding box in z-direction
   if constexpr (D == 2) {
     bdBox[0][2] -= discRadius;
     bdBox[1][2] += discRadius;
 
-    if (direction == rayTraceDirection::POS_Z ||
-        direction == rayTraceDirection::NEG_Z) {
-      vieTools::Logger::getInstance()
+    if (direction == TraceDirection::POS_Z ||
+        direction == TraceDirection::NEG_Z) {
+      Logger::getInstance()
           .addError("Ray source is set in z-direction for 2D geometry")
           .print();
     }
   }
 
   switch (direction) {
-  case rayTraceDirection::POS_X:
+  case TraceDirection::POS_X:
     bdBox[1][0] += 2 * discRadius;
     break;
 
-  case rayTraceDirection::NEG_X:
+  case TraceDirection::NEG_X:
     bdBox[0][0] -= 2 * discRadius;
     break;
 
-  case rayTraceDirection::POS_Y:
+  case TraceDirection::POS_Y:
     bdBox[1][1] += 2 * discRadius;
     break;
 
-  case rayTraceDirection::NEG_Y:
+  case TraceDirection::NEG_Y:
     bdBox[0][1] -= 2 * discRadius;
     break;
 
-  case rayTraceDirection::POS_Z:
+  case TraceDirection::POS_Z:
     bdBox[1][2] += 2 * discRadius;
     break;
 
-  case rayTraceDirection::NEG_Z:
+  case TraceDirection::NEG_Z:
     bdBox[0][2] -= 2 * discRadius;
     break;
   }
 }
 
 [[nodiscard]] inline std::array<int, 5>
-getTraceSettings(rayTraceDirection sourceDir) {
+getTraceSettings(TraceDirection sourceDir) {
   // Trace Settings: sourceDir, boundaryDir1, boundaryDir2, minMax bdBox
   // source, posNeg dir
   std::array<int, 5> set{0, 0, 0, 0, 0};
   switch (sourceDir) {
-  case rayTraceDirection::POS_X: {
+  case TraceDirection::POS_X: {
     set[0] = 0;
     set[1] = 1;
     set[2] = 2;
@@ -138,7 +147,7 @@ getTraceSettings(rayTraceDirection sourceDir) {
     set[4] = -1;
     break;
   }
-  case rayTraceDirection::NEG_X: {
+  case TraceDirection::NEG_X: {
     set[0] = 0;
     set[1] = 1;
     set[2] = 2;
@@ -146,7 +155,7 @@ getTraceSettings(rayTraceDirection sourceDir) {
     set[4] = 1;
     break;
   }
-  case rayTraceDirection::POS_Y: {
+  case TraceDirection::POS_Y: {
     set[0] = 1;
     set[1] = 0;
     set[2] = 2;
@@ -154,7 +163,7 @@ getTraceSettings(rayTraceDirection sourceDir) {
     set[4] = -1;
     break;
   }
-  case rayTraceDirection::NEG_Y: {
+  case TraceDirection::NEG_Y: {
     set[0] = 1;
     set[1] = 0;
     set[2] = 2;
@@ -162,7 +171,7 @@ getTraceSettings(rayTraceDirection sourceDir) {
     set[4] = 1;
     break;
   }
-  case rayTraceDirection::POS_Z: {
+  case TraceDirection::POS_Z: {
     set[0] = 2;
     set[1] = 0;
     set[2] = 1;
@@ -170,7 +179,7 @@ getTraceSettings(rayTraceDirection sourceDir) {
     set[4] = -1;
     break;
   }
-  case rayTraceDirection::NEG_Z: {
+  case TraceDirection::NEG_Z: {
     set[0] = 2;
     set[1] = 0;
     set[2] = 1;
@@ -184,9 +193,8 @@ getTraceSettings(rayTraceDirection sourceDir) {
 }
 
 template <typename T1, typename T2>
-void fillRay(RTCRay &ray, const vieTools::Triple<T1> &origin,
-             const vieTools::Triple<T2> &direction, const float tnear = 1e-4f,
-             const float time = 0.0f) {
+void fillRay(RTCRay &ray, const Triple<T1> &origin, const Triple<T2> &direction,
+             const float tnear = 1e-4f, const float time = 0.0f) {
 #ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray) =
       _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
@@ -207,8 +215,8 @@ void fillRay(RTCRay &ray, const vieTools::Triple<T1> &origin,
 }
 
 template <>
-void fillRay<float>(RTCRay &ray, const vieTools::Triple<float> &origin,
-                    const vieTools::Triple<float> &direction, const float tnear,
+void fillRay<float>(RTCRay &ray, const Triple<float> &origin,
+                    const Triple<float> &direction, const float tnear,
                     const float time) {
 #ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray) =
@@ -232,8 +240,7 @@ void fillRay<float>(RTCRay &ray, const vieTools::Triple<float> &origin,
 /* ------------------------------------------------------ */
 
 template <typename NumericType>
-[[nodiscard]] static vieTools::Triple<NumericType>
-pickRandomPointOnUnitSphere(rayRNG &RNG) {
+[[nodiscard]] static Triple<NumericType> pickRandomPointOnUnitSphere(RNG &RNG) {
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType x, y, z, x2, y2, x2py2;
   do {
@@ -247,7 +254,7 @@ pickRandomPointOnUnitSphere(rayRNG &RNG) {
   x *= tmp;
   y *= tmp;
   z = 1. - 2 * x2py2;
-  return vieTools::Triple<NumericType>{x, y, z};
+  return Triple<NumericType>{x, y, z};
 }
 
 // Returns some orthonormal basis containing a the input vector
@@ -255,24 +262,20 @@ pickRandomPointOnUnitSphere(rayRNG &RNG) {
 // This function is deterministic, i.e., for one input it will return always
 // the same result.
 template <typename NumericType>
-[[nodiscard]] vieTools::Triple<vieTools::Triple<NumericType>>
-getOrthonormalBasis(const vieTools::Triple<NumericType> &vec) {
-  vieTools::Triple<vieTools::Triple<NumericType>> rr;
+[[nodiscard]] Triple<Triple<NumericType>>
+getOrthonormalBasis(const Triple<NumericType> &vec) {
+  Triple<Triple<NumericType>> rr;
   rr[0] = vec;
 
   // Calculate a vector (rr[1]) which is perpendicular to rr[0]
   // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
-  vieTools::Triple<NumericType> candidate0{rr[0][2], rr[0][2],
-                                           -(rr[0][0] + rr[0][1])};
-  vieTools::Triple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]),
-                                           rr[0][1]};
-  vieTools::Triple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0],
-                                           rr[0][0]};
+  Triple<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
+  Triple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
+  Triple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
   // We choose the candidate which maximizes the sum of its components,
   // because we want to avoid numeric errors and that the result is (0, 0, 0).
-  std::array<vieTools::Triple<NumericType>, 3> cc = {candidate0, candidate1,
-                                                     candidate2};
-  auto sumFun = [](const vieTools::Triple<NumericType> &oo) {
+  std::array<Triple<NumericType>, 3> cc = {candidate0, candidate1, candidate2};
+  auto sumFun = [](const Triple<NumericType> &oo) {
     return oo[0] + oo[1] + oo[2];
   };
   int maxIdx = 0;
@@ -284,17 +287,17 @@ getOrthonormalBasis(const vieTools::Triple<NumericType> &vec) {
   assert(maxIdx < 3 && "Error in computation of perpendicular vector");
   rr[1] = cc[maxIdx];
 
-  rr[2] = vieTools::CrossProduct(rr[0], rr[1]);
-  vieTools::Normalize(rr[0]);
-  vieTools::Normalize(rr[1]);
-  vieTools::Normalize(rr[2]);
+  rr[2] = CrossProduct(rr[0], rr[1]);
+  Normalize(rr[0]);
+  Normalize(rr[1]);
+  Normalize(rr[2]);
 
   // Sanity check
-  assert(std::abs(vieTools::DotProduct(rr[0], rr[1])) < 1e-6 &&
+  assert(std::abs(DotProduct(rr[0], rr[1])) < 1e-6 &&
          "Error in orthonormal basis computation");
-  assert(std::abs(vieTools::DotProduct(rr[1], rr[2])) < 1e-6 &&
+  assert(std::abs(DotProduct(rr[1], rr[2])) < 1e-6 &&
          "Error in orthonormal basis computation");
-  assert(std::abs(vieTools::DotProduct(rr[2], rr[0])) < 1e-6 &&
+  assert(std::abs(DotProduct(rr[2], rr[0])) < 1e-6 &&
          "Error in orthonormal basis computation");
   return rr;
 }
@@ -329,8 +332,8 @@ void createPlaneGrid(const NumericType gridDelta, const NumericType extent,
 
 template <typename NumericType>
 void readGridFromFile(std::string fileName, NumericType &gridDelta,
-                      std::vector<vieTools::Triple<NumericType>> &points,
-                      std::vector<vieTools::Triple<NumericType>> &normals) {
+                      std::vector<Triple<NumericType>> &points,
+                      std::vector<Triple<NumericType>> &normals) {
   std::ifstream dataFile(fileName);
   if (!dataFile.is_open()) {
     std::cout << "Cannot read file " << fileName << std::endl;
@@ -350,7 +353,7 @@ void readGridFromFile(std::string fileName, NumericType &gridDelta,
 
 template <typename NumericType, int D = 3>
 void writeVTK(std::string filename,
-              const std::vector<vieTools::Triple<NumericType>> &points,
+              const std::vector<Triple<NumericType>> &points,
               const std::vector<NumericType> &flux) {
   std::ofstream f(filename.c_str());
 
@@ -388,11 +391,11 @@ void writeVTK(std::string filename,
 /* -------------------------------------------------------------- */
 
 template <typename NumericType, int D>
-[[nodiscard]] std::vector<vieTools::Triple<NumericType>>
-createSourceGrid(const vieTools::Pair<vieTools::Triple<NumericType>> &pBdBox,
+[[nodiscard]] std::vector<Triple<NumericType>>
+createSourceGrid(const Pair<Triple<NumericType>> &pBdBox,
                  const size_t pNumPoints, const NumericType pGridDelta,
                  const std::array<int, 5> &pTraceSettings) {
-  std::vector<vieTools::Triple<NumericType>> sourceGrid;
+  std::vector<Triple<NumericType>> sourceGrid;
   sourceGrid.reserve(pNumPoints);
   constexpr double eps = 1e-4;
   // Trace settings
@@ -416,7 +419,7 @@ createSourceGrid(const vieTools::Pair<vieTools::Triple<NumericType>> &pBdBox,
   auto secondGridDelta =
       (len2 - 2 * eps) / (NumericType)(numPointsInSecondDir - 1);
 
-  vieTools::Triple<NumericType> point;
+  Triple<NumericType> point;
   point[rayDir] = pBdBox[minMax][rayDir];
   for (auto uu = pBdBox[0][secondDir] + eps; uu <= pBdBox[1][secondDir] - eps;
        uu += secondGridDelta) {

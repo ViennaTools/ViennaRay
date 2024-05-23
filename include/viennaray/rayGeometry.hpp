@@ -2,7 +2,11 @@
 
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D> class rayGeometry {
+namespace viennaray {
+
+using namespace viennacore;
+
+template <typename NumericType, int D> class Geometry {
   using pointNeighborhoodType = std::vector<std::vector<unsigned int>>;
 
 public:
@@ -15,7 +19,7 @@ public:
                   "Setting 2D geometry in 3D trace object");
 
     assert(points.size() == normals.size() &&
-           "rayGeometry: Points/Normals size mismatch");
+           "Geometry: Points/Normals size mismatch");
 
     // overwriting the geometry without releasing it beforehand causes the old
     // buffer to leak
@@ -100,7 +104,7 @@ public:
   template <typename MatIdType>
   void setMaterialIds(std::vector<MatIdType> const &pMaterialIds) {
     assert(pMaterialIds.size() == numPoints_ &&
-           "rayGeometry: Material IDs size mismatch");
+           "Geometry: Material IDs size mismatch");
     materialIds_.clear();
     materialIds_.reserve(numPoints_);
     for (const auto id : pMaterialIds) {
@@ -108,21 +112,19 @@ public:
     }
   }
 
-  [[nodiscard]] vieTools::Pair<vieTools::Triple<NumericType>>
-  getBoundingBox() const {
+  [[nodiscard]] Pair<Triple<NumericType>> getBoundingBox() const {
     return {minCoords_, maxCoords_};
   }
 
-  [[nodiscard]] vieTools::Triple<NumericType>
-  getPoint(const unsigned int primID) const {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
+  [[nodiscard]] Triple<NumericType> getPoint(const unsigned int primID) const {
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &pnt = pPointBuffer_[primID];
     return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
   }
 
   [[nodiscard]] std::vector<unsigned int> const &
   getNeighborIndicies(const unsigned int idx) const {
-    assert(idx < numPoints_ && "rayGeometry: Index out of bounds");
+    assert(idx < numPoints_ && "Geometry: Index out of bounds");
     return pointNeighborhood_[idx];
   }
 
@@ -134,31 +136,30 @@ public:
     return pRtcGeometry_;
   }
 
-  [[nodiscard]] vieTools::Triple<NumericType>
+  [[nodiscard]] Triple<NumericType>
   getPrimNormal(const unsigned int primID) const {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &normal = pNormalVecBuffer_[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,
             (NumericType)normal.zz};
   }
 
-  [[nodiscard]] vieTools::Quadruple<rayInternal::rtcNumericType> &
+  [[nodiscard]] Quadruple<rayInternal::rtcNumericType> &
   getPrimRef(unsigned int primID) {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<
-        vieTools::Quadruple<rayInternal::rtcNumericType> *>(
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
+    return *reinterpret_cast<Quadruple<rayInternal::rtcNumericType> *>(
         &pPointBuffer_[primID]);
   }
 
-  [[nodiscard]] vieTools::Triple<rayInternal::rtcNumericType> &
+  [[nodiscard]] Triple<rayInternal::rtcNumericType> &
   getNormalRef(unsigned int primID) {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<vieTools::Triple<rayInternal::rtcNumericType> *>(
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
+    return *reinterpret_cast<Triple<rayInternal::rtcNumericType> *>(
         &pNormalVecBuffer_[primID]);
   }
 
   [[nodiscard]] int getMaterialId(const unsigned int primID) const {
-    assert(primID < numPoints_ && "rayGeometry Prim ID out of bounds");
+    assert(primID < numPoints_ && "Geometry Prim ID out of bounds");
     return materialIds_[primID];
   }
 
@@ -197,8 +198,8 @@ private:
       std::vector<unsigned int> side2;
 
       // create copy of bounding box
-      vieTools::Triple<NumericType> min = minCoords_;
-      vieTools::Triple<NumericType> max = maxCoords_;
+      Triple<NumericType> min = minCoords_;
+      Triple<NumericType> max = maxCoords_;
 
       std::vector<int> dirs;
       for (int i = 0; i < 3; ++i) {
@@ -233,14 +234,13 @@ private:
     }
   }
 
-  void
-  createNeighborhood(const std::vector<vieTools::Triple<NumericType>> &points,
-                     const std::vector<unsigned int> &side1,
-                     const std::vector<unsigned int> &side2,
-                     const vieTools::Triple<NumericType> &min,
-                     const vieTools::Triple<NumericType> &max,
-                     const int &dirIdx, const std::vector<int> &dirs,
-                     const NumericType &pivot) {
+  void createNeighborhood(const std::vector<Triple<NumericType>> &points,
+                          const std::vector<unsigned int> &side1,
+                          const std::vector<unsigned int> &side2,
+                          const Triple<NumericType> &min,
+                          const Triple<NumericType> &max, const int &dirIdx,
+                          const std::vector<int> &dirs,
+                          const NumericType &pivot) {
     assert(0 <= dirIdx && dirIdx < dirs.size() && "Assumption");
     if (side1.size() + side2.size() <= 1) {
       return;
@@ -349,7 +349,7 @@ private:
       if (std::abs(p1[i] - p2[i]) >= dist)
         return false;
     }
-    if (vieTools::Distance(p1, p2) < dist)
+    if (Distance(p1, p2) < dist)
       return true;
 
     return false;
@@ -380,8 +380,10 @@ private:
 
   size_t numPoints_;
   NumericType discRadii_;
-  vieTools::Triple<NumericType> minCoords_;
-  vieTools::Triple<NumericType> maxCoords_;
+  Triple<NumericType> minCoords_;
+  Triple<NumericType> maxCoords_;
   pointNeighborhoodType pointNeighborhood_;
   std::vector<int> materialIds_;
 };
+
+} // namespace viennaray

@@ -2,22 +2,24 @@
 
 #include <rayUtil.hpp>
 
-template <typename NumericType> class rayHitCounter {
+namespace viennaray {
+
+template <typename NumericType> class HitCounter {
 public:
-  rayHitCounter() : totalCounts_(0) {}
+  HitCounter() : totalCounts_(0) {}
 
   // elements initialized to 0.
-  rayHitCounter(size_t size)
+  HitCounter(size_t size)
       : counts_(size, 0), totalCounts_(0), diskAreas_(size, 0), S1s_(size, 0),
         S2s_(size, 0) {}
 
   // copy construct the vector members
-  rayHitCounter(rayHitCounter<NumericType> const &other)
+  HitCounter(HitCounter<NumericType> const &other)
       : counts_(other.counts_), totalCounts_(other.totalCounts_),
         diskAreas_(other.diskAreas_), S1s_(other.S1s_), S2s_(other.S2s_) {}
 
   // move the vector members
-  rayHitCounter(rayHitCounter<NumericType> const &&other)
+  HitCounter(HitCounter<NumericType> const &&other)
       : counts_(std::move(other.counts_)),
         totalCounts_(std::move(other.totalCounts_)),
         diskAreas_(std::move(other.diskAreas_)), S1s_(std::move(other.S1s_)),
@@ -25,9 +27,9 @@ public:
 
   // A copy constructor which can accumulate values from two instances
   // Precondition: the size of the accumulators are equal
-  rayHitCounter(rayHitCounter<NumericType> const &A1,
-                rayHitCounter<NumericType> const &A2)
-      : rayHitCounter(A1) {
+  HitCounter(HitCounter<NumericType> const &A1,
+             HitCounter<NumericType> const &A2)
+      : HitCounter(A1) {
     for (size_t idx = 0; idx < counts_.size(); ++idx) {
       counts_[idx] += A2.counts_[idx];
       S1s_[idx] += A2.S1s_[idx];
@@ -42,8 +44,7 @@ public:
     }
   }
 
-  rayHitCounter<NumericType> &
-  operator=(rayHitCounter<NumericType> const &pOther) {
+  HitCounter<NumericType> &operator=(HitCounter<NumericType> const &pOther) {
     if (this != &pOther) {
       // copy from pOther to this
       counts_.clear();
@@ -59,8 +60,7 @@ public:
     return *this;
   }
 
-  rayHitCounter<NumericType> &
-  operator=(rayHitCounter<NumericType> const &&pOther) {
+  HitCounter<NumericType> &operator=(HitCounter<NumericType> const &&pOther) {
     if (this != &pOther) {
       // move from pOther to this
       counts_.clear();
@@ -83,7 +83,7 @@ public:
     S2s_[primID] += value * value;
   }
 
-  void merge(rayHitCounter<NumericType> const &pOther, const bool calcFlux) {
+  void merge(HitCounter<NumericType> const &pOther, const bool calcFlux) {
     if (calcFlux) {
       for (size_t idx = 0; idx < counts_.size(); ++idx) {
         counts_[idx] += pOther.counts_[idx];
@@ -163,3 +163,5 @@ private:
   // these are need to compute the relative error
   std::vector<NumericType> S2s_;
 };
+
+} // namespace viennaray

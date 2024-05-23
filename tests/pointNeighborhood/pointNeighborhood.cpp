@@ -1,6 +1,8 @@
 #include <rayGeometry.hpp>
 #include <rayUtil.hpp>
-#include <vtTestAsserts.hpp>
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 int main() {
   using NumericType = float;
@@ -20,7 +22,7 @@ int main() {
   // assert inner points have 8 neighbors
 
   auto device = rtcNewDevice("");
-  rayGeometry<NumericType, D> geometry;
+  Geometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta - eps);
   auto bdBox = geometry.getBoundingBox();
 
@@ -41,7 +43,7 @@ int main() {
       numNeighbors = 5;
     }
 
-    VT_TEST_ASSERT(numNeighbors == neighbors.size())
+    VC_TEST_ASSERT(numNeighbors == neighbors.size())
   }
   rtcReleaseDevice(device);
   return 0;

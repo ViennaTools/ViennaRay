@@ -1,7 +1,7 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
 #include <rayUtil.hpp>
-#include <vtTestAsserts.hpp>
+#include <vcTestAsserts.hpp>
 // void printRay(RTCRayHit &rayHit)
 // {
 //     std::cout << "Origin: ";
@@ -14,6 +14,8 @@
 //     rayHit.hit.primID << std::endl;
 // }
 
+using namespace viennaray;
+
 int main() {
   constexpr int D = 3;
   using NumericType = float;
@@ -25,20 +27,20 @@ int main() {
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   auto rtcDevice = rtcNewDevice("");
-  auto sourceDirection = rayTraceDirection::POS_Z;
-  rayBoundaryCondition boundaryConds[D] = {};
+  auto sourceDirection = TraceDirection::POS_Z;
+  BoundaryCondition boundaryConds[D] = {};
 
   constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
   auto discRadius = gridDelta * discFactor;
-  rayGeometry<NumericType, D> geometry;
+  Geometry<NumericType, D> geometry;
   geometry.initGeometry(rtcDevice, points, normals, discRadius);
   auto boundingBox = geometry.getBoundingBox();
 
   rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, sourceDirection,
                                                  discRadius);
   auto traceSettings = rayInternal::getTraceSettings(sourceDirection);
-  auto boundary = rayBoundary<NumericType, D>(rtcDevice, boundingBox,
-                                              boundaryConds, traceSettings);
+  auto boundary = Boundary<NumericType, D>(rtcDevice, boundingBox,
+                                           boundaryConds, traceSettings);
 
   auto rtcscene = rtcNewScene(rtcDevice);
   rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
@@ -54,11 +56,11 @@ int main() {
   auto rtccontext = RTCIntersectContext{};
   rtcInitIntersectContext(&rtccontext);
 #endif
-  VT_TEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
+  VC_TEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
   {
-    auto origin = vieTools::Triple<NumericType>{0., 0., 2 * discRadius};
-    auto direction = vieTools::Triple<NumericType>{0., 0., -1.};
+    auto origin = Triple<NumericType>{0., 0., 2 * discRadius};
+    auto direction = Triple<NumericType>{0., 0., -1.};
 
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -86,14 +88,14 @@ int main() {
     rtcIntersect1(rtcscene, &rayhit);
 #endif
 
-    VT_TEST_ASSERT(rayhit.hit.geomID == geometryID)
-    VT_TEST_ASSERT(rayhit.hit.primID == 840)
+    VC_TEST_ASSERT(rayhit.hit.geomID == geometryID)
+    VC_TEST_ASSERT(rayhit.hit.primID == 840)
   }
 
   {
-    auto origin = vieTools::Triple<NumericType>{0., 9., 2 * discRadius};
-    auto direction = vieTools::Triple<NumericType>{0., 2., -1.};
-    vieTools::Normalize(direction);
+    auto origin = Triple<NumericType>{0., 9., 2 * discRadius};
+    auto direction = Triple<NumericType>{0., 2., -1.};
+    Normalize(direction);
 
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -121,8 +123,8 @@ int main() {
     rtcIntersect1(rtcscene, &rayhit);
 #endif
 
-    VT_TEST_ASSERT(rayhit.hit.geomID == boundaryID)
-    VT_TEST_ASSERT(rayhit.hit.primID == 7)
+    VC_TEST_ASSERT(rayhit.hit.geomID == boundaryID)
+    VC_TEST_ASSERT(rayhit.hit.primID == 7)
   }
 
   rtcReleaseScene(rtcscene);

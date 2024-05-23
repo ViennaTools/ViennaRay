@@ -9,20 +9,24 @@
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
-#include <vtTimer.hpp>
-#include <vtUtil.hpp>
+#include <vcTimer.hpp>
+#include <vcUtil.hpp>
 
-template <typename NumericType, int D> class rayTraceKernel {
+namespace rayInternal {
+
+using namespace viennaray;
+
+template <typename NumericType, int D> class TraceKernel {
 public:
-  rayTraceKernel(RTCDevice &device, rayGeometry<NumericType, D> &geometry,
-                 rayBoundary<NumericType, D> &boundary,
-                 std::shared_ptr<raySource<NumericType>> source,
-                 std::unique_ptr<rayAbstractParticle<NumericType>> &particle,
-                 rayDataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
-                 const size_t numRaysFixed, const bool useRandomSeed,
-                 const bool calcFlux, const bool printProgress,
-                 const size_t runNumber, rayHitCounter<NumericType> &hitCounter,
-                 rayTraceInfo &traceInfo)
+  TraceKernel(RTCDevice &device, Geometry<NumericType, D> &geometry,
+              Boundary<NumericType, D> &boundary,
+              std::shared_ptr<Source<NumericType>> source,
+              std::unique_ptr<AbstractParticle<NumericType>> &particle,
+              DataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
+              const size_t numRaysFixed, const bool useRandomSeed,
+              const bool calcFlux, const bool printProgress,
+              const size_t runNumber, HitCounter<NumericType> &hitCounter,
+              TraceInfo &traceInfo)
       : device_(device), geometry_(geometry), boundary_(boundary),
         pSource_(source), pParticle_(particle->clone()),
         numRays_(numRaysFixed == 0 ? pSource_->getNumPoints() * numRaysPerPoint
@@ -36,8 +40,6 @@ public:
   }
 
   void apply() {
-    using namespace vieTools;
-
     auto rtcScene = rtcNewScene(device_);
 
     // RTC scene flags
@@ -63,13 +65,13 @@ public:
 
     // thread local data storage
     const int numThreads = omp_get_max_threads();
-    std::vector<rayTracingData<NumericType>> threadLocalData(numThreads);
+    std::vector<TracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *pLocalData_;
     }
 
     // thread local data log
-    std::vector<rayDataLog<NumericType>> threadLocalDataLog(numThreads);
+    std::vector<DataLog<NumericType>> threadLocalDataLog(numThreads);
     for (auto &data : threadLocalDataLog) {
       data = dataLog_;
       assert(data.data.size() == dataLog_.data.size());
@@ -79,7 +81,7 @@ public:
     }
 
     // hit counters
-    std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
+    std::vector<HitCounter<NumericType>> threadLocalHitCounter(numThreads);
     hitCounter_.clear();
     hitCounter_.resize(geometry_.getNumPoints(), calcFlux_);
     if (calcFlux_) {
@@ -122,8 +124,8 @@ public:
 #pragma omp for schedule(dynamic)
       for (long long idx = 0; idx < numRays_; ++idx) {
         // particle specific RNG seed
-        auto particleSeed = rayInternal::tea<3>(idx, seed);
-        rayRNG RngState(particleSeed);
+        auto particleSeed = tea<3>(idx, seed);
+        RNG RngState(particleSeed);
 
         particle->initNew(RngState);
         particle->logData(myDataLog);
@@ -134,8 +136,7 @@ public:
 
         auto originAndDirection =
             pSource_->getOriginAndDirection(idx, RngState);
-        rayInternal::fillRay(rayHit.ray, originAndDirection[0],
-                             originAndDirection[1]);
+        fillRay(rayHit.ray, originAndDirection[0], originAndDirection[1]);
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;
@@ -148,8 +149,7 @@ public:
         bool reflect = false;
         bool hitFromBack = false;
         do {
-          rayHit.ray.tfar =
-              std::numeric_limits<rayInternal::rtcNumericType>::max();
+          rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
           // rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle
@@ -179,22 +179,19 @@ public:
             if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
-              Triple<rayInternal::rtcNumericType> origin = {
-                  static_cast<rayInternal::rtcNumericType>(ray.org_x +
-                                                           ray.dir_x * rnd),
-                  static_cast<rayInternal::rtcNumericType>(ray.org_y +
-                                                           ray.dir_y * rnd),
-                  static_cast<rayInternal::rtcNumericType>(ray.org_z +
-                                                           ray.dir_z * rnd)};
+              Triple<rtcNumericType> origin = {
+                  static_cast<rtcNumericType>(ray.org_x + ray.dir_x * rnd),
+                  static_cast<rtcNumericType>(ray.org_y + ray.dir_y * rnd),
+                  static_cast<rtcNumericType>(ray.org_z + ray.dir_z * rnd)};
 
-              Triple<rayInternal::rtcNumericType> direction{0, 0, 0};
+              Triple<rtcNumericType> direction{0, 0, 0};
               for (int i = 0; i < D; ++i) {
                 direction[i] = 2.f * dist(RngState) - 1.f;
               }
               Normalize(direction);
 
               // Update ray direction and origin
-              rayInternal::fillRay(rayHit.ray, origin, direction);
+              fillRay(rayHit.ray, origin, direction);
 
               particlehitc++;
               reflect = true;
@@ -210,7 +207,7 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const Triple<rayInternal::rtcNumericType> hitPoint = {
+          const Triple<rtcNumericType> hitPoint = {
               ray.org_x + ray.dir_x * ray.tfar,
               ray.org_y + ray.dir_y * ray.tfar,
               ray.org_z + ray.dir_z * ray.tfar};
@@ -249,23 +246,21 @@ public:
           std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
 #ifdef VIENNARAY_USE_WDIST
-          std::vector<rayInternal::rtcNumericType>
+          std::vector<rtcNumericType>
               impactDistances; // distances between point of impact and disk
                                // origins of hit disks
           {                    // distance on first disk hit
             const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
             const auto &diskOrigin =
-                *reinterpret_cast<Triple<rayInternal::rtcNumericType> const *>(
-                    &disk);
-            impactDistances.push_back(
-                rayInternal::Distance(hitPoint, diskOrigin) +
-                1e-6f); // add eps to avoid division by 0
+                *reinterpret_cast<Triple<rtcNumericType> const *>(&disk);
+            impactDistances.push_back(Distance(hitPoint, diskOrigin) +
+                                      1e-6f); // add eps to avoid division by 0
           }
 #endif
           // check for additional intersections
           for (const auto &id :
                geometry_.getNeighborIndicies(rayHit.hit.primID)) {
-            rayInternal::rtcNumericType distance;
+            rtcNumericType distance;
             if (checkLocalIntersection(ray, id, distance)) {
               hitDiskIds.push_back(id);
 #ifdef VIENNARAY_USE_WDIST
@@ -276,7 +271,7 @@ public:
           const size_t numDisksHit = hitDiskIds.size();
 
 #ifdef VIENNARAY_USE_WDIST
-          rayInternal::rtcNumericType invDistanceWeightSum = 0;
+          rtcNumericType invDistanceWeightSum = 0;
           for (const auto &d : impactDistances)
             invDistanceWeightSum += 1 / d;
 #endif
@@ -325,7 +320,7 @@ public:
           }
 
           // Update ray direction and origin
-          rayInternal::fillRay(rayHit.ray, hitPoint, stickingDirection.second);
+          fillRay(rayHit.ray, hitPoint, stickingDirection.second);
 
         } while (reflect);
       } // end ray tracing for loop
@@ -347,7 +342,7 @@ public:
 #pragma omp parallel for
       for (int i = 0; i < pLocalData_->getVectorData().size(); ++i) {
         switch (pLocalData_->getVectorMergeType(i)) {
-        case rayTracingDataMergeEnum::SUM: {
+        case TracingDataMergeEnum::SUM: {
           for (size_t j = 0; j < pLocalData_->getVectorData(i).size(); ++j) {
             for (int k = 0; k < numThreads; ++k) {
               pLocalData_->getVectorData(i)[j] +=
@@ -357,7 +352,7 @@ public:
           break;
         }
 
-        case rayTracingDataMergeEnum::APPEND: {
+        case TracingDataMergeEnum::APPEND: {
           pLocalData_->getVectorData(i).clear();
           for (int k = 0; k < numThreads; ++k) {
             pLocalData_->appendVectorData(i,
@@ -380,7 +375,7 @@ public:
       // merge scalar data
       for (int i = 0; i < pLocalData_->getScalarData().size(); ++i) {
         switch (pLocalData_->getScalarMergeType(i)) {
-        case rayTracingDataMergeEnum::SUM: {
+        case TracingDataMergeEnum::SUM: {
           for (int j = 0; j < numThreads; ++j) {
             pLocalData_->getScalarData(i) +=
                 threadLocalData[j].getScalarData(i);
@@ -388,7 +383,7 @@ public:
           break;
         }
 
-        case rayTracingDataMergeEnum::AVERAGE: {
+        case TracingDataMergeEnum::AVERAGE: {
           for (int j = 0; j < numThreads; ++j) {
             pLocalData_->getScalarData(i) +=
                 threadLocalData[j].getScalarData(i);
@@ -418,15 +413,15 @@ public:
     rtcReleaseScene(rtcScene);
   }
 
-  void setTracingData(rayTracingData<NumericType> *pLocalData,
-                      const rayTracingData<NumericType> *pGlobalData) {
+  void setTracingData(TracingData<NumericType> *pLocalData,
+                      const TracingData<NumericType> *pGlobalData) {
     pLocalData_ = pLocalData;
     pGlobalData_ = pGlobalData;
   }
 
 private:
   static bool rejectionControl(NumericType &rayWeight,
-                               const NumericType &initWeight, rayRNG &RNG) {
+                               const NumericType &initWeight, RNG &RNG) {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;
@@ -467,7 +462,7 @@ private:
       if constexpr (D == 3) {
         areas[idx] = disk[3] * disk[3] * M_PI; // full disk area
 
-        if ((boundaryConds[boundaryDirs[0]] != rayBoundaryCondition::IGNORE) &&
+        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
             (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
                  eps ||
              std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
@@ -476,7 +471,7 @@ private:
           areas[idx] /= 2;
         }
 
-        if ((boundaryConds[boundaryDirs[1]] != rayBoundaryCondition::IGNORE) &&
+        if ((boundaryConds[boundaryDirs[1]] != BoundaryCondition::IGNORE) &&
             (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
                  eps ||
              std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
@@ -489,7 +484,7 @@ private:
         auto normal = geometry_.getNormalRef(idx);
 
         // test min boundary
-        if ((boundaryConds[boundaryDirs[0]] != rayBoundaryCondition::IGNORE) &&
+        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
             (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
              disk[3])) {
           NumericType insideTest =
@@ -505,7 +500,7 @@ private:
         }
 
         // test max boundary
-        if ((boundaryConds[boundaryDirs[0]] != rayBoundaryCondition::IGNORE) &&
+        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
             (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
              disk[3])) {
           NumericType insideTest =
@@ -524,20 +519,19 @@ private:
     return areas;
   }
 
-  bool
-  checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
-                         rayInternal::rtcNumericType &impactDistance) const {
-    auto const &rayOrigin = *reinterpret_cast<
-        vieTools::Triple<rayInternal::rtcNumericType> const *>(&ray.org_x);
-    auto const &rayDirection = *reinterpret_cast<
-        vieTools::Triple<rayInternal::rtcNumericType> const *>(&ray.dir_x);
+  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
+                              rtcNumericType &impactDistance) const {
+    auto const &rayOrigin =
+        *reinterpret_cast<Triple<rtcNumericType> const *>(&ray.org_x);
+    auto const &rayDirection =
+        *reinterpret_cast<Triple<rtcNumericType> const *>(&ray.dir_x);
 
     const auto &normal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
-    const auto &diskOrigin = *reinterpret_cast<
-        vieTools::Triple<rayInternal::rtcNumericType> const *>(&disk);
+    const auto &diskOrigin =
+        *reinterpret_cast<Triple<rtcNumericType> const *>(&disk);
 
-    auto prodOfDirections = vieTools::DotProduct(normal, rayDirection);
+    auto prodOfDirections = DotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
       // Disk normal is pointing away from the ray direction,
       // i.e., this might be a hit from the back or no hit at all.
@@ -551,20 +545,19 @@ private:
     }
 
     // TODO: Memoize ddneg
-    auto ddneg = vieTools::DotProduct(diskOrigin, normal);
-    auto tt =
-        (ddneg - vieTools::DotProduct(normal, rayOrigin)) / prodOfDirections;
+    auto ddneg = DotProduct(diskOrigin, normal);
+    auto tt = (ddneg - DotProduct(normal, rayOrigin)) / prodOfDirections;
     if (tt <= 0) {
       // Intersection point is behind or exactly on the ray origin.
       return false;
     }
 
     // copy ray direction
-    auto rayDirectionC = vieTools::Triple<rayInternal::rtcNumericType>{
+    auto rayDirectionC = Triple<rtcNumericType>{
         rayDirection[0], rayDirection[1], rayDirection[2]};
-    vieTools::Scale(tt, rayDirectionC);
-    auto hitPoint = vieTools::Sum(rayOrigin, rayDirectionC);
-    auto distance = vieTools::Distance(hitPoint, diskOrigin);
+    Scale(tt, rayDirectionC);
+    auto hitPoint = Sum(rayOrigin, rayDirectionC);
+    auto distance = Distance(hitPoint, diskOrigin);
     auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;
@@ -576,10 +569,10 @@ private:
 private:
   RTCDevice &device_;
 
-  rayGeometry<NumericType, D> &geometry_;
-  rayBoundary<NumericType, D> const &boundary_;
-  std::shared_ptr<raySource<NumericType>> const pSource_;
-  std::unique_ptr<rayAbstractParticle<NumericType>> const pParticle_;
+  Geometry<NumericType, D> &geometry_;
+  Boundary<NumericType, D> const &boundary_;
+  std::shared_ptr<Source<NumericType>> const pSource_;
+  std::unique_ptr<AbstractParticle<NumericType>> const pParticle_;
 
   const long long numRays_;
   const bool useRandomSeeds_;
@@ -587,9 +580,11 @@ private:
   const bool calcFlux_;
   const bool printProgress_;
 
-  rayTracingData<NumericType> *pLocalData_ = nullptr;
-  rayTracingData<NumericType> const *pGlobalData_ = nullptr;
-  rayHitCounter<NumericType> &hitCounter_;
-  rayTraceInfo &traceInfo_;
-  rayDataLog<NumericType> &dataLog_;
+  TracingData<NumericType> *pLocalData_ = nullptr;
+  TracingData<NumericType> const *pGlobalData_ = nullptr;
+  HitCounter<NumericType> &hitCounter_;
+  TraceInfo &traceInfo_;
+  DataLog<NumericType> &dataLog_;
 };
+
+} // namespace rayInternal

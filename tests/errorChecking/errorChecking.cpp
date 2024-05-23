@@ -1,6 +1,8 @@
 #include <rayParticle.hpp>
 #include <rayTrace.hpp>
-#include <vtTestAsserts.hpp>
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 int main() {
   constexpr int D = 3;
@@ -13,23 +15,23 @@ int main() {
   std::vector<std::array<NumericType, D>> normals;
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-  rayBoundaryCondition boundaryConds[D];
-  boundaryConds[0] = rayBoundaryCondition::REFLECTIVE;
-  boundaryConds[1] = rayBoundaryCondition::REFLECTIVE;
-  boundaryConds[2] = rayBoundaryCondition::REFLECTIVE;
-  auto particle = std::make_unique<rayTestParticle<NumericType>>();
+  BoundaryCondition boundaryConds[D];
+  boundaryConds[0] = BoundaryCondition::REFLECTIVE;
+  boundaryConds[1] = BoundaryCondition::REFLECTIVE;
+  boundaryConds[2] = BoundaryCondition::REFLECTIVE;
+  auto particle = std::make_unique<TestParticle<NumericType>>();
 
-  rayTrace<NumericType, D> rayTracer;
+  Trace<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
-  rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
+  rayTracer.setSourceDirection(TraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setUseRandomSeeds(false);
   rayTracer.apply();
 
   auto info = rayTracer.getRayTraceInfo();
-  VT_TEST_ASSERT(info.warning);
+  VC_TEST_ASSERT(info.warning);
 
   return 0;
 }

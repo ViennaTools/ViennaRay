@@ -3,8 +3,12 @@
 #include <memory>
 #include <random>
 
+namespace viennaray {
+
 /// Use mersenne twister 19937 as random number generator.
-using rayRNG = std::mt19937_64;
+using RNG = std::mt19937_64;
+
+} // namespace viennaray
 
 namespace rayInternal {
 
