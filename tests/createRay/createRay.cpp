@@ -1,5 +1,4 @@
 #include <rayGeometry.hpp>
-#include <rayRNG.hpp>
 #include <raySourceGrid.hpp>
 #include <raySourceRandom.hpp>
 #include <rayUtil.hpp>

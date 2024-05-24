@@ -1,7 +1,7 @@
 #pragma once
 
-#include <rayRNG.hpp>
-#include <rayUtil.hpp>
+#include <vcRNG.hpp>
+#include <vcVectorUtil.hpp>
 
 namespace viennaray {
 

@@ -4,11 +4,11 @@
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
 #include <rayParticle.hpp>
-#include <rayRNG.hpp>
 #include <raySource.hpp>
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
+#include <vcRNG.hpp>
 #include <vcTimer.hpp>
 #include <vcUtil.hpp>
 

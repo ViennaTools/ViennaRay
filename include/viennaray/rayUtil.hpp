@@ -1,8 +1,7 @@
 #pragma once
 
-#include <rayRNG.hpp>
-
 #include <vcLogger.hpp>
+#include <vcRNG.hpp>
 #include <vcVectorUtil.hpp>
 
 #if VIENNARAY_EMBREE_VERSION < 4

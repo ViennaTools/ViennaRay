@@ -1,9 +1,10 @@
 #pragma once
 
-#include <rayRNG.hpp>
 #include <rayReflection.hpp>
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
+
+#include <vcRNG.hpp>
 
 namespace viennaray {
 
