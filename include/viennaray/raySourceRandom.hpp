@@ -24,13 +24,13 @@ public:
   }
 
   Pair<Triple<NumericType>>
-  getOriginAndDirection(const size_t idx, RNG &RngState) const override {
-    auto origin = getOrigin(RngState);
+  getOriginAndDirection(const size_t idx, RNG &rngState) const override {
+    auto origin = getOrigin(rngState);
     Triple<NumericType> direction;
     if (customDirection_) {
-      direction = getCustomDirection(RngState);
+      direction = getCustomDirection(rngState);
     } else {
-      direction = getDirection(RngState);
+      direction = getDirection(rngState);
     }
 
     return {origin, direction};
@@ -48,10 +48,10 @@ public:
   }
 
 private:
-  Triple<NumericType> getOrigin(RNG &RngState) const {
+  Triple<NumericType> getOrigin(RNG &rngState) const {
     Triple<NumericType> origin{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
-    auto r1 = uniDist(RngState);
+    auto r1 = uniDist(rngState);
 
     origin[rayDir_] = bdBox_[minMax_][rayDir_];
     origin[firstDir_] = bdBox_[0][firstDir_] +
@@ -60,7 +60,7 @@ private:
     if constexpr (D == 2) {
       origin[secondDir_] = 0.;
     } else {
-      auto r2 = uniDist(RngState);
+      auto r2 = uniDist(rngState);
       origin[secondDir_] = bdBox_[0][secondDir_] +
                            (bdBox_[1][secondDir_] - bdBox_[0][secondDir_]) * r2;
     }
@@ -68,11 +68,11 @@ private:
     return origin;
   }
 
-  Triple<NumericType> getDirection(RNG &RngState) const {
+  Triple<NumericType> getDirection(RNG &rngState) const {
     Triple<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
-    auto r1 = uniDist(RngState);
-    auto r2 = uniDist(RngState);
+    auto r1 = uniDist(rngState);
+    auto r2 = uniDist(rngState);
 
     const NumericType tt = pow(r2, ee_);
     direction[rayDir_] = posNeg_ * sqrtf(tt);
@@ -88,14 +88,14 @@ private:
     return direction;
   }
 
-  Triple<NumericType> getCustomDirection(RNG &RngState) const {
+  Triple<NumericType> getCustomDirection(RNG &rngState) const {
     Triple<NumericType> direction;
     std::uniform_real_distribution<NumericType> uniDist;
 
     do {
       Triple<NumericType> rndDirection{0., 0., 0.};
-      auto r1 = uniDist(RngState);
-      auto r2 = uniDist(RngState);
+      auto r1 = uniDist(rngState);
+      auto r2 = uniDist(rngState);
 
       const NumericType tt = pow(r2, ee_);
       rndDirection[0] = sqrtf(tt);

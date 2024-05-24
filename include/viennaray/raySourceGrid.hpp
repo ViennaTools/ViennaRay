@@ -21,9 +21,9 @@ public:
         ee_(((NumericType)2) / (cosinePower + 1)) {}
 
   Pair<Triple<NumericType>>
-  getOriginAndDirection(const size_t idx, RNG &RngState) const override {
+  getOriginAndDirection(const size_t idx, RNG &rngState) const override {
     auto origin = sourceGrid_[idx % numPoints_];
-    auto direction = getDirection(RngState);
+    auto direction = getDirection(rngState);
 
     return {origin, direction};
   }
@@ -31,11 +31,11 @@ public:
   size_t getNumPoints() const override { return numPoints_; }
 
 private:
-  Triple<NumericType> getDirection(RNG &RngState) const {
+  Triple<NumericType> getDirection(RNG &rngState) const {
     Triple<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
-    auto r1 = uniDist(RngState);
-    auto r2 = uniDist(RngState);
+    auto r1 = uniDist(rngState);
+    auto r2 = uniDist(rngState);
 
     NumericType tt = pow(r2, ee_);
     direction[rayDir_] = posNeg_ * sqrtf(tt);

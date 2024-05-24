@@ -42,19 +42,19 @@ int main() {
   auto boundary = Boundary<NumericType, D>(rtcDevice, boundingBox,
                                            boundaryConds, traceSettings);
 
-  auto rtcscene = rtcNewScene(rtcDevice);
-  rtcSetSceneFlags(rtcscene, RTC_SCENE_FLAG_NONE);
-  rtcSetSceneBuildQuality(rtcscene, RTC_BUILD_QUALITY_HIGH);
-  auto rtcgeometry = geometry.getRTCGeometry();
-  auto rtcboundary = boundary.getRTCGeometry();
+  auto rtcScene = rtcNewScene(rtcDevice);
+  rtcSetSceneFlags(rtcScene, RTC_SCENE_FLAG_NONE);
+  rtcSetSceneBuildQuality(rtcScene, RTC_BUILD_QUALITY_HIGH);
+  auto rtcGeometry = geometry.getRTCGeometry();
+  auto rtcBoundary = boundary.getRTCGeometry();
 
-  auto boundaryID = rtcAttachGeometry(rtcscene, rtcboundary);
-  auto geometryID = rtcAttachGeometry(rtcscene, rtcgeometry);
-  rtcJoinCommitScene(rtcscene);
+  auto boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
+  auto geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
+  rtcJoinCommitScene(rtcScene);
 
 #if VIENNARAY_EMBREE_VERSION < 4
-  auto rtccontext = RTCIntersectContext{};
-  rtcInitIntersectContext(&rtccontext);
+  auto rtcContext = RTCIntersectContext{};
+  rtcInitIntersectContext(&rtcContext);
 #endif
   VC_TEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
@@ -62,34 +62,34 @@ int main() {
     auto origin = Triple<NumericType>{0., 0., 2 * discRadius};
     auto direction = Triple<NumericType>{0., 0., -1.};
 
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    rayhit.ray.org_x = (float)origin[0];
-    rayhit.ray.org_y = (float)origin[1];
-    rayhit.ray.org_z = (float)origin[2];
-    rayhit.ray.tnear = 1e-4f;
+    rayHit.ray.org_x = (float)origin[0];
+    rayHit.ray.org_y = (float)origin[1];
+    rayHit.ray.org_z = (float)origin[2];
+    rayHit.ray.tnear = 1e-4f;
 #ifdef VIENNARAY_USE_RAY_MASKING
-    rayhit.ray.mask = -1;
+    rayHit.ray.mask = -1;
 #endif
 
-    rayhit.ray.dir_x = (float)direction[0];
-    rayhit.ray.dir_y = (float)direction[1];
-    rayhit.ray.dir_z = (float)direction[2];
-    rayhit.ray.tnear = 0.0f;
+    rayHit.ray.dir_x = (float)direction[0];
+    rayHit.ray.dir_y = (float)direction[1];
+    rayHit.ray.dir_z = (float)direction[2];
+    rayHit.ray.tnear = 0.0f;
 
-    rayhit.ray.tfar = std::numeric_limits<float>::max();
-    rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
-    rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+    rayHit.ray.tfar = std::numeric_limits<float>::max();
+    rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+    rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
 
 #if VIENNARAY_EMBREE_VERSION < 4
-    rtcIntersect1(rtcscene, &rtccontext, &rayhit);
+    rtcIntersect1(rtcScene, &rtcContext, &rayHit);
 #else
-    rtcIntersect1(rtcscene, &rayhit);
+    rtcIntersect1(rtcScene, &rayHit);
 #endif
 
-    VC_TEST_ASSERT(rayhit.hit.geomID == geometryID)
-    VC_TEST_ASSERT(rayhit.hit.primID == 840)
+    VC_TEST_ASSERT(rayHit.hit.geomID == geometryID)
+    VC_TEST_ASSERT(rayHit.hit.primID == 840)
   }
 
   {
@@ -97,39 +97,39 @@ int main() {
     auto direction = Triple<NumericType>{0., 2., -1.};
     Normalize(direction);
 
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    rayhit.ray.org_x = (float)origin[0];
-    rayhit.ray.org_y = (float)origin[1];
-    rayhit.ray.org_z = (float)origin[2];
-    rayhit.ray.tnear = 1e-4f;
+    rayHit.ray.org_x = (float)origin[0];
+    rayHit.ray.org_y = (float)origin[1];
+    rayHit.ray.org_z = (float)origin[2];
+    rayHit.ray.tnear = 1e-4f;
 #ifdef VIENNARAY_USE_RAY_MASKING
-    rayhit.ray.mask = -1;
+    rayHit.ray.mask = -1;
 #endif
 
-    rayhit.ray.dir_x = (float)direction[0];
-    rayhit.ray.dir_y = (float)direction[1];
-    rayhit.ray.dir_z = (float)direction[2];
-    rayhit.ray.tnear = 0.0f;
+    rayHit.ray.dir_x = (float)direction[0];
+    rayHit.ray.dir_y = (float)direction[1];
+    rayHit.ray.dir_z = (float)direction[2];
+    rayHit.ray.tnear = 0.0f;
 
-    rayhit.ray.tfar = std::numeric_limits<float>::max();
-    rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
-    rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+    rayHit.ray.tfar = std::numeric_limits<float>::max();
+    rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+    rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
 
 #if VIENNARAY_EMBREE_VERSION < 4
-    rtcIntersect1(rtcscene, &rtccontext, &rayhit);
+    rtcIntersect1(rtcScene, &rtcContext, &rayHit);
 #else
-    rtcIntersect1(rtcscene, &rayhit);
+    rtcIntersect1(rtcScene, &rayHit);
 #endif
 
-    VC_TEST_ASSERT(rayhit.hit.geomID == boundaryID)
-    VC_TEST_ASSERT(rayhit.hit.primID == 7)
+    VC_TEST_ASSERT(rayHit.hit.geomID == boundaryID)
+    VC_TEST_ASSERT(rayHit.hit.primID == 7)
   }
 
-  rtcReleaseScene(rtcscene);
-  rtcReleaseGeometry(rtcgeometry);
-  rtcReleaseGeometry(rtcboundary);
+  rtcReleaseScene(rtcScene);
+  rtcReleaseGeometry(rtcGeometry);
+  rtcReleaseGeometry(rtcBoundary);
   rtcReleaseDevice(rtcDevice);
   return 0;
 }

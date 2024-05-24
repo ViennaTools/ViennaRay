@@ -42,7 +42,7 @@ int main() {
       viennacore::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
+      alignas(128) auto rayHit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
                                            0,                   // tnear
@@ -63,20 +63,20 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayHit, reflect);
 
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 1., eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, 1., eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.5, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, 0.25, eps)
 
-      VC_TEST_ASSERT_ISCLOSE(-rayhit.ray.dir_x, direction[0], eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+      VC_TEST_ASSERT_ISCLOSE(-rayHit.ray.dir_x, direction[0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
 
       VC_TEST_ASSERT(reflect)
     }
   }
-  // reflective bounday on x-z plane
+  // reflective boundary on x-z plane
   {
     std::vector<std::array<NumericType, D>> points;
     std::vector<std::array<NumericType, D>> normals;
@@ -102,7 +102,7 @@ int main() {
       viennacore::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
+      alignas(128) auto rayHit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
                                            0,                   // tnear
@@ -123,15 +123,15 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayHit, reflect);
 
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.25, eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 1.0, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, 0.5, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.25, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, 1.0, eps)
 
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      VC_TEST_ASSERT_ISCLOSE(-rayhit.ray.dir_z, direction[2], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_x, direction[0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
+      VC_TEST_ASSERT_ISCLOSE(-rayHit.ray.dir_z, direction[2], eps)
 
       VC_TEST_ASSERT(reflect)
     }
@@ -162,7 +162,7 @@ int main() {
       viennacore::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
+      alignas(128) auto rayHit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
                                            0,                   // tnear
@@ -183,15 +183,15 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayHit, reflect);
 
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -1., eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, -1., eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.5, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, 0.25, eps)
 
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_x, direction[0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
 
       VC_TEST_ASSERT(reflect)
     }

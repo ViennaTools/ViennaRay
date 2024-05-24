@@ -19,7 +19,7 @@ public:
   /// Initialize a new particle. This function gets called every time
   /// new particle is traced from the source plane.
   /// Rng: random number generator (standard library conform)
-  virtual void initNew(RNG &Rng) = 0;
+  virtual void initNew(RNG &rngState) = 0;
 
   /// Surface reflection. This function gets called whenever a ray is reflected
   /// from the surface. It decides the sticking probability and the new
@@ -35,7 +35,8 @@ public:
   surfaceReflection(NumericType rayWeight, const Triple<NumericType> &rayDir,
                     const Triple<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const TracingData<NumericType> *globalData, RNG &Rng) = 0;
+                    const TracingData<NumericType> *globalData,
+                    RNG &rngState) = 0;
 
   /// Surface collision. This function gets called whenever an intersection of
   /// the ray and a disc is found.
@@ -53,7 +54,7 @@ public:
                                 const unsigned int primID, const int materialId,
                                 TracingData<NumericType> &localData,
                                 const TracingData<NumericType> *globalData,
-                                RNG &Rng) = 0;
+                                RNG &rngState) = 0;
 
   /// Set the power of the cosine source distribution for this particle.
   virtual NumericType getSourceDistributionPower() const = 0;
@@ -78,13 +79,13 @@ public:
   std::unique_ptr<AbstractParticle<NumericType>> clone() const override final {
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
-  virtual void initNew(RNG &Rng) override {}
+  virtual void initNew(RNG &rngState) override {}
   virtual std::pair<NumericType, Triple<NumericType>>
   surfaceReflection(NumericType rayWeight, const Triple<NumericType> &rayDir,
                     const Triple<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
                     const TracingData<NumericType> *globalData,
-                    RNG &Rng) override {
+                    RNG &rngState) override {
     // return the sticking probability and direction after reflection for this
     // hit
     return std::pair<NumericType, Triple<NumericType>>{
@@ -96,7 +97,7 @@ public:
                    const unsigned int primID, const int materialId,
                    TracingData<NumericType> &localData,
                    const TracingData<NumericType> *globalData,
-                   RNG &Rng) override { // collect data for this hit
+                   RNG &rngState) override { // collect data for this hit
   }
   virtual NumericType getSourceDistributionPower() const override { return 1.; }
   virtual NumericType getMeanFreePath() const override { return -1.; }
@@ -115,14 +116,14 @@ protected:
 template <typename NumericType>
 class TestParticle : public Particle<TestParticle<NumericType>, NumericType> {
 public:
-  void initNew(RNG &Rng) override final {}
+  void initNew(RNG &rngState) override final {}
 
   std::pair<NumericType, Triple<NumericType>>
   surfaceReflection(NumericType rayWeight, const Triple<NumericType> &rayDir,
                     const Triple<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
                     const TracingData<NumericType> *globalData,
-                    RNG &Rng) override final {
+                    RNG &rngState) override final {
     auto direction = ReflectionSpecular(rayDir, geomNormal);
 
     return std::pair<NumericType, Triple<NumericType>>{.5, direction};
@@ -134,7 +135,7 @@ public:
                         const unsigned int primID, const int materialId,
                         TracingData<NumericType> &localData,
                         const TracingData<NumericType> *globalData,
-                        RNG &Rng) override final {}
+                        RNG &rngState) override final {}
 
   NumericType getSourceDistributionPower() const override final { return 1.; }
 

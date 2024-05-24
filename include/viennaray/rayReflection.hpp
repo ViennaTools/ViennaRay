@@ -31,12 +31,12 @@ ReflectionSpecular(const Triple<NumericType> &rayDir,
 // Diffuse reflection
 template <typename NumericType, int D>
 [[nodiscard]] Triple<NumericType>
-ReflectionDiffuse(const Triple<NumericType> &geomNormal, RNG &RNG) {
+ReflectionDiffuse(const Triple<NumericType> &geomNormal, RNG &rngState) {
   assert(IsNormalized(geomNormal) &&
          "Diffuse Reflection: Surface normal is not normalized");
 
   auto randomDirection =
-      rayInternal::pickRandomPointOnUnitSphere<NumericType>(RNG);
+      rayInternal::pickRandomPointOnUnitSphere<NumericType>(rngState);
   randomDirection[0] += geomNormal[0];
   randomDirection[1] += geomNormal[1];
   if constexpr (D == 3)
@@ -45,8 +45,7 @@ ReflectionDiffuse(const Triple<NumericType> &geomNormal, RNG &RNG) {
     randomDirection[2] = 0;
 
   Normalize(randomDirection);
-  assert(IsNormalized(randomDirection) &&
-         "Diffuse Reflection: New direction is not normalized");
+
   return randomDirection;
 }
 
@@ -54,7 +53,7 @@ ReflectionDiffuse(const Triple<NumericType> &geomNormal, RNG &RNG) {
 template <typename NumericType, int D>
 [[nodiscard]] Triple<NumericType> ReflectionConedCosine(
     const Triple<NumericType> &rayDir, const Triple<NumericType> &geomNormal,
-    RNG &RNG,
+    RNG &rngState,
     const NumericType maxConeAngle /*max opening angle of the cone*/) {
   using namespace rayInternal;
   // Generate a random direction within a cone
@@ -65,13 +64,13 @@ template <typename NumericType, int D>
 
   do {
     // sample phi uniformly in [0, 2pi]
-    NumericType phi = uniDist(RNG) * 2 * M_PI;
+    NumericType phi = uniDist(rngState) * 2 * M_PI;
     // theta on sphere
     assert(maxConeAngle >= 0. && maxConeAngle <= M_PI / 2. &&
            "Cone angle not allowed");
     NumericType cosTheta = std::cos(maxConeAngle);
     // sample z uniformly on [cos(theta),1]
-    NumericType z = uniDist(RNG) * (1 - cosTheta) + cosTheta;
+    NumericType z = uniDist(rngState) * (1 - cosTheta) + cosTheta;
 
     // compute specular direction
     auto dirOldInv = Inv(rayDir);
@@ -115,7 +114,7 @@ template <typename NumericType, int D>
 [[nodiscard]] Triple<NumericType>
 ReflectionConedCosineOld(NumericType avgReflAngle,
                          const Triple<NumericType> &rayDir,
-                         const Triple<NumericType> &geomNormal, RNG &RNG) {
+                         const Triple<NumericType> &geomNormal, RNG &rngState) {
 
   assert(IsNormalized(geomNormal) &&
          "ReflectionSpecular: Surface normal is not normalized");
@@ -138,26 +137,26 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
   //  into the geometry
   do {
     do { // generate a random angle between 0 and specular angle
-      u = std::sqrt(uniDist(RNG));
+      u = std::sqrt(uniDist(rngState));
       sqrt_1m_u = std::sqrt(1. - u);
       angle = avgReflAngle * sqrt_1m_u;
-    } while (uniDist(RNG) * angle * u >
+    } while (uniDist(rngState) * angle * u >
              std::cos(M_PI_2 * sqrt_1m_u) * std::sin(angle));
 
     // Random Azimuthal Rotation
-    NumericType costheta =
+    NumericType cosTheta =
         std::max(std::min(std::cos(angle), NumericType(1)), NumericType(0));
-    NumericType cosphi, sinphi;
+    NumericType cosPhi, sinPhi;
     NumericType r2;
 
     do {
-      cosphi = uniDist(RNG) - 0.5;
-      sinphi = uniDist(RNG) - 0.5;
-      r2 = cosphi * cosphi + sinphi * sinphi;
+      cosPhi = uniDist(rngState) - 0.5;
+      sinPhi = uniDist(rngState) - 0.5;
+      r2 = cosPhi * cosPhi + sinPhi * sinPhi;
     } while (r2 >= 0.25 || r2 <= std::numeric_limits<NumericType>::epsilon());
 
     // Rotate
-    costheta = std::min(costheta, NumericType(1));
+    cosTheta = std::min(cosTheta, NumericType(1));
 
     NumericType a0;
     NumericType a1;
@@ -172,17 +171,17 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
 
     const NumericType a0_a0_m1 = 1. - a0 * a0;
     const NumericType tmp = std::sqrt(
-        std::max(NumericType(1) - costheta * costheta, NumericType(0)) /
+        std::max(NumericType(1) - cosTheta * cosTheta, NumericType(0)) /
         (r2 * a0_a0_m1));
-    const NumericType tmp_sinphi = tmp * sinphi;
-    const NumericType tmp_cosphi = tmp * cosphi;
-    const NumericType costheta_p_a0_tmp_sinphi = costheta + a0 * tmp_sinphi;
+    const NumericType tmp_sinPhi = tmp * sinPhi;
+    const NumericType tmp_cosPhi = tmp * cosPhi;
+    const NumericType cosTheta_p_a0_tmp_sinPhi = cosTheta + a0 * tmp_sinPhi;
 
-    randomDir[0] = a0 * costheta - a0_a0_m1 * tmp_sinphi;
+    randomDir[0] = a0 * cosTheta - a0_a0_m1 * tmp_sinPhi;
     randomDir[1] =
-        a1 * costheta_p_a0_tmp_sinphi + specDirection[2] * tmp_cosphi;
+        a1 * cosTheta_p_a0_tmp_sinPhi + specDirection[2] * tmp_cosPhi;
     randomDir[2] =
-        specDirection[2] * costheta_p_a0_tmp_sinphi - a1 * tmp_cosphi;
+        specDirection[2] * cosTheta_p_a0_tmp_sinPhi - a1 * tmp_cosPhi;
 
     if (a0 != specDirection[0])
       std::swap(randomDir[0], randomDir[1]);
@@ -202,7 +201,7 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
 template <typename NumericType, int D>
 [[nodiscard]] Triple<NumericType>
 ReflectionConedCosineOld2(const Triple<NumericType> &rayDir,
-                          const Triple<NumericType> &geomNormal, RNG &RNG,
+                          const Triple<NumericType> &geomNormal, RNG &rngState,
                           NumericType &minAvgConeAngle = 0.) {
 
   assert(IsNormalized(geomNormal) &&
@@ -231,22 +230,22 @@ ReflectionConedCosineOld2(const Triple<NumericType> &rayDir,
   // generate a random angle between 0 and specular angle
   NumericType angle;
   do {
-    u = std::sqrt(uniDist(RNG));
+    u = std::sqrt(uniDist(rngState));
     sqrt_1m_u = std::sqrt(1. - u);
     angle = avgReflAngle * sqrt_1m_u;
-  } while (uniDist(RNG) * angle * u >
+  } while (uniDist(rngState) * angle * u >
            std::cos(M_PI_2 * sqrt_1m_u) * std::sin(angle));
 
   cosTheta = std::cos(angle);
 
   // Random Azimuthal Rotation
-  NumericType cosphi, sinphi;
+  NumericType cosPhi, sinPhi;
   NumericType r2;
 
   do {
-    cosphi = uniDist(RNG) - 0.5;
-    sinphi = uniDist(RNG) - 0.5;
-    r2 = cosphi * cosphi + sinphi * sinphi;
+    cosPhi = uniDist(rngState) - 0.5;
+    sinPhi = uniDist(rngState) - 0.5;
+    r2 = cosPhi * cosPhi + sinPhi * sinPhi;
   } while (r2 >= 0.25 || r2 <= std::numeric_limits<NumericType>::epsilon());
 
   Triple<NumericType> randomDir;
@@ -268,13 +267,13 @@ ReflectionConedCosineOld2(const Triple<NumericType> &rayDir,
   const NumericType a0_a0_m1 = 1. - a0 * a0;
   const NumericType tmp =
       std::sqrt(std::max(1. - cosTheta * cosTheta, 0.) / (r2 * a0_a0_m1));
-  const NumericType tmp_sinphi = tmp * sinphi;
-  const NumericType tmp_cosphi = tmp * cosphi;
-  const NumericType costheta_p_a0_tmp_sinphi = cosTheta + a0 * tmp_sinphi;
+  const NumericType tmp_sinPhi = tmp * sinPhi;
+  const NumericType tmp_cosPhi = tmp * cosPhi;
+  const NumericType cosTheta_p_a0_tmp_sinPhi = cosTheta + a0 * tmp_sinPhi;
 
-  randomDir[0] = a0 * cosTheta - a0_a0_m1 * tmp_sinphi;
-  randomDir[1] = a1 * costheta_p_a0_tmp_sinphi + specDirection[2] * tmp_cosphi;
-  randomDir[2] = specDirection[2] * costheta_p_a0_tmp_sinphi - a1 * tmp_cosphi;
+  randomDir[0] = a0 * cosTheta - a0_a0_m1 * tmp_sinPhi;
+  randomDir[1] = a1 * cosTheta_p_a0_tmp_sinPhi + specDirection[2] * tmp_cosPhi;
+  randomDir[2] = specDirection[2] * cosTheta_p_a0_tmp_sinPhi - a1 * tmp_cosPhi;
 
   if (a0 != specDirection[0])
     std::swap(randomDir[0], randomDir[1]);

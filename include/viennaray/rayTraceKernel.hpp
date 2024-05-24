@@ -57,10 +57,10 @@ public:
     assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
            "Embree device error");
 
-    size_t geohitc = 0;
-    size_t nongeohitc = 0;
-    size_t totaltraces = 0;
-    size_t particlehitc = 0;
+    size_t geoHits = 0;
+    size_t nonGeoHits = 0;
+    size_t totalTraces = 0;
+    size_t particleHits = 0;
     auto const lambda = pParticle_->getMeanFreePath();
 
     // thread local data storage
@@ -93,8 +93,8 @@ public:
     Timer timer;
     timer.start();
 
-#pragma omp parallel reduction(+ : geohitc, nongeohitc, totaltraces,           \
-                                   particlehitc)                               \
+#pragma omp parallel reduction(+ : geoHits, nonGeoHits, totalTraces,           \
+                                   particleHits)                               \
     shared(threadLocalData, threadLocalHitCounter)
     {
       rtcJoinCommitScene(rtcScene);
@@ -125,9 +125,9 @@ public:
       for (long long idx = 0; idx < numRays_; ++idx) {
         // particle specific RNG seed
         auto particleSeed = tea<3>(idx, seed);
-        RNG RngState(particleSeed);
+        RNG rngState(particleSeed);
 
-        particle->initNew(RngState);
+        particle->initNew(rngState);
         particle->logData(myDataLog);
 
         // probabilistic weight
@@ -135,7 +135,7 @@ public:
         NumericType rayWeight = initialRayWeight;
 
         auto originAndDirection =
-            pSource_->getOriginAndDirection(idx, RngState);
+            pSource_->getOriginAndDirection(idx, rngState);
         fillRay(rayHit.ray, originAndDirection[0], originAndDirection[1]);
 
 #ifdef VIENNARAY_USE_RAY_MASKING
@@ -162,11 +162,11 @@ public:
           rtcIntersect1(rtcScene, &rayHit);
 #endif
 
-          ++totaltraces;
+          ++totalTraces;
 
           /* -------- No hit -------- */
           if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
-            ++nongeohitc;
+            ++nonGeoHits;
             reflect = false;
             break;
           }
@@ -175,7 +175,7 @@ public:
             std::uniform_real_distribution<NumericType> dist(0., 1.);
             NumericType scatterProbability =
                 1 - std::exp(-rayHit.ray.tfar / lambda);
-            auto rnd = dist(RngState);
+            auto rnd = dist(rngState);
             if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
@@ -186,14 +186,14 @@ public:
 
               Triple<rtcNumericType> direction{0, 0, 0};
               for (int i = 0; i < D; ++i) {
-                direction[i] = 2.f * dist(RngState) - 1.f;
+                direction[i] = 2.f * dist(rngState) - 1.f;
               }
               Normalize(direction);
 
               // Update ray direction and origin
               fillRay(rayHit.ray, origin, direction);
 
-              particlehitc++;
+              particleHits++;
               reflect = true;
               continue;
             }
@@ -220,7 +220,7 @@ public:
             // If the dot product of the ray direction and the surface normal is
             // greater than zero, then we hit the back face of the disk.
             if (hitFromBack) {
-              // if hitFromback == true, then the ray hits the back of a disk
+              // if hitFromBack == true, then the ray hits the back of a disk
               // the second time. In this case we ignore the ray.
               break;
             }
@@ -242,7 +242,7 @@ public:
 
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
-          ++geohitc;
+          ++geoHits;
           std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
 #ifdef VIENNARAY_USE_WDIST
@@ -287,14 +287,14 @@ public:
 #endif
             particle->surfaceCollision(distRayWeight, rayDir, normal,
                                        hitDiskIds[diskId], matID, myLocalData,
-                                       pGlobalData_, RngState);
+                                       pGlobalData_, rngState);
           }
 
           // get sticking probability and reflection direction
           const auto stickingDirection = particle->surfaceReflection(
               rayWeight, rayDir, geomNormal, rayHit.hit.primID,
               geometry_.getMaterialId(rayHit.hit.primID), pGlobalData_,
-              RngState);
+              rngState);
           auto valueToDrop = rayWeight * stickingDirection.first;
 
           if (calcFlux_) {
@@ -314,7 +314,7 @@ public:
           if (rayWeight <= 0) {
             break;
           }
-          reflect = rejectionControl(rayWeight, initialRayWeight, RngState);
+          reflect = rejectionControl(rayWeight, initialRayWeight, rngState);
           if (!reflect) {
             break;
           }
@@ -403,11 +403,11 @@ public:
     }
 
     traceInfo_.numRays = numRays_;
-    traceInfo_.totalRaysTraced = totaltraces;
+    traceInfo_.totalRaysTraced = totalTraces;
     traceInfo_.totalDiskHits = hitCounter_.getTotalCounts();
-    traceInfo_.nonGeometryHits = nongeohitc;
-    traceInfo_.geometryHits = geohitc;
-    traceInfo_.particleHits = particlehitc;
+    traceInfo_.nonGeometryHits = nonGeoHits;
+    traceInfo_.geometryHits = geoHits;
+    traceInfo_.particleHits = particleHits;
     traceInfo_.time = timer.currentDuration * 1e-9;
 
     rtcReleaseScene(rtcScene);

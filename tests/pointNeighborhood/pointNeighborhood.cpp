@@ -15,7 +15,7 @@ int main() {
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   // setup simple plane grid with normal in z-direction with discs only
-  // overlapping at adjecent grid points
+  // overlapping at adjacent grid points
 
   // assert corner points have 3 neighbors
   // assert boundary points have 5 neighbors

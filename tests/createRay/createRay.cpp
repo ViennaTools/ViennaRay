@@ -30,9 +30,8 @@ int main() {
   Geometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
-  auto rng = RNG{};
   unsigned seed = 31;
-  RNG rngstate1(seed + 0);
+  RNG rngState(seed + 0);
 
   {
     auto direction = TraceDirection::POS_Z;
@@ -45,14 +44,14 @@ int main() {
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+      auto originAndDirection = source.getOriginAndDirection(0, rngState);
+      rayInternal::fillRay(rayHit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      VC_TEST_ASSERT(rayhit.ray.dir_z < 0.)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
+      VC_TEST_ASSERT(rayHit.ray.dir_z < 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, (1. + 2 * gridDelta), eps)
     }
   }
 
@@ -67,14 +66,14 @@ int main() {
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+      auto originAndDirection = source.getOriginAndDirection(0, rngState);
+      rayInternal::fillRay(rayHit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      VC_TEST_ASSERT(rayhit.ray.dir_z > 0.)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (-1. - 2 * gridDelta), eps)
+      VC_TEST_ASSERT(rayHit.ray.dir_z > 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, (-1. - 2 * gridDelta), eps)
     }
   }
 
@@ -89,14 +88,14 @@ int main() {
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+      auto originAndDirection = source.getOriginAndDirection(0, rngState);
+      rayInternal::fillRay(rayHit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      VC_TEST_ASSERT(rayhit.ray.dir_x < 0.)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (1. + 2 * gridDelta), eps)
+      VC_TEST_ASSERT(rayHit.ray.dir_x < 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, (1. + 2 * gridDelta), eps)
     }
   }
 
@@ -111,14 +110,14 @@ int main() {
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+      auto originAndDirection = source.getOriginAndDirection(0, rngState);
+      rayInternal::fillRay(rayHit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      VC_TEST_ASSERT(rayhit.ray.dir_x > 0.)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (-1. - 2 * gridDelta), eps)
+      VC_TEST_ASSERT(rayHit.ray.dir_x > 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, (-1. - 2 * gridDelta), eps)
     }
   }
 
@@ -133,14 +132,14 @@ int main() {
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+      auto originAndDirection = source.getOriginAndDirection(0, rngState);
+      rayInternal::fillRay(rayHit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      VC_TEST_ASSERT(rayhit.ray.dir_y < 0.)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (1. + 2 * gridDelta), eps)
+      VC_TEST_ASSERT(rayHit.ray.dir_y < 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, (1. + 2 * gridDelta), eps)
     }
   }
 
@@ -155,14 +154,14 @@ int main() {
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+      auto originAndDirection = source.getOriginAndDirection(0, rngState);
+      rayInternal::fillRay(rayHit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      VC_TEST_ASSERT(rayhit.ray.dir_y > 0.)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (-1. - 2 * gridDelta), eps)
+      VC_TEST_ASSERT(rayHit.ray.dir_y > 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, (-1. - 2 * gridDelta), eps)
     }
   }
 
@@ -180,14 +179,14 @@ int main() {
     auto source =
         SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                      geometry.getNumPoints(), true, orthoBasis);
-    alignas(128) auto rayhit =
+    alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
+      auto originAndDirection = source.getOriginAndDirection(0, rngState);
+      rayInternal::fillRay(rayHit.ray, originAndDirection[0],
                            originAndDirection[1]);
-      VC_TEST_ASSERT(rayhit.ray.dir_z < 0.)
-      VC_TEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
+      VC_TEST_ASSERT(rayHit.ray.dir_z < 0.)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, (1. + 2 * gridDelta), eps)
     }
   }
 

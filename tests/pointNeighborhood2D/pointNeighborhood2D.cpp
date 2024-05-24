@@ -25,7 +25,7 @@ int main() {
   Geometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
   // setup simple 2D plane grid with normal in y-direction with discs only
-  // overlapping at adjecent grid points x - x - x - x - x
+  // overlapping at adjacent grid points x - x - x - x - x
 
   // assert boundary points have 1 neighbor
   // assert inner points have 2 neighbors

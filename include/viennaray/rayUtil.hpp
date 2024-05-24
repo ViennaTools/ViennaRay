@@ -239,13 +239,14 @@ void fillRay<float>(RTCRay &ray, const Triple<float> &origin,
 /* ------------------------------------------------------ */
 
 template <typename NumericType>
-[[nodiscard]] static Triple<NumericType> pickRandomPointOnUnitSphere(RNG &RNG) {
+[[nodiscard]] static Triple<NumericType>
+pickRandomPointOnUnitSphere(RNG &rngState) {
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType x, y, z, x2, y2, x2py2;
   do {
-    x = 2 * uniDist(RNG) - 1.;
+    x = 2 * uniDist(rngState) - 1.;
     x2 = x * x;
-    y = 2 * uniDist(RNG) - 1.;
+    y = 2 * uniDist(rngState) - 1.;
     y2 = y * y;
     x2py2 = x2 + y2;
   } while (x2py2 >= 1.);
