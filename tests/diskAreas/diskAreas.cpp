@@ -40,7 +40,7 @@ int main() {
   BoundaryCondition boundaryConds[D] = {};
   auto boundary = Boundary<NumericType, D>(device, boundingBox, boundaryConds,
                                            traceSettings);
-  std::array<viennacore::Triple<NumericType>, 3> orthoBasis;
+  std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
   auto raySource = std::make_unique<SourceRandom<NumericType, D>>(
       boundingBox, 1., traceSettings, geometry.getNumPoints(), false,
       orthoBasis);

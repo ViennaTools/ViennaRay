@@ -7,12 +7,14 @@
 using namespace viennaray;
 
 void printRay(RTCRayHit &rayHit) {
-  std::cout << "Origin: ";
-  viennacore::Print(viennacore::Triple<float>{
-      rayHit.ray.org_x, rayHit.ray.org_y, rayHit.ray.org_z});
-  std::cout << "Direction: ";
-  viennacore::Print(viennacore::Triple<float>{
-      rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z});
+  std::cout << "Origin: "
+            << viennacore::Vec3D<float>{rayHit.ray.org_x, rayHit.ray.org_y,
+                                        rayHit.ray.org_z}
+            << std::endl;
+  std::cout << "Direction: "
+            << viennacore::Vec3D<float>{rayHit.ray.dir_x, rayHit.ray.dir_y,
+                                        rayHit.ray.dir_z}
+            << std::endl;
 }
 
 int main() {
@@ -21,8 +23,8 @@ int main() {
   NumericType eps = 1e-6f;
 
   NumericType gridDelta;
-  std::vector<viennacore::Triple<NumericType>> points;
-  std::vector<viennacore::Triple<NumericType>> normals;
+  std::vector<viennacore::Vec3D<NumericType>> points;
+  std::vector<viennacore::Vec3D<NumericType>> normals;
   rayInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
                                 points, normals);
 
@@ -40,7 +42,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<viennacore::Triple<NumericType>, 3> orthoBasis;
+    std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
@@ -62,7 +64,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<viennacore::Triple<NumericType>, 3> orthoBasis;
+    std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
@@ -84,7 +86,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<viennacore::Triple<NumericType>, 3> orthoBasis;
+    std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
@@ -106,7 +108,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<viennacore::Triple<NumericType>, 3> orthoBasis;
+    std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
@@ -128,7 +130,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<viennacore::Triple<NumericType>, 3> orthoBasis;
+    std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
@@ -150,7 +152,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    std::array<viennacore::Triple<NumericType>, 3> orthoBasis;
+    std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
                                                geometry.getNumPoints(), false,
                                                orthoBasis);
@@ -173,7 +175,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    viennacore::Triple<NumericType> primaryDir = {1., 1., -1.};
+    viennacore::Vec3D<NumericType> primaryDir = {1., 1., -1.};
     viennacore::Normalize(primaryDir);
     auto orthoBasis = rayInternal::getOrthonormalBasis(primaryDir);
     auto source =

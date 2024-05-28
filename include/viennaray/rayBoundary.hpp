@@ -14,7 +14,7 @@ enum class BoundaryCondition : unsigned {
 };
 
 template <typename NumericType, int D> class Boundary {
-  using boundingBoxType = Pair<Triple<NumericType>>;
+  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
 
 public:
   Boundary(RTCDevice &device, boundingBoxType const &boundingBox,
@@ -30,10 +30,10 @@ public:
     const auto primID = rayHit.hit.primID;
 
     // Ray hits backside of boundary
-    const auto rayDir = Triple<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
-                                            rayHit.ray.dir_z};
+    const auto rayDir = Vec3D<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
+                                           rayHit.ray.dir_z};
     const auto boundaryNormal =
-        Triple<NumericType>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z};
+        Vec3D<NumericType>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z};
     if (DotProduct(rayDir, boundaryNormal) > 0) {
       // let ray pass through
       reflect = true;
@@ -143,11 +143,11 @@ public:
     }
   }
 
-  Pair<int> getDirs() const { return {firstDir_, secondDir_}; }
+  Vec2D<int> getDirs() const { return {firstDir_, secondDir_}; }
 
 private:
-  static Triple<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
-    assert(IsNormalized(Triple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
+  static Vec3D<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
+    assert(IsNormalized(Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
            "MetaGeometry: direction not normalized");
     auto xx = ray.org_x + ray.dir_x * ray.tfar;
     auto yy = ray.org_y + ray.dir_y * ray.tfar;
@@ -210,13 +210,13 @@ private:
         0, // slot
         RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles_);
 
-    constexpr Quadruple<Triple<uint32_t>> xMinMaxPlanes = {0, 3, 7, 0, 7, 4,
-                                                           6, 2, 1, 6, 1, 5};
-    constexpr Quadruple<Triple<uint32_t>> yMinMaxPlanes = {0, 4, 5, 0, 5, 1,
-                                                           6, 7, 3, 6, 3, 2};
-    constexpr Quadruple<Triple<uint32_t>> zMinMaxPlanes = {0, 1, 2, 0, 2, 3,
-                                                           6, 5, 4, 6, 4, 7};
-    constexpr Triple<Quadruple<Triple<uint32_t>>> Planes = {
+    constexpr std::array<Vec3D<uint32_t>, 4> xMinMaxPlanes = {0, 3, 7, 0, 7, 4,
+                                                              6, 2, 1, 6, 1, 5};
+    constexpr std::array<Vec3D<uint32_t>, 4> yMinMaxPlanes = {0, 4, 5, 0, 5, 1,
+                                                              6, 7, 3, 6, 3, 2};
+    constexpr std::array<Vec3D<uint32_t>, 4> zMinMaxPlanes = {0, 1, 2, 0, 2, 3,
+                                                              6, 5, 4, 6, 4, 7};
+    constexpr Vec3D<std::array<Vec3D<uint32_t>, 4>> Planes = {
         xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 
     for (size_t idx = 0; idx < 4; ++idx) {
@@ -238,7 +238,7 @@ private:
            "RTC Error: rtcCommitGeometry");
   }
 
-  Triple<Triple<NumericType>> getTriangleCoords(const size_t primID) {
+  Vec3D<Vec3D<NumericType>> getTriangleCoords(const size_t primID) {
     assert(primID < numTriangles_ && "rtBoundary: primID out of bounds");
     auto tt = pTriangleBuffer_[primID];
     return {(NumericType)pVertexBuffer_[tt.v0].xx,
@@ -253,9 +253,9 @@ private:
   }
 
   void reflectRay(RTCRayHit &rayHit) const {
-    auto dir = *reinterpret_cast<Triple<rayInternal::rtcNumericType> *>(
+    auto dir = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &rayHit.ray.dir_x);
-    auto normal = *reinterpret_cast<Triple<rayInternal::rtcNumericType> *>(
+    auto normal = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &rayHit.hit.Ng_x);
     Normalize(dir);
     Normalize(normal);
@@ -280,9 +280,8 @@ private:
 #endif
   }
 
-  void
-  assignRayCoords(RTCRayHit &rayHit,
-                  const Triple<rayInternal::rtcNumericType> &coords) const {
+  void assignRayCoords(RTCRayHit &rayHit,
+                       const Vec3D<rayInternal::rtcNumericType> &coords) const {
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
         _mm_set_ps(1e-4f, (rayInternal::rtcNumericType)coords[2],

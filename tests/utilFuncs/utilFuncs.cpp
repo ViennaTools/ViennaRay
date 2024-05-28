@@ -9,11 +9,11 @@ int main() {
 
   // Sum/Diff
   {
-    Triple<NumericType> v1 = {1.2, 2.4, 3.6};
-    Triple<NumericType> v2 = {2.8, 3.6, 4.4};
-    Triple<NumericType> v3 = {1., 1., 1.};
+    Vec3D<NumericType> v1 = {1.2, 2.4, 3.6};
+    Vec3D<NumericType> v2 = {2.8, 3.6, 4.4};
+    Vec3D<NumericType> v3 = {1., 1., 1.};
 
-    auto result = Sum(v1, v2);
+    auto result = v1 + v2;
     VC_TEST_ASSERT_ISCLOSE(result[0], 4., eps)
     VC_TEST_ASSERT_ISCLOSE(result[1], 6., eps)
     VC_TEST_ASSERT_ISCLOSE(result[2], 8., eps)
@@ -23,7 +23,7 @@ int main() {
     VC_TEST_ASSERT_ISCLOSE(result[1], 7., eps)
     VC_TEST_ASSERT_ISCLOSE(result[2], 9., eps)
 
-    result = Diff(v1, v3);
+    result = v1 - v3;
     VC_TEST_ASSERT_ISCLOSE(result[0], 0.2, eps)
     VC_TEST_ASSERT_ISCLOSE(result[1], 1.4, eps)
     VC_TEST_ASSERT_ISCLOSE(result[2], 2.6, eps)
@@ -31,8 +31,8 @@ int main() {
 
   // Dot/Cross product
   {
-    Triple<NumericType> v1 = {1., 0., 1.};
-    Triple<NumericType> v2 = {1., 0., 0.};
+    Vec3D<NumericType> v1 = {1., 0., 1.};
+    Vec3D<NumericType> v2 = {1., 0., 0.};
 
     auto dp = DotProduct(v1, v2);
     VC_TEST_ASSERT_ISCLOSE(dp, 1., eps)
@@ -45,7 +45,7 @@ int main() {
 
   // Normalization
   {
-    Triple<NumericType> v1 = {1., 1., 1.};
+    Vec3D<NumericType> v1 = {1., 1., 1.};
 
     auto norm = Norm(v1);
     VC_TEST_ASSERT_ISCLOSE(norm, 1.73205, eps)
@@ -58,12 +58,12 @@ int main() {
 
   // Other
   {
-    Triple<NumericType> v1 = {1., 1., 1.};
-    Triple<NumericType> v2 = {2., 1., 1.};
+    Vec3D<NumericType> v1 = {1., 1., 1.};
+    Vec3D<NumericType> v2 = {2., 1., 1.};
     auto dist = Distance(v1, v2);
     VC_TEST_ASSERT_ISCLOSE(dist, 1., eps)
 
-    Scale(2.f, v1);
+    v1 = NumericType(2) * v1;
     VC_TEST_ASSERT_ISCLOSE(v1[0], 2., eps)
     VC_TEST_ASSERT_ISCLOSE(v1[1], 2., eps)
     VC_TEST_ASSERT_ISCLOSE(v1[2], 2., eps)
@@ -75,10 +75,10 @@ int main() {
   }
 
   {
-    Triple<NumericType> p1 = {0., 0., 0.};
-    Triple<NumericType> p2 = {1., 0., 1.};
-    Triple<NumericType> p3 = {1., 0., 0.};
-    Triple<Triple<NumericType>> coords = {p1, p2, p3};
+    Vec3D<NumericType> p1 = {0., 0., 0.};
+    Vec3D<NumericType> p2 = {1., 0., 1.};
+    Vec3D<NumericType> p3 = {1., 0., 0.};
+    Vec3D<Vec3D<NumericType>> coords = {p1, p2, p3};
     auto result = ComputeNormal(coords);
     VC_TEST_ASSERT_ISCLOSE(result[0], 0., eps)
     VC_TEST_ASSERT_ISCLOSE(result[1], 1., eps)

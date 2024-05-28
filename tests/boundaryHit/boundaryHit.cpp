@@ -36,8 +36,8 @@ int main() {
       auto boundary = Boundary<NumericType, D>(device, boundingBox, boundCons,
                                                traceSetting);
 
-      auto origin = viennacore::Triple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = viennacore::Triple<NumericType>{0.5, 0., -0.25};
+      auto origin = viennacore::Vec3D<NumericType>{0.5, 0.5, 0.5};
+      auto direction = viennacore::Vec3D<NumericType>{0.5, 0., -0.25};
       auto distanceToHit = viennacore::Norm(direction);
       viennacore::Normalize(direction);
       bool reflect = false;
@@ -96,8 +96,8 @@ int main() {
       auto boundary = Boundary<NumericType, D>(device, boundingBox, boundCons,
                                                traceSetting);
 
-      auto origin = viennacore::Triple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = viennacore::Triple<NumericType>{0., -0.25, 0.5};
+      auto origin = viennacore::Vec3D<NumericType>{0.5, 0.5, 0.5};
+      auto direction = viennacore::Vec3D<NumericType>{0., -0.25, 0.5};
       auto distanceToHit = viennacore::Norm(direction);
       viennacore::Normalize(direction);
       bool reflect = false;
@@ -156,8 +156,8 @@ int main() {
       auto boundary = Boundary<NumericType, D>(device, boundingBox, boundCons,
                                                traceSetting);
 
-      auto origin = viennacore::Triple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = viennacore::Triple<NumericType>{0.5, 0., -0.25};
+      auto origin = viennacore::Vec3D<NumericType>{0.5, 0.5, 0.5};
+      auto direction = viennacore::Vec3D<NumericType>{0.5, 0., -0.25};
       auto distanceToHit = viennacore::Norm(direction);
       viennacore::Normalize(direction);
       bool reflect = false;

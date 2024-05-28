@@ -12,8 +12,8 @@ int main() {
   omp_set_num_threads(1);
 
   NumericType gridDelta;
-  std::vector<Triple<NumericType>> points;
-  std::vector<Triple<NumericType>> normals;
+  std::vector<Vec3D<NumericType>> points;
+  std::vector<Vec3D<NumericType>> normals;
   rayInternal::readGridFromFile("./../Resources/trenchGrid2D.dat", gridDelta,
                                 points, normals);
 

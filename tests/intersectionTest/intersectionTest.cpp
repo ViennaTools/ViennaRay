@@ -5,11 +5,11 @@
 // void printRay(RTCRayHit &rayHit)
 // {
 //     std::cout << "Origin: ";
-//     rtInternal::printTriple(rtTriple<float>{rayHit.ray.org_x,
+//     rtInternal::printTriple(rtVec3D<float>{rayHit.ray.org_x,
 //     rayHit.ray.org_y, rayHit.ray.org_z}); std::cout << "Direction: ";
-//     rtInternal::printTriple(rtTriple<float>{rayHit.ray.dir_x,
+//     rtInternal::printTriple(rtVec3D<float>{rayHit.ray.dir_x,
 //     rayHit.ray.dir_y, rayHit.ray.dir_z}); std::cout << "Geometry normal: ";
-//     rtInternal::printTriple(rtTriple<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y,
+//     rtInternal::printTriple(rtVec3D<float>{rayHit.hit.Ng_x, rayHit.hit.Ng_y,
 //     rayHit.hit.Ng_z}); std::cout << "Primitive ID: "; std::cout <<
 //     rayHit.hit.primID << std::endl;
 // }
@@ -59,8 +59,8 @@ int main() {
   VC_TEST_ASSERT(rtcGetDeviceError(rtcDevice) == RTC_ERROR_NONE)
 
   {
-    auto origin = Triple<NumericType>{0., 0., 2 * discRadius};
-    auto direction = Triple<NumericType>{0., 0., -1.};
+    auto origin = Vec3D<NumericType>{0., 0., 2 * discRadius};
+    auto direction = Vec3D<NumericType>{0., 0., -1.};
 
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -93,8 +93,8 @@ int main() {
   }
 
   {
-    auto origin = Triple<NumericType>{0., 9., 2 * discRadius};
-    auto direction = Triple<NumericType>{0., 2., -1.};
+    auto origin = Vec3D<NumericType>{0., 9., 2 * discRadius};
+    auto direction = Vec3D<NumericType>{0., 2., -1.};
     Normalize(direction);
 
     alignas(128) auto rayHit =

@@ -40,7 +40,7 @@ public:
     auto boundary = Boundary<NumericType, D>(
         device_, boundingBox, boundaryConditions_, traceSettings);
 
-    Triple<Triple<NumericType>> orthonormalBasis;
+    Vec3D<Vec3D<NumericType>> orthonormalBasis;
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
     if (!pSource_)
@@ -166,7 +166,7 @@ public:
   /// not change the position of the source plane. Therefore, one has the be
   /// careful that the resulting distribution does not lie completely above the
   /// source plane.
-  void setPrimaryDirection(const Triple<NumericType> primaryDirection) {
+  void setPrimaryDirection(const Vec3D<NumericType> primaryDirection) {
     primaryDirection_ = primaryDirection;
     usePrimaryDirection_ = true;
   }
@@ -377,7 +377,7 @@ private:
 
   BoundaryCondition boundaryConditions_[D] = {};
   TraceDirection sourceDirection_ = TraceDirection::POS_Z;
-  Triple<NumericType> primaryDirection_ = {0.};
+  Vec3D<NumericType> primaryDirection_ = {0.};
 
   bool usePrimaryDirection_ = false;
   bool useRandomSeeds_ = false;

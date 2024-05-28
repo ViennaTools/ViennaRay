@@ -90,7 +90,7 @@ constexpr double DiskFactor =
 
 /* -------------- Ray tracing preparation -------------- */
 template <typename NumericType, int D>
-void adjustBoundingBox(Pair<Triple<NumericType>> &bdBox,
+void adjustBoundingBox(Vec2D<Vec3D<NumericType>> &bdBox,
                        TraceDirection direction, NumericType discRadius) {
   // For 2D geometries adjust bounding box in z-direction
   if constexpr (D == 2) {
@@ -192,7 +192,7 @@ getTraceSettings(TraceDirection sourceDir) {
 }
 
 template <typename T1, typename T2>
-void fillRay(RTCRay &ray, const Triple<T1> &origin, const Triple<T2> &direction,
+void fillRay(RTCRay &ray, const Vec3D<T1> &origin, const Vec3D<T2> &direction,
              const float tnear = 1e-4f, const float time = 0.0f) {
 #ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray) =
@@ -214,8 +214,8 @@ void fillRay(RTCRay &ray, const Triple<T1> &origin, const Triple<T2> &direction,
 }
 
 template <>
-void fillRay<float>(RTCRay &ray, const Triple<float> &origin,
-                    const Triple<float> &direction, const float tnear,
+void fillRay<float>(RTCRay &ray, const Vec3D<float> &origin,
+                    const Vec3D<float> &direction, const float tnear,
                     const float time) {
 #ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray) =
@@ -239,7 +239,7 @@ void fillRay<float>(RTCRay &ray, const Triple<float> &origin,
 /* ------------------------------------------------------ */
 
 template <typename NumericType>
-[[nodiscard]] static Triple<NumericType>
+[[nodiscard]] static Vec3D<NumericType>
 pickRandomPointOnUnitSphere(RNG &rngState) {
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType x, y, z, x2, y2, x2py2;
@@ -254,7 +254,7 @@ pickRandomPointOnUnitSphere(RNG &rngState) {
   x *= tmp;
   y *= tmp;
   z = 1. - 2 * x2py2;
-  return Triple<NumericType>{x, y, z};
+  return Vec3D<NumericType>{x, y, z};
 }
 
 // Returns some orthonormal basis containing a the input vector
@@ -262,20 +262,20 @@ pickRandomPointOnUnitSphere(RNG &rngState) {
 // This function is deterministic, i.e., for one input it will return always
 // the same result.
 template <typename NumericType>
-[[nodiscard]] Triple<Triple<NumericType>>
-getOrthonormalBasis(const Triple<NumericType> &vec) {
-  Triple<Triple<NumericType>> rr;
+[[nodiscard]] Vec3D<Vec3D<NumericType>>
+getOrthonormalBasis(const Vec3D<NumericType> &vec) {
+  Vec3D<Vec3D<NumericType>> rr;
   rr[0] = vec;
 
   // Calculate a vector (rr[1]) which is perpendicular to rr[0]
   // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
-  Triple<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
-  Triple<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
-  Triple<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
+  Vec3D<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
+  Vec3D<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
+  Vec3D<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
   // We choose the candidate which maximizes the sum of its components,
   // because we want to avoid numeric errors and that the result is (0, 0, 0).
-  std::array<Triple<NumericType>, 3> cc = {candidate0, candidate1, candidate2};
-  auto sumFun = [](const Triple<NumericType> &oo) {
+  std::array<Vec3D<NumericType>, 3> cc = {candidate0, candidate1, candidate2};
+  auto sumFun = [](const Vec3D<NumericType> &oo) {
     return oo[0] + oo[1] + oo[2];
   };
   int maxIdx = 0;
@@ -332,8 +332,8 @@ void createPlaneGrid(const NumericType gridDelta, const NumericType extent,
 
 template <typename NumericType>
 void readGridFromFile(std::string fileName, NumericType &gridDelta,
-                      std::vector<Triple<NumericType>> &points,
-                      std::vector<Triple<NumericType>> &normals) {
+                      std::vector<Vec3D<NumericType>> &points,
+                      std::vector<Vec3D<NumericType>> &normals) {
   std::ifstream dataFile(fileName);
   if (!dataFile.is_open()) {
     std::cout << "Cannot read file " << fileName << std::endl;
@@ -353,7 +353,7 @@ void readGridFromFile(std::string fileName, NumericType &gridDelta,
 
 template <typename NumericType, int D = 3>
 void writeVTK(std::string filename,
-              const std::vector<Triple<NumericType>> &points,
+              const std::vector<Vec3D<NumericType>> &points,
               const std::vector<NumericType> &flux) {
   std::ofstream f(filename.c_str());
 
@@ -391,11 +391,11 @@ void writeVTK(std::string filename,
 /* -------------------------------------------------------------- */
 
 template <typename NumericType, int D>
-[[nodiscard]] std::vector<Triple<NumericType>>
-createSourceGrid(const Pair<Triple<NumericType>> &pBdBox,
+[[nodiscard]] std::vector<Vec3D<NumericType>>
+createSourceGrid(const Vec2D<Vec3D<NumericType>> &pBdBox,
                  const size_t pNumPoints, const NumericType pGridDelta,
                  const std::array<int, 5> &pTraceSettings) {
-  std::vector<Triple<NumericType>> sourceGrid;
+  std::vector<Vec3D<NumericType>> sourceGrid;
   sourceGrid.reserve(pNumPoints);
   constexpr double eps = 1e-4;
   // Trace settings
@@ -419,7 +419,7 @@ createSourceGrid(const Pair<Triple<NumericType>> &pBdBox,
   auto secondGridDelta =
       (len2 - 2 * eps) / (NumericType)(numPointsInSecondDir - 1);
 
-  Triple<NumericType> point;
+  Vec3D<NumericType> point;
   point[rayDir] = pBdBox[minMax][rayDir];
   for (auto uu = pBdBox[0][secondDir] + eps; uu <= pBdBox[1][secondDir] - eps;
        uu += secondGridDelta) {

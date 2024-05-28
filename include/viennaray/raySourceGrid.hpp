@@ -8,11 +8,11 @@ using namespace viennacore;
 
 template <typename NumericType, int D>
 class SourceGrid : public Source<NumericType> {
-  using boundingBoxType = Pair<Triple<NumericType>>;
+  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
 
 public:
   SourceGrid(const boundingBoxType &boundingBox,
-             std::vector<Triple<NumericType>> &sourceGrid,
+             std::vector<Vec3D<NumericType>> &sourceGrid,
              NumericType cosinePower, const std::array<int, 5> &traceSettings)
       : bdBox_(boundingBox), sourceGrid_(sourceGrid),
         numPoints_(sourceGrid.size()), rayDir_(traceSettings[0]),
@@ -20,7 +20,7 @@ public:
         minMax_(traceSettings[3]), posNeg_(traceSettings[4]),
         ee_(((NumericType)2) / (cosinePower + 1)) {}
 
-  Pair<Triple<NumericType>>
+  Vec2D<Vec3D<NumericType>>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
     auto origin = sourceGrid_[idx % numPoints_];
     auto direction = getDirection(rngState);
@@ -31,8 +31,8 @@ public:
   size_t getNumPoints() const override { return numPoints_; }
 
 private:
-  Triple<NumericType> getDirection(RNG &rngState) const {
-    Triple<NumericType> direction{0., 0., 0.};
+  Vec3D<NumericType> getDirection(RNG &rngState) const {
+    Vec3D<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(rngState);
     auto r2 = uniDist(rngState);
@@ -63,7 +63,7 @@ private:
 
 private:
   const boundingBoxType bdBox_;
-  const std::vector<Triple<NumericType>> &sourceGrid_;
+  const std::vector<Vec3D<NumericType>> &sourceGrid_;
   const size_t numPoints_;
   const int rayDir_;
   const int firstDir_;

@@ -11,9 +11,9 @@ using namespace viennacore;
 
 // Specular reflection
 template <typename NumericType, int D = 3>
-[[nodiscard]] Triple<NumericType>
-ReflectionSpecular(const Triple<NumericType> &rayDir,
-                   const Triple<NumericType> &geomNormal) {
+[[nodiscard]] Vec3D<NumericType>
+ReflectionSpecular(const Vec3D<NumericType> &rayDir,
+                   const Vec3D<NumericType> &geomNormal) {
   assert(IsNormalized(geomNormal) &&
          "Specular Reflection: Surface normal is not normalized");
   assert(IsNormalized(rayDir) &&
@@ -23,15 +23,15 @@ ReflectionSpecular(const Triple<NumericType> &rayDir,
 
   // Compute new direction
   auto direction =
-      Diff(Scale(2 * DotProduct(geomNormal, dirOldInv), geomNormal), dirOldInv);
+      2 * DotProduct(geomNormal, dirOldInv) * geomNormal - dirOldInv;
 
   return direction;
 }
 
 // Diffuse reflection
 template <typename NumericType, int D>
-[[nodiscard]] Triple<NumericType>
-ReflectionDiffuse(const Triple<NumericType> &geomNormal, RNG &rngState) {
+[[nodiscard]] Vec3D<NumericType>
+ReflectionDiffuse(const Vec3D<NumericType> &geomNormal, RNG &rngState) {
   assert(IsNormalized(geomNormal) &&
          "Diffuse Reflection: Surface normal is not normalized");
 
@@ -51,8 +51,8 @@ ReflectionDiffuse(const Triple<NumericType> &geomNormal, RNG &rngState) {
 
 // Coned specular reflection
 template <typename NumericType, int D>
-[[nodiscard]] Triple<NumericType> ReflectionConedCosine(
-    const Triple<NumericType> &rayDir, const Triple<NumericType> &geomNormal,
+[[nodiscard]] Vec3D<NumericType> ReflectionConedCosine(
+    const Vec3D<NumericType> &rayDir, const Vec3D<NumericType> &geomNormal,
     RNG &rngState,
     const NumericType maxConeAngle /*max opening angle of the cone*/) {
   using namespace rayInternal;
@@ -60,7 +60,7 @@ template <typename NumericType, int D>
   // (https://math.stackexchange.com/a/182936)
   std::uniform_real_distribution<NumericType> uniDist;
 
-  Triple<NumericType> direction;
+  Vec3D<NumericType> direction;
 
   do {
     // sample phi uniformly in [0, 2pi]
@@ -111,10 +111,10 @@ using namespace viennacore;
 
 // Coned cosine reflection (deprecated)
 template <typename NumericType, int D>
-[[nodiscard]] Triple<NumericType>
+[[nodiscard]] Vec3D<NumericType>
 ReflectionConedCosineOld(NumericType avgReflAngle,
-                         const Triple<NumericType> &rayDir,
-                         const Triple<NumericType> &geomNormal, RNG &rngState) {
+                         const Vec3D<NumericType> &rayDir,
+                         const Vec3D<NumericType> &geomNormal, RNG &rngState) {
 
   assert(IsNormalized(geomNormal) &&
          "ReflectionSpecular: Surface normal is not normalized");
@@ -130,7 +130,7 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType u, sqrt_1m_u;
   NumericType angle;
-  Triple<NumericType> randomDir;
+  Vec3D<NumericType> randomDir;
 
   //  loop until ray is reflected away from the surface normal
   //  this loop takes care of the case where part of the cone points
@@ -199,9 +199,9 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
 }
 
 template <typename NumericType, int D>
-[[nodiscard]] Triple<NumericType>
-ReflectionConedCosineOld2(const Triple<NumericType> &rayDir,
-                          const Triple<NumericType> &geomNormal, RNG &rngState,
+[[nodiscard]] Vec3D<NumericType>
+ReflectionConedCosineOld2(const Vec3D<NumericType> &rayDir,
+                          const Vec3D<NumericType> &geomNormal, RNG &rngState,
                           NumericType &minAvgConeAngle = 0.) {
 
   assert(IsNormalized(geomNormal) &&
@@ -248,7 +248,7 @@ ReflectionConedCosineOld2(const Triple<NumericType> &rayDir,
     r2 = cosPhi * cosPhi + sinPhi * sinPhi;
   } while (r2 >= 0.25 || r2 <= std::numeric_limits<NumericType>::epsilon());
 
-  Triple<NumericType> randomDir;
+  Vec3D<NumericType> randomDir;
 
   // Rotate
   cosTheta = std::min(cosTheta, 1.);

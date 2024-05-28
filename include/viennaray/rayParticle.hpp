@@ -31,9 +31,9 @@ public:
   /// globalData: constant user-defined data;
   /// Rng: thread-safe random number generator (standard library conform);
   /// Returns pair: 1. sticking coefficient, 2. ray direction after reflection
-  virtual std::pair<NumericType, Triple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const Triple<NumericType> &rayDir,
-                    const Triple<NumericType> &geomNormal,
+  virtual std::pair<NumericType, Vec3D<NumericType>>
+  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                    const Vec3D<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
                     const TracingData<NumericType> *globalData,
                     RNG &rngState) = 0;
@@ -49,8 +49,8 @@ public:
   /// globalData: constant user-defined data;
   /// Rng: thread-safe random number generator (standard library conform);
   virtual void surfaceCollision(NumericType rayWeight,
-                                const Triple<NumericType> &rayDir,
-                                const Triple<NumericType> &geomNormal,
+                                const Vec3D<NumericType> &rayDir,
+                                const Vec3D<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
                                 TracingData<NumericType> &localData,
                                 const TracingData<NumericType> *globalData,
@@ -80,20 +80,20 @@ public:
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
   virtual void initNew(RNG &rngState) override {}
-  virtual std::pair<NumericType, Triple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const Triple<NumericType> &rayDir,
-                    const Triple<NumericType> &geomNormal,
+  virtual std::pair<NumericType, Vec3D<NumericType>>
+  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                    const Vec3D<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
                     const TracingData<NumericType> *globalData,
                     RNG &rngState) override {
     // return the sticking probability and direction after reflection for this
     // hit
-    return std::pair<NumericType, Triple<NumericType>>{
-        1., Triple<NumericType>{0., 0., 0.}};
+    return std::pair<NumericType, Vec3D<NumericType>>{
+        1., Vec3D<NumericType>{0., 0., 0.}};
   }
   virtual void
-  surfaceCollision(NumericType rayWeight, const Triple<NumericType> &rayDir,
-                   const Triple<NumericType> &geomNormal,
+  surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                   const Vec3D<NumericType> &geomNormal,
                    const unsigned int primID, const int materialId,
                    TracingData<NumericType> &localData,
                    const TracingData<NumericType> *globalData,
@@ -118,20 +118,19 @@ class TestParticle : public Particle<TestParticle<NumericType>, NumericType> {
 public:
   void initNew(RNG &rngState) override final {}
 
-  std::pair<NumericType, Triple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const Triple<NumericType> &rayDir,
-                    const Triple<NumericType> &geomNormal,
+  std::pair<NumericType, Vec3D<NumericType>>
+  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                    const Vec3D<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
                     const TracingData<NumericType> *globalData,
                     RNG &rngState) override final {
     auto direction = ReflectionSpecular(rayDir, geomNormal);
 
-    return std::pair<NumericType, Triple<NumericType>>{.5, direction};
+    return std::pair<NumericType, Vec3D<NumericType>>{.5, direction};
   }
 
-  void surfaceCollision(NumericType rayWeight,
-                        const Triple<NumericType> &rayDir,
-                        const Triple<NumericType> &geomNormal,
+  void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                        const Vec3D<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
                         TracingData<NumericType> &localData,
                         const TracingData<NumericType> *globalData,

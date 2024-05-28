@@ -8,8 +8,8 @@ int main() {
   constexpr int D = 3;
 
   NumericType gridDelta;
-  std::vector<viennacore::Triple<NumericType>> points;
-  std::vector<viennacore::Triple<NumericType>> normals;
+  std::vector<viennacore::Vec3D<NumericType>> points;
+  std::vector<viennacore::Vec3D<NumericType>> normals;
   rayInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
                                 points, normals);
 

@@ -41,8 +41,8 @@ int main() {
     auto boundary =
         Boundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
-    auto origin = Triple<NumericType>{1., 1., 0.};
-    auto direction = Triple<NumericType>{-0.5, 1., 0.};
+    auto origin = Vec3D<NumericType>{1., 1., 0.};
+    auto direction = Vec3D<NumericType>{-0.5, 1., 0.};
     auto distanceToHit = Norm(direction);
     Normalize(direction);
     bool reflect = false;
@@ -90,8 +90,8 @@ int main() {
     auto boundary =
         Boundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
-    auto origin = Triple<NumericType>{1., 1., 0.};
-    auto direction = Triple<NumericType>{-0.5, 1., 0.};
+    auto origin = Vec3D<NumericType>{1., 1., 0.};
+    auto direction = Vec3D<NumericType>{-0.5, 1., 0.};
     auto distanceToHit = Norm(direction);
     Normalize(direction);
     bool reflect = false;
@@ -153,8 +153,8 @@ int main() {
     auto boundary =
         Boundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
-    auto origin = Triple<NumericType>{1., 1., 0.};
-    auto direction = Triple<NumericType>{1., -0.5, 0.};
+    auto origin = Vec3D<NumericType>{1., 1., 0.};
+    auto direction = Vec3D<NumericType>{1., -0.5, 0.};
     auto distanceToHit = Norm(direction);
     Normalize(direction);
     bool reflect = false;
@@ -202,8 +202,8 @@ int main() {
     auto boundary =
         Boundary<NumericType, D>(device, boundingBox, boundCons, traceSettings);
 
-    auto origin = Triple<NumericType>{1., 1., 0.};
-    auto direction = Triple<NumericType>{1., -0.5, 0.};
+    auto origin = Vec3D<NumericType>{1., 1., 0.};
+    auto direction = Vec3D<NumericType>{1., -0.5, 0.};
     auto distanceToHit = Norm(direction);
     Normalize(direction);
     bool reflect = false;

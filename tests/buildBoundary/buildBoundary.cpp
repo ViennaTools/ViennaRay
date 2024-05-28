@@ -9,8 +9,8 @@ int main() {
   NumericType eps = 1e-6f;
 
   NumericType gridDelta;
-  std::vector<Triple<NumericType>> points;
-  std::vector<Triple<NumericType>> normals;
+  std::vector<Vec3D<NumericType>> points;
+  std::vector<Vec3D<NumericType>> normals;
   rayInternal::readGridFromFile("./../Resources/sphereGrid3D_R1.dat", gridDelta,
                                 points, normals);
 

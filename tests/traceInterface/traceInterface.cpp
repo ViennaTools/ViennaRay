@@ -9,7 +9,7 @@ class MySource : public Source<NumericType> {
 public:
   MySource() {}
 
-  Pair<std::array<NumericType, D>>
+  Vec2D<std::array<NumericType, D>>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
     std::array<NumericType, D> origin = {0., 0., 0.};
     std::array<NumericType, D> direction = {0., 0., 1.};

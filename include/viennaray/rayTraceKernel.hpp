@@ -179,12 +179,12 @@ public:
             if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
-              Triple<rtcNumericType> origin = {
+              Vec3D<rtcNumericType> origin = {
                   static_cast<rtcNumericType>(ray.org_x + ray.dir_x * rnd),
                   static_cast<rtcNumericType>(ray.org_y + ray.dir_y * rnd),
                   static_cast<rtcNumericType>(ray.org_z + ray.dir_z * rnd)};
 
-              Triple<rtcNumericType> direction{0, 0, 0};
+              Vec3D<rtcNumericType> direction{0, 0, 0};
               for (int i = 0; i < D; ++i) {
                 direction[i] = 2.f * dist(rngState) - 1.f;
               }
@@ -207,14 +207,14 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const Triple<rtcNumericType> hitPoint = {
+          const Vec3D<rtcNumericType> hitPoint = {
               ray.org_x + ray.dir_x * ray.tfar,
               ray.org_y + ray.dir_y * ray.tfar,
               ray.org_z + ray.dir_z * ray.tfar};
 
           /* -------- Hit from back -------- */
           const auto rayDir =
-              Triple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
+              Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
           if (DotProduct(rayDir, geomNormal) > 0) {
             // If the dot product of the ray direction and the surface normal is
@@ -252,7 +252,7 @@ public:
           {                    // distance on first disk hit
             const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
             const auto &diskOrigin =
-                *reinterpret_cast<Triple<rtcNumericType> const *>(&disk);
+                *reinterpret_cast<Vec3D<rtcNumericType> const *>(&disk);
             impactDistances.push_back(Distance(hitPoint, diskOrigin) +
                                       1e-6f); // add eps to avoid division by 0
           }
@@ -522,14 +522,14 @@ private:
   bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
                               rtcNumericType &impactDistance) const {
     auto const &rayOrigin =
-        *reinterpret_cast<Triple<rtcNumericType> const *>(&ray.org_x);
+        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&ray.org_x);
     auto const &rayDirection =
-        *reinterpret_cast<Triple<rtcNumericType> const *>(&ray.dir_x);
+        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&ray.dir_x);
 
     const auto &normal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
     const auto &diskOrigin =
-        *reinterpret_cast<Triple<rtcNumericType> const *>(&disk);
+        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&disk);
 
     auto prodOfDirections = DotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
@@ -553,10 +553,10 @@ private:
     }
 
     // copy ray direction
-    auto rayDirectionC = Triple<rtcNumericType>{
-        rayDirection[0], rayDirection[1], rayDirection[2]};
-    Scale(tt, rayDirectionC);
-    auto hitPoint = Sum(rayOrigin, rayDirectionC);
+    auto rayDirectionC = Vec3D<rtcNumericType>{rayDirection[0], rayDirection[1],
+                                               rayDirection[2]} *
+                         tt;
+    auto hitPoint = rayOrigin + rayDirectionC;
     auto distance = Distance(hitPoint, diskOrigin);
     auto const &radius = disk[3];
     if (radius > distance) {

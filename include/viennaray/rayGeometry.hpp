@@ -112,11 +112,11 @@ public:
     }
   }
 
-  [[nodiscard]] Pair<Triple<NumericType>> getBoundingBox() const {
+  [[nodiscard]] Vec2D<Vec3D<NumericType>> getBoundingBox() const {
     return {minCoords_, maxCoords_};
   }
 
-  [[nodiscard]] Triple<NumericType> getPoint(const unsigned int primID) const {
+  [[nodiscard]] Vec3D<NumericType> getPoint(const unsigned int primID) const {
     assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &pnt = pPointBuffer_[primID];
     return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
@@ -136,7 +136,7 @@ public:
     return pRtcGeometry_;
   }
 
-  [[nodiscard]] Triple<NumericType>
+  [[nodiscard]] Vec3D<NumericType>
   getPrimNormal(const unsigned int primID) const {
     assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &normal = pNormalVecBuffer_[primID];
@@ -144,17 +144,17 @@ public:
             (NumericType)normal.zz};
   }
 
-  [[nodiscard]] Quadruple<rayInternal::rtcNumericType> &
+  [[nodiscard]] std::array<rayInternal::rtcNumericType, 4> &
   getPrimRef(unsigned int primID) {
     assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
-    return *reinterpret_cast<Quadruple<rayInternal::rtcNumericType> *>(
+    return *reinterpret_cast<std::array<rayInternal::rtcNumericType, 4> *>(
         &pPointBuffer_[primID]);
   }
 
-  [[nodiscard]] Triple<rayInternal::rtcNumericType> &
+  [[nodiscard]] Vec3D<rayInternal::rtcNumericType> &
   getNormalRef(unsigned int primID) {
     assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
-    return *reinterpret_cast<Triple<rayInternal::rtcNumericType> *>(
+    return *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &pNormalVecBuffer_[primID]);
   }
 
@@ -198,8 +198,8 @@ private:
       std::vector<unsigned int> side2;
 
       // create copy of bounding box
-      Triple<NumericType> min = minCoords_;
-      Triple<NumericType> max = maxCoords_;
+      Vec3D<NumericType> min = minCoords_;
+      Vec3D<NumericType> max = maxCoords_;
 
       std::vector<int> dirs;
       for (int i = 0; i < 3; ++i) {
@@ -234,11 +234,11 @@ private:
     }
   }
 
-  void createNeighborhood(const std::vector<Triple<NumericType>> &points,
+  void createNeighborhood(const std::vector<Vec3D<NumericType>> &points,
                           const std::vector<unsigned int> &side1,
                           const std::vector<unsigned int> &side2,
-                          const Triple<NumericType> &min,
-                          const Triple<NumericType> &max, const int &dirIdx,
+                          const Vec3D<NumericType> &min,
+                          const Vec3D<NumericType> &max, const int &dirIdx,
                           const std::vector<int> &dirs,
                           const NumericType &pivot) {
     assert(0 <= dirIdx && dirIdx < dirs.size() && "Assumption");
@@ -380,8 +380,8 @@ private:
 
   size_t numPoints_;
   NumericType discRadii_;
-  Triple<NumericType> minCoords_;
-  Triple<NumericType> maxCoords_;
+  Vec3D<NumericType> minCoords_;
+  Vec3D<NumericType> maxCoords_;
   pointNeighborhoodType pointNeighborhood_;
   std::vector<int> materialIds_;
 };

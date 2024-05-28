@@ -8,7 +8,7 @@ using namespace viennacore;
 
 template <typename NumericType, int D>
 class SourceRandom : public Source<NumericType> {
-  using boundingBoxType = Pair<Triple<NumericType>>;
+  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
 
 public:
   SourceRandom(
@@ -23,10 +23,10 @@ public:
         customDirection_(customDirection), orthonormalBasis_(orthonormalBasis) {
   }
 
-  Pair<Triple<NumericType>>
+  Vec2D<Vec3D<NumericType>>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
     auto origin = getOrigin(rngState);
-    Triple<NumericType> direction;
+    Vec3D<NumericType> direction;
     if (customDirection_) {
       direction = getCustomDirection(rngState);
     } else {
@@ -48,8 +48,8 @@ public:
   }
 
 private:
-  Triple<NumericType> getOrigin(RNG &rngState) const {
-    Triple<NumericType> origin{0., 0., 0.};
+  Vec3D<NumericType> getOrigin(RNG &rngState) const {
+    Vec3D<NumericType> origin{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(rngState);
 
@@ -68,8 +68,8 @@ private:
     return origin;
   }
 
-  Triple<NumericType> getDirection(RNG &rngState) const {
-    Triple<NumericType> direction{0., 0., 0.};
+  Vec3D<NumericType> getDirection(RNG &rngState) const {
+    Vec3D<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
     auto r1 = uniDist(rngState);
     auto r2 = uniDist(rngState);
@@ -88,12 +88,12 @@ private:
     return direction;
   }
 
-  Triple<NumericType> getCustomDirection(RNG &rngState) const {
-    Triple<NumericType> direction;
+  Vec3D<NumericType> getCustomDirection(RNG &rngState) const {
+    Vec3D<NumericType> direction;
     std::uniform_real_distribution<NumericType> uniDist;
 
     do {
-      Triple<NumericType> rndDirection{0., 0., 0.};
+      Vec3D<NumericType> rndDirection{0., 0., 0.};
       auto r1 = uniDist(rngState);
       auto r2 = uniDist(rngState);
 
@@ -132,7 +132,7 @@ private:
   const NumericType ee_;
   const size_t numPoints_;
   const bool customDirection_ = false;
-  const std::array<Triple<NumericType>, 3> &orthonormalBasis_;
+  const std::array<Vec3D<NumericType>, 3> &orthonormalBasis_;
 };
 
 } // namespace viennaray

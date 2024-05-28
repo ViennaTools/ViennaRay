@@ -11,7 +11,7 @@ template <typename NumericType> class Source {
 public:
   virtual ~Source() = default;
 
-  virtual Pair<Triple<NumericType>>
+  virtual Vec2D<Vec3D<NumericType>>
   getOriginAndDirection(const size_t idx, RNG &rngState) const = 0;
   virtual size_t getNumPoints() const = 0;
   virtual NumericType getSourceArea() const = 0;
