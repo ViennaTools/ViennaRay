@@ -74,8 +74,8 @@ template <typename NumericType, int D>
 
     // compute specular direction
     auto dirOldInv = Inv(rayDir);
-    auto specDirection = Diff(
-        Scale(2 * DotProduct(geomNormal, dirOldInv), geomNormal), dirOldInv);
+    auto specDirection =
+        (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
 
     // rotate
     auto basis = getOrthonormalBasis(specDirection);
@@ -125,7 +125,7 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
   auto dirOldInv = Inv(rayDir);
 
   auto specDirection =
-      Diff(Scale(2 * DotProduct(geomNormal, dirOldInv), geomNormal), dirOldInv);
+      (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
 
   std::uniform_real_distribution<NumericType> uniDist;
   NumericType u, sqrt_1m_u;
@@ -213,7 +213,7 @@ ReflectionConedCosineOld2(const Vec3D<NumericType> &rayDir,
 
   // Compute average direction
   auto specDirection =
-      Diff(Scale(2 * DotProduct(geomNormal, dirOldInv), geomNormal), dirOldInv);
+      (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
 
   // Compute incidence angle
   double cosTheta = static_cast<double>(-DotProduct(rayDir, geomNormal));
