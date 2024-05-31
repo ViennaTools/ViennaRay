@@ -143,7 +143,7 @@ public:
 #endif
 
         if (printProgress_ && threadID == 0) {
-          ProgressBar(idx, numRays_);
+          util::ProgressBar(idx, numRays_);
         }
 
         bool reflect = false;
