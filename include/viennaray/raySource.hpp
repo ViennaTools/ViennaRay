@@ -3,7 +3,7 @@
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType> class raySource {
+template <typename NumericType, int D> class raySource {
 public:
   virtual ~raySource() = default;
 

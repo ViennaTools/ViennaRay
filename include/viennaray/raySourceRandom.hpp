@@ -3,7 +3,7 @@
 #include <raySource.hpp>
 
 template <typename NumericType, int D>
-class raySourceRandom : public raySource<NumericType> {
+class raySourceRandom : public raySource<NumericType, D> {
   using boundingBoxType = rayPair<rayTriple<NumericType>>;
 
 public:

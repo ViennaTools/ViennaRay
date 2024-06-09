@@ -73,7 +73,7 @@ public:
             std::enable_if_t<std::is_base_of_v<rayAbstractParticle<NumericType>,
                                                ParticleType>,
                              bool> = true>
-  void setParticleType(std::unique_ptr<ParticleType> const &particle) {
+  void setParticleType(std::unique_ptr<ParticleType> &particle) {
     pParticle_ = particle->clone();
   }
 
@@ -125,8 +125,8 @@ public:
   /// Set a custom source for the ray tracing. Per default a random source is
   /// set up. The source has to be a user defined object that has to interface
   /// the raySource class.
-  void setSource(std::shared_ptr<raySource<NumericType>> source) {
-    pSource_ = source;
+  void setSource(std::unique_ptr<raySource<NumericType, D>> source) {
+    pSource_ = std::move(source);
   }
 
   /// Reset the source to the default random source.
@@ -383,7 +383,7 @@ private:
 
   rayGeometry<NumericType, D> geometry_;
   std::unique_ptr<rayAbstractParticle<NumericType>> pParticle_ = nullptr;
-  std::shared_ptr<raySource<NumericType>> pSource_ = nullptr;
+  std::unique_ptr<raySource<NumericType, D>> pSource_ = nullptr;
 
   size_t numberOfRaysPerPoint_ = 1000;
   size_t numberOfRaysFixed_ = 0;
