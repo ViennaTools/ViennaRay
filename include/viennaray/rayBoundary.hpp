@@ -79,7 +79,7 @@ public:
             // hit at firstDir min boundary -> move to max firstDir
             impactCoords[firstDir_] = bdBox_[1][firstDir_];
           } else if (primID == 2 || primID == 3) {
-            // hit at firstDir max boundary -> move to min firstDir
+            // hit at firstDir max boundary -> move to min fristDir
             impactCoords[firstDir_] = bdBox_[0][firstDir_];
           }
           assignRayCoords(rayHit, impactCoords);
@@ -119,8 +119,6 @@ public:
       assert(false && "Correctness Assumption");
     }
   }
-
-  auto getBoundaryConditions() const { return boundaryConds_; }
 
   RTCGeometry const &getRTCGeometry() const { return pRtcBoundary_; }
 
@@ -236,7 +234,7 @@ private:
   }
 
   rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID) {
-    assert(primID < numTriangles_ && "rtBoundary: primID out of bounds");
+    assert(primID < numTriangles_ && "rtBounday: primID out of bounds");
     auto tt = pTriangleBuffer_[primID];
     return {(NumericType)pVertexBuffer_[tt.v0].xx,
             (NumericType)pVertexBuffer_[tt.v0].yy,

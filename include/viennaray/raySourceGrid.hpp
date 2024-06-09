@@ -4,18 +4,14 @@
 
 template <typename NumericType, int D>
 class raySourceGrid : public raySource<NumericType> {
-  using boundingBoxType = rayPair<rayTriple<NumericType>>;
-
 public:
-  raySourceGrid(const boundingBoxType &boundingBox,
-                std::vector<rayTriple<NumericType>> &sourceGrid,
+  raySourceGrid(std::vector<rayTriple<NumericType>> &sourceGrid,
                 NumericType cosinePower,
                 const std::array<int, 5> &traceSettings)
-      : bdBox_(boundingBox), sourceGrid_(sourceGrid),
-        numPoints_(sourceGrid.size()), rayDir_(traceSettings[0]),
-        firstDir_(traceSettings[1]), secondDir_(traceSettings[2]),
-        minMax_(traceSettings[3]), posNeg_(traceSettings[4]),
-        ee_(((NumericType)2) / (cosinePower + 1)) {}
+      : sourceGrid_(sourceGrid), numPoints_(sourceGrid.size()),
+        rayDir_(traceSettings[0]), firstDir_(traceSettings[1]),
+        secondDir_(traceSettings[2]), minMax_(traceSettings[3]),
+        posNeg_(traceSettings[4]), ee_(((NumericType)2) / (cosinePower + 1)) {}
 
   rayPair<rayTriple<NumericType>>
   getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
@@ -49,17 +45,7 @@ private:
     return direction;
   }
 
-  NumericType getSourceArea() const override {
-    if constexpr (D == 2) {
-      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]);
-    } else {
-      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]) *
-             (bdBox_[1][secondDir_] - bdBox_[0][secondDir_]);
-    }
-  }
-
 private:
-  const boundingBoxType bdBox_;
   const std::vector<rayTriple<NumericType>> &sourceGrid_;
   const size_t numPoints_;
   const int rayDir_;

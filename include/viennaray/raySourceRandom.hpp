@@ -8,7 +8,7 @@ class raySourceRandom : public raySource<NumericType> {
 
 public:
   raySourceRandom(
-      const boundingBoxType &boundingBox, NumericType cosinePower,
+      boundingBoxType boundingBox, NumericType cosinePower,
       std::array<int, 5> &pTraceSettings, const size_t numPoints_,
       const bool customDirection,
       const std::array<std::array<NumericType, 3>, 3> &orthonormalBasis)
@@ -33,15 +33,6 @@ public:
   }
 
   size_t getNumPoints() const override { return numPoints_; }
-
-  NumericType getSourceArea() const override {
-    if constexpr (D == 2) {
-      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]);
-    } else {
-      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]) *
-             (bdBox_[1][secondDir_] - bdBox_[0][secondDir_]);
-    }
-  }
 
 private:
   rayTriple<NumericType> getOrigin(rayRNG &RngState) const {
