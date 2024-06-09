@@ -176,12 +176,8 @@ public:
 
               const auto &ray = rayHit.ray;
               std::array<rayInternal::rtcNumericType, 3> origin = {
-                  static_cast<rayInternal::rtcNumericType>(ray.org_x +
-                                                           ray.dir_x * rndm),
-                  static_cast<rayInternal::rtcNumericType>(ray.org_y +
-                                                           ray.dir_y * rndm),
-                  static_cast<rayInternal::rtcNumericType>(ray.org_z +
-                                                           ray.dir_z * rndm)};
+                  ray.org_x + ray.dir_x * rndm, ray.org_y + ray.dir_y * rndm,
+                  ray.org_z + ray.dir_z * rndm};
 
               std::array<rayInternal::rtcNumericType, 3> direction{0, 0, 0};
               for (int i = 0; i < D; ++i) {
