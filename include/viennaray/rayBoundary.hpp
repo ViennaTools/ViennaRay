@@ -25,19 +25,6 @@ public:
   void processHit(RTCRayHit &rayHit, bool &reflect) const {
     const auto primID = rayHit.hit.primID;
 
-    // Ray hits backside of boundary
-    const auto rayDir = rayTriple<NumericType>{
-        rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z};
-    const auto boundaryNormal = rayTriple<NumericType>{
-        rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z};
-    if (rayInternal::DotProduct(rayDir, boundaryNormal) > 0) {
-      // let ray pass through
-      reflect = true;
-      const auto impactCoords = getNewOrigin(rayHit.ray);
-      assignRayCoords(rayHit, impactCoords);
-      return;
-    }
-
     if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
@@ -124,8 +111,8 @@ public:
 
   void releaseGeometry() {
     // Attention:
-    // This function must not be called when the RTCGeometry reference count
-    // is > 1 Doing so leads to leaked memory buffers
+    // This function must not be called when the RTCGeometry reference count is
+    // > 1 Doing so leads to leaked memory buffers
     if (pTriangleBuffer_ == nullptr || pVertexBuffer_ == nullptr ||
         pRtcBoundary_ == nullptr) {
       return;
