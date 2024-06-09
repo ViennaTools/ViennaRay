@@ -47,9 +47,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
-                           originAndDirection[1]);
+      source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
     }
@@ -69,9 +67,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
-                           originAndDirection[1]);
+      source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_z > 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (-1. - 2 * gridDelta), eps)
     }
@@ -91,9 +87,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
-                           originAndDirection[1]);
+      source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_x < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (1. + 2 * gridDelta), eps)
     }
@@ -113,9 +107,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
-                           originAndDirection[1]);
+      source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_x > 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, (-1. - 2 * gridDelta), eps)
     }
@@ -135,9 +127,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
-                           originAndDirection[1]);
+      source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_y < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (1. + 2 * gridDelta), eps)
     }
@@ -157,9 +147,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
-                           originAndDirection[1]);
+      source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_y > 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, (-1. - 2 * gridDelta), eps)
     }
@@ -182,9 +170,7 @@ int main() {
     alignas(128) auto rayhit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
-      auto originAndDirection = source.getOriginAndDirection(0, rngstate1);
-      rayInternal::fillRay(rayhit.ray, originAndDirection[0],
-                           originAndDirection[1]);
+      source.fillRay(rayhit.ray, 0, rngstate1);
       RAYTEST_ASSERT(rayhit.ray.dir_z < 0.)
       RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, (1. + 2 * gridDelta), eps)
     }

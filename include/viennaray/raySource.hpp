@@ -3,12 +3,17 @@
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D> class raySource {
-public:
-  virtual ~raySource() = default;
+template <typename Derived> class raySource {
+protected:
+  raySource() = default;
+  ~raySource() = default;
 
-  virtual rayPair<rayTriple<NumericType>>
-  getOriginAndDirection(const size_t idx, rayRNG &RngState) const = 0;
-  virtual size_t getNumPoints() const = 0;
-  virtual NumericType getInitialRayWeight(const size_t idx) const { return 1.; }
+public:
+  Derived &derived() { return static_cast<Derived &>(*this); }
+  const Derived &derived() const { return static_cast<const Derived &>(*this); }
+
+  void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) const {
+    derived().fillRay(ray, idx, RngState);
+  }
+  size_t getNumPoints() const { return derived().getNumPoints(); }
 };

@@ -9,24 +9,25 @@
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D> class rayTraceKernel {
+template <typename SourceType, typename NumericType, int D>
+class rayTraceKernel {
 public:
-  rayTraceKernel(RTCDevice &device, rayGeometry<NumericType, D> &geometry,
-                 rayBoundary<NumericType, D> &boundary,
-                 std::unique_ptr<raySource<NumericType, D>> source,
+  rayTraceKernel(RTCDevice &device, rayGeometry<NumericType, D> &rtcGeometry,
+                 rayBoundary<NumericType, D> &rtcBoundary,
+                 raySource<SourceType> &source,
                  std::unique_ptr<rayAbstractParticle<NumericType>> &particle,
                  rayDataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
                  const size_t numRaysFixed, const bool useRandomSeed,
-                 const bool calcFlux, const size_t runNumber,
-                 rayHitCounter<NumericType> &hitCounter,
+                 const bool calcFlux, const NumericType lambda,
+                 const size_t runNumber, rayHitCounter<NumericType> &hitCounter,
                  rayTraceInfo &traceInfo)
-      : device_(device), geometry_(geometry), boundary_(boundary),
-        pSource_(std::move(source)), pParticle_(particle->clone()),
-        numRays_(numRaysFixed == 0 ? pSource_->getNumPoints() * numRaysPerPoint
+      : device_(device), geometry_(rtcGeometry), boundary_(rtcBoundary),
+        source_(source), pParticle_(particle->clone()),
+        numRays_(numRaysFixed == 0 ? source.getNumPoints() * numRaysPerPoint
                                    : numRaysFixed),
         useRandomSeeds_(useRandomSeed), runNumber_(runNumber),
-        calcFlux_(calcFlux), hitCounter_(hitCounter), traceInfo_(traceInfo),
-        dataLog_(dataLog) {
+        calcFlux_(calcFlux), lambda_(lambda), hitCounter_(hitCounter),
+        traceInfo_(traceInfo), dataLog_(dataLog) {
     assert(rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
            "Error: The minimum version of Embree is 3.6.1");
@@ -41,12 +42,13 @@ public:
     // Selecting higher build quality results in better rendering performance
     // but slower scene commit times. The default build quality for a scene is
     // RTC_BUILD_QUALITY_MEDIUM.
-    rtcSetSceneBuildQuality(rtcScene, RTC_BUILD_QUALITY_HIGH);
+    auto bbquality = RTC_BUILD_QUALITY_HIGH;
+    rtcSetSceneBuildQuality(rtcScene, bbquality);
     auto rtcGeometry = geometry_.getRTCGeometry();
     auto rtcBoundary = boundary_.getRTCGeometry();
 
-    auto const boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
-    auto const geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
+    auto boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
+    auto geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
     assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
            "Embree device error");
 
@@ -54,7 +56,6 @@ public:
     size_t nongeohitc = 0;
     size_t totaltraces = 0;
     size_t particlehitc = 0;
-    auto const lambda = pParticle_->getMeanFreePath();
 
     // thread local data storage
     const int numThreads = omp_get_max_threads();
@@ -107,6 +108,9 @@ public:
       auto &myHitCounter = threadLocalHitCounter[threadID];
       auto &myDataLog = threadLocalDataLog[threadID];
 
+      // probabilistic weight
+      const NumericType initialRayWeight = 1.;
+
 #if VIENNARAY_EMBREE_VERSION < 4
       auto rtcContext = RTCIntersectContext{};
       rtcInitIntersectContext(&rtcContext);
@@ -122,15 +126,9 @@ public:
 
         particle->initNew(RngState);
         particle->logData(myDataLog);
-
-        // probabilistic weight
-        const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
 
-        auto originAndDirection =
-            pSource_->getOriginAndDirection(idx, RngState);
-        rayInternal::fillRay(rayHit.ray, originAndDirection[0],
-                             originAndDirection[1]);
+        source_.fillRay(rayHit.ray, idx, RngState); // fills also tnear
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;
@@ -166,17 +164,20 @@ public:
             break;
           }
 
-          if (lambda > 0.) {
+          if (lambda_ > 0.) {
             std::uniform_real_distribution<NumericType> dist(0., 1.);
             NumericType scatterProbability =
-                1 - std::exp(-rayHit.ray.tfar / lambda);
+                1 - std::exp(-rayHit.ray.tfar / lambda_);
             auto rndm = dist(RngState);
             if (rndm < scatterProbability) {
 
               const auto &ray = rayHit.ray;
-              std::array<rayInternal::rtcNumericType, 3> origin = {
-                  ray.org_x + ray.dir_x * rndm, ray.org_y + ray.dir_y * rndm,
-                  ray.org_z + ray.dir_z * rndm};
+              const rayInternal::rtcNumericType xx =
+                  ray.org_x + ray.dir_x * ray.tfar * rndm;
+              const rayInternal::rtcNumericType yy =
+                  ray.org_y + ray.dir_y * ray.tfar * rndm;
+              const rayInternal::rtcNumericType zz =
+                  ray.org_z + ray.dir_z * ray.tfar * rndm;
 
               std::array<rayInternal::rtcNumericType, 3> direction{0, 0, 0};
               for (int i = 0; i < D; ++i) {
@@ -185,8 +186,22 @@ public:
               rayInternal::Normalize(direction);
 
               // Update ray direction and origin
-              rayInternal::fillRay(rayHit.ray, origin, direction);
+#ifdef ARCH_X86
+              reinterpret_cast<__m128 &>(rayHit.ray) =
+                  _mm_set_ps(1e-4f, zz, yy, xx);
+              reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
+                  _mm_set_ps(0.0f, direction[2], direction[1], direction[0]);
+#else
+              rayHit.ray.org_x = xx;
+              rayHit.ray.org_y = yy;
+              rayHit.ray.org_z = zz;
+              rayHit.ray.tnear = 1e-4f;
 
+              rayHit.ray.dir_x = direction[0];
+              rayHit.ray.dir_y = direction[1];
+              rayHit.ray.dir_z = direction[2];
+              rayHit.ray.time = 0.0f;
+#endif
               particlehitc++;
               reflect = true;
               continue;
@@ -201,10 +216,12 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const std::array<rayInternal::rtcNumericType, 3> hitPoint = {
-              ray.org_x + ray.dir_x * ray.tfar,
-              ray.org_y + ray.dir_y * ray.tfar,
-              ray.org_z + ray.dir_z * ray.tfar};
+          const rayInternal::rtcNumericType xx =
+              ray.org_x + ray.dir_x * ray.tfar;
+          const rayInternal::rtcNumericType yy =
+              ray.org_y + ray.dir_y * ray.tfar;
+          const rayInternal::rtcNumericType zz =
+              ray.org_z + ray.dir_z * ray.tfar;
 
           /* -------- Hit from back -------- */
           const auto rayDir =
@@ -223,11 +240,11 @@ public:
             reflect = true;
 #ifdef ARCH_X86
             reinterpret_cast<__m128 &>(rayHit.ray) =
-                _mm_set_ps(1e-4f, hitPoint[2], hitPoint[1], hitPoint[0]);
+                _mm_set_ps(1e-4f, zz, yy, xx);
 #else
-            rayHit.ray.org_x = hitPoint[0];
-            rayHit.ray.org_y = hitPoint[1];
-            rayHit.ray.org_z = hitPoint[2];
+            rayHit.ray.org_x = xx;
+            rayHit.ray.org_y = yy;
+            rayHit.ray.org_z = zz;
             rayHit.ray.tnear = 1e-4f;
 #endif
             // keep ray direction as it is
@@ -248,7 +265,7 @@ public:
             const auto &diskOrigin = *reinterpret_cast<
                 rayTriple<rayInternal::rtcNumericType> const *>(&disk);
             impactDistances.push_back(
-                rayInternal::Distance(hitPoint, diskOrigin) +
+                rayInternal::Distance({xx, yy, zz}, diskOrigin) +
                 1e-6f); // add eps to avoid division by 0
           }
 #endif
@@ -315,8 +332,27 @@ public:
           }
 
           // Update ray direction and origin
-          rayInternal::fillRay(rayHit.ray, hitPoint, stickingDirection.second);
+#ifdef ARCH_X86
+          reinterpret_cast<__m128 &>(rayHit.ray) =
+              _mm_set_ps(1e-4f, zz, yy, xx);
+          reinterpret_cast<__m128 &>(rayHit.ray.dir_x) = _mm_set_ps(
+              0.0f, (rayInternal::rtcNumericType)stickingDirection.second[2],
+              (rayInternal::rtcNumericType)stickingDirection.second[1],
+              (rayInternal::rtcNumericType)stickingDirection.second[0]);
+#else
+          rayHit.ray.org_x = xx;
+          rayHit.ray.org_y = yy;
+          rayHit.ray.org_z = zz;
+          rayHit.ray.tnear = 1e-4f;
 
+          rayHit.ray.dir_x =
+              (rayInternal::rtcNumericType)stickingDirection.second[0];
+          rayHit.ray.dir_y =
+              (rayInternal::rtcNumericType)stickingDirection.second[1];
+          rayHit.ray.dir_z =
+              (rayInternal::rtcNumericType)stickingDirection.second[2];
+          rayHit.ray.time = 0.0f;
+#endif
         } while (reflect);
       } // end ray tracing for loop
 
@@ -600,13 +636,15 @@ private:
 
   rayGeometry<NumericType, D> &geometry_;
   rayBoundary<NumericType, D> const &boundary_;
-  std::unique_ptr<raySource<NumericType, D>> const pSource_;
-  std::unique_ptr<rayAbstractParticle<NumericType>> const pParticle_;
+  raySource<SourceType> const &source_;
+
+  std::unique_ptr<rayAbstractParticle<NumericType>> const pParticle_ = nullptr;
 
   const long long numRays_;
   const bool useRandomSeeds_;
   const size_t runNumber_;
   const bool calcFlux_;
+  const NumericType lambda_;
 
   rayTracingData<NumericType> *pLocalData_ = nullptr;
   rayTracingData<NumericType> const *pGlobalData_ = nullptr;

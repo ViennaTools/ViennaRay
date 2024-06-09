@@ -38,10 +38,9 @@ public:
     std::array<rayTriple<NumericType>, 3> orthonormalBasis;
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
-    if (!pSource_)
-      pSource_ = std::make_unique<raySourceRandom<NumericType, D>>(
-          boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
-          geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
+    auto raySource = raySourceRandom<NumericType, D>(
+        boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
+        geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
 
     auto localDataLabels = pParticle_->getLocalDataLabels();
     if (!localDataLabels.empty()) {
@@ -53,10 +52,10 @@ public:
       }
     }
 
-    rayTraceKernel tracer(device_, geometry_, boundary, std::move(pSource_),
-                          pParticle_, dataLog_, numberOfRaysPerPoint_,
-                          numberOfRaysFixed_, useRandomSeeds_, calcFlux_,
-                          runNumber_++, hitCounter_, RTInfo_);
+    rayTraceKernel tracer(device_, geometry_, boundary, raySource, pParticle_,
+                          dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_,
+                          useRandomSeeds_, calcFlux_, lambda_, runNumber_++,
+                          hitCounter_, RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
@@ -122,16 +121,6 @@ public:
     }
   }
 
-  /// Set a custom source for the ray tracing. Per default a random source is
-  /// set up. The source has to be a user defined object that has to interface
-  /// the raySource class.
-  void setSource(std::unique_ptr<raySource<NumericType, D>> source) {
-    pSource_ = std::move(source);
-  }
-
-  /// Reset the source to the default random source.
-  void resetSource() { pSource_.reset(); }
-
   /// Set the number of rays per geometry point.
   /// The total number of rays, that are traced, is the set number set here
   /// times the number of points in the geometry.
@@ -161,6 +150,8 @@ public:
     primaryDirection_ = primaryDirection;
     usePrimaryDirection_ = true;
   }
+
+  void setMeanFreePath(const NumericType lambda) { lambda_ = lambda; }
 
   /// Set whether random seeds for the internal random number generators
   /// should be used.
@@ -380,26 +371,21 @@ private:
 
 private:
   RTCDevice device_;
-
   rayGeometry<NumericType, D> geometry_;
   std::unique_ptr<rayAbstractParticle<NumericType>> pParticle_ = nullptr;
-  std::unique_ptr<raySource<NumericType, D>> pSource_ = nullptr;
-
   size_t numberOfRaysPerPoint_ = 1000;
   size_t numberOfRaysFixed_ = 0;
   NumericType diskRadius_ = 0;
   NumericType gridDelta_ = 0;
-
   rayBoundaryCondition boundaryConditions_[D] = {};
   rayTraceDirection sourceDirection_ = rayTraceDirection::POS_Z;
   rayTriple<NumericType> primaryDirection_ = {0.};
-
   bool usePrimaryDirection_ = false;
   bool useRandomSeeds_ = false;
   size_t runNumber_ = 0;
   bool calcFlux_ = true;
   bool checkError_ = true;
-
+  NumericType lambda_ = -1.;
   rayHitCounter<NumericType> hitCounter_;
   rayTracingData<NumericType> localData_;
   rayTracingData<NumericType> *pGlobalData_ = nullptr;

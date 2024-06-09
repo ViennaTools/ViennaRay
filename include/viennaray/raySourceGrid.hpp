@@ -3,7 +3,7 @@
 #include <raySource.hpp>
 
 template <typename NumericType, int D>
-class raySourceGrid : public raySource<NumericType, D> {
+class raySourceGrid : public raySource<raySourceGrid<NumericType, D>> {
 public:
   raySourceGrid(std::vector<rayTriple<NumericType>> &sourceGrid,
                 NumericType cosinePower,
@@ -13,15 +13,30 @@ public:
         secondDir_(traceSettings[2]), minMax_(traceSettings[3]),
         posNeg_(traceSettings[4]), ee_(((NumericType)2) / (cosinePower + 1)) {}
 
-  rayPair<rayTriple<NumericType>>
-  getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
+  void fillRay(RTCRay &ray, const size_t idx, rayRNG &RngState) const {
     auto origin = sourceGrid_[idx % numPoints_];
     auto direction = getDirection(RngState);
 
-    return {origin, direction};
+#ifdef ARCH_X86
+    reinterpret_cast<__m128 &>(ray) =
+        _mm_set_ps(1e-4f, (float)origin[2], (float)origin[1], (float)origin[0]);
+
+    reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(
+        0.0f, (float)direction[2], (float)direction[1], (float)direction[0]);
+#else
+    ray.org_x = (float)origin[0];
+    ray.org_y = (float)origin[1];
+    ray.org_z = (float)origin[2];
+    ray.tnear = 1e-4f;
+
+    ray.dir_x = (float)direction[0];
+    ray.dir_y = (float)direction[1];
+    ray.dir_z = (float)direction[2];
+    ray.tnear = 0.0f;
+#endif
   }
 
-  size_t getNumPoints() const override { return numPoints_; }
+  size_t getNumPoints() const { return numPoints_; }
 
 private:
   rayTriple<NumericType> getDirection(rayRNG &RngState) const {
