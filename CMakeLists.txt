@@ -97,7 +97,7 @@ target_include_directories(
 include("cmake/cpm.cmake")
 
 CPMAddPackage(
-  NAME Core
+  NAME ViennaCore
   GIT_TAG main # TODO: Create Tag
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNA_CORE_FORMAT_EXCLUDE docs/")
