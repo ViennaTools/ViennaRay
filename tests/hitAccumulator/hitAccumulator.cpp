@@ -1,6 +1,9 @@
-#include <omp.h>
 #include <rayHitCounter.hpp>
-#include <rayTestAsserts.hpp>
+#include <vcTestAsserts.hpp>
+
+#include <omp.h>
+
+using namespace viennaray;
 
 int main() {
   using NumericType = double;
@@ -14,8 +17,8 @@ int main() {
   const auto numThreads = omp_get_max_threads();
 
   // hit counters
-  std::vector<rayHitCounter<NumericType>> threadLocalHitCounter(numThreads);
-  rayHitCounter<NumericType> hitCounter(numPrims);
+  std::vector<HitCounter<NumericType>> threadLocalHitCounter(numThreads);
+  HitCounter<NumericType> hitCounter(numPrims);
   for (auto &hitC : threadLocalHitCounter) {
     hitC = hitCounter;
   }
@@ -39,9 +42,9 @@ int main() {
   auto counts = threadLocalHitCounter[0].getCounts();
   auto values = threadLocalHitCounter[0].getValues();
 
-  RAYTEST_ASSERT(totalCounts == numRuns)
-  RAYTEST_ASSERT(counts[primID] == numRuns)
-  RAYTEST_ASSERT_ISCLOSE(values[primID], 0.1 * numRuns, eps)
+  VC_TEST_ASSERT(totalCounts == numRuns)
+  VC_TEST_ASSERT(counts[primID] == numRuns)
+  VC_TEST_ASSERT_ISCLOSE(values[primID], 0.1 * numRuns, eps)
 
   return 0;
 }

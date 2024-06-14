@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 2.1.3)
+  VERSION 3.0.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library switches
@@ -11,21 +11,10 @@ project(
 option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
-option(VIENNARAY_DISABLE_COPY "Disable Embree Environment setup" OFF)
-option(VIENNARAY_LEGACY_OPENMP "Use legacy OpenMP flags" OFF)
-
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
-option(VIENNARAY_PRINT_PROGRESS "Enable progress bar" OFF)
 
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
-
-if(VIENNARAY_LEGACY_OPENMP)
-  message(STATUS "[ViennaRay] Using legacy OpenMP flags")
-
-  find_package(OpenMP REQUIRED)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -58,19 +47,8 @@ endif()
 # Configuration
 # --------------------------------------------------------------------------------------------------------
 
-include("cmake/openmp.cmake")
 include("cmake/embree.cmake")
 include("cmake/tbb.cmake")
-
-find_package(embree ${VIENNARAY_EMBREE_VERSION} QUIET)
-set(VIENNARAY_SYSTEM_EMBREE
-    ${embree_FOUND}
-    CACHE INTERNAL "")
-
-find_package(TBB QUIET)
-set(VIENNARAY_SYSTEM_TBB
-    ${TBB_FOUND}
-    CACHE INTERNAL "")
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Library
@@ -119,6 +97,12 @@ target_include_directories(
 include("cmake/cpm.cmake")
 
 CPMAddPackage(
+  NAME ViennaCore
+  GIT_TAG v1.0.0
+  GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
+  OPTIONS "VIENNACORE_FORMAT_EXCLUDE docs/")
+
+CPMAddPackage(
   NAME PackageProject
   VERSION 1.11.1
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
@@ -139,12 +123,8 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/embree/embree"
   OPTIONS "EMBREE_TUTORIALS OFF")
 
-if(NOT VIENNARAY_LEGACY_OPENMP)
-  find_package(OpenMP REQUIRED)
-  target_link_libraries(${PROJECT_NAME} INTERFACE OpenMP::OpenMP_CXX)
-endif()
-
-target_link_libraries(${PROJECT_NAME} INTERFACE embree)
+find_package(OpenMP REQUIRED)
+target_link_libraries(${PROJECT_NAME} INTERFACE embree OpenMP::OpenMP_CXX ViennaTools::ViennaCore)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Examples
@@ -177,4 +157,4 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
   INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "embree;TBB;OpenMP")
+  DEPENDENCIES "embree;TBB;OpenMP;ViennaCore")

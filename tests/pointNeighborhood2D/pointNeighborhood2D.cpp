@@ -1,5 +1,7 @@
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 int main() {
   using NumericType = float;
@@ -20,10 +22,10 @@ int main() {
   }
 
   auto device = rtcNewDevice("");
-  rayGeometry<NumericType, D> geometry;
+  Geometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
   // setup simple 2D plane grid with normal in y-direction with discs only
-  // overlapping at adjecent grid points x - x - x - x - x
+  // overlapping at adjacent grid points x - x - x - x - x
 
   // assert boundary points have 1 neighbor
   // assert inner points have 2 neighbors
@@ -33,10 +35,10 @@ int main() {
     auto neighbors = geometry.getNeighborIndicies(idx);
     if (std::fabs(point[0]) > 1 - eps) {
       // corner point
-      RAYTEST_ASSERT(neighbors.size() == 1)
+      VC_TEST_ASSERT(neighbors.size() == 1)
     } else {
       // inner point
-      RAYTEST_ASSERT(neighbors.size() == 2)
+      VC_TEST_ASSERT(neighbors.size() == 2)
     }
   }
 

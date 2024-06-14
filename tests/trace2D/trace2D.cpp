@@ -2,6 +2,8 @@
 #include <rayParticle.hpp>
 #include <rayTrace.hpp>
 
+using namespace viennaray;
+
 int main() {
   constexpr int D = 2;
 
@@ -10,23 +12,23 @@ int main() {
   omp_set_num_threads(1);
 
   NumericType gridDelta;
-  std::vector<rayTriple<NumericType>> points;
-  std::vector<rayTriple<NumericType>> normals;
+  std::vector<Vec3D<NumericType>> points;
+  std::vector<Vec3D<NumericType>> normals;
   rayInternal::readGridFromFile("./../Resources/trenchGrid2D.dat", gridDelta,
                                 points, normals);
 
   std::vector<int> materialIds(points.size(), 0);
 
-  rayBoundaryCondition boundaryConds[D];
-  boundaryConds[0] = rayBoundaryCondition::REFLECTIVE;
-  boundaryConds[1] = rayBoundaryCondition::REFLECTIVE;
-  auto particle = std::make_unique<rayTestParticle<NumericType>>();
+  BoundaryCondition boundaryConds[D];
+  boundaryConds[0] = BoundaryCondition::REFLECTIVE;
+  boundaryConds[1] = BoundaryCondition::REFLECTIVE;
+  auto particle = std::make_unique<TestParticle<NumericType>>();
 
-  rayTrace<NumericType, D> rayTracer;
+  Trace<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setNumberOfRaysPerPoint(10);
-  rayTracer.setSourceDirection(rayTraceDirection::POS_Y);
+  rayTracer.setSourceDirection(TraceDirection::POS_Y);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setMaterialIds(materialIds);
   rayTracer.apply();

@@ -3,19 +3,23 @@
 #include <rayReflection.hpp>
 #include <rayUtil.hpp>
 
-enum class rayBoundaryCondition : unsigned {
+namespace viennaray {
+
+using namespace viennacore;
+
+enum class BoundaryCondition : unsigned {
   REFLECTIVE = 0,
   PERIODIC = 1,
   IGNORE = 2
 };
 
-template <typename NumericType, int D> class rayBoundary {
-  using boundingBoxType = rayPair<rayTriple<NumericType>>;
+template <typename NumericType, int D> class Boundary {
+  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
 
 public:
-  rayBoundary(RTCDevice &device, boundingBoxType const &boundingBox,
-              rayBoundaryCondition boundaryConds[D],
-              std::array<int, 5> &traceSettings)
+  Boundary(RTCDevice &device, boundingBoxType const &boundingBox,
+           BoundaryCondition boundaryConds[D],
+           std::array<int, 5> &traceSettings)
       : bdBox_(boundingBox), firstDir_(traceSettings[1]),
         secondDir_(traceSettings[2]),
         boundaryConds_({boundaryConds[firstDir_], boundaryConds[secondDir_]}) {
@@ -26,11 +30,11 @@ public:
     const auto primID = rayHit.hit.primID;
 
     // Ray hits backside of boundary
-    const auto rayDir = rayTriple<NumericType>{
-        rayHit.ray.dir_x, rayHit.ray.dir_y, rayHit.ray.dir_z};
-    const auto boundaryNormal = rayTriple<NumericType>{
-        rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z};
-    if (rayInternal::DotProduct(rayDir, boundaryNormal) > 0) {
+    const auto rayDir = Vec3D<NumericType>{rayHit.ray.dir_x, rayHit.ray.dir_y,
+                                           rayHit.ray.dir_z};
+    const auto boundaryNormal =
+        Vec3D<NumericType>{rayHit.hit.Ng_x, rayHit.hit.Ng_y, rayHit.hit.Ng_z};
+    if (DotProduct(rayDir, boundaryNormal) > 0) {
       // let ray pass through
       reflect = true;
       const auto impactCoords = getNewOrigin(rayHit.ray);
@@ -41,11 +45,11 @@ public:
     if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
-      if (boundaryConds_[0] == rayBoundaryCondition::REFLECTIVE) {
+      if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE) {
         reflectRay(rayHit);
         reflect = true;
         return;
-      } else if (boundaryConds_[0] == rayBoundaryCondition::PERIODIC) {
+      } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC) {
         auto impactCoords = getNewOrigin(rayHit.ray);
         // periodically move ray origin
         if (primID == 0 || primID == 1) {
@@ -67,12 +71,12 @@ public:
       assert(false && "Correctness Assumption");
     } else {
       if (primID >= 0 && primID <= 3) {
-        if (boundaryConds_[0] == rayBoundaryCondition::REFLECTIVE) {
+        if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (boundaryConds_[0] == rayBoundaryCondition::PERIODIC) {
+        } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC) {
           auto impactCoords = getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 0 || primID == 1) {
@@ -91,12 +95,12 @@ public:
           return;
         }
       } else if (primID >= 4 && primID <= 7) {
-        if (boundaryConds_[1] == rayBoundaryCondition::REFLECTIVE) {
+        if (boundaryConds_[1] == BoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (boundaryConds_[1] == rayBoundaryCondition::PERIODIC) {
+        } else if (boundaryConds_[1] == BoundaryCondition::PERIODIC) {
           auto impactCoords = getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 4 || primID == 5) {
@@ -139,12 +143,11 @@ public:
     }
   }
 
-  rayPair<int> getDirs() const { return {firstDir_, secondDir_}; }
+  Vec2D<int> getDirs() const { return {firstDir_, secondDir_}; }
 
 private:
-  static rayTriple<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
-    assert(rayInternal::IsNormalized(
-               rayTriple<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
+  static Vec3D<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
+    assert(IsNormalized(Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
            "MetaGeometry: direction not normalized");
     auto xx = ray.org_x + ray.dir_x * ray.tfar;
     auto yy = ray.org_y + ray.dir_y * ray.tfar;
@@ -207,13 +210,13 @@ private:
         0, // slot
         RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles_);
 
-    constexpr rayQuadruple<rayTriple<uint32_t>> xMinMaxPlanes = {
-        0, 3, 7, 0, 7, 4, 6, 2, 1, 6, 1, 5};
-    constexpr rayQuadruple<rayTriple<uint32_t>> yMinMaxPlanes = {
-        0, 4, 5, 0, 5, 1, 6, 7, 3, 6, 3, 2};
-    constexpr rayQuadruple<rayTriple<uint32_t>> zMinMaxPlanes = {
-        0, 1, 2, 0, 2, 3, 6, 5, 4, 6, 4, 7};
-    constexpr rayTriple<rayQuadruple<rayTriple<uint32_t>>> Planes = {
+    constexpr std::array<Vec3D<uint32_t>, 4> xMinMaxPlanes = {0, 3, 7, 0, 7, 4,
+                                                              6, 2, 1, 6, 1, 5};
+    constexpr std::array<Vec3D<uint32_t>, 4> yMinMaxPlanes = {0, 4, 5, 0, 5, 1,
+                                                              6, 7, 3, 6, 3, 2};
+    constexpr std::array<Vec3D<uint32_t>, 4> zMinMaxPlanes = {0, 1, 2, 0, 2, 3,
+                                                              6, 5, 4, 6, 4, 7};
+    constexpr Vec3D<std::array<Vec3D<uint32_t>, 4>> Planes = {
         xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 
     for (size_t idx = 0; idx < 4; ++idx) {
@@ -235,7 +238,7 @@ private:
            "RTC Error: rtcCommitGeometry");
   }
 
-  rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID) {
+  Vec3D<Vec3D<NumericType>> getTriangleCoords(const size_t primID) {
     assert(primID < numTriangles_ && "rtBoundary: primID out of bounds");
     auto tt = pTriangleBuffer_[primID];
     return {(NumericType)pVertexBuffer_[tt.v0].xx,
@@ -250,13 +253,13 @@ private:
   }
 
   void reflectRay(RTCRayHit &rayHit) const {
-    auto dir = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
+    auto dir = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &rayHit.ray.dir_x);
-    auto normal = *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
+    auto normal = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &rayHit.hit.Ng_x);
-    rayInternal::Normalize(dir);
-    rayInternal::Normalize(normal);
-    dir = rayReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
+    Normalize(dir);
+    Normalize(normal);
+    dir = ReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
     // normal gets reused for new origin here
     normal = getNewOrigin(rayHit.ray);
 #ifdef ARCH_X86
@@ -277,9 +280,8 @@ private:
 #endif
   }
 
-  void
-  assignRayCoords(RTCRayHit &rayHit,
-                  const rayTriple<rayInternal::rtcNumericType> &coords) const {
+  void assignRayCoords(RTCRayHit &rayHit,
+                       const Vec3D<rayInternal::rtcNumericType> &coords) const {
 #ifdef ARCH_X86
     reinterpret_cast<__m128 &>(rayHit.ray) =
         _mm_set_ps(1e-4f, (rayInternal::rtcNumericType)coords[2],
@@ -315,7 +317,9 @@ private:
   boundingBoxType const &bdBox_;
   const int firstDir_ = 0;
   const int secondDir_ = 1;
-  const std::array<rayBoundaryCondition, 2> boundaryConds_;
+  const std::array<BoundaryCondition, 2> boundaryConds_;
   static constexpr size_t numTriangles_ = 8;
   static constexpr size_t numVertices_ = 8;
 };
+
+} // namespace viennaray

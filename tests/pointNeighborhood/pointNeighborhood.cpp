@@ -1,6 +1,8 @@
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayUtil.hpp>
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 int main() {
   using NumericType = float;
@@ -13,14 +15,14 @@ int main() {
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   // setup simple plane grid with normal in z-direction with discs only
-  // overlapping at adjecent grid points
+  // overlapping at adjacent grid points
 
   // assert corner points have 3 neighbors
   // assert boundary points have 5 neighbors
   // assert inner points have 8 neighbors
 
   auto device = rtcNewDevice("");
-  rayGeometry<NumericType, D> geometry;
+  Geometry<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta - eps);
   auto bdBox = geometry.getBoundingBox();
 
@@ -41,7 +43,7 @@ int main() {
       numNeighbors = 5;
     }
 
-    RAYTEST_ASSERT(numNeighbors == neighbors.size())
+    VC_TEST_ASSERT(numNeighbors == neighbors.size())
   }
   rtcReleaseDevice(device);
   return 0;

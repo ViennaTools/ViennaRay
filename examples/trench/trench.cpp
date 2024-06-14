@@ -2,6 +2,8 @@
 #include <rayParticle.hpp>
 #include <rayTrace.hpp>
 
+using namespace viennaray;
+
 int main() {
   // Geometry space dimension
   constexpr int D = 3;
@@ -25,33 +27,32 @@ int main() {
   // There has to be a boundary condition defined for each space dimension,
   // however the boundary condition in direction of the tracing direction will
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
-  rayBoundaryCondition boundaryConds[D];
-  boundaryConds[0] = rayBoundaryCondition::PERIODIC; // x
-  boundaryConds[1] = rayBoundaryCondition::PERIODIC; // y
-  boundaryConds[2] = rayBoundaryCondition::PERIODIC; // z
+  BoundaryCondition boundaryConds[D];
+  boundaryConds[0] = BoundaryCondition::PERIODIC; // x
+  boundaryConds[1] = BoundaryCondition::PERIODIC; // y
+  boundaryConds[2] = BoundaryCondition::PERIODIC; // z
 
   // ParticleType: The particle types provides the sticking probability and
   // the reflection process for each surface hit. This class can be user
   // defined, but has to interface the rayParticle<NumericType> class and
   // provide the functions: initNew(...), surfaceCollision(...),
   // surfaceReflection(...).
-  auto particle = std::make_unique<rayTestParticle<NumericType>>();
+  auto particle = std::make_unique<TestParticle<NumericType>>();
 
-  rayTrace<NumericType, D> rayTracer;
+  Trace<NumericType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setParticleType(particle);
 
   // Ray settings
-  rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
+  rayTracer.setSourceDirection(TraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(2000);
 
   // Run the ray tracer
   rayTracer.apply();
 
   // Extract the normalized hit counts for each geometry point
-  auto normalizedFlux =
-      rayTracer.getNormalizedFlux(rayNormalizationType::SOURCE);
+  auto normalizedFlux = rayTracer.getNormalizedFlux(NormalizationType::SOURCE);
   rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points,
                                         normalizedFlux);
 

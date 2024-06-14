@@ -1,20 +1,25 @@
 #pragma once
 
-#include <rayRNG.hpp>
 #include <rayReflection.hpp>
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
-template <typename NumericType> class rayAbstractParticle {
+#include <vcRNG.hpp>
+
+namespace viennaray {
+
+using namespace viennacore;
+
+template <typename NumericType> class AbstractParticle {
 public:
   /// These function must NOT be overwritten by user
-  virtual ~rayAbstractParticle() = default;
-  virtual std::unique_ptr<rayAbstractParticle> clone() const = 0;
+  virtual ~AbstractParticle() = default;
+  virtual std::unique_ptr<AbstractParticle> clone() const = 0;
 
   /// Initialize a new particle. This function gets called every time
   /// new particle is traced from the source plane.
   /// Rng: random number generator (standard library conform)
-  virtual void initNew(rayRNG &Rng) = 0;
+  virtual void initNew(RNG &rngState) = 0;
 
   /// Surface reflection. This function gets called whenever a ray is reflected
   /// from the surface. It decides the sticking probability and the new
@@ -26,12 +31,12 @@ public:
   /// globalData: constant user-defined data;
   /// Rng: thread-safe random number generator (standard library conform);
   /// Returns pair: 1. sticking coefficient, 2. ray direction after reflection
-  virtual std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  virtual std::pair<NumericType, Vec3D<NumericType>>
+  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                    const Vec3D<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const rayTracingData<NumericType> *globalData,
-                    rayRNG &Rng) = 0;
+                    const TracingData<NumericType> *globalData,
+                    RNG &rngState) = 0;
 
   /// Surface collision. This function gets called whenever an intersection of
   /// the ray and a disc is found.
@@ -44,12 +49,12 @@ public:
   /// globalData: constant user-defined data;
   /// Rng: thread-safe random number generator (standard library conform);
   virtual void surfaceCollision(NumericType rayWeight,
-                                const rayTriple<NumericType> &rayDir,
-                                const rayTriple<NumericType> &geomNormal,
+                                const Vec3D<NumericType> &rayDir,
+                                const Vec3D<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
-                                rayTracingData<NumericType> &localData,
-                                const rayTracingData<NumericType> *globalData,
-                                rayRNG &Rng) = 0;
+                                TracingData<NumericType> &localData,
+                                const TracingData<NumericType> *globalData,
+                                RNG &rngState) = 0;
 
   /// Set the power of the cosine source distribution for this particle.
   virtual NumericType getSourceDistributionPower() const = 0;
@@ -63,76 +68,73 @@ public:
   /// provided
   virtual std::vector<std::string> getLocalDataLabels() const = 0;
 
-  virtual void logData(rayDataLog<NumericType> &log) = 0;
+  virtual void logData(DataLog<NumericType> &log) = 0;
 };
 
 /// This CRTP class implements clone() for the derived particle class.
 /// A user has to interface this class.
 template <typename Derived, typename NumericType>
-class rayParticle : public rayAbstractParticle<NumericType> {
+class Particle : public AbstractParticle<NumericType> {
 public:
-  std::unique_ptr<rayAbstractParticle<NumericType>>
-  clone() const override final {
+  std::unique_ptr<AbstractParticle<NumericType>> clone() const override final {
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
-  virtual void initNew(rayRNG &Rng) override {}
-  virtual std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  virtual void initNew(RNG &rngState) override {}
+  virtual std::pair<NumericType, Vec3D<NumericType>>
+  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                    const Vec3D<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const rayTracingData<NumericType> *globalData,
-                    rayRNG &Rng) override {
+                    const TracingData<NumericType> *globalData,
+                    RNG &rngState) override {
     // return the sticking probability and direction after reflection for this
     // hit
-    return std::pair<NumericType, rayTriple<NumericType>>{
-        1., rayTriple<NumericType>{0., 0., 0.}};
+    return std::pair<NumericType, Vec3D<NumericType>>{
+        1., Vec3D<NumericType>{0., 0., 0.}};
   }
   virtual void
-  surfaceCollision(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                   const rayTriple<NumericType> &geomNormal,
+  surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                   const Vec3D<NumericType> &geomNormal,
                    const unsigned int primID, const int materialId,
-                   rayTracingData<NumericType> &localData,
-                   const rayTracingData<NumericType> *globalData,
-                   rayRNG &Rng) override { // collect data for this hit
+                   TracingData<NumericType> &localData,
+                   const TracingData<NumericType> *globalData,
+                   RNG &rngState) override { // collect data for this hit
   }
   virtual NumericType getSourceDistributionPower() const override { return 1.; }
   virtual NumericType getMeanFreePath() const override { return -1.; }
   virtual std::vector<std::string> getLocalDataLabels() const override {
     return {};
   }
-  virtual void logData(rayDataLog<NumericType> &log) override {}
+  virtual void logData(DataLog<NumericType> &log) override {}
 
 protected:
-  // We make clear rayParticle class needs to be inherited
-  rayParticle() = default;
-  rayParticle(const rayParticle &) = default;
-  rayParticle(rayParticle &&) = default;
+  // We make clear Particle class needs to be inherited
+  Particle() = default;
+  Particle(const Particle &) = default;
+  Particle(Particle &&) = default;
 };
 
 template <typename NumericType>
-class rayTestParticle
-    : public rayParticle<rayTestParticle<NumericType>, NumericType> {
+class TestParticle : public Particle<TestParticle<NumericType>, NumericType> {
 public:
-  void initNew(rayRNG &Rng) override final {}
+  void initNew(RNG &rngState) override final {}
 
-  std::pair<NumericType, rayTriple<NumericType>>
-  surfaceReflection(NumericType rayWeight, const rayTriple<NumericType> &rayDir,
-                    const rayTriple<NumericType> &geomNormal,
+  std::pair<NumericType, Vec3D<NumericType>>
+  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                    const Vec3D<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
-                    const rayTracingData<NumericType> *globalData,
-                    rayRNG &Rng) override final {
-    auto direction = rayReflectionSpecular(rayDir, geomNormal);
+                    const TracingData<NumericType> *globalData,
+                    RNG &rngState) override final {
+    auto direction = ReflectionSpecular(rayDir, geomNormal);
 
-    return std::pair<NumericType, rayTriple<NumericType>>{.5, direction};
+    return std::pair<NumericType, Vec3D<NumericType>>{.5, direction};
   }
 
-  void surfaceCollision(NumericType rayWeight,
-                        const rayTriple<NumericType> &rayDir,
-                        const rayTriple<NumericType> &geomNormal,
+  void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                        const Vec3D<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
-                        rayTracingData<NumericType> &localData,
-                        const rayTracingData<NumericType> *globalData,
-                        rayRNG &Rng) override final {}
+                        TracingData<NumericType> &localData,
+                        const TracingData<NumericType> *globalData,
+                        RNG &rngState) override final {}
 
   NumericType getSourceDistributionPower() const override final { return 1.; }
 
@@ -140,5 +142,7 @@ public:
     return {};
   }
 
-  void logData(rayDataLog<NumericType> &log) override final {}
+  void logData(DataLog<NumericType> &log) override final {}
 };
+
+} // namespace viennaray

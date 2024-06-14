@@ -1,14 +1,16 @@
 #include <rayParticle.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 template <typename NumericType, int D>
-class MySource : public raySource<NumericType> {
+class MySource : public Source<NumericType> {
 public:
   MySource() {}
 
-  rayPair<std::array<NumericType, D>>
-  getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
+  Vec2D<std::array<NumericType, D>>
+  getOriginAndDirection(const size_t idx, RNG &rngState) const override {
     std::array<NumericType, D> origin = {0., 0., 0.};
     std::array<NumericType, D> direction = {0., 0., 1.};
     return {origin, direction};
@@ -32,17 +34,17 @@ int main() {
 
   std::vector<NumericType> matIds(points.size(), 0);
 
-  rayBoundaryCondition boundaryConds[D];
-  boundaryConds[0] = rayBoundaryCondition::REFLECTIVE;
-  boundaryConds[1] = rayBoundaryCondition::REFLECTIVE;
-  boundaryConds[2] = rayBoundaryCondition::REFLECTIVE;
-  auto particle = std::make_unique<rayTestParticle<NumericType>>();
+  BoundaryCondition boundaryConds[D];
+  boundaryConds[0] = BoundaryCondition::REFLECTIVE;
+  boundaryConds[1] = BoundaryCondition::REFLECTIVE;
+  boundaryConds[2] = BoundaryCondition::REFLECTIVE;
+  auto particle = std::make_unique<TestParticle<NumericType>>();
 
-  rayTrace<NumericType, D> rayTracer;
+  Trace<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
-  rayTracer.setSourceDirection(rayTraceDirection::POS_Z);
+  rayTracer.setSourceDirection(TraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(10);
   rayTracer.setUseRandomSeeds(false);
   rayTracer.setMaterialIds(matIds);
@@ -54,7 +56,7 @@ int main() {
   rayTracer.apply();
 
   auto info = rayTracer.getRayTraceInfo();
-  RAYTEST_ASSERT(info.numRays == 4410);
+  VC_TEST_ASSERT(info.numRays == 4410);
 
   return 0;
 }

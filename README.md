@@ -63,23 +63,18 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
 * Installation with CPM
 
   ```cmake
-  CPMAddPackage("gh:viennatools/viennaray@2.1.3")
+  CPMAddPackage("gh:viennatools/viennaray@3.0.0")
   ```
 
 * With a local installation
-  >  In case you have ViennaRay installed in a custom directory, make sure to properly specify the `CMAKE_MODULE_PATH` or `PATHS` in your find_package call.
+    > In case you have ViennaRay installed in a custom directory, make sure to properly specify the [`CMAKE_PREFIX_PATH`](https://cmake.org/cmake/help/latest/envvar/CMAKE_PREFIX_PATH.html#envvar:CMAKE_PREFIX_PATH).
 
-  ```cmake
-  set(VIENNARAY_PATH "/your/local/installation")
+    ```cmake
+    list(APPEND CMAKE_PREFIX_PATH "/your/local/installation")
 
-  find_package(TBB    REQUIRED)
-  find_package(OpenMP REQUIRED)
-
-  find_package(embree 4    PATHS ${VIENNARAY_PATH})
-  find_package(ViennaRay   PATHS ${VIENNARAY_PATH})
-
-  target_link_libraries(${PROJECT_NAME} PUBLIC ViennaTools::ViennaRay)
-  ```
+    find_package(ViennaRay)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ViennaTools::ViennaRay)
+    ```
 
 ### Building examples
 
@@ -109,6 +104,8 @@ ctest --test-dir build
 If you want to contribute to ViennaRay, make sure to follow the [LLVM Coding guidelines](https://llvm.org/docs/CodingStandards.html). Before creating a pull request, make sure ALL files have been formatted by clang-format, which can be done using the `format-project.sh` script in the root directory.
 
 ## Authors
+
+Current contributors: Tobias Reiter
 
 Contact us via: viennatools@iue.tuwien.ac.at
 

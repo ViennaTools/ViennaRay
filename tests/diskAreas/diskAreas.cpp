@@ -2,15 +2,17 @@
 #include <rayGeometry.hpp>
 #include <rayParticle.hpp>
 #include <raySourceRandom.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayUtil.hpp>
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 int main() {
   omp_set_num_threads(1);
   constexpr int D = 3;
   using NumericType = float;
-  using ParticleType = rayTestParticle<NumericType>;
+  using ParticleType = TestParticle<NumericType>;
   NumericType extent = 2;
   NumericType gridDelta = 1.;
   NumericType eps = 1e-6;
@@ -21,36 +23,36 @@ int main() {
 
   auto device = rtcNewDevice("");
 
-  auto localData = rayTracingData<NumericType>();
-  const auto globalData = rayTracingData<NumericType>();
-  rayHitCounter<NumericType> hitCounter;
+  auto localData = TracingData<NumericType>();
+  const auto globalData = TracingData<NumericType>();
+  HitCounter<NumericType> hitCounter;
 
-  rayGeometry<NumericType, D> geometry;
+  Geometry<NumericType, D> geometry;
   auto diskRadius = gridDelta * rayInternal::DiskFactor<D>;
   geometry.initGeometry(device, points, normals, diskRadius);
 
   auto boundingBox = geometry.getBoundingBox();
   rayInternal::adjustBoundingBox<NumericType, D>(
-      boundingBox, rayTraceDirection::POS_Z, diskRadius);
-  rayInternal::printBoundingBox(boundingBox);
-  auto traceSettings = rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
+      boundingBox, TraceDirection::POS_Z, diskRadius);
+  viennacore::PrintBoundingBox(boundingBox);
+  auto traceSettings = rayInternal::getTraceSettings(TraceDirection::POS_Z);
 
-  rayBoundaryCondition boundaryConds[D] = {};
-  auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
-                                              boundaryConds, traceSettings);
-  std::array<rayTriple<NumericType>, 3> orthoBasis;
-  auto raySource = std::make_unique<raySourceRandom<NumericType, D>>(
+  BoundaryCondition boundaryConds[D] = {};
+  auto boundary = Boundary<NumericType, D>(device, boundingBox, boundaryConds,
+                                           traceSettings);
+  std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
+  auto raySource = std::make_unique<SourceRandom<NumericType, D>>(
       boundingBox, 1., traceSettings, geometry.getNumPoints(), false,
       orthoBasis);
 
-  rayTestParticle<NumericType> particle;
+  TestParticle<NumericType> particle;
   auto cp = particle.clone();
 
-  rayDataLog<NumericType> log;
-  rayTraceInfo info;
-  rayTraceKernel<NumericType, D> tracer(device, geometry, boundary,
-                                        std::move(raySource), cp, log, 1, 0,
-                                        false, true, 0, hitCounter, info);
+  DataLog<NumericType> log;
+  TraceInfo info;
+  rayInternal::TraceKernel<NumericType, D> tracer(
+      device, geometry, boundary, std::move(raySource), cp, log, 1, 0, false,
+      true, false, 0, hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();
@@ -67,10 +69,10 @@ int main() {
               eps ||
           std::fabs(disk[boundaryDirs[1]] - boundingBox[1][boundaryDirs[1]]) <
               eps) {
-        RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
+        VC_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
         continue;
       }
-      RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
+      VC_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
       continue;
     }
     if (std::fabs(disk[boundaryDirs[1]] - boundingBox[0][boundaryDirs[1]]) <
@@ -81,13 +83,13 @@ int main() {
               eps ||
           std::fabs(disk[boundaryDirs[0]] - boundingBox[1][boundaryDirs[0]]) <
               eps) {
-        RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
+        VC_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 4, eps)
         continue;
       }
-      RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
+      VC_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea / 2, eps)
       continue;
     }
-    RAYTEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea, eps)
+    VC_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea, eps)
   }
 
   geometry.releaseGeometry();

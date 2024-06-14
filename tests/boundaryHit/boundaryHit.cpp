@@ -1,8 +1,11 @@
 #include <rayBoundary.hpp>
 #include <rayGeometry.hpp>
-#include <rayTestAsserts.hpp>
 #include <rayTrace.hpp>
 #include <rayUtil.hpp>
+
+#include <vcTestAsserts.hpp>
+
+using namespace viennaray;
 
 int main() {
   using NumericType = float;
@@ -19,28 +22,27 @@ int main() {
     std::vector<std::array<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    rayGeometry<NumericType, D> geometry;
+    Geometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rayBoundaryCondition boundCons[D];
+    BoundaryCondition boundCons[D];
     {
-      boundCons[0] = rayBoundaryCondition::REFLECTIVE;
-      boundCons[1] = rayBoundaryCondition::PERIODIC;
-      boundCons[2] = rayBoundaryCondition::PERIODIC;
+      boundCons[0] = BoundaryCondition::REFLECTIVE;
+      boundCons[1] = BoundaryCondition::PERIODIC;
+      boundCons[2] = BoundaryCondition::PERIODIC;
       auto boundingBox = geometry.getBoundingBox();
-      auto traceSetting =
-          rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
+      auto traceSetting = rayInternal::getTraceSettings(TraceDirection::POS_Z);
       rayInternal::adjustBoundingBox<NumericType, D>(
-          boundingBox, rayTraceDirection::POS_Z, gridDelta);
-      auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
-                                                  boundCons, traceSetting);
+          boundingBox, TraceDirection::POS_Z, gridDelta);
+      auto boundary = Boundary<NumericType, D>(device, boundingBox, boundCons,
+                                               traceSetting);
 
-      auto origin = rayTriple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = rayTriple<NumericType>{0.5, 0., -0.25};
-      auto distanceToHit = rayInternal::Norm(direction);
-      rayInternal::Normalize(direction);
+      auto origin = viennacore::Vec3D<NumericType>{0.5, 0.5, 0.5};
+      auto direction = viennacore::Vec3D<NumericType>{0.5, 0., -0.25};
+      auto distanceToHit = viennacore::Norm(direction);
+      viennacore::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
+      alignas(128) auto rayHit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
                                            0,                   // tnear
@@ -61,47 +63,46 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayHit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 1., eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, 1., eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.5, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, 0.25, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(-rayhit.ray.dir_x, direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+      VC_TEST_ASSERT_ISCLOSE(-rayHit.ray.dir_x, direction[0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
 
-      RAYTEST_ASSERT(reflect)
+      VC_TEST_ASSERT(reflect)
     }
   }
-  // reflective bounday on x-z plane
+  // reflective boundary on x-z plane
   {
     std::vector<std::array<NumericType, D>> points;
     std::vector<std::array<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 2, 1}, points, normals);
 
-    rayGeometry<NumericType, D> geometry;
+    Geometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rayBoundaryCondition boundCons[D];
+    BoundaryCondition boundCons[D];
     {
-      boundCons[0] = rayBoundaryCondition::PERIODIC;
-      boundCons[1] = rayBoundaryCondition::PERIODIC;
-      boundCons[2] = rayBoundaryCondition::REFLECTIVE;
+      boundCons[0] = BoundaryCondition::PERIODIC;
+      boundCons[1] = BoundaryCondition::PERIODIC;
+      boundCons[2] = BoundaryCondition::REFLECTIVE;
       auto boundingBox = geometry.getBoundingBox();
-      auto traceSetting =
-          rayInternal::getTraceSettings(rayTraceDirection::POS_Y);
+      auto traceSetting = rayInternal::getTraceSettings(TraceDirection::POS_Y);
       rayInternal::adjustBoundingBox<NumericType, D>(
-          boundingBox, rayTraceDirection::POS_Y, gridDelta);
-      auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
-                                                  boundCons, traceSetting);
+          boundingBox, TraceDirection::POS_Y, gridDelta);
+      auto boundary = Boundary<NumericType, D>(device, boundingBox, boundCons,
+                                               traceSetting);
 
-      auto origin = rayTriple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = rayTriple<NumericType>{0., -0.25, 0.5};
-      auto distanceToHit = rayInternal::Norm(direction);
-      rayInternal::Normalize(direction);
+      auto origin = viennacore::Vec3D<NumericType>{0.5, 0.5, 0.5};
+      auto direction = viennacore::Vec3D<NumericType>{0., -0.25, 0.5};
+      auto distanceToHit = viennacore::Norm(direction);
+      viennacore::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
+      alignas(128) auto rayHit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
                                            0,                   // tnear
@@ -122,17 +123,17 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayHit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.25, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 1.0, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, 0.5, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.25, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, 1.0, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(-rayhit.ray.dir_z, direction[2], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_x, direction[0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
+      VC_TEST_ASSERT_ISCLOSE(-rayHit.ray.dir_z, direction[2], eps)
 
-      RAYTEST_ASSERT(reflect)
+      VC_TEST_ASSERT(reflect)
     }
   }
   // periodic boundary on x-y plane
@@ -141,28 +142,27 @@ int main() {
     std::vector<std::array<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    rayGeometry<NumericType, D> geometry;
+    Geometry<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
-    rayBoundaryCondition boundCons[D];
+    BoundaryCondition boundCons[D];
     {
-      boundCons[0] = rayBoundaryCondition::PERIODIC;
-      boundCons[1] = rayBoundaryCondition::PERIODIC;
-      boundCons[2] = rayBoundaryCondition::PERIODIC;
+      boundCons[0] = BoundaryCondition::PERIODIC;
+      boundCons[1] = BoundaryCondition::PERIODIC;
+      boundCons[2] = BoundaryCondition::PERIODIC;
       auto boundingBox = geometry.getBoundingBox();
-      auto traceSetting =
-          rayInternal::getTraceSettings(rayTraceDirection::POS_Z);
+      auto traceSetting = rayInternal::getTraceSettings(TraceDirection::POS_Z);
       rayInternal::adjustBoundingBox<NumericType, D>(
-          boundingBox, rayTraceDirection::POS_Z, gridDelta);
-      auto boundary = rayBoundary<NumericType, D>(device, boundingBox,
-                                                  boundCons, traceSetting);
+          boundingBox, TraceDirection::POS_Z, gridDelta);
+      auto boundary = Boundary<NumericType, D>(device, boundingBox, boundCons,
+                                               traceSetting);
 
-      auto origin = rayTriple<NumericType>{0.5, 0.5, 0.5};
-      auto direction = rayTriple<NumericType>{0.5, 0., -0.25};
-      auto distanceToHit = rayInternal::Norm(direction);
-      rayInternal::Normalize(direction);
+      auto origin = viennacore::Vec3D<NumericType>{0.5, 0.5, 0.5};
+      auto direction = viennacore::Vec3D<NumericType>{0.5, 0., -0.25};
+      auto distanceToHit = viennacore::Norm(direction);
+      viennacore::Normalize(direction);
       bool reflect = false;
 
-      alignas(128) auto rayhit = RTCRayHit{(float)origin[0], // Ray origin
+      alignas(128) auto rayHit = RTCRayHit{(float)origin[0], // Ray origin
                                            (float)origin[1],
                                            (float)origin[2],
                                            0,                   // tnear
@@ -183,17 +183,17 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayhit, reflect);
+      boundary.processHit(rayHit, reflect);
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_x, -1., eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_y, 0.5, eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.org_z, 0.25, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, -1., eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.5, eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, 0.25, eps)
 
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_x, direction[0], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_y, direction[1], eps)
-      RAYTEST_ASSERT_ISCLOSE(rayhit.ray.dir_z, direction[2], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_x, direction[0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
 
-      RAYTEST_ASSERT(reflect)
+      VC_TEST_ASSERT(reflect)
     }
   }
 

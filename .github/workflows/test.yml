@@ -13,13 +13,26 @@ jobs:
       fail-fast: false
 
       matrix:
-        config: [Release, Debug]
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        config:
+          - Release
+          - Debug
+
+        os:
+          - macos-latest
+          - windows-latest
+
+        include:
+          - os: ubuntu-latest
+            config: Release
+            container: ghcr.io/viennatools/vienna-builder:suite
+          - os: ubuntu-latest
+            config: Debug
+            container: ghcr.io/viennatools/vienna-builder:suite
 
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.os == 'ubuntu-latest' && 'fedora:38' || null }}
+    container: ${{ matrix.container }}
 
-    name: '🧪 Test on ${{ matrix.os }} [Config: "${{ matrix.config }}"]'
+    name: "🧪 Test on ${{ matrix.os }} (⚙️: ${{ matrix.config }}, 💿: ${{ matrix.container || matrix.os }})"
 
     steps:
       - name: 📥 Checkout
@@ -28,21 +41,13 @@ jobs:
       - name: 🖥️ Setup Environment
         uses: ./.github/actions/setup
         with:
-          container: ${{ matrix.os }}
+          os: ${{ matrix.os }}
 
       - name: 🦥 Cache Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          key: ${{ matrix.os }}-${{ matrix.config }}-cache
-          path: |
-            deps-cache
-
-      - name: 🦥 Cache Build
-        uses: actions/cache@v3
-        with:
-          key: ${{ matrix.os }}-${{ matrix.config }}-build-cache
-          path: |
-            build
+          key: test-${{ matrix.os }}-${{ matrix.config }}
+          path: build
 
       - name: 🏗️ Compile
         run: cmake -B build -DCPM_SOURCE_CACHE=deps-cache -DVIENNARAY_BUILD_TESTS=ON && cmake --build build --config ${{ matrix.config }}

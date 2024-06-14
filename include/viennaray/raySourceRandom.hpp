@@ -2,12 +2,16 @@
 
 #include <raySource.hpp>
 
+namespace viennaray {
+
+using namespace viennacore;
+
 template <typename NumericType, int D>
-class raySourceRandom : public raySource<NumericType> {
-  using boundingBoxType = rayPair<rayTriple<NumericType>>;
+class SourceRandom : public Source<NumericType> {
+  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
 
 public:
-  raySourceRandom(
+  SourceRandom(
       const boundingBoxType &boundingBox, NumericType cosinePower,
       std::array<int, 5> &pTraceSettings, const size_t numPoints_,
       const bool customDirection,
@@ -19,14 +23,14 @@ public:
         customDirection_(customDirection), orthonormalBasis_(orthonormalBasis) {
   }
 
-  rayPair<rayTriple<NumericType>>
-  getOriginAndDirection(const size_t idx, rayRNG &RngState) const override {
-    auto origin = getOrigin(RngState);
-    rayTriple<NumericType> direction;
+  Vec2D<Vec3D<NumericType>>
+  getOriginAndDirection(const size_t idx, RNG &rngState) const override {
+    auto origin = getOrigin(rngState);
+    Vec3D<NumericType> direction;
     if (customDirection_) {
-      direction = getCustomDirection(RngState);
+      direction = getCustomDirection(rngState);
     } else {
-      direction = getDirection(RngState);
+      direction = getDirection(rngState);
     }
 
     return {origin, direction};
@@ -44,10 +48,10 @@ public:
   }
 
 private:
-  rayTriple<NumericType> getOrigin(rayRNG &RngState) const {
-    rayTriple<NumericType> origin{0., 0., 0.};
+  Vec3D<NumericType> getOrigin(RNG &rngState) const {
+    Vec3D<NumericType> origin{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
-    auto r1 = uniDist(RngState);
+    auto r1 = uniDist(rngState);
 
     origin[rayDir_] = bdBox_[minMax_][rayDir_];
     origin[firstDir_] = bdBox_[0][firstDir_] +
@@ -56,7 +60,7 @@ private:
     if constexpr (D == 2) {
       origin[secondDir_] = 0.;
     } else {
-      auto r2 = uniDist(RngState);
+      auto r2 = uniDist(rngState);
       origin[secondDir_] = bdBox_[0][secondDir_] +
                            (bdBox_[1][secondDir_] - bdBox_[0][secondDir_]) * r2;
     }
@@ -64,11 +68,11 @@ private:
     return origin;
   }
 
-  rayTriple<NumericType> getDirection(rayRNG &RngState) const {
-    rayTriple<NumericType> direction{0., 0., 0.};
+  Vec3D<NumericType> getDirection(RNG &rngState) const {
+    Vec3D<NumericType> direction{0., 0., 0.};
     std::uniform_real_distribution<NumericType> uniDist;
-    auto r1 = uniDist(RngState);
-    auto r2 = uniDist(RngState);
+    auto r1 = uniDist(rngState);
+    auto r2 = uniDist(rngState);
 
     const NumericType tt = pow(r2, ee_);
     direction[rayDir_] = posNeg_ * sqrtf(tt);
@@ -76,7 +80,7 @@ private:
 
     if constexpr (D == 2) {
       direction[secondDir_] = 0;
-      rayInternal::Normalize(direction);
+      Normalize(direction);
     } else {
       direction[secondDir_] = sinf(M_PI * 2.f * r1) * sqrtf(1 - tt);
     }
@@ -84,14 +88,14 @@ private:
     return direction;
   }
 
-  rayTriple<NumericType> getCustomDirection(rayRNG &RngState) const {
-    rayTriple<NumericType> direction;
+  Vec3D<NumericType> getCustomDirection(RNG &rngState) const {
+    Vec3D<NumericType> direction;
     std::uniform_real_distribution<NumericType> uniDist;
 
     do {
-      rayTriple<NumericType> rndDirection{0., 0., 0.};
-      auto r1 = uniDist(RngState);
-      auto r2 = uniDist(RngState);
+      Vec3D<NumericType> rndDirection{0., 0., 0.};
+      auto r1 = uniDist(rngState);
+      auto r2 = uniDist(rngState);
 
       const NumericType tt = pow(r2, ee_);
       rndDirection[0] = sqrtf(tt);
@@ -112,7 +116,7 @@ private:
 
     if constexpr (D == 2) {
       direction[secondDir_] = 0;
-      rayInternal::Normalize(direction);
+      Normalize(direction);
     }
 
     return direction;
@@ -128,5 +132,7 @@ private:
   const NumericType ee_;
   const size_t numPoints_;
   const bool customDirection_ = false;
-  const std::array<rayTriple<NumericType>, 3> &orthonormalBasis_;
+  const std::array<Vec3D<NumericType>, 3> &orthonormalBasis_;
 };
+
+} // namespace viennaray

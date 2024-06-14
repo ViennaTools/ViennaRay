@@ -2,7 +2,11 @@
 
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D> class rayGeometry {
+namespace viennaray {
+
+using namespace viennacore;
+
+template <typename NumericType, int D> class Geometry {
   using pointNeighborhoodType = std::vector<std::vector<unsigned int>>;
 
 public:
@@ -15,7 +19,7 @@ public:
                   "Setting 2D geometry in 3D trace object");
 
     assert(points.size() == normals.size() &&
-           "rayGeometry: Points/Normals size mismatch");
+           "Geometry: Points/Normals size mismatch");
 
     // overwriting the geometry without releasing it beforehand causes the old
     // buffer to leak
@@ -100,7 +104,7 @@ public:
   template <typename MatIdType>
   void setMaterialIds(std::vector<MatIdType> const &pMaterialIds) {
     assert(pMaterialIds.size() == numPoints_ &&
-           "rayGeometry: Material IDs size mismatch");
+           "Geometry: Material IDs size mismatch");
     materialIds_.clear();
     materialIds_.reserve(numPoints_);
     for (const auto id : pMaterialIds) {
@@ -108,20 +112,19 @@ public:
     }
   }
 
-  [[nodiscard]] rayPair<rayTriple<NumericType>> getBoundingBox() const {
+  [[nodiscard]] Vec2D<Vec3D<NumericType>> getBoundingBox() const {
     return {minCoords_, maxCoords_};
   }
 
-  [[nodiscard]] rayTriple<NumericType>
-  getPoint(const unsigned int primID) const {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
+  [[nodiscard]] Vec3D<NumericType> getPoint(const unsigned int primID) const {
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &pnt = pPointBuffer_[primID];
     return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
   }
 
   [[nodiscard]] std::vector<unsigned int> const &
   getNeighborIndicies(const unsigned int idx) const {
-    assert(idx < numPoints_ && "rayGeometry: Index out of bounds");
+    assert(idx < numPoints_ && "Geometry: Index out of bounds");
     return pointNeighborhood_[idx];
   }
 
@@ -133,30 +136,30 @@ public:
     return pRtcGeometry_;
   }
 
-  [[nodiscard]] rayTriple<NumericType>
+  [[nodiscard]] Vec3D<NumericType>
   getPrimNormal(const unsigned int primID) const {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &normal = pNormalVecBuffer_[primID];
     return {(NumericType)normal.xx, (NumericType)normal.yy,
             (NumericType)normal.zz};
   }
 
-  [[nodiscard]] rayQuadruple<rayInternal::rtcNumericType> &
+  [[nodiscard]] std::array<rayInternal::rtcNumericType, 4> &
   getPrimRef(unsigned int primID) {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rayQuadruple<rayInternal::rtcNumericType> *>(
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
+    return *reinterpret_cast<std::array<rayInternal::rtcNumericType, 4> *>(
         &pPointBuffer_[primID]);
   }
 
-  [[nodiscard]] rayTriple<rayInternal::rtcNumericType> &
+  [[nodiscard]] Vec3D<rayInternal::rtcNumericType> &
   getNormalRef(unsigned int primID) {
-    assert(primID < numPoints_ && "rayGeometry: Prim ID out of bounds");
-    return *reinterpret_cast<rayTriple<rayInternal::rtcNumericType> *>(
+    assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
+    return *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &pNormalVecBuffer_[primID]);
   }
 
   [[nodiscard]] int getMaterialId(const unsigned int primID) const {
-    assert(primID < numPoints_ && "rayGeometry Prim ID out of bounds");
+    assert(primID < numPoints_ && "Geometry Prim ID out of bounds");
     return materialIds_[primID];
   }
 
@@ -195,8 +198,8 @@ private:
       std::vector<unsigned int> side2;
 
       // create copy of bounding box
-      rayTriple<NumericType> min = minCoords_;
-      rayTriple<NumericType> max = maxCoords_;
+      Vec3D<NumericType> min = minCoords_;
+      Vec3D<NumericType> max = maxCoords_;
 
       std::vector<int> dirs;
       for (int i = 0; i < 3; ++i) {
@@ -231,11 +234,11 @@ private:
     }
   }
 
-  void createNeighborhood(const std::vector<rayTriple<NumericType>> &points,
+  void createNeighborhood(const std::vector<Vec3D<NumericType>> &points,
                           const std::vector<unsigned int> &side1,
                           const std::vector<unsigned int> &side2,
-                          const rayTriple<NumericType> &min,
-                          const rayTriple<NumericType> &max, const int &dirIdx,
+                          const Vec3D<NumericType> &min,
+                          const Vec3D<NumericType> &max, const int &dirIdx,
                           const std::vector<int> &dirs,
                           const NumericType &pivot) {
     assert(0 <= dirIdx && dirIdx < dirs.size() && "Assumption");
@@ -346,7 +349,7 @@ private:
       if (std::abs(p1[i] - p2[i]) >= dist)
         return false;
     }
-    if (rayInternal::Distance<NumericType>(p1, p2) < dist)
+    if (Distance(p1, p2) < dist)
       return true;
 
     return false;
@@ -377,8 +380,10 @@ private:
 
   size_t numPoints_;
   NumericType discRadii_;
-  rayTriple<NumericType> minCoords_;
-  rayTriple<NumericType> maxCoords_;
+  Vec3D<NumericType> minCoords_;
+  Vec3D<NumericType> maxCoords_;
   pointNeighborhoodType pointNeighborhood_;
   std::vector<int> materialIds_;
 };
+
+} // namespace viennaray
