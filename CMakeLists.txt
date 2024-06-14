@@ -98,9 +98,9 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  GIT_TAG main # TODO: Create Tag
+  GIT_TAG v1.0.0
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
-  OPTIONS "VIENNA_CORE_FORMAT_EXCLUDE docs/")
+  OPTIONS "VIENNACORE_FORMAT_EXCLUDE docs/")
 
 CPMAddPackage(
   NAME PackageProject
@@ -157,4 +157,4 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
   INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "embree;TBB;OpenMP")
+  DEPENDENCIES "embree;TBB;OpenMP;ViennaCore")
