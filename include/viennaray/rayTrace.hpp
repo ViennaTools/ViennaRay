@@ -231,13 +231,14 @@ public:
     case NormalizationType::SOURCE: {
       if (!pSource_) {
         Logger::getInstance()
-            .addWarning("No source was specified in for the normalization.")
+            .addWarning(
+                "No source was specified in rayTrace for the normalization.")
             .print();
         break;
       }
       NumericType sourceArea = pSource_->getSourceArea();
       auto numTotalRays = numberOfRaysFixed_ == 0
-                              ? flux.size() * numberOfRaysPerPoint_
+                              ? pSource_->getNumPoints() * numberOfRaysPerPoint_
                               : numberOfRaysFixed_;
       NumericType normFactor = sourceArea / numTotalRays;
 #pragma omp parallel for
