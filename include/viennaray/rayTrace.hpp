@@ -43,7 +43,7 @@ public:
     Vec3D<Vec3D<NumericType>> orthonormalBasis;
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
-    if (!pSource_)
+    if (!useCustomSource)
       pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
           boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
           geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
@@ -132,10 +132,14 @@ public:
   /// the raySource class.
   void setSource(std::shared_ptr<Source<NumericType>> source) {
     pSource_ = source;
+    useCustomSource = true;
   }
 
   /// Reset the source to the default random source.
-  void resetSource() { pSource_.reset(); }
+  void resetSource() {
+    pSource_.reset();
+    useCustomSource = false;
+  }
 
   void enableProgressBar() { printProgress_ = true; }
 
@@ -382,6 +386,7 @@ private:
 
   bool usePrimaryDirection_ = false;
   bool useRandomSeeds_ = false;
+  bool useCustomSource = false;
   size_t runNumber_ = 0;
   bool calcFlux_ = true;
   bool checkError_ = true;
