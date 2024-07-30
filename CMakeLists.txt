@@ -44,13 +44,6 @@ if(VIENNARAY_EMBREE_VERSION GREATER_EQUAL 4)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
-# Configuration
-# --------------------------------------------------------------------------------------------------------
-
-include("cmake/embree.cmake")
-include("cmake/tbb.cmake")
-
-# --------------------------------------------------------------------------------------------------------
 # Setup Library
 # --------------------------------------------------------------------------------------------------------
 
@@ -98,7 +91,7 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  GIT_TAG v1.0.0
+  VERSION 1.1.0
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_FORMAT_EXCLUDE docs/")
 
