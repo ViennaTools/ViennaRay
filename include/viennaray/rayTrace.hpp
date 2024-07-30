@@ -94,7 +94,7 @@ public:
 
     gridDelta_ = gridDelta;
     diskRadius_ = gridDelta * rayInternal::DiskFactor<D>;
-    geometry_.initGeometry(device_, points, normals, diskRadius_);
+    geometry_.initGeometry(device_, points, normals, diskRadius_, gridDelta_);
   }
 
   /// Set the ray tracing geometry
@@ -108,7 +108,7 @@ public:
 
     gridDelta_ = gridDelta;
     diskRadius_ = diskRadii;
-    geometry_.initGeometry(device_, points, normals, diskRadius_);
+    geometry_.initGeometry(device_, points, normals, diskRadius_, gridDelta_);
   }
 
   /// Set material ID's for each geometry point.

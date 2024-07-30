@@ -14,7 +14,7 @@ public:
   void initGeometry(RTCDevice &device,
                     std::vector<std::array<NumericType, Dim>> const &points,
                     std::vector<std::array<NumericType, Dim>> const &normals,
-                    NumericType const discRadii) {
+                    NumericType const discRadii, NumericType const gridDelta) {
     static_assert(!(D == 3 && Dim == 2) &&
                   "Setting 2D geometry in 3D trace object");
 
@@ -39,6 +39,7 @@ public:
     assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcSetNewGeometryBuffer points");
     discRadii_ = discRadii;
+    gridDelta_ = gridDelta;
 
     for (int i = 0; i < D; i++) {
       minCoords_[i] = std::numeric_limits<NumericType>::max();
@@ -131,6 +132,8 @@ public:
   [[nodiscard]] size_t getNumPoints() const { return numPoints_; }
 
   [[nodiscard]] NumericType getDiscRadius() const { return discRadii_; }
+
+  [[nodiscard]] NumericType getGridDelta() const { return gridDelta_; }
 
   [[nodiscard]] RTCGeometry const &getRTCGeometry() const {
     return pRtcGeometry_;
@@ -380,6 +383,7 @@ private:
 
   size_t numPoints_;
   NumericType discRadii_;
+  NumericType gridDelta_;
   Vec3D<NumericType> minCoords_;
   Vec3D<NumericType> maxCoords_;
   pointNeighborhoodType pointNeighborhood_;

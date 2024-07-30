@@ -448,7 +448,7 @@ private:
   }
 
   std::vector<NumericType> computeDiskAreas() const {
-    constexpr double eps = 1e-3;
+    const double eps = geometry_.getGridDelta() * 0.49;
     auto bdBox = geometry_.getBoundingBox();
     auto boundaryConds = boundary_.getBoundaryConditions();
     const auto numOfPrimitives = geometry_.getNumPoints();
@@ -462,8 +462,7 @@ private:
       if constexpr (D == 3) {
         areas[idx] = disk[3] * disk[3] * M_PI; // full disk area
 
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
-            (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+        if ((std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
                  eps ||
              std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
                  eps)) {
@@ -471,8 +470,7 @@ private:
           areas[idx] /= 2;
         }
 
-        if ((boundaryConds[boundaryDirs[1]] != BoundaryCondition::IGNORE) &&
-            (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
+        if ((std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
                  eps ||
              std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
                  eps)) {
@@ -484,8 +482,7 @@ private:
         auto normal = geometry_.getNormalRef(idx);
 
         // test min boundary
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
-            (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+        if ((std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
              disk[3])) {
           NumericType insideTest =
               1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
