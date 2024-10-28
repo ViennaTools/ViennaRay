@@ -145,7 +145,7 @@ public:
   void logData(DataLog<NumericType> &log) override final {}
 };
 
-template <typename NumericType>
+template <typename NumericType, int D>
 class DiffuseParticle
     : public Particle<DiffuseParticle<NumericType>, NumericType> {
   const NumericType stickingProbability_;
@@ -161,7 +161,7 @@ public:
                     const unsigned int primID, const int materialId,
                     const TracingData<NumericType> *globalData,
                     RNG &rngState) override final {
-    auto direction = ReflectionDiffuse(geomNormal, rngState);
+    auto direction = ReflectionDiffuse<NumericType, D>(geomNormal, rngState);
     return std::pair<NumericType, Vec3D<NumericType>>{stickingProbability_,
                                                       direction};
   }
