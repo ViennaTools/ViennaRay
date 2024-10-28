@@ -183,4 +183,47 @@ public:
   }
 };
 
+template <typename NumericType, int D>
+class SpecularParticle
+    : public Particle<SpecularParticle<NumericType, D>, NumericType> {
+  const NumericType stickingProbability_;
+  const NumericType sourcePower_;
+  const std::string dataLabel_;
+
+public:
+  SpecularParticle(NumericType stickingProbability, NumericType sourcePower,
+                   std::string dataLabel)
+      : stickingProbability_(stickingProbability), sourcePower_(sourcePower),
+        dataLabel_(dataLabel) {}
+
+  std::pair<NumericType, Vec3D<NumericType>>
+  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                    const Vec3D<NumericType> &geomNormal,
+                    const unsigned int primID, const int materialId,
+                    const TracingData<NumericType> *globalData,
+                    RNG &rngState) override final {
+    auto direction = ReflectionSpecular<NumericType, D>(rayDir, geomNormal);
+    return std::pair<NumericType, Vec3D<NumericType>>{stickingProbability_,
+                                                      direction};
+  }
+
+  void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
+                        const Vec3D<NumericType> &geomNormal,
+                        const unsigned int primID, const int materialId,
+                        TracingData<NumericType> &localData,
+                        const TracingData<NumericType> *globalData,
+                        RNG &rngState) override final {
+    // collect data for this hit
+    localData.getVectorData(0)[primID] += rayWeight;
+  }
+
+  NumericType getSourceDistributionPower() const override final {
+    return sourcePower_;
+  }
+
+  std::vector<std::string> getLocalDataLabels() const override final {
+    return {dataLabel_};
+  }
+};
+
 } // namespace viennaray
