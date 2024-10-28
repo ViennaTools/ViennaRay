@@ -147,7 +147,7 @@ public:
 
 template <typename NumericType, int D>
 class DiffuseParticle
-    : public Particle<DiffuseParticle<NumericType>, NumericType> {
+    : public Particle<DiffuseParticle<NumericType, D>, NumericType> {
   const NumericType stickingProbability_;
   const std::string dataLabel_;
 
