@@ -202,7 +202,7 @@ template <typename NumericType, int D>
 [[nodiscard]] Vec3D<NumericType>
 ReflectionConedCosineOld2(const Vec3D<NumericType> &rayDir,
                           const Vec3D<NumericType> &geomNormal, RNG &rngState,
-                          NumericType &minAvgConeAngle = 0.) {
+                          NumericType minAvgConeAngle = 0.) {
 
   assert(IsNormalized(geomNormal) &&
          "ReflectionSpecular: Surface normal is not normalized");
