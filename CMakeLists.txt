@@ -92,6 +92,7 @@ include("cmake/cpm.cmake")
 CPMAddPackage(
   NAME ViennaCore
   VERSION 1.1.0
+  GIT_TAG gpu-process
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_FORMAT_EXCLUDE docs/")
 
