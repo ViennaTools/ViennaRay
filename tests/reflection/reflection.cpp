@@ -10,7 +10,7 @@ using namespace viennaray;
 int main() {
 
   using NumericType = double;
-  constexpr int N = 50000;
+  constexpr int N = 5000;
   RNG rngState(12351263);
   Timer timer;
 
