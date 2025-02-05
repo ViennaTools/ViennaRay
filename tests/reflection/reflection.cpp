@@ -3,12 +3,14 @@
 
 #include <fstream>
 
+// #define VR_WRITE_TO_FILE
+
 using namespace viennaray;
 
 int main() {
 
   using NumericType = double;
-  constexpr int N = 50000;
+  constexpr int N = 5000;
   RNG rngState(12351263);
   Timer timer;
 
@@ -28,11 +30,13 @@ int main() {
               << " diffuse reflections: " << timer.currentDuration * 1e-6
               << " ms" << std::endl;
 
+#ifdef VR_WRITE_TO_FILE
     std::ofstream file("diffuse_reflection.txt");
     for (auto const &dir : directions) {
       file << dir[0] << " " << dir[1] << " " << dir[2] << std::endl;
     }
     file.close();
+#endif
   }
 
   Vec3D<NumericType> normal = {0.0, 0.0, 1.0};
@@ -61,11 +65,13 @@ int main() {
               << " coned specular reflections: " << timer.currentDuration * 1e-6
               << " ms" << std::endl;
 
+#ifdef VR_WRITE_TO_FILE
     std::ofstream file("coned_specular_reflection.txt");
     for (auto const &dir : directions) {
       file << dir[0] << " " << dir[1] << " " << dir[2] << std::endl;
     }
     file.close();
+#endif
   }
 
   {
@@ -82,11 +88,13 @@ int main() {
     std::cout << "Time for " << N << " coned specular reflections (old): "
               << timer.currentDuration * 1e-6 << " ms" << std::endl;
 
+#ifdef VR_WRITE_TO_FILE
     std::ofstream file("coned_specular_reflection_old.txt");
     for (auto const &dir : directions) {
       file << dir[0] << " " << dir[1] << " " << dir[2] << std::endl;
     }
     file.close();
+#endif
   }
 
   return 0;
