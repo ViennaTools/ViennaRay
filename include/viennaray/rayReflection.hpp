@@ -60,8 +60,13 @@ template <typename NumericType, int D>
   // (https://math.stackexchange.com/a/182936)
   std::uniform_real_distribution<NumericType> uniDist;
 
-  assert(maxConeAngle >= 0. && maxConeAngle <= M_PI / 2. &&
-         "Cone angle not allowed");
+  if (maxConeAngle <= 0.) {
+    return ReflectionSpecular<NumericType>(rayDir, geomNormal);
+  }
+
+  if (maxConeAngle >= M_PI_2) {
+    return ReflectionDiffuse<NumericType, D>(geomNormal, rngState);
+  }
 
   Vec3D<NumericType> direction;
   // compute specular direction
