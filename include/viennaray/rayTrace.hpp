@@ -282,11 +282,23 @@ public:
 
 #pragma omp parallel for
     for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
+
+      NumericType vv = oldFlux[idx];
+
       auto const &neighborhood = pointNeighborhood.getNeighborIndicies(idx);
+      NumericType sum = 1.;
+      auto const normal = geometry_.getPrimNormal(idx);
+
       for (auto const &nbi : neighborhood) {
-        flux[idx] += oldFlux[nbi];
+        auto nnormal = geometry_.getPrimNormal(nbi);
+        auto weight = DotProduct(normal, nnormal);
+        if (weight > 0.) {
+          vv += oldFlux[nbi] * weight;
+          sum += weight;
+        }
       }
-      flux[idx] /= (neighborhood.size() + 1);
+
+      flux[idx] = vv / sum;
     }
   }
 
