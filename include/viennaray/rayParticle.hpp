@@ -134,12 +134,14 @@ public:
                         const unsigned int primID, const int materialId,
                         TracingData<NumericType> &localData,
                         const TracingData<NumericType> *globalData,
-                        RNG &rngState) override final {}
+                        RNG &rngState) override final {
+    localData.getVectorData(0)[primID] += rayWeight;
+  }
 
   NumericType getSourceDistributionPower() const override final { return 1.; }
 
   std::vector<std::string> getLocalDataLabels() const override final {
-    return {};
+    return {"testFlux"};
   }
 
   void logData(DataLog<NumericType> &log) override final {}

@@ -132,6 +132,11 @@ public:
     return pointNeighborhood_.getNeighborIndicies(idx);
   }
 
+  [[nodiscard]] PointNeighborhood<NumericType, D> const &
+  getPointNeighborhood() const {
+    return pointNeighborhood_;
+  }
+
   [[nodiscard]] size_t getNumPoints() const { return numPoints_; }
 
   [[nodiscard]] NumericType getDiscRadius() const { return discRadii_; }
