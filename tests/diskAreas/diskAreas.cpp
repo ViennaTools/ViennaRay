@@ -47,6 +47,9 @@ int main() {
 
   TestParticle<NumericType> particle;
   auto cp = particle.clone();
+  localData.setNumberOfVectorData(cp->getLocalDataLabels().size());
+  auto numPoints = geometry.getNumPoints();
+  localData.resizeAllVectorData(numPoints, 0.);
 
   DataLog<NumericType> log;
   TraceInfo info;

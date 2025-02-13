@@ -259,17 +259,46 @@ public:
 
   /// Helper function to smooth the recorded flux by averaging over the
   /// neighborhood in a post-processing step.
-  void smoothFlux(std::vector<NumericType> &flux) {
+  void smoothFlux(std::vector<NumericType> &flux, int numNeighbors = 1) {
     assert(flux.size() == geometry_.getNumPoints() &&
            "Unequal number of points in smoothFlux");
     auto oldFlux = flux;
+    PointNeighborhood<NumericType, D> pointNeighborhood;
+    if (numNeighbors == 1) {
+      // re-use the neighborhood from the geometry
+      pointNeighborhood = geometry_.getPointNeighborhood();
+    } else {
+      // create a new neighborhood with a larger radius
+      auto boundingBox = geometry_.getBoundingBox();
+      std::vector<Vec3D<NumericType>> points(geometry_.getNumPoints());
+#pragma omp parallel for
+      for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
+        points[idx] = geometry_.getPoint(idx);
+      }
+      pointNeighborhood = PointNeighborhood<NumericType, D>(
+          points, numNeighbors * 2 * diskRadius_, boundingBox[0],
+          boundingBox[1]);
+    }
+
 #pragma omp parallel for
     for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
-      auto neighborhood = geometry_.getNeighborIndicies(idx);
+
+      NumericType vv = oldFlux[idx];
+
+      auto const &neighborhood = pointNeighborhood.getNeighborIndicies(idx);
+      NumericType sum = 1.;
+      auto const normal = geometry_.getPrimNormal(idx);
+
       for (auto const &nbi : neighborhood) {
-        flux[idx] += oldFlux[nbi];
+        auto nnormal = geometry_.getPrimNormal(nbi);
+        auto weight = DotProduct(normal, nnormal);
+        if (weight > 0.) {
+          vv += oldFlux[nbi] * weight;
+          sum += weight;
+        }
       }
-      flux[idx] /= (neighborhood.size() + 1);
+
+      flux[idx] = vv / sum;
     }
   }
 
