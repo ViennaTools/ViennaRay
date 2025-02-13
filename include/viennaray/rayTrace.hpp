@@ -323,6 +323,8 @@ public:
     return pGlobalData_;
   }
 
+  Geometry<NumericType, D> &getGeometry() { return geometry_; }
+
   void setGlobalData(TracingData<NumericType> &data) { pGlobalData_ = &data; }
 
   [[nodiscard]] TraceInfo getRayTraceInfo() { return RTInfo_; }
