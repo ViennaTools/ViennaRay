@@ -75,7 +75,7 @@ public:
   }
 
 private:
-  struct TransferObj {
+  struct DistanceObject {
     // this is the distance from center of disk to the closest point
     // on the intersection line
     NumericType approach;
@@ -84,14 +84,14 @@ private:
 
   NumericType computeAreaOutside(const PrimType &disk,
                                  const Vec3D<NumericType> &dnormal,
-                                 std::array<TransferObj, 4> obj) {
+                                 std::array<DistanceObject, 4> distObjs) {
 
     auto &radius = disk[3];
     NumericType area = 0.;
 
     // Iterate over the directions (x+, y-, x-, y+)
-    for (const auto &o : obj) {
-      auto &distDCtoCIL = o.approach;
+    for (const auto &obj : distObjs) {
+      auto &distDCtoCIL = obj.approach;
       if (-radius < distDCtoCIL && distDCtoCIL < radius) {
         auto angle = 2 * std::acos(distDCtoCIL / radius);
         auto circSegmentArea = radius * radius / 2 * (angle - std::sin(angle));
@@ -100,16 +100,17 @@ private:
     }
 
     // Iterate over the possible overlaps
-    for (size_t idx = 0; idx < obj.size(); ++idx) {
-      auto &a1 = obj[idx];
-      auto &a2 = obj[(idx + 1) % obj.size()];
-      auto &d1 = a1.approach;
-      auto &d2 = a2.approach;
+    for (size_t idx = 0; idx < distObjs.size(); ++idx) {
+      auto &o1 = distObjs[idx];
+      auto &o2 = distObjs[(idx + 1) % distObjs.size()];
 
-      auto &swapXY1 = a1.bbAccess[0];
-      auto &reflectX1 = a1.bbAccess[1];
-      auto &swapXY2 = a2.bbAccess[0];
-      auto &reflectX2 = a2.bbAccess[1];
+      auto &d1 = o1.approach;
+      auto &d2 = o2.approach;
+
+      auto &swapXY1 = o1.bbAccess[0];
+      auto &reflectX1 = o1.bbAccess[1];
+      auto &swapXY2 = o2.bbAccess[0];
+      auto &reflectX2 = o2.bbAccess[1];
 
       auto const &bbt1 = bboxTransforms[swapXY1][reflectX1];
       auto const &bbt2 = bboxTransforms[swapXY2][reflectX2];
@@ -119,16 +120,16 @@ private:
         auto dpoint = Vec3D<NumericType>{disk[0], disk[1], disk[2]};
         auto bbp1point = Vec3D<NumericType>{bbt1.high.xx, bbt1.high.yy, 0};
         auto bbp2point = Vec3D<NumericType>{bbt2.high.xx, bbt2.high.yy, 0};
-        auto bbp1 = Vec3D<Vec3D<NumericType>>{
+        auto bbPlane1 = Vec3D<Vec3D<NumericType>>{
             Vec3D<NumericType>{bbt1.high.xx, bbt1.high.yy, 1},
             Vec3D<NumericType>{bbt1.high.xx, bbt1.high.yy, 0},
             Vec3D<NumericType>{bbt1.high.xx, bbt1.low.yy, 0}};
-        auto bbp2 = Vec3D<Vec3D<NumericType>>{
+        auto bbPlane2 = Vec3D<Vec3D<NumericType>>{
             Vec3D<NumericType>{bbt2.high.xx, bbt2.high.yy, 1},
             Vec3D<NumericType>{bbt2.high.xx, bbt2.high.yy, 0},
             Vec3D<NumericType>{bbt2.high.xx, bbt2.low.yy, 0}};
-        auto bbp1normal = ComputeNormal(bbp1);
-        auto bbp2normal = ComputeNormal(bbp2);
+        auto bbp1normal = ComputeNormal(bbPlane1);
+        auto bbp2normal = ComputeNormal(bbPlane2);
         Normalize(bbp1normal);
         Normalize(bbp2normal);
 
@@ -288,10 +289,10 @@ private:
     }
   }
 
-  std::array<TransferObj, 4>
+  std::array<DistanceObject, 4>
   computeClosestApproach(const PrimType &disk,
                          const Vec3D<NumericType> &dnormal) {
-    auto result = std::array<TransferObj, 4>{};
+    auto result = std::array<DistanceObject, 4>{};
     NumericType radius = disk[3];
 
     // The ordering of the values in the result array is: right, bottom, left,
