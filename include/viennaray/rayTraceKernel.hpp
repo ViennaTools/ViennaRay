@@ -455,7 +455,7 @@ private:
     const auto numOfPrimitives = geometry_.getNumPoints();
     const auto boundaryDirs = boundary_.getDirs();
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
-    DiscBoundingBoxXYIntersector<NumericType> bdDiskIntersector(bdBox);
+    DiskBoundingBoxXYIntersector<NumericType> bdDiskIntersector(bdBox);
 
 #pragma omp for
     for (long idx = 0; idx < numOfPrimitives; ++idx) {
@@ -466,21 +466,19 @@ private:
 
         if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::IGNORE &&
             boundaryConds[boundaryDirs[1]] == BoundaryCondition::IGNORE) {
-          // no boundary
+          // no boundaries
           continue;
         }
 
-        if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::PERIODIC &&
-            boundaryConds[boundaryDirs[1]] == BoundaryCondition::PERIODIC &&
-            boundaryDirs[0] != 2 && boundaryDirs[1] != 2) {
-          // only works with boundaries in x and y direction
+        if (boundaryDirs[0] != 2 && boundaryDirs[1] != 2) {
+          // Disk-BBox intersection only works with boundaries in x and y
+          // direction
           auto normal = geometry_.getNormalRef(idx);
-          auto diskOrigin = geometry_.getPrimRef(idx);
-          areas[idx] = bdDiskIntersector.areaInside(diskOrigin, normal);
+          areas[idx] = bdDiskIntersector.areaInside(disk, normal);
           continue;
         }
 
-        // Reflective or mixed boundary
+        // Simple approach
         if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
                 eps ||
             std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <

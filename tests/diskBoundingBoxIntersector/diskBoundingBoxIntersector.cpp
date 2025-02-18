@@ -19,7 +19,7 @@ template <class NumericType> void runTest() {
   geometry.initGeometry(device, points, normals, gridDelta);
 
   auto boundingBox = geometry.getBoundingBox();
-  DiscBoundingBoxXYIntersector<NumericType> bdDiskIntersector(boundingBox);
+  DiskBoundingBoxXYIntersector<NumericType> bdDiskIntersector(boundingBox);
 
   for (size_t i = 0; i < geometry.getNumPoints(); ++i) {
     auto const &normal = geometry.getNormalRef(i);

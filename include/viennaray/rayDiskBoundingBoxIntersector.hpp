@@ -11,7 +11,7 @@ namespace viennaray {
 
 using namespace viennacore;
 
-template <class NumericType> class DiscBoundingBoxXYIntersector {
+template <class NumericType> class DiskBoundingBoxXYIntersector {
 private:
   using PrimType = std::array<rayInternal::rtcNumericType, 4>;
   using NormalType = std::array<rayInternal::rtcNumericType, 3>;
@@ -23,35 +23,36 @@ private:
   };
 
 public:
-  DiscBoundingBoxXYIntersector(NumericType xmin, NumericType ymin,
+  DiskBoundingBoxXYIntersector(NumericType xmin, NumericType ymin,
                                NumericType xmax, NumericType ymax)
       : bbox({{xmin, ymin}, {xmax, ymax}}) {
     fillBBoxTransforms();
     assertInvariants();
   }
 
-  DiscBoundingBoxXYIntersector(Vec2D<Vec3D<NumericType>> bdBox)
-      : DiscBoundingBoxXYIntersector(bdBox[0][0], bdBox[0][1], bdBox[1][0],
+  DiskBoundingBoxXYIntersector(Vec2D<Vec3D<NumericType>> bdBox)
+      : DiskBoundingBoxXYIntersector(bdBox[0][0], bdBox[0][1], bdBox[1][0],
                                      bdBox[1][1]) {}
 
   // This function is thread-safe
-  NumericType areaInside(const PrimType &disc, const NormalType &dnormal_) {
-    auto &xx = disc[0];
-    auto &yy = disc[1];
-    auto &zz = disc[2];
-    auto &radius = disc[3];
+  NumericType areaInside(const PrimType &disk, const NormalType &diskNormal) {
+    NumericType xx = disk[0];
+    NumericType yy = disk[1];
+    NumericType zz = disk[2];
+    NumericType radius = disk[3];
     assert(radius > 0 && "Precondition");
 
-    // Important: the disc normal needs to be normalized
-    auto dnormal = Vec3D<NumericType>{dnormal_[0], dnormal_[1], dnormal_[2]};
+    // Important: the disk normal needs to be normalized
+    auto dnormal =
+        Vec3D<NumericType>{diskNormal[0], diskNormal[1], diskNormal[2]};
     Normalize(dnormal);
 
-    NumericType fullDiscArea = radius * radius * M_PI;
+    NumericType fullDiskArea = radius * radius * M_PI;
 
     // Test fully inside
     if ((bbox.low.xx <= xx - radius && xx + radius <= bbox.high.xx) &&
         (bbox.low.yy <= yy - radius && yy + radius <= bbox.high.yy)) {
-      return fullDiscArea;
+      return fullDiskArea;
     }
 
     // Test fully outside
@@ -60,48 +61,48 @@ public:
       return 0;
     }
 
-    auto distObjs = computeClosestApproach(disc, dnormal);
-    for (size_t idx = 0; idx < distObjs.size(); ++idx) {
-      if (distObjs[idx].approach < -radius) {
+    auto distObjs = computeClosestApproach(disk, dnormal);
+    for (auto const &obj : distObjs) {
+      if (obj.approach < -radius) {
         // fully outside
         return 0;
       }
     }
 
-    auto areaOutside = computeAreaOutside(disc, dnormal, distObjs);
+    auto areaOutside = computeAreaOutside(disk, dnormal, distObjs);
 
-    return fullDiscArea - areaOutside;
+    return fullDiskArea - areaOutside;
   }
 
 private:
-  struct transferobj_t {
+  struct TransferObj {
+    // this is the distance from center of disk to the closest point
+    // on the intersection line
     NumericType approach;
     std::array<bool, 2> bbAccess;
   };
 
-  NumericType computeAreaOutside(const PrimType &disc,
+  NumericType computeAreaOutside(const PrimType &disk,
                                  const Vec3D<NumericType> &dnormal,
-                                 std::array<transferobj_t, 4> aobj) {
+                                 std::array<TransferObj, 4> obj) {
 
-    auto &radius = disc[3];
+    auto &radius = disk[3];
     NumericType area = 0.;
 
     // Iterate over the directions (x+, y-, x-, y+)
-    for (size_t idx = 0; idx < aobj.size(); ++idx) {
-      // this is the distance on disc from center of disc to the closest point
-      // on the intersection line
-      auto &distDCtoCIL = aobj[idx].approach;
+    for (const auto &o : obj) {
+      auto &distDCtoCIL = o.approach;
       if (-radius < distDCtoCIL && distDCtoCIL < radius) {
-        auto angle = 2 * std::acos((double)distDCtoCIL / radius);
+        auto angle = 2 * std::acos(distDCtoCIL / radius);
         auto circSegmentArea = radius * radius / 2 * (angle - std::sin(angle));
         area += circSegmentArea;
       }
     }
 
     // Iterate over the possible overlaps
-    for (size_t idx = 0; idx < aobj.size(); ++idx) {
-      auto &a1 = aobj[idx];
-      auto &a2 = aobj[(idx + 1) % aobj.size()];
+    for (size_t idx = 0; idx < obj.size(); ++idx) {
+      auto &a1 = obj[idx];
+      auto &a2 = obj[(idx + 1) % obj.size()];
       auto &d1 = a1.approach;
       auto &d2 = a2.approach;
 
@@ -115,8 +116,7 @@ private:
 
       if (-radius < d1 && d1 < radius && -radius < d2 && d2 < radius) {
         // Overlap possible
-        auto dpoint = Vec3D<NumericType>{disc[0], disc[1], disc[2]};
-        // dnormal has the desired form already
+        auto dpoint = Vec3D<NumericType>{disk[0], disk[1], disk[2]};
         auto bbp1point = Vec3D<NumericType>{bbt1.high.xx, bbt1.high.yy, 0};
         auto bbp2point = Vec3D<NumericType>{bbt2.high.xx, bbt2.high.yy, 0};
         auto bbp1 = Vec3D<Vec3D<NumericType>>{
@@ -182,57 +182,28 @@ private:
         }
 
         // bbp2point contains a point on the corner of the bounding box which
-        // (possibly) is located in the disc. That is, bbp2point contains the x
+        // (possibly) is located in the disk. That is, bbp2point contains the x
         // and y coordinate of the intersection point. When we compute the z
         // axis we will have the point where the two planes of the bounding box
-        // and the plane of the disc intersection.
-        auto &xInter = bbp2point[0];
-        auto &yInter = bbp2point[1];
-        auto intersectionpoint =
-            intersectionPointPlaneAndXY(dpoint, dnormal, xInter, yInter);
-        auto &iPoint1 = intersectionpoint;
-        auto &iPoint2 = intersectionpoint;
+        // and the plane of the disk intersection.
+        auto intersectionpoint = intersectionPointPlaneAndXY(
+            dpoint, dnormal, bbp2point[0], bbp2point[1]);
         if (Distance(dpoint, intersectionpoint) >= radius) {
           // No overlap
           continue;
         }
 
         // Definitely an overlap
-        assert(IsNormalized(iDir1) && "Assumption");
-        auto closestApproachAlongIDir1 = DotProduct(dpoint - iPoint1, iDir1);
-        auto closestPointOnIline1ToDiscCenter =
-            iPoint1 + (closestApproachAlongIDir1 * iDir1);
-        auto thc1 = std::sqrt(radius * radius - d1 * d1);
-        assert(thc1 >= 0 && "Correctness Assertion");
-        iDir1 = iDir1 * thc1; // Scale
-        // Since iDir1 is facing outward (of the bounding box) we know that the
-        // correct intersection point is (closestPointOnIline1ToDiscCenter +
-        // iDir1) and not (closestPointOnIline1ToDiscCenter - iDir1).
-        auto q1 = closestPointOnIline1ToDiscCenter + iDir1;
-        // q1 is the point on the circumference of the disc which intersects the
-        // line defined by the point iPoint1 and the direction vector iDir1.
+        auto q1 =
+            getCircPointIntersect(dpoint, intersectionpoint, iDir1, radius, d1);
+        auto q2 =
+            getCircPointIntersect(dpoint, intersectionpoint, iDir2, radius, d2);
 
-        assert(IsNormalized(iDir2) && "Assumption");
-        auto iPoint2ToCenterOfDisc = dpoint - iPoint2;
-        auto closestApproachAlongIDir2 =
-            DotProduct(iPoint2ToCenterOfDisc, iDir2);
-        auto closestPointOnIline2ToDiscCenter =
-            iPoint2 + (closestApproachAlongIDir2 * iDir2);
-        auto thc2 = std::sqrt(radius * radius - d2 * d2);
-        assert(thc2 >= 0 && "Correctness Assertion");
-        iDir2 = iDir2 * thc2; // Scale
-        // Since iDir2 is facing outward (of the bounding box) we know that the
-        // correct intersection point is (closestPointOnIline2ToDiscCenter +
-        // iDir2) and not (closestPointOnIline2ToDiscCenter - iDir2).
-        auto q2 = closestPointOnIline2ToDiscCenter + iDir2;
-        // q2 is the point on the circumference of the disc which intersects the
-        // line defined by the point iPoint2 and the direction vector iDir2.
-
-        auto discCenterToq1 = q1 - dpoint;
-        auto discCenterToq2 = q2 - dpoint;
-        auto angle = // angle between discCenterToq1 and discCenterToq2
-            std::acos(DotProduct(discCenterToq1, discCenterToq2) /
-                      Norm(discCenterToq1) / Norm(discCenterToq2));
+        auto diskCenterToq1 = q1 - dpoint;
+        auto diskCenterToq2 = q2 - dpoint;
+        auto angle = // angle between diskCenterToq1 and diskCenterToq2
+            std::acos(DotProduct(diskCenterToq1, diskCenterToq2) /
+                      Norm(diskCenterToq1) / Norm(diskCenterToq2));
         auto overlapCircSegmentArea =
             radius * radius / 2 * (angle - std::sin(angle));
         auto overlapTriangleArea =
@@ -317,15 +288,15 @@ private:
     }
   }
 
-  std::array<transferobj_t, 4>
-  computeClosestApproach(const PrimType &disc,
+  std::array<TransferObj, 4>
+  computeClosestApproach(const PrimType &disk,
                          const Vec3D<NumericType> &dnormal) {
-    auto result = std::array<transferobj_t, 4>{};
-    auto &radius = disc[3];
+    auto result = std::array<TransferObj, 4>{};
+    NumericType radius = disk[3];
 
     // The ordering of the values in the result array is: right, bottom, left,
     // top. Note that other parts of the algorithm (the overlap calculation) do
-    // _not_ work with any ordering.
+    // not work with any ordering.
     auto tuples = std::array<std::pair<size_t, std::array<bool, 2>>, 4>{
         std::pair<size_t, std::array<bool, 2>>{0, {false, false}},
         std::pair<size_t, std::array<bool, 2>>{1, {true, true}},
@@ -338,13 +309,13 @@ private:
       auto &reflectXcoords = tuple.second[1];
 
       result[idx].approach =
-          computeClosestApproach(disc, dnormal, swapXY, reflectXcoords);
+          computeClosestApproach(disk, dnormal, swapXY, reflectXcoords);
 
       result[idx].bbAccess[0] = swapXY;
       result[idx].bbAccess[1] = reflectXcoords;
 
       if (result[idx].approach < -radius) {
-        // disc is fully outside the bounding box
+        // disk is fully outside the bounding box
         return result;
       }
     }
@@ -352,25 +323,25 @@ private:
     return result;
   }
 
-  NumericType computeClosestApproach(const PrimType &disc_,
-                                     const Vec3D<NumericType> &dnormal_,
+  NumericType computeClosestApproach(const PrimType &disk_,
+                                     const Vec3D<NumericType> &diskNormal,
                                      bool swapXY, bool reflectXcoords) {
     assertInvariants();
-    assert(IsNormalized(dnormal_) && "Precondition");
+    assert(IsNormalized(diskNormal) && "Precondition");
     // Prepare: swap or reflect coordinates, if necessary
-    auto xIdx = 0;
-    auto yIdx = 1;
-    auto zIdx = 2;
+    unsigned xIdx = 0;
+    unsigned yIdx = 1;
+    unsigned zIdx = 2;
     if (swapXY)
       std::swap(xIdx, yIdx);
 
-    auto xx = disc_[xIdx];
-    auto yy = disc_[yIdx];
-    auto zz = disc_[zIdx];
-    auto radius = disc_[3];
-    auto nx = dnormal_[xIdx];
-    auto ny = dnormal_[yIdx];
-    auto nz = dnormal_[zIdx];
+    NumericType xx = disk_[xIdx];
+    NumericType yy = disk_[yIdx];
+    NumericType zz = disk_[zIdx];
+    NumericType radius = disk_[3];
+    NumericType nx = diskNormal[xIdx];
+    NumericType ny = diskNormal[yIdx];
+    NumericType nz = diskNormal[zIdx];
 
     // First swap then reflect X values along origin
     if (reflectXcoords) {
@@ -384,15 +355,15 @@ private:
     auto xterm = radius * std::sqrt(nz * nz + ny * ny);
     assert(xterm >= 0 && "Correctness Assumption");
 
-    auto discXLimitHigh = xx + xterm;
-    if (discXLimitHigh <= bb.high.xx) {
-      // disc fully inside
+    auto diskXLimitHigh = xx + xterm;
+    if (diskXLimitHigh <= bb.high.xx) {
+      // disk fully inside
       return std::numeric_limits<NumericType>::max();
     }
 
-    auto discXLimitLow = xx - xterm;
-    if (discXLimitLow >= bb.high.xx) {
-      // disc fully outside
+    auto diskXLimitLow = xx - xterm;
+    if (diskXLimitLow >= bb.high.xx) {
+      // disk fully outside
       return std::numeric_limits<NumericType>::lowest();
     }
 
@@ -402,14 +373,14 @@ private:
                                   Vec3D<NumericType>{bb.high.xx, bb.low.yy, 0}};
 
     if (xterm <= 1e-9) {
-      // Disc is parallel to the bounding plain
+      // Disk is parallel to the bounding plain
       return std::numeric_limits<NumericType>::max();
     }
 
     // Compute closest approach
     // If (bb.high.xx -xx) is positive the intersection is to the right of the
-    // center of the disc, otherwise to the left. This is the closest approach
-    // on the disc (not along the x-axis, which is xterm).
+    // center of the disk, otherwise to the left. This is the closest approach
+    // on the disk (not along the x-axis, which is xterm).
     auto closestApproach = (bb.high.xx - xx) * radius / xterm;
     assert(std::abs(closestApproach) <= radius && "Correctness Assumption");
     return closestApproach;
@@ -436,6 +407,27 @@ private:
   static bool sameDirection(const Vec3D<NumericType> &v1,
                             const Vec3D<NumericType> &v2) {
     return DotProduct(v1, v2) >= 0;
+  }
+
+  static Vec3D<NumericType>
+  getCircPointIntersect(Vec3D<NumericType> const &dpoint,
+                        Vec3D<NumericType> const &iPoint,
+                        Vec3D<NumericType> const &iDir,
+                        NumericType const &radius, NumericType const &d) {
+    assert(IsNormalized(iDir) && "Assumption");
+    auto closestApproachAlongIDir = DotProduct(dpoint - iPoint, iDir);
+    auto closestPointOnIlineToDiskCenter =
+        iPoint + (closestApproachAlongIDir * iDir);
+    auto thc = std::sqrt(radius * radius - d * d);
+    assert(thc >= 0 && "Correctness Assertion");
+    // Since iDir is facing outward (of the bounding box) we know that the
+    // correct intersection point is (closestPointOnIlineToDiskCenter +
+    // iDir) and not (closestPointOnIlineToDiskCenter - iDir).
+    auto q = closestPointOnIlineToDiskCenter + (iDir * thc);
+    // q is the point on the circumference of the disk which intersects the
+    // line defined by the point iPoint and the direction vector iDir.
+
+    return q;
   }
 
   void assertInvariants() {
