@@ -63,7 +63,7 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
 * Installation with CPM
 
   ```cmake
-  CPMAddPackage("gh:viennatools/viennaray@3.1.3")
+  CPMAddPackage("gh:viennatools/viennaray@3.1.4")
   ```
 
 * With a local installation

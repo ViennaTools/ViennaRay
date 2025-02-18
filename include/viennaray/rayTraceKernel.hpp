@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rayBoundary.hpp>
+#include <rayDiskBoundingBoxIntersector.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
 #include <rayParticle.hpp>
@@ -454,6 +455,7 @@ private:
     const auto numOfPrimitives = geometry_.getNumPoints();
     const auto boundaryDirs = boundary_.getDirs();
     auto areas = std::vector<NumericType>(numOfPrimitives, 0);
+    DiskBoundingBoxXYIntersector<NumericType> bdDiskIntersector(bdBox);
 
 #pragma omp for
     for (long idx = 0; idx < numOfPrimitives; ++idx) {
@@ -462,24 +464,39 @@ private:
       if constexpr (D == 3) {
         areas[idx] = disk[3] * disk[3] * M_PI; // full disk area
 
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
-            (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
-                 eps ||
-             std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
-                 eps)) {
+        if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::IGNORE &&
+            boundaryConds[boundaryDirs[1]] == BoundaryCondition::IGNORE) {
+          // no boundaries
+          continue;
+        }
+
+        if (boundaryDirs[0] != 2 && boundaryDirs[1] != 2) {
+          // Disk-BBox intersection only works with boundaries in x and y
+          // direction
+          auto normal = geometry_.getNormalRef(idx);
+          areas[idx] = bdDiskIntersector.areaInside(disk, normal);
+          continue;
+        }
+
+        // Simple approach
+        if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+                eps ||
+            std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+                eps) {
           // disk intersects boundary in first direction
           areas[idx] /= 2;
         }
 
-        if ((boundaryConds[boundaryDirs[1]] != BoundaryCondition::IGNORE) &&
-            (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
-                 eps ||
-             std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
-                 eps)) {
+        if (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
+                eps ||
+            std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
+                eps) {
           // disk intersects boundary in second direction
           areas[idx] /= 2;
         }
-      } else {
+
+      } else { // 2D
+
         areas[idx] = 2 * disk[3];
         auto normal = geometry_.getNormalRef(idx);
 
