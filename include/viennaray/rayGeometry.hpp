@@ -127,9 +127,9 @@ public:
   }
 
   [[nodiscard]] std::vector<unsigned int> const &
-  getNeighborIndicies(const unsigned int idx) const {
+  getNeighborIndices(const unsigned int idx) const {
     assert(pointNeighborhood_.getDistance() > 0.); // check if initialized
-    return pointNeighborhood_.getNeighborIndicies(idx);
+    return pointNeighborhood_.getNeighborIndices(idx);
   }
 
   [[nodiscard]] PointNeighborhood<NumericType, D> const &
@@ -196,7 +196,7 @@ public:
   }
 
 private:
-  // "RTC_GEOMETRY_TYPE_POINT:
+  // RTC_GEOMETRY_TYPE_POINT:
   // The vertex buffer stores each control vertex in the form of a single
   // precision position and radius stored in (x, y, z, r) order in memory
   // (RTC_FORMAT_FLOAT4 format). The number of vertices is inferred from the
@@ -218,7 +218,7 @@ private:
 
   RTCGeometry pRtcGeometry_ = nullptr;
 
-  size_t numPoints_;
+  size_t numPoints_ = 0;
   NumericType discRadii_;
   Vec3D<NumericType> minCoords_;
   Vec3D<NumericType> maxCoords_;

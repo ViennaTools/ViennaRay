@@ -223,7 +223,7 @@ ReflectionConedCosineOld2(const Vec3D<NumericType> &rayDir,
       (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
 
   // Compute incidence angle
-  double cosTheta = static_cast<double>(-DotProduct(rayDir, geomNormal));
+  auto cosTheta = static_cast<double>(-DotProduct(rayDir, geomNormal));
 
   assert(cosTheta >= 0. && "Hit backside of disc");
   assert(cosTheta <= 1. + 1e-6 && "Error in calculating cos theta");

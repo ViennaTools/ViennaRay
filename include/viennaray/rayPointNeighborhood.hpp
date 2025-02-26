@@ -66,7 +66,7 @@ public:
   }
 
   [[nodiscard]] std::vector<unsigned int> const &
-  getNeighborIndicies(const unsigned int idx) const {
+  getNeighborIndices(const unsigned int idx) const {
     assert(idx < pointNeighborhood_.size() && "Index out of bounds");
     return pointNeighborhood_[idx];
   }
@@ -116,7 +116,7 @@ private:
     std::vector<unsigned int> side1Cand;
     std::vector<unsigned int> side2Cand;
 
-    int newDirIdx = (dirIdx + 1) % dirs.size();
+    int newDirIdx = (dirIdx + 1) % static_cast<int>(dirs.size());
     NumericType newPivot = (max[dirs[newDirIdx]] + min[dirs[newDirIdx]]) / 2;
 
     // recursion sets
@@ -125,46 +125,46 @@ private:
     std::vector<unsigned int> s2r1set;
     std::vector<unsigned int> s2r2set;
 
-    for (unsigned int idx = 0; idx < side1.size(); ++idx) {
-      const auto &point = points[side1[idx]];
+    for (unsigned int idx : side1) {
+      const auto &point = points[idx];
       assert(point[dirs[dirIdx]] <= pivot && "Correctness Assertion");
       if (point[dirs[newDirIdx]] <= newPivot) {
-        s1r1set.push_back(side1[idx]);
+        s1r1set.push_back(idx);
       } else {
-        s1r2set.push_back(side1[idx]);
+        s1r2set.push_back(idx);
       }
       if (point[dirs[dirIdx]] + distance_ <= pivot) {
         continue;
       }
-      side1Cand.push_back(side1[idx]);
+      side1Cand.push_back(idx);
     }
-    for (unsigned int idx = 0; idx < side2.size(); ++idx) {
-      const auto &point = points[side2[idx]];
+    for (unsigned int idx : side2) {
+      const auto &point = points[idx];
       assert(point[dirs[dirIdx]] > pivot && "Correctness Assertion");
       if (point[dirs[newDirIdx]] <= newPivot) {
-        s2r1set.push_back(side2[idx]);
+        s2r1set.push_back(idx);
       } else {
-        s2r2set.push_back(side2[idx]);
+        s2r2set.push_back(idx);
       }
       if (point[dirs[dirIdx]] - distance_ >= pivot) {
         continue;
       }
-      side2Cand.push_back(side2[idx]);
+      side2Cand.push_back(idx);
     }
 
     // Iterate over pairs of candidates
-    if (side1Cand.size() > 0 && side2Cand.size() > 0) {
-      for (unsigned int ci1 = 0; ci1 < side1Cand.size(); ++ci1) {
-        for (unsigned int ci2 = 0; ci2 < side2Cand.size(); ++ci2) {
-          const auto &point1 = points[side1Cand[ci1]];
-          const auto &point2 = points[side2Cand[ci2]];
+    if (!side1Cand.empty() && !side2Cand.empty()) {
+      for (unsigned int &ci1 : side1Cand) {
+        for (unsigned int &ci2 : side2Cand) {
+          const auto &point1 = points[ci1];
+          const auto &point2 = points[ci2];
 
           assert(std::abs(point1[dirs[dirIdx]] - point2[dirs[dirIdx]]) <=
                      (2 * distance_) &&
                  "Correctness Assertion");
           if (checkDistance(point1, point2)) {
-            pointNeighborhood_[side1Cand[ci1]].push_back(side2Cand[ci2]);
-            pointNeighborhood_[side2Cand[ci2]].push_back(side1Cand[ci1]);
+            pointNeighborhood_[ci1].push_back(ci2);
+            pointNeighborhood_[ci2].push_back(ci1);
           }
         }
       }

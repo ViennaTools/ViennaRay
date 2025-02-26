@@ -32,7 +32,7 @@ int main() {
 
   for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto point = geometry.getPoint(idx);
-    auto neighbors = geometry.getNeighborIndicies(idx);
+    auto neighbors = geometry.getNeighborIndices(idx);
     if (std::fabs(point[0]) > 1 - eps) {
       // corner point
       VC_TEST_ASSERT(neighbors.size() == 1)
