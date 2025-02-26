@@ -30,7 +30,7 @@ public:
     assertInvariants();
   }
 
-  DiskBoundingBoxXYIntersector(Vec2D<Vec3D<NumericType>> bdBox)
+  explicit DiskBoundingBoxXYIntersector(Vec2D<Vec3D<NumericType>> bdBox)
       : DiskBoundingBoxXYIntersector(bdBox[0][0], bdBox[0][1], bdBox[1][0],
                                      bdBox[1][1]) {}
 
@@ -340,14 +340,12 @@ private:
     NumericType yy = disk_[yIdx];
     NumericType zz = disk_[zIdx];
     NumericType radius = disk_[3];
-    NumericType nx = diskNormal[xIdx];
     NumericType ny = diskNormal[yIdx];
     NumericType nz = diskNormal[zIdx];
 
     // First swap then reflect X values along origin
     if (reflectXcoords) {
       xx = -xx;
-      nx = -nx;
     }
 
     // Here reflecting Y values is not necessary. It does not make a difference.

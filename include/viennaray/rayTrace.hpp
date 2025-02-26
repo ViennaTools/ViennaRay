@@ -284,7 +284,7 @@ public:
 
       NumericType vv = oldFlux[idx];
 
-      auto const &neighborhood = pointNeighborhood.getNeighborIndicies(idx);
+      auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
       NumericType sum = 1.;
       auto const normal = geometry_.getPrimNormal(idx);
 

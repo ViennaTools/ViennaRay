@@ -13,6 +13,8 @@
 #include <vcTimer.hpp>
 #include <vcUtil.hpp>
 
+#include <omp.h>
+
 namespace rayInternal {
 
 using namespace viennaray;

@@ -129,7 +129,7 @@ public:
   [[nodiscard]] std::vector<unsigned int> const &
   getNeighborIndices(const unsigned int idx) const {
     assert(pointNeighborhood_.getDistance() > 0.); // check if initialized
-    return pointNeighborhood_.getNeighborIndicies(idx);
+    return pointNeighborhood_.getNeighborIndices(idx);
   }
 
   [[nodiscard]] PointNeighborhood<NumericType, D> const &

@@ -9,7 +9,7 @@ public:
   HitCounter() : totalCounts_(0) {}
 
   // elements initialized to 0.
-  HitCounter(size_t size)
+  explicit HitCounter(size_t size)
       : counts_(size, 0), totalCounts_(0), diskAreas_(size, 0), S1s_(size, 0),
         S2s_(size, 0) {}
 
@@ -19,9 +19,8 @@ public:
         diskAreas_(other.diskAreas_), S1s_(other.S1s_), S2s_(other.S2s_) {}
 
   // move the vector members
-  HitCounter(HitCounter<NumericType> const &&other)
-      : counts_(std::move(other.counts_)),
-        totalCounts_(std::move(other.totalCounts_)),
+  HitCounter(HitCounter<NumericType> &&other) noexcept
+      : counts_(std::move(other.counts_)), totalCounts_(other.totalCounts_),
         diskAreas_(std::move(other.diskAreas_)), S1s_(std::move(other.S1s_)),
         S2s_(std::move(other.S2s_)) {}
 
@@ -60,7 +59,8 @@ public:
     return *this;
   }
 
-  HitCounter<NumericType> &operator=(HitCounter<NumericType> const &&pOther) {
+  HitCounter<NumericType> &
+  operator=(HitCounter<NumericType> &&pOther) noexcept {
     if (this != &pOther) {
       // move from pOther to this
       counts_.clear();
@@ -142,8 +142,8 @@ public:
       // This is an approximation of the relative error assuming sqrt(N-1) =~
       // sqrt(N) For details and an exact formula see the book Exploring Monte
       // Carlo Methods by Dunn and Shultis page 83 and 84.
-      result[idx] =
-          (NumericType)(std::sqrt(S2s_[idx] / s1square - 1.0 / totalCounts_));
+      result[idx] = static_cast<NumericType>(
+          std::sqrt(S2s_[idx] / s1square - 1.0 / totalCounts_));
     }
     return result;
   }

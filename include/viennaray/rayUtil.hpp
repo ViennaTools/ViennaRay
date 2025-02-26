@@ -15,8 +15,6 @@
 #include <immintrin.h>
 #endif
 
-#include <omp.h>
-
 #include <algorithm>
 #include <array>
 #include <cassert>

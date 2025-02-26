@@ -18,7 +18,7 @@ public:
         numPoints_(sourceGrid.size()), rayDir_(traceSettings[0]),
         firstDir_(traceSettings[1]), secondDir_(traceSettings[2]),
         minMax_(traceSettings[3]), posNeg_(traceSettings[4]),
-        ee_(((NumericType)2) / (cosinePower + 1)) {}
+        ee_(static_cast<NumericType>(2) / (cosinePower + 1)) {}
 
   Vec2D<Vec3D<NumericType>>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
@@ -28,7 +28,7 @@ public:
     return {origin, direction};
   }
 
-  size_t getNumPoints() const override { return numPoints_; }
+  [[nodiscard]] size_t getNumPoints() const override { return numPoints_; }
 
 private:
   Vec3D<NumericType> getDirection(RNG &rngState) const {

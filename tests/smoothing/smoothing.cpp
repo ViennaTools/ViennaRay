@@ -34,17 +34,17 @@ int main() {
 
   trace.smoothFlux(flux, 1);
 
-  auto &geo = trace.getGeometry();
+  // auto &geo = trace.getGeometry();
 
   for (unsigned int idx = 0; idx < 3; ++idx) {
-    // auto neighbors = geo.getNeighborIndicies(idx);
+    // auto neighbors = geo.getNeighborIndices(idx);
     // std::cout << "flux[" << idx << "] = " << flux[idx] << std::endl;
     // std::cout << "num neighbors: " << neighbors.size() << std::endl;
     VC_TEST_ASSERT_ISCLOSE(flux[idx], 1.0, 1e-6);
   }
 
   for (unsigned int idx = 3; idx < 6; ++idx) {
-    // auto neighbors = geo.getNeighborIndicies(idx);
+    // auto neighbors = geo.getNeighborIndices(idx);
     // std::cout << "flux[" << idx << "] = " << flux[idx] << std::endl;
     // std::cout << "num neighbors: " << neighbors.size() << std::endl;
     VC_TEST_ASSERT_ISCLOSE(flux[idx], 0.0, 1e-6);

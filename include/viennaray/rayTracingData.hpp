@@ -1,8 +1,8 @@
 #pragma once
 
+#include <utility>
 #include <vcLogger.hpp>
 
-#include <utility>
 #include <vector>
 
 namespace viennaray {
@@ -27,7 +27,7 @@ private:
   mergeType vectorDataMerge_;
 
 public:
-  TracingData() {}
+  TracingData() = default;
 
   TracingData(const TracingData &otherData)
       : scalarData_(otherData.scalarData_), vectorData_(otherData.vectorData_),
@@ -36,7 +36,7 @@ public:
         scalarDataMerge_(otherData.scalarDataMerge_),
         vectorDataMerge_(otherData.vectorDataMerge_) {}
 
-  TracingData(TracingData &&otherData)
+  TracingData(TracingData &&otherData) noexcept
       : scalarData_(std::move(otherData.scalarData_)),
         vectorData_(std::move(otherData.vectorData_)),
         scalarDataLabels_(std::move(otherData.scalarDataLabels_)),
@@ -44,17 +44,9 @@ public:
         scalarDataMerge_(std::move(otherData.scalarDataMerge_)),
         vectorDataMerge_(std::move(otherData.vectorDataMerge_)) {}
 
-  TracingData &operator=(const TracingData &otherData) {
-    scalarData_ = otherData.scalarData_;
-    vectorData_ = otherData.vectorData_;
-    scalarDataLabels_ = otherData.scalarDataLabels_;
-    vectorDataLabels_ = otherData.vectorDataLabels_;
-    scalarDataMerge_ = otherData.scalarDataMerge_;
-    vectorDataMerge_ = otherData.vectorDataMerge_;
-    return *this;
-  }
+  TracingData &operator=(const TracingData &otherData) = default;
 
-  TracingData &operator=(TracingData &&otherData) {
+  TracingData &operator=(TracingData &&otherData) noexcept {
     scalarData_ = std::move(otherData.scalarData_);
     vectorData_ = std::move(otherData.vectorData_);
     scalarDataLabels_ = std::move(otherData.scalarDataLabels_);
@@ -89,7 +81,7 @@ public:
           .addError("Setting scalar data in TracingData out of range.")
           .print();
     scalarData_[num] = value;
-    scalarDataLabels_[num] = label;
+    scalarDataLabels_[num] = std::move(label);
   }
 
   void setVectorData(int num, std::vector<NumericType> &vector,
@@ -99,7 +91,7 @@ public:
           .addError("Setting vector data in TracingData out of range.")
           .print();
     vectorData_[num] = vector;
-    vectorDataLabels_[num] = label;
+    vectorDataLabels_[num] = std::move(label);
   }
 
   void setVectorData(int num, std::vector<NumericType> &&vector,
@@ -109,7 +101,7 @@ public:
           .addError("Setting vector data in TracingData out of range.")
           .print();
     vectorData_[num] = std::move(vector);
-    vectorDataLabels_[num] = label;
+    vectorDataLabels_[num] = std::move(label);
   }
 
   void setVectorData(int num, size_t size, NumericType value,
@@ -119,7 +111,7 @@ public:
           .addError("Setting vector data in TracingData out of range.")
           .print();
     vectorData_[num].resize(size, value);
-    vectorDataLabels_[num] = label;
+    vectorDataLabels_[num] = std::move(label);
   }
 
   void setVectorData(int num, NumericType value,
@@ -130,7 +122,7 @@ public:
           .print();
     vectorData_[num].fill(vectorData_[num].begin(), vectorData_[num].end(),
                           value);
-    vectorDataLabels_[num] = label;
+    vectorDataLabels_[num] = std::move(label);
   }
 
   void resizeAllVectorData(size_t size, NumericType val = 0) {
@@ -162,7 +154,7 @@ public:
     return vectorData_[i];
   }
 
-  [[nodiscard]] vectorDataType &getVectorData(std::string label) {
+  [[nodiscard]] vectorDataType &getVectorData(const std::string &label) {
     int idx = getVectorDataIndex(label);
     return vectorData_[idx];
   }
@@ -181,7 +173,7 @@ public:
     return scalarData_[i];
   }
 
-  [[nodiscard]] scalarDataType &getScalarData(std::string label) {
+  [[nodiscard]] scalarDataType &getScalarData(const std::string &label) {
     int idx = getScalarDataIndex(label);
     return scalarData_[idx];
   }
@@ -210,7 +202,7 @@ public:
     return scalarDataLabels_[i];
   }
 
-  [[nodiscard]] int getVectorDataIndex(std::string label) const {
+  [[nodiscard]] int getVectorDataIndex(const std::string &label) const {
     for (int i = 0; i < vectorDataLabels_.size(); ++i) {
       if (vectorDataLabels_[i] == label) {
         return i;
@@ -222,7 +214,7 @@ public:
     return -1;
   }
 
-  [[nodiscard]] int getScalarDataIndex(std::string label) const {
+  [[nodiscard]] int getScalarDataIndex(const std::string &label) const {
     for (int i = 0; i < scalarDataLabels_.size(); ++i) {
       if (scalarDataLabels_[i] == label) {
         return i;
@@ -234,11 +226,11 @@ public:
     return -1;
   }
 
-  [[nodiscard]] const TracingDataMergeEnum getVectorMergeType(int num) const {
+  [[nodiscard]] TracingDataMergeEnum getVectorMergeType(int num) const {
     return vectorDataMerge_[num];
   }
 
-  [[nodiscard]] const TracingDataMergeEnum getScalarMergeType(int num) const {
+  [[nodiscard]] TracingDataMergeEnum getScalarMergeType(int num) const {
     return scalarDataMerge_[num];
   }
 };
