@@ -28,7 +28,7 @@ int main() {
 
   for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
     auto point = geometry.getPoint(idx);
-    auto neighbors = geometry.getNeighborIndicies(idx);
+    auto neighbors = geometry.getNeighborIndices(idx);
 
     int numNeighbors = 8;
     if (point[0] == bdBox[1][0] && point[1] == bdBox[1][1] ||

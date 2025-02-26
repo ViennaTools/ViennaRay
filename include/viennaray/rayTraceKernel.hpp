@@ -128,16 +128,25 @@ public:
         auto particleSeed = tea<3>(idx, seed);
         RNG rngState(particleSeed);
 
-        particle->initNew(rngState);
-        particle->logData(myDataLog);
-
         // probabilistic weight
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
 
-        auto originAndDirection =
-            pSource_->getOriginAndDirection(idx, rngState);
-        fillRay(rayHit.ray, originAndDirection[0], originAndDirection[1]);
+        {
+          particle->initNew(rngState);
+          particle->logData(myDataLog);
+          auto direction = particle->initNewWithDirection(rngState);
+
+          auto originAndDirection =
+              pSource_->getOriginAndDirection(idx, rngState);
+          fillRayPosition(rayHit.ray, originAndDirection[0]);
+          if (isZero(direction)) {
+            fillRayDirection(rayHit.ray, originAndDirection[1]);
+          } else {
+            assert(IsNormalized(direction));
+            fillRayDirection(rayHit.ray, direction);
+          }
+        }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;
@@ -192,7 +201,8 @@ public:
               Normalize(direction);
 
               // Update ray direction and origin
-              fillRay(rayHit.ray, origin, direction);
+              fillRayPosition(rayHit.ray, origin);
+              fillRayDirection(rayHit.ray, direction);
 
               particleHits++;
               reflect = true;
@@ -260,7 +270,7 @@ public:
 #endif
           // check for additional intersections
           for (const auto &id :
-               geometry_.getNeighborIndicies(rayHit.hit.primID)) {
+               geometry_.getNeighborIndices(rayHit.hit.primID)) {
             rtcNumericType distance;
             if (checkLocalIntersection(ray, id, distance)) {
               hitDiskIds.push_back(id);
@@ -321,7 +331,8 @@ public:
           }
 
           // Update ray direction and origin
-          fillRay(rayHit.ray, hitPoint, stickingDirection.second);
+          fillRayPosition(rayHit.ray, hitPoint);
+          fillRayDirection(rayHit.ray, stickingDirection.second);
 
         } while (reflect);
       } // end ray tracing for loop
@@ -389,7 +400,7 @@ public:
             pLocalData_->getScalarData(i) +=
                 threadLocalData[j].getScalarData(i);
           }
-          pLocalData_->getScalarData(i) /= (NumericType)numThreads;
+          pLocalData_->getScalarData(i) /= static_cast<NumericType>(numThreads);
           break;
         }
 
@@ -409,7 +420,7 @@ public:
     traceInfo_.nonGeometryHits = nonGeoHits;
     traceInfo_.geometryHits = geoHits;
     traceInfo_.particleHits = particleHits;
-    traceInfo_.time = timer.currentDuration * 1e-9;
+    traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     rtcReleaseScene(rtcScene);
   }
@@ -438,7 +449,7 @@ private:
     // probability of (1 - rayWeight / renewWeight).
     auto rnd = RNG();
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rnd < (killProbability * RNG.max())) {
+    if (rnd < (killProbability * RNG::max())) {
       // kill the ray
       return false;
     }
@@ -581,6 +592,10 @@ private:
       return true;
     }
     return false;
+  }
+
+  static bool isZero(const Vec3D<NumericType> &vec) {
+    return vec[0] == 0 && vec[1] == 0 && vec[2] == 0;
   }
 
 private:

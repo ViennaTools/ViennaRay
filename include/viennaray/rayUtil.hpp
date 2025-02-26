@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -67,13 +66,13 @@ template <class NumericType> struct DataLog {
 };
 
 struct TraceInfo {
-  size_t numRays;
-  size_t totalRaysTraced;
-  size_t totalDiskHits;
-  size_t nonGeometryHits;
-  size_t geometryHits;
-  size_t particleHits;
-  double time;
+  size_t numRays = 0;
+  size_t totalRaysTraced = 0;
+  size_t totalDiskHits = 0;
+  size_t nonGeometryHits = 0;
+  size_t geometryHits = 0;
+  size_t particleHits = 0;
+  double time = 0.0;
   bool warning = false;
   bool error = false;
 };
@@ -95,7 +94,7 @@ constexpr double DiskFactor =
 /* -------------- Ray tracing preparation -------------- */
 template <typename NumericType, int D>
 void adjustBoundingBox(Vec2D<Vec3D<NumericType>> &bdBox,
-                       TraceDirection direction, NumericType discRadius) {
+                       TraceDirection const direction, NumericType discRadius) {
   // For 2D geometries adjust bounding box in z-direction
   if constexpr (D == 2) {
     bdBox[0][2] -= discRadius;
@@ -195,21 +194,14 @@ getTraceSettings(TraceDirection sourceDir) {
   return set;
 }
 
-template <typename T1, typename T2>
-void fillRay(RTCRay &ray, const Vec3D<T1> &origin, const Vec3D<T2> &direction,
-             const float tnear = 1e-4f, const float time = 0.0f) {
+template <typename T>
+void fillRayDirection(RTCRay &ray, const Vec3D<T> &direction,
+                      const float time = 0.0f) {
 #ifdef ARCH_X86
-  reinterpret_cast<__m128 &>(ray) =
-      _mm_set_ps(tnear, (float)origin[2], (float)origin[1], (float)origin[0]);
-
   reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(
-      time, (float)direction[2], (float)direction[1], (float)direction[0]);
+      time, static_cast<float>(direction[2]), static_cast<float>(direction[1]),
+      static_cast<float>(direction[0]));
 #else
-  ray.org_x = (float)origin[0];
-  ray.org_y = (float)origin[1];
-  ray.org_z = (float)origin[2];
-  ray.tnear = tnear;
-
   ray.dir_x = (float)direction[0];
   ray.dir_y = (float)direction[1];
   ray.dir_z = (float)direction[2];
@@ -217,26 +209,46 @@ void fillRay(RTCRay &ray, const Vec3D<T1> &origin, const Vec3D<T2> &direction,
 #endif
 }
 
-template <>
-void fillRay<float>(RTCRay &ray, const Vec3D<float> &origin,
-                    const Vec3D<float> &direction, const float tnear,
-                    const float time) {
+template <typename T>
+void fillRayPosition(RTCRay &ray, const Vec3D<T> &origin,
+                     const float tnear = 1e-4f) {
 #ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray) =
-      _mm_set_ps(tnear, origin[2], origin[1], origin[0]);
+      _mm_set_ps(tnear, static_cast<float>(origin[2]),
+                 static_cast<float>(origin[1]), static_cast<float>(origin[0]));
+#else
+  ray.org_x = (float)origin[0];
+  ray.org_y = (float)origin[1];
+  ray.org_z = (float)origin[2];
+  ray.tnear = tnear;
+#endif
+}
 
+template <>
+inline void fillRayDirection<float>(RTCRay &ray, const Vec3D<float> &direction,
+                                    const float time) {
+#ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray.dir_x) =
       _mm_set_ps(time, direction[2], direction[1], direction[0]);
 #else
-  ray.org_x = origin[0];
-  ray.org_y = origin[1];
-  ray.org_z = origin[2];
-  ray.tnear = tnear;
-
   ray.dir_x = direction[0];
   ray.dir_y = direction[1];
   ray.dir_z = direction[2];
   ray.time = time;
+#endif
+}
+
+template <>
+inline void fillRayPosition<float>(RTCRay &ray, const Vec3D<float> &origin,
+                                   const float tnear) {
+#ifdef ARCH_X86
+  reinterpret_cast<__m128 &>(ray) =
+      _mm_set_ps(tnear, origin[2], origin[1], origin[0]);
+#else
+  ray.org_x = (float)origin[0];
+  ray.org_y = (float)origin[1];
+  ray.org_z = (float)origin[2];
+  ray.tnear = tnear;
 #endif
 }
 
@@ -282,7 +294,7 @@ getOrthonormalBasis(const Vec3D<NumericType> &vec) {
   auto sumFun = [](const Vec3D<NumericType> &oo) {
     return oo[0] + oo[1] + oo[2];
   };
-  int maxIdx = 0;
+  size_t maxIdx = 0;
   for (size_t idx = 1; idx < cc.size(); ++idx) {
     if (sumFun(cc[idx]) > sumFun(cc[maxIdx])) {
       maxIdx = idx;
@@ -319,8 +331,10 @@ void createPlaneGrid(const NumericType gridDelta, const NumericType extent,
 
   points.clear();
   normals.clear();
-  points.reserve(int(extent / gridDelta) * int(extent / gridDelta));
-  normals.reserve(int(extent / gridDelta) * int(extent / gridDelta));
+  points.reserve(static_cast<int>(extent / gridDelta) *
+                 static_cast<int>(extent / gridDelta));
+  normals.reserve(static_cast<int>(extent / gridDelta) *
+                  static_cast<int>(extent / gridDelta));
   while (point[direction[0]] <= extent) {
     while (point[direction[1]] <= extent) {
       points.push_back(point);
@@ -335,7 +349,7 @@ void createPlaneGrid(const NumericType gridDelta, const NumericType extent,
 }
 
 template <typename NumericType>
-void readGridFromFile(std::string fileName, NumericType &gridDelta,
+void readGridFromFile(const std::string &fileName, NumericType &gridDelta,
                       std::vector<Vec3D<NumericType>> &points,
                       std::vector<Vec3D<NumericType>> &normals) {
   std::ifstream dataFile(fileName);
@@ -356,7 +370,7 @@ void readGridFromFile(std::string fileName, NumericType &gridDelta,
 }
 
 template <typename NumericType, int D = 3>
-void writeVTK(std::string filename,
+void writeVTK(const std::string &filename,
               const std::vector<Vec3D<NumericType>> &points,
               const std::vector<NumericType> &flux) {
   std::ofstream f(filename.c_str());
@@ -412,16 +426,16 @@ createSourceGrid(const Vec2D<Vec3D<NumericType>> &pBdBox,
 
   auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
   auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];
-  size_t numPointsInFirstDir = static_cast<size_t>(round(len1 / pGridDelta));
-  size_t numPointsInSecondDir = static_cast<size_t>(round(len2 / pGridDelta));
-  auto ratio = numPointsInFirstDir / numPointsInSecondDir;
+  auto numPointsInFirstDir = static_cast<size_t>(round(len1 / pGridDelta));
+  auto numPointsInSecondDir = static_cast<size_t>(round(len2 / pGridDelta));
+  const unsigned long ratio = numPointsInFirstDir / numPointsInSecondDir;
   numPointsInFirstDir = static_cast<size_t>(std::sqrt(pNumPoints * ratio));
   numPointsInSecondDir = static_cast<size_t>(std::sqrt(pNumPoints / ratio));
 
   auto firstGridDelta =
-      (len1 - 2 * eps) / (NumericType)(numPointsInFirstDir - 1);
+      (len1 - 2 * eps) / static_cast<NumericType>(numPointsInFirstDir - 1);
   auto secondGridDelta =
-      (len2 - 2 * eps) / (NumericType)(numPointsInSecondDir - 1);
+      (len2 - 2 * eps) / static_cast<NumericType>(numPointsInSecondDir - 1);
 
   Vec3D<NumericType> point;
   point[rayDir] = pBdBox[minMax][rayDir];
