@@ -2,28 +2,26 @@
 
 #include <optix.h>
 
-#include <curtRNGState.hpp>
+#include "raygRNG.hpp"
 
 #include <vcVectorUtil.hpp>
 
 #include <stdint.h>
 
-namespace viennaray {
-
-namespace gpu {
+namespace viennaray::gpu {
 
 struct PerRayData {
   float rayWeight = 1.f;
   viennacore::Vec3Df pos;
   viennacore::Vec3Df dir;
+  float tmax;
 
   RNGState RNGstate;
 
   float energy;
 };
 
-} // namespace gpu
-} // namespace viennaray
+} // namespace viennaray::gpu
 
 // this can only get compiled if included in a cuda kernel
 #ifdef __CUDACC__
@@ -45,5 +43,12 @@ template <typename T> static __forceinline__ __device__ T *getPRD() {
   const uint32_t u0 = optixGetPayload_0();
   const uint32_t u1 = optixGetPayload_1();
   return reinterpret_cast<T *>(unpackPointer(u0, u1));
+}
+
+static __device__ void initializeRNGState(viennaray::gpu::PerRayData *prd,
+                                          unsigned int linearLaunchIndex,
+                                          unsigned int seed) {
+  auto rngSeed = tea<4>(linearLaunchIndex, seed);
+  curand_init(rngSeed, 0, 0, &prd->RNGstate);
 }
 #endif

@@ -3,20 +3,16 @@
 #include <string>
 #include <vector>
 
-namespace viennaray {
-
-namespace gpu {
+namespace viennaray::gpu {
 
 template <typename T> struct Particle {
   std::string name;
-  int numberOfData = 1;
   std::vector<std::string> dataLabels;
-  float sticking = 1.f;
-  float cosineExponent = 1.f;
-  float meanIonEnergy = 0.f;  // eV
-  float sigmaIonEnergy = 0.f; // eV
-  Vec3Df direction = {0.f, 0.f, -1.f};
+
+  T sticking = 1.;
+  T cosineExponent = 1.;
+
+  Vec3D<T> direction = {0., 0., -1.0};
 };
 
-} // namespace gpu
-} // namespace viennaray
+} // namespace viennaray::gpu

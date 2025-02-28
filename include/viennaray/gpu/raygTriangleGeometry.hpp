@@ -3,16 +3,14 @@
 #include <gpu/vcContext.hpp>
 #include <gpu/vcCudaBuffer.hpp>
 
-#include <curtLaunchParams.hpp>
-#include <raygMesh.hpp>
+#include "raygLaunchParams.hpp"
+#include "raygMesh.hpp"
 
-namespace viennaray {
-
-namespace gpu {
+namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <typename NumericType> struct TriangleGeometry {
+struct TriangleGeometry {
   // geometry
   CudaBuffer geometryVertexBuffer;
   CudaBuffer geometryIndexBuffer;
@@ -25,8 +23,9 @@ template <typename NumericType> struct TriangleGeometry {
   CudaBuffer asBuffer;
 
   /// build acceleration structure from triangle mesh
-  void buildAccel(Context context, const TriangleMesh &mesh,
-                  LaunchParams<NumericType> &launchParams) {
+  void buildAccel(Context &context, const TriangleMesh<float> &mesh,
+                  LaunchParams &launchParams) {
+    assert(context.deviceID != -1 && "Context not initialized.");
 
     launchParams.source.gridDelta = mesh.gridDelta;
     launchParams.source.minPoint[0] = mesh.minimumExtent[0];
@@ -37,8 +36,8 @@ template <typename NumericType> struct TriangleGeometry {
     launchParams.numElements = mesh.triangles.size();
 
     // 2 inputs: one for the geometry, one for the boundary
-    std::array<OptixBuildInput, 2> triangleInput;
-    std::array<uint32_t, 2> triangleInputFlags;
+    std::array<OptixBuildInput, 2> triangleInput{};
+    std::array<uint32_t, 2> triangleInputFlags{};
 
     // ------------------- geometry input -------------------
     // upload the model to the device: the builder
@@ -122,7 +121,7 @@ template <typename NumericType> struct TriangleGeometry {
     accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 
     OptixAccelBufferSizes blasBufferSizes;
-    optixAccelComputeMemoryUsage(context->optix, &accelOptions,
+    optixAccelComputeMemoryUsage(context.optix, &accelOptions,
                                  triangleInput.data(),
                                  2, // num_build_inputs
                                  &blasBufferSizes);
@@ -142,7 +141,7 @@ template <typename NumericType> struct TriangleGeometry {
     CudaBuffer outputBuffer;
     outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-    optixAccelBuild(context->optix, 0, &accelOptions, triangleInput.data(), 2,
+    optixAccelBuild(context.optix, 0, &accelOptions, triangleInput.data(), 2,
                     tempBuffer.dPointer(), tempBuffer.sizeInBytes,
                     outputBuffer.dPointer(), outputBuffer.sizeInBytes,
                     &asHandle, &emitDesc, 1);
@@ -153,7 +152,7 @@ template <typename NumericType> struct TriangleGeometry {
     compactedSizeBuffer.download(&compactedSize, 1);
 
     asBuffer.alloc(compactedSize);
-    optixAccelCompact(context->optix, 0, asHandle, asBuffer.dPointer(),
+    optixAccelCompact(context.optix, 0, asHandle, asBuffer.dPointer(),
                       asBuffer.sizeInBytes, &asHandle);
     cudaDeviceSynchronize();
 
@@ -165,13 +164,15 @@ template <typename NumericType> struct TriangleGeometry {
     launchParams.traversable = asHandle;
   }
 
-  static TriangleMesh makeBoundary(const TriangleMesh &passedMesh) {
-    TriangleMesh boundaryMesh;
+  static TriangleMesh<float>
+  makeBoundary(const TriangleMesh<float> &passedMesh) {
+    TriangleMesh<float> boundaryMesh;
 
     Vec3Df bbMin = passedMesh.minimumExtent;
     Vec3Df bbMax = passedMesh.maximumExtent;
     // adjust bounding box to include source plane
     bbMax[2] += passedMesh.gridDelta;
+    boundaryMesh.gridDelta = passedMesh.gridDelta;
 
     boundaryMesh.vertices.reserve(8);
     boundaryMesh.triangles.reserve(8);
@@ -198,8 +199,8 @@ template <typename NumericType> struct TriangleGeometry {
     boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 7, 3}); // 6
     boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 3, 2}); // 7
 
-    boundaryMesh.minCoords = bbMin;
-    boundaryMesh.maxCoords = bbMax;
+    boundaryMesh.minimumExtent = bbMin;
+    boundaryMesh.maximumExtent = bbMax;
 
     return boundaryMesh;
   }
@@ -213,5 +214,4 @@ template <typename NumericType> struct TriangleGeometry {
   }
 };
 
-} // namespace gpu
-} // namespace viennaray
+} // namespace viennaray::gpu

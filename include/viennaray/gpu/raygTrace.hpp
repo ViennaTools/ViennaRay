@@ -1,30 +1,28 @@
 #pragma once
 
-#include "context.hpp"
 #include <cuda.h>
 #include <optix_stubs.h>
 
 #include <cstring>
-
-#include <lsPointData.hpp>
+#include <filesystem>
 
 #include <rayUtil.hpp>
 
-#include <raygBoundary.hpp>
-#include <raygGeometry.hpp>
-#include <raygLaunchParams.hpp>
-#include <raygParticle.hpp>
-#include <raygSBTRecords.hpp>
-#include <raygUtilities.hpp>
+#include "raygBoundary.hpp"
+#include "raygLaunchParams.hpp"
+#include "raygParticle.hpp"
+#include "raygSBTRecords.hpp"
+#include "raygTriangleGeometry.hpp"
 
-#include <gpu/vcChecks.hpp>
-#include <gpu/vcCudaBuffer.hpp>
 #include <gpu/vcLaunchKernel.hpp>
 #include <gpu/vcLoadModules.hpp>
 
-namespace viennaray {
+#include <gpu/vcChecks.hpp>
+#include <gpu/vcContext.hpp>
+#include <gpu/vcCudaBuffer.hpp>
+#include <vcUtil.hpp>
 
-namespace gpu {
+namespace viennaray::gpu {
 
 using namespace viennacore;
 
@@ -32,31 +30,28 @@ template <class T, int D> class Trace {
 public:
   /// constructor - performs all setup, including initializing
   /// optix, creates module, pipeline, programs, SBT, etc.
-  Trace(Context passedContext) : context(passedContext) {
+  explicit Trace(Context &passedContext) : context(passedContext) {
     initRayTracer();
-    mesh = SmartPointer<viennals::Mesh<float>>::New();
   }
 
-  void setGeometry(const TriangleMesh &passedMesh) {
+  void setGeometry(const TriangleMesh<float> &passedMesh) {
     geometry.buildAccel(context, passedMesh, launchParams);
   }
 
-  void setPipeline(std::string fileName,
-                   std::string path = VIENNAPS_KERNELS_PATH) {
+  void setPipeline(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
     if (fileName.find(".optixir") == std::string::npos) {
-      if (fileName.find(".ptx") != std::string::npos)
+      if (fileName.find(".ptx") == std::string::npos)
         fileName += ".optixir";
     }
 
-    if (!fileExists(path + fileName)) {
+    pipelineFile = path / fileName;
+
+    if (!std::filesystem::exists(pipelineFile)) {
       Logger::getInstance()
           .addError("Pipeline file " + fileName + " not found.")
           .print();
     }
-
-    pipelineName = fileName;
-    pipelinePath = path;
   }
 
   void insertNextParticle(const Particle<T> &particle) {
@@ -65,15 +60,16 @@ public:
 
   void apply() {
 
-    if (numCellData != 0 && cellDataBuffer.sizeInBytes == 0) {
-      cellDataBuffer.allocInit(numCellData * launchParams.numElements, T(0));
-    }
-    assert(cellDataBuffer.sizeInBytes / sizeof(T) ==
+    // if (numCellData != 0 && cellDataBuffer.sizeInBytes == 0) {
+    //   cellDataBuffer.allocInit(numCellData * launchParams.numElements,
+    //                            float(0));
+    // }
+    assert(cellDataBuffer.sizeInBytes / sizeof(float) ==
            numCellData * launchParams.numElements);
 
     // resize our cuda result buffer
-    resultBuffer.allocInit(launchParams.numElements * numRates, T(0));
-    launchParams.resultBuffer = (T *)resultBuffer.dPointer();
+    resultBuffer.allocInit(launchParams.numElements * numRates, float(0));
+    launchParams.resultBuffer = (float *)resultBuffer.dPointer();
 
     if (useRandomSeed) {
       std::random_device rd;
@@ -94,9 +90,11 @@ public:
     numRays = numPointsPerDim * numPointsPerDim * numberOfRaysPerPoint;
     if (numRays > (1 << 29)) {
       Logger::getInstance()
-          .addError("Too many rays for single launch: " +
-                    util::prettyDouble(numRays))
+          .addWarning("Too many rays for single launch: " +
+                      util::prettyDouble(numRays))
           .print();
+      numberOfRaysPerPoint = (1 << 29) / (numPointsPerDim * numPointsPerDim);
+      numRays = numPointsPerDim * numPointsPerDim * numberOfRaysPerPoint;
     }
     Logger::getInstance()
         .addDebug("Number of rays: " + util::prettyDouble(numRays))
@@ -104,17 +102,19 @@ public:
 
     for (size_t i = 0; i < particles.size(); i++) {
 
-      launchParams.cosineExponent = particles[i].cosineExponent;
-      launchParams.sticking = particles[i].sticking;
-      launchParams.meanIonEnergy = particles[i].meanIonEnergy;
-      launchParams.sigmaIonEnergy = particles[i].sigmaIonEnergy;
+      launchParams.cosineExponent =
+          static_cast<float>(particles[i].cosineExponent);
+      launchParams.sticking = static_cast<float>(particles[i].sticking);
+      Vec3Df direction{static_cast<float>(particles[i].direction[0]),
+                       static_cast<float>(particles[i].direction[1]),
+                       static_cast<float>(particles[i].direction[2])};
       launchParams.source.directionBasis =
-          rayInternal::getOrthonormalBasis<float>(particles[i].direction);
+          rayInternal::getOrthonormalBasis<float>(direction);
       launchParamsBuffer.upload(&launchParams, 1);
 
       CUstream stream;
       CUDA_CHECK(StreamCreate(&stream));
-      buildSBT(i);
+      generateSBT(i);
       OPTIX_CHECK(optixLaunch(pipelines[i], stream,
                               /*! parameters and SBT */
                               launchParamsBuffer.dPointer(),
@@ -124,13 +124,13 @@ public:
                               numberOfRaysPerPoint));
     }
 
-    // T *temp = new T[launchParams.numElements];
+    // std::cout << util::prettyDouble(numRays * particles.size()) << std::endl;
+    // float *temp = new float[launchParams.numElements];
     // resultBuffer.download(temp, launchParams.numElements);
     // for (int i = 0; i < launchParams.numElements; i++) {
-    //   std::cout << temp[i] << std::endl;
+    //   std::cout << temp[i] << " ";
     // }
     // delete temp;
-    // std::cout << util::prettyDouble(numRays * particles.size()) << std::endl;
 
     // sync - maybe remove in future
     cudaDeviceSynchronize();
@@ -173,9 +173,10 @@ public:
   // }
 
   void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
-    assert(passedCellDataBuffer.sizeInBytes / sizeof(T) / numData ==
+    assert(passedCellDataBuffer.sizeInBytes / sizeof(float) / numData ==
            launchParams.numElements);
     cellDataBuffer = passedCellDataBuffer;
+    numCellData = numData;
   }
 
   // void translateFromPointData(SmartPointer<viennals::Mesh<T>> mesh,
@@ -218,19 +219,19 @@ public:
     numberOfRaysPerPoint = pNumRays;
   }
 
-  void setFixedNumberOfRays(const size_t pNumRays) {
+  void setNumberOfRaysFixed(const size_t pNumRays) {
     numberOfRaysFixed = pNumRays;
   }
 
-  void setUseRandomSeed(const bool set) { useRandomSeed = set; }
+  void setUseRandomSeeds(const bool set) { useRandomSeed = set; }
 
-  void getFlux(T *flux, int particleIdx, int dataIdx) {
+  void getFlux(float *flux, int particleIdx, int dataIdx) {
     unsigned int offset = 0;
     for (size_t i = 0; i < particles.size(); i++) {
       if (particleIdx > i)
-        offset += particles[i].numberOfData;
+        offset += particles[i].dataLabels.size();
     }
-    auto temp = new T[numRates * launchParams.numElements];
+    auto temp = new float[numRates * launchParams.numElements];
     resultBuffer.download(temp, launchParams.numElements * numRates);
     offset = (offset + dataIdx) * launchParams.numElements;
     std::memcpy(flux, &temp[offset], launchParams.numElements * sizeof(T));
@@ -258,7 +259,7 @@ public:
     createMissPrograms();
     createHitgroupPrograms();
     createPipelines();
-    if (sbts.size() == 0) {
+    if (sbts.empty()) {
       for (size_t i = 0; i < particles.size(); i++) {
         OptixShaderBindingTable sbt = {};
         sbts.push_back(sbt);
@@ -267,73 +268,77 @@ public:
     numRates = 0;
     std::vector<unsigned int> dataPerParticle;
     for (const auto &p : particles) {
-      dataPerParticle.push_back(p.numberOfData);
-      numRates += p.numberOfData;
+      dataPerParticle.push_back(p.dataLabels.size());
+      numRates += p.dataLabels.size();
     }
     dataPerParticleBuffer.allocUpload(dataPerParticle);
     launchParams.dataPerParticle =
         (unsigned int *)dataPerParticleBuffer.dPointer();
+    Logger::getInstance()
+        .addDebug("Number of flux arrays: " + std::to_string(numRates))
+        .print();
+
     return numRates;
   }
 
-  void downloadResultsToPointData(viennals::PointData<T> &pointData,
-                                  CudaBuffer &valueBuffer,
-                                  unsigned int numPoints) {
-    T *temp = new T[numPoints * numRates];
-    valueBuffer.download(temp, numPoints * numRates);
-
-    int offset = 0;
-    for (int pIdx = 0; pIdx < particles.size(); pIdx++) {
-      for (int dIdx = 0; dIdx < particles[pIdx].numberOfData; dIdx++) {
-        int tmpOffset = offset + dIdx;
-        auto name = particles[pIdx].dataLabels[dIdx];
-
-        std::vector<T> *values = pointData.getScalarData(name, true);
-        if (values == nullptr) {
-          std::vector<T> val(numPoints);
-          pointData.insertNextScalarData(std::move(val), name);
-          values = pointData.getScalarData(name);
-        }
-        if (values->size() != numPoints)
-          values->resize(numPoints);
-
-        std::memcpy(values->data(), &temp[tmpOffset * numPoints],
-                    numPoints * sizeof(T));
-      }
-      offset += particles[pIdx].numberOfData;
-    }
-
-    delete temp;
-  }
-
-  void downloadResultsToPointData(viennals::PointData<T> &pointData) {
-    unsigned int numPoints = launchParams.numElements;
-    T *temp = new T[numPoints * numRates];
-    resultBuffer.download(temp, numPoints * numRates);
-
-    int offset = 0;
-    for (int pIdx = 0; pIdx < particles.size(); pIdx++) {
-      for (int dIdx = 0; dIdx < particles[pIdx].numberOfData; dIdx++) {
-        int tmpOffset = offset + dIdx;
-        auto name = particles[pIdx].dataLabels[dIdx];
-
-        std::vector<T> *values = pointData.getScalarData(name, true);
-        if (values == nullptr) {
-          std::vector<T> val(numPoints);
-          pointData.insertNextScalarData(std::move(val), name);
-          values = pointData.getScalarData(name);
-        }
-        if (values->size() != numPoints)
-          values->resize(numPoints);
-
-        std::memcpy(values->data(), &temp[tmpOffset * numPoints],
-                    numPoints * sizeof(T));
-      }
-      offset += particles[pIdx].numberOfData;
-    }
-
-    delete temp;
-  }
+  // void downloadResultsToPointData(viennals::PointData<T> &pointData,
+  //                                 CudaBuffer &valueBuffer,
+  //                                 unsigned int numPoints) {
+  //   T *temp = new T[numPoints * numRates];
+  //   valueBuffer.download(temp, numPoints * numRates);
+  //
+  //   int offset = 0;
+  //   for (int pIdx = 0; pIdx < particles.size(); pIdx++) {
+  //     for (int dIdx = 0; dIdx < particles[pIdx].dataLabels.size(); dIdx++) {
+  //       int tmpOffset = offset + dIdx;
+  //       auto name = particles[pIdx].dataLabels[dIdx];
+  //
+  //       std::vector<T> *values = pointData.getScalarData(name, true);
+  //       if (values == nullptr) {
+  //         std::vector<T> val(numPoints);
+  //         pointData.insertNextScalarData(std::move(val), name);
+  //         values = pointData.getScalarData(name);
+  //       }
+  //       if (values->size() != numPoints)
+  //         values->resize(numPoints);
+  //
+  //       std::memcpy(values->data(), &temp[tmpOffset * numPoints],
+  //                   numPoints * sizeof(T));
+  //     }
+  //     offset += particles[pIdx].dataLabels.size();
+  //   }
+  //
+  //   delete temp;
+  // }
+  //
+  // void downloadResultsToPointData(viennals::PointData<float> &pointData) {
+  //   unsigned int numPoints = launchParams.numElements;
+  //   auto *temp = new float[numPoints * numRates];
+  //   resultBuffer.download(temp, numPoints * numRates);
+  //
+  //   int offset = 0;
+  //   for (int pIdx = 0; pIdx < particles.size(); pIdx++) {
+  //     for (int dIdx = 0; dIdx < particles[pIdx].dataLabels.size(); dIdx++) {
+  //       int tmpOffset = offset + dIdx;
+  //       auto name = particles[pIdx].dataLabels[dIdx];
+  //
+  //       std::vector<float> *values = pointData.getScalarData(name, true);
+  //       if (values == nullptr) {
+  //         std::vector<float> val(numPoints);
+  //         pointData.insertNextScalarData(std::move(val), name);
+  //         values = pointData.getScalarData(name);
+  //       }
+  //       if (values->size() != numPoints)
+  //         values->resize(numPoints);
+  //
+  //       std::memcpy(values->data(), &temp[tmpOffset * numPoints],
+  //                   numPoints * sizeof(float));
+  //     }
+  //     offset += particles[pIdx].dataLabels.size();
+  //   }
+  //
+  //   delete temp;
+  // }
 
   CudaBuffer &getData() { return cellDataBuffer; }
 
@@ -347,9 +352,15 @@ public:
 
   unsigned int getNumberOfElements() const { return launchParams.numElements; }
 
+  void setParameters(CUdeviceptr params) {
+    launchParams.customData = (void *)params;
+  }
+
+  auto &getParameterBuffer() { return parameterBuffer; }
+
 protected:
   void normalize() {
-    T sourceArea =
+    float sourceArea =
         (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]) *
         (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
     assert(resultBuffer.sizeInBytes != 0 &&
@@ -365,10 +376,9 @@ protected:
   }
 
   void initRayTracer() {
+    context.addModule(normModuleName);
     launchParamsBuffer.alloc(sizeof(launchParams));
     normKernelName.push_back(NumericType);
-    translateFromPointDataKernelName.push_back(NumericType);
-    translateToPointDataKernelName.push_back(NumericType);
   }
 
   /// creates the module that contains all the programs we are going to use. We
@@ -395,10 +405,9 @@ protected:
     size_t sizeof_log = sizeof(log);
 
     size_t inputSize = 0;
-    auto pipelineInput =
-        getInputData((pipelinePath + pipelineName).c_str(), inputSize);
+    auto pipelineInput = getInputData(pipelineFile.c_str(), inputSize);
 
-    OPTIX_CHECK(optixModuleCreate(optixContext, &moduleCompileOptions,
+    OPTIX_CHECK(optixModuleCreate(context.optix, &moduleCompileOptions,
                                   &pipelineCompileOptions, pipelineInput,
                                   inputSize, log, &sizeof_log, &module));
     // if (sizeof_log > 1)
@@ -419,7 +428,7 @@ protected:
       // OptixProgramGroup raypg;
       char log[2048];
       size_t sizeof_log = sizeof(log);
-      OPTIX_CHECK(optixProgramGroupCreate(optixContext, &pgDesc, 1, &pgOptions,
+      OPTIX_CHECK(optixProgramGroupCreate(context.optix, &pgDesc, 1, &pgOptions,
                                           log, &sizeof_log, &raygenPGs[i]));
       // if (sizeof_log > 1)
       //   PRINT(log);
@@ -440,7 +449,7 @@ protected:
       // OptixProgramGroup raypg;
       char log[2048];
       size_t sizeof_log = sizeof(log);
-      OPTIX_CHECK(optixProgramGroupCreate(optixContext, &pgDesc, 1, &pgOptions,
+      OPTIX_CHECK(optixProgramGroupCreate(context.optix, &pgDesc, 1, &pgOptions,
                                           log, &sizeof_log, &missPGs[i]));
       // if (sizeof_log > 1)
       //   PRINT(log);
@@ -460,7 +469,7 @@ protected:
 
       char log[2048];
       size_t sizeof_log = sizeof(log);
-      OPTIX_CHECK(optixProgramGroupCreate(optixContext, &pgDesc, 1, &pgOptions,
+      OPTIX_CHECK(optixProgramGroupCreate(context.optix, &pgDesc, 1, &pgOptions,
                                           log, &sizeof_log, &hitgroupPGs[i]));
       // if (sizeof_log > 1)
       //   PRINT(log);
@@ -479,11 +488,13 @@ protected:
       char log[2048];
       size_t sizeof_log = sizeof(log);
       OPTIX_CHECK(optixPipelineCreate(
-          optixContext, &pipelineCompileOptions, &pipelineLinkOptions,
-          programGroups.data(), (int)programGroups.size(), log, &sizeof_log,
-          &pipelines[i]));
-      // if (sizeof_log > 1)
-      //   PRINT(log);
+          context.optix, &pipelineCompileOptions, &pipelineLinkOptions,
+          programGroups.data(), static_cast<int>(programGroups.size()), log,
+          &sizeof_log, &pipelines[i]));
+      // #ifndef NDEBUG
+      //       if (sizeof_log > 1)
+      //         PRINT(log);
+      // #endif
     }
     // probably not needed in current implementation but maybe something to
     // think about in future OPTIX_CHECK(optixPipelineSetStackSize(
@@ -499,7 +510,7 @@ protected:
   }
 
   /// constructs the shader binding table
-  void buildSBT(const size_t i) {
+  void generateSBT(const size_t i) {
     // build raygen record
     RaygenRecord raygenRecord;
     optixSbtRecordPackHeader(raygenPGs[i], &raygenRecord);
@@ -548,17 +559,17 @@ protected:
 
 protected:
   // context for cuda kernels
-  Context context;
-  std::string pipelineName;
-  std::string pipelinePath = VIENNAPS_KERNELS_PATH;
+  Context &context;
+  std::filesystem::path pipelineFile;
 
   // geometry
-  TriangleGeometry<T> geometry;
+  TriangleGeometry geometry;
 
   // particles
   std::vector<Particle<T>> particles;
   CudaBuffer dataPerParticleBuffer;
   unsigned int numRates = 0;
+  CudaBuffer parameterBuffer;
 
   // sbt data
   CudaBuffer cellDataBuffer;
@@ -567,7 +578,7 @@ protected:
   OptixPipelineCompileOptions pipelineCompileOptions = {};
   OptixPipelineLinkOptions pipelineLinkOptions = {};
 
-  OptixModule module;
+  OptixModule module{};
   OptixModuleCompileOptions moduleCompileOptions = {};
 
   // program groups, and the SBT built around
@@ -580,7 +591,7 @@ protected:
   std::vector<OptixShaderBindingTable> sbts;
 
   // launch parameters, on the host, constant for all particles
-  LaunchParams<T> launchParams;
+  LaunchParams launchParams;
   CudaBuffer launchParamsBuffer;
 
   // results Buffer
@@ -588,24 +599,18 @@ protected:
 
   bool useRandomSeed = false;
   unsigned numCellData = 0;
-  int numberOfRaysPerPoint = 3000;
-  int numberOfRaysFixed = 0;
+  unsigned numberOfRaysPerPoint = 3000;
+  unsigned numberOfRaysFixed = 0;
   int runNumber = 0;
 
   size_t numRays = 0;
-  std::string globalParamsName = "params";
+  std::string globalParamsName = "launchParams";
 
   const std::string normModuleName = "normKernels.ptx";
   std::string normKernelName = "normalize_surface_";
 
-  const std::string translateModuleName = "translateKernels.ptx";
-  std::string translateToPointDataKernelName = "translate_to_point_cloud_mesh_";
-  std::string translateFromPointDataKernelName =
-      "translate_from_point_cloud_mesh_";
-
-  static constexpr bool useFloat = std::is_same_v<T, float>;
-  static constexpr char NumericType = useFloat ? 'f' : 'd';
+  static constexpr char NumericType =
+      'f'; // std::is_same_v<T, float> ? 'f' : 'd';
 };
 
-} // namespace gpu
-} // namespace viennaray
+} // namespace viennaray::gpu

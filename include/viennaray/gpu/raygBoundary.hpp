@@ -1,7 +1,7 @@
 #pragma once
 
-#include <raygPerRayData.hpp>
-#include <raygSBTRecords.hpp>
+#include "raygPerRayData.hpp"
+#include "raygSBTRecords.hpp"
 
 #include <vcVectorUtil.hpp>
 
@@ -15,7 +15,7 @@ computeNormal(const viennaray::gpu::HitSBTData *sbt,
   const Vec3Df &A = sbt->vertex[index[0]];
   const Vec3Df &B = sbt->vertex[index[1]];
   const Vec3Df &C = sbt->vertex[index[2]];
-  return Normalize(CrossProduct(B - A, C - A));
+  return Normalize<float, 3>(CrossProduct<float>(B - A, C - A));
 }
 
 __device__ __inline__ void
