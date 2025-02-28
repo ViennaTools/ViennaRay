@@ -60,28 +60,36 @@ template <typename NumericType, int D>
   // (https://math.stackexchange.com/a/182936)
   std::uniform_real_distribution<NumericType> uniDist;
 
-  Vec3D<NumericType> direction;
+  if (maxConeAngle <= 0.) {
+    return ReflectionSpecular<NumericType>(rayDir, geomNormal);
+  }
 
+  if (maxConeAngle >= M_PI_2) {
+    return ReflectionDiffuse<NumericType, D>(geomNormal, rngState);
+  }
+
+  Vec3D<NumericType> direction;
+  // compute specular direction
+  auto const dirOldInv = Inv(rayDir);
+  auto const specDirection =
+      (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
+  auto const basis = getOrthonormalBasis(specDirection);
+
+  // theta from coned cosine distribution (accept reject sampling)
+  NumericType u, sqrt_1m_u, theta;
+  do { // generate a random angle between 0 and specular angle
+    u = std::sqrt(uniDist(rngState)); // x
+    sqrt_1m_u = std::sqrt(1. - u);    // y
+    theta = maxConeAngle * sqrt_1m_u; // theta
+  } while (uniDist(rngState) * theta * u >
+           std::cos(M_PI_2 * sqrt_1m_u) * std::sin(theta));
+  NumericType cosTheta = std::cos(theta);
+  NumericType sinTheta = std::sin(theta);
+
+  // random rotation
   do {
     // sample phi uniformly in [0, 2pi]
     NumericType phi = uniDist(rngState) * 2 * M_PI;
-    // theta on sphere
-    assert(maxConeAngle >= 0. && maxConeAngle <= M_PI / 2. &&
-           "Cone angle not allowed");
-    NumericType cosTheta = std::cos(maxConeAngle);
-    // sample z uniformly on [cos(theta),1]
-    NumericType z = uniDist(rngState) * (1 - cosTheta) + cosTheta;
-
-    // compute specular direction
-    auto dirOldInv = Inv(rayDir);
-    auto specDirection =
-        (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
-
-    // rotate
-    auto basis = getOrthonormalBasis(specDirection);
-    NumericType theta = std::acos(z);
-    cosTheta = std::cos(theta);
-    NumericType sinTheta = std::sin(theta);
     NumericType cosPhi = std::cos(phi);
     NumericType sinPhi = std::sin(phi);
 
@@ -92,7 +100,7 @@ template <typename NumericType, int D>
     direction[2] = sinTheta * (cosPhi * basis[1][2] + sinPhi * basis[2][2]) +
                    cosTheta * basis[0][2];
 
-  } while (DotProduct(direction, geomNormal) < 0.);
+  } while (DotProduct(direction, geomNormal) <= 0.);
 
   if constexpr (D == 2) {
     direction[2] = 0;
@@ -112,9 +120,9 @@ using namespace viennacore;
 // Coned cosine reflection (deprecated)
 template <typename NumericType, int D>
 [[nodiscard]] Vec3D<NumericType>
-ReflectionConedCosineOld(NumericType avgReflAngle,
-                         const Vec3D<NumericType> &rayDir,
-                         const Vec3D<NumericType> &geomNormal, RNG &rngState) {
+ReflectionConedCosineOld(const Vec3D<NumericType> &rayDir,
+                         const Vec3D<NumericType> &geomNormal, RNG &rngState,
+                         const NumericType maxConeAngle) {
 
   assert(IsNormalized(geomNormal) &&
          "ReflectionSpecular: Surface normal is not normalized");
@@ -123,7 +131,6 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
 
   // Calculate specular direction
   auto dirOldInv = Inv(rayDir);
-
   auto specDirection =
       (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
 
@@ -135,57 +142,57 @@ ReflectionConedCosineOld(NumericType avgReflAngle,
   //  loop until ray is reflected away from the surface normal
   //  this loop takes care of the case where part of the cone points
   //  into the geometry
+
+  // accept reject sampling
+  do { // generate a random angle between 0 and specular angle
+    u = std::sqrt(uniDist(rngState)); // x
+    sqrt_1m_u = std::sqrt(1. - u);    // y
+    angle = maxConeAngle * sqrt_1m_u; // theta
+  } while (uniDist(rngState) * angle * u >
+           std::cos(M_PI_2 * sqrt_1m_u) * std::sin(angle));
+
+  NumericType cosTheta = std::cos(angle);
+  assert(cosTheta >= 0. && "ReflectionConedCosine: cosTheta < 0");
+  assert(cosTheta <= 1. + 1e-6 && "ReflectionConedCosine: cosTheta > 1");
+
+  // Random Azimuthal Rotation
+  NumericType cosPhi, sinPhi;
+  NumericType r2;
   do {
-    do { // generate a random angle between 0 and specular angle
-      u = std::sqrt(uniDist(rngState));
-      sqrt_1m_u = std::sqrt(1. - u);
-      angle = avgReflAngle * sqrt_1m_u;
-    } while (uniDist(rngState) * angle * u >
-             std::cos(M_PI_2 * sqrt_1m_u) * std::sin(angle));
+    cosPhi = uniDist(rngState) - 0.5;
+    sinPhi = uniDist(rngState) - 0.5;
+    r2 = cosPhi * cosPhi + sinPhi * sinPhi;
+  } while (r2 >= 0.25 || r2 <= std::numeric_limits<NumericType>::epsilon());
 
-    // Random Azimuthal Rotation
-    NumericType cosTheta =
-        std::max(std::min(std::cos(angle), NumericType(1)), NumericType(0));
-    NumericType cosPhi, sinPhi;
-    NumericType r2;
+  // Rotate
+  NumericType a0;
+  NumericType a1;
 
-    do {
-      cosPhi = uniDist(rngState) - 0.5;
-      sinPhi = uniDist(rngState) - 0.5;
-      r2 = cosPhi * cosPhi + sinPhi * sinPhi;
-    } while (r2 >= 0.25 || r2 <= std::numeric_limits<NumericType>::epsilon());
+  if (std::fabs(specDirection[0]) <= std::fabs(specDirection[1])) {
+    a0 = specDirection[0];
+    a1 = specDirection[1];
+  } else {
+    a0 = specDirection[1];
+    a1 = specDirection[0];
+  }
 
-    // Rotate
-    cosTheta = std::min(cosTheta, NumericType(1));
+  const double a0_a0_m1 = 1. - a0 * a0;
+  const double tmp =
+      std::sqrt(std::max(1. - cosTheta * cosTheta, 0.) / (r2 * a0_a0_m1));
+  const double tmp_sinPhi = tmp * sinPhi;
+  const double tmp_cosPhi = tmp * cosPhi;
+  const NumericType cosTheta_p_a0_tmp_sinPhi = cosTheta + a0 * tmp_sinPhi;
 
-    NumericType a0;
-    NumericType a1;
+  randomDir[0] = a0 * cosTheta - a0_a0_m1 * tmp_sinPhi;
+  randomDir[1] = a1 * cosTheta_p_a0_tmp_sinPhi + specDirection[2] * tmp_cosPhi;
+  randomDir[2] = specDirection[2] * cosTheta_p_a0_tmp_sinPhi - a1 * tmp_cosPhi;
 
-    if (std::fabs(specDirection[0]) <= std::fabs(specDirection[1])) {
-      a0 = specDirection[0];
-      a1 = specDirection[1];
-    } else {
-      a0 = specDirection[1];
-      a1 = specDirection[0];
-    }
+  if (a0 != specDirection[0])
+    std::swap(randomDir[0], randomDir[1]);
 
-    const NumericType a0_a0_m1 = 1. - a0 * a0;
-    const NumericType tmp = std::sqrt(
-        std::max(NumericType(1) - cosTheta * cosTheta, NumericType(0)) /
-        (r2 * a0_a0_m1));
-    const NumericType tmp_sinPhi = tmp * sinPhi;
-    const NumericType tmp_cosPhi = tmp * cosPhi;
-    const NumericType cosTheta_p_a0_tmp_sinPhi = cosTheta + a0 * tmp_sinPhi;
-
-    randomDir[0] = a0 * cosTheta - a0_a0_m1 * tmp_sinPhi;
-    randomDir[1] =
-        a1 * cosTheta_p_a0_tmp_sinPhi + specDirection[2] * tmp_cosPhi;
-    randomDir[2] =
-        specDirection[2] * cosTheta_p_a0_tmp_sinPhi - a1 * tmp_cosPhi;
-
-    if (a0 != specDirection[0])
-      std::swap(randomDir[0], randomDir[1]);
-  } while (DotProduct(randomDir, geomNormal) <= 0.);
+  assert(DotProduct(randomDir, geomNormal) > 0. && "ReflectionConedCosine: "
+                                                   "New direction points into "
+                                                   "the geometry");
 
   if constexpr (D == 2) {
     randomDir[2] = 0;
@@ -202,7 +209,7 @@ template <typename NumericType, int D>
 [[nodiscard]] Vec3D<NumericType>
 ReflectionConedCosineOld2(const Vec3D<NumericType> &rayDir,
                           const Vec3D<NumericType> &geomNormal, RNG &rngState,
-                          NumericType &minAvgConeAngle = 0.) {
+                          NumericType minAvgConeAngle = 0.) {
 
   assert(IsNormalized(geomNormal) &&
          "ReflectionSpecular: Surface normal is not normalized");
@@ -216,7 +223,7 @@ ReflectionConedCosineOld2(const Vec3D<NumericType> &rayDir,
       (2 * DotProduct(geomNormal, dirOldInv) * geomNormal) - dirOldInv;
 
   // Compute incidence angle
-  double cosTheta = static_cast<double>(-DotProduct(rayDir, geomNormal));
+  auto cosTheta = static_cast<double>(-DotProduct(rayDir, geomNormal));
 
   assert(cosTheta >= 0. && "Hit backside of disc");
   assert(cosTheta <= 1. + 1e-6 && "Error in calculating cos theta");

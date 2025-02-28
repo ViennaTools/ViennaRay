@@ -19,9 +19,9 @@ public:
       : bdBox_(boundingBox), rayDir_(pTraceSettings[0]),
         firstDir_(pTraceSettings[1]), secondDir_(pTraceSettings[2]),
         minMax_(pTraceSettings[3]), posNeg_(pTraceSettings[4]),
-        ee_(((NumericType)2) / (cosinePower + 1)), numPoints_(numPoints_),
-        customDirection_(customDirection), orthonormalBasis_(orthonormalBasis) {
-  }
+        ee_(static_cast<NumericType>(2) / (cosinePower + 1)),
+        numPoints_(numPoints_), customDirection_(customDirection),
+        orthonormalBasis_(orthonormalBasis) {}
 
   Vec2D<Vec3D<NumericType>>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
@@ -36,7 +36,7 @@ public:
     return {origin, direction};
   }
 
-  size_t getNumPoints() const override { return numPoints_; }
+  [[nodiscard]] size_t getNumPoints() const override { return numPoints_; }
 
   NumericType getSourceArea() const override {
     if constexpr (D == 2) {

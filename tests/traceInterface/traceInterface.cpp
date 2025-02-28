@@ -55,6 +55,13 @@ int main() {
 
   rayTracer.apply();
 
+  auto flux = rayTracer.getLocalData().getVectorData(0);
+  VC_TEST_ASSERT(flux.size() == points.size());
+
+  rayTracer.normalizeFlux(flux);
+  rayTracer.smoothFlux(flux, 2);
+  VC_TEST_ASSERT(flux.size() == points.size());
+
   auto info = rayTracer.getRayTraceInfo();
   VC_TEST_ASSERT(info.numRays == 4410);
 

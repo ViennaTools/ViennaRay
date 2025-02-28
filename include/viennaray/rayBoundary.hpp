@@ -19,7 +19,7 @@ template <typename NumericType, int D> class Boundary {
 public:
   Boundary(RTCDevice &device, boundingBoxType const &boundingBox,
            BoundaryCondition boundaryConds[D],
-           std::array<int, 5> &traceSettings)
+           const std::array<int, 5> &traceSettings)
       : bdBox_(boundingBox), firstDir_(traceSettings[1]),
         secondDir_(traceSettings[2]),
         boundaryConds_({boundaryConds[firstDir_], boundaryConds[secondDir_]}) {
@@ -38,7 +38,7 @@ public:
       // let ray pass through
       reflect = true;
       const auto impactCoords = getNewOrigin(rayHit.ray);
-      assignRayCoords(rayHit, impactCoords);
+      rayInternal::fillRayPosition(rayHit.ray, impactCoords);
       return;
     }
 
@@ -59,7 +59,7 @@ public:
           // hit at x/y max boundary -> move to min x/y
           impactCoords[firstDir_] = bdBox_[0][firstDir_];
         }
-        assignRayCoords(rayHit, impactCoords);
+        rayInternal::fillRayPosition(rayHit.ray, impactCoords);
         reflect = true;
         return;
       } else {
@@ -70,7 +70,7 @@ public:
 
       assert(false && "Correctness Assumption");
     } else {
-      if (primID >= 0 && primID <= 3) {
+      if (primID <= 3) {
         if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
@@ -86,7 +86,7 @@ public:
             // hit at firstDir max boundary -> move to min firstDir
             impactCoords[firstDir_] = bdBox_[0][firstDir_];
           }
-          assignRayCoords(rayHit, impactCoords);
+          rayInternal::fillRayPosition(rayHit.ray, impactCoords);
           reflect = true;
           return;
         } else {
@@ -94,7 +94,7 @@ public:
           reflect = false;
           return;
         }
-      } else if (primID >= 4 && primID <= 7) {
+      } else if (primID <= 7) {
         if (boundaryConds_[1] == BoundaryCondition::REFLECTIVE) {
           // use specular reflection
           reflectRay(rayHit);
@@ -110,7 +110,7 @@ public:
             // hit at secondDir max boundary -> move to min secondDir
             impactCoords[secondDir_] = bdBox_[0][secondDir_];
           }
-          assignRayCoords(rayHit, impactCoords);
+          rayInternal::fillRayPosition(rayHit.ray, impactCoords);
           reflect = true;
           return;
         } else {
@@ -126,7 +126,9 @@ public:
 
   auto getBoundaryConditions() const { return boundaryConds_; }
 
-  RTCGeometry const &getRTCGeometry() const { return pRtcBoundary_; }
+  [[nodiscard]] RTCGeometry const &getRTCGeometry() const {
+    return pRtcBoundary_;
+  }
 
   void releaseGeometry() {
     // Attention:
@@ -143,10 +145,10 @@ public:
     }
   }
 
-  Vec2D<int> getDirs() const { return {firstDir_, secondDir_}; }
+  [[nodiscard]] Vec2D<int> getDirs() const { return {firstDir_, secondDir_}; }
 
 private:
-  static Vec3D<rayInternal::rtcNumericType> getNewOrigin(RTCRay &ray) {
+  static Vec3D<rayInternal::rtcNumericType> getNewOrigin(const RTCRay &ray) {
     assert(IsNormalized(Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
            "MetaGeometry: direction not normalized");
     auto xx = ray.org_x + ray.dir_x * ray.tfar;
@@ -252,49 +254,18 @@ private:
             (NumericType)pVertexBuffer_[tt.v2].zz};
   }
 
-  void reflectRay(RTCRayHit &rayHit) const {
+  static void reflectRay(RTCRayHit &rayHit) {
     auto dir = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &rayHit.ray.dir_x);
     auto normal = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
         &rayHit.hit.Ng_x);
     Normalize(dir);
     Normalize(normal);
-    dir = ReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
-    // normal gets reused for new origin here
-    normal = getNewOrigin(rayHit.ray);
-#ifdef ARCH_X86
-    reinterpret_cast<__m128 &>(rayHit.ray) =
-        _mm_set_ps(1e-4f, normal[2], normal[1], normal[0]);
-    reinterpret_cast<__m128 &>(rayHit.ray.dir_x) =
-        _mm_set_ps(0.0f, dir[2], dir[1], dir[0]);
-#else
-    rayHit.ray.org_x = normal[0];
-    rayHit.ray.org_y = normal[1];
-    rayHit.ray.org_z = normal[2];
-    rayHit.ray.tnear = 1e-4f;
-
-    rayHit.ray.dir_x = dir[0];
-    rayHit.ray.dir_y = dir[1];
-    rayHit.ray.dir_z = dir[2];
-    rayHit.ray.time = 0.0f;
-#endif
-  }
-
-  void assignRayCoords(RTCRayHit &rayHit,
-                       const Vec3D<rayInternal::rtcNumericType> &coords) const {
-#ifdef ARCH_X86
-    reinterpret_cast<__m128 &>(rayHit.ray) =
-        _mm_set_ps(1e-4f, (rayInternal::rtcNumericType)coords[2],
-                   (rayInternal::rtcNumericType)coords[1],
-                   (rayInternal::rtcNumericType)coords[0]);
-    rayHit.ray.time = 0.0f;
-#else
-    rayHit.ray.org_x = coords[0];
-    rayHit.ray.org_y = coords[1];
-    rayHit.ray.org_z = coords[2];
-    rayHit.ray.tnear = 1e-4f;
-    rayHit.ray.time = 0.0f;
-#endif
+    auto const direction =
+        ReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
+    auto const origin = getNewOrigin(rayHit.ray);
+    rayInternal::fillRayDirection(rayHit.ray, direction);
+    rayInternal::fillRayPosition(rayHit.ray, origin);
   }
 
   struct vertex_f3_t {

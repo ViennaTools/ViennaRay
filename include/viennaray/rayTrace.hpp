@@ -52,7 +52,6 @@ public:
     if (!localDataLabels.empty()) {
       localData_.setNumberOfVectorData(localDataLabels.size());
       auto numPoints = geometry_.getNumPoints();
-      auto localDataLabels = pParticle_->getLocalDataLabels();
       for (int i = 0; i < localDataLabels.size(); ++i) {
         localData_.setVectorData(i, numPoints, 0., localDataLabels[i]);
       }
@@ -112,7 +111,7 @@ public:
   }
 
   /// Set material ID's for each geometry point.
-  /// If not set, all material ID's are default 0.
+  /// If not set, all material IDs are default 0.
   template <typename T> void setMaterialIds(std::vector<T> const &materialIds) {
     geometry_.setMaterialIds(materialIds);
   }
@@ -167,7 +166,7 @@ public:
 
   /// Set the primary direction of the source distribution. This can be used to
   /// obtain a tilted source distribution. Setting the primary direction does
-  /// not change the position of the source plane. Therefore, one has the be
+  /// not change the position of the source plane. Therefore, one has to be
   /// careful that the resulting distribution does not lie completely above the
   /// source plane.
   void setPrimaryDirection(const Vec3D<NumericType> primaryDirection) {
@@ -259,17 +258,46 @@ public:
 
   /// Helper function to smooth the recorded flux by averaging over the
   /// neighborhood in a post-processing step.
-  void smoothFlux(std::vector<NumericType> &flux) {
+  void smoothFlux(std::vector<NumericType> &flux, int numNeighbors = 1) {
     assert(flux.size() == geometry_.getNumPoints() &&
            "Unequal number of points in smoothFlux");
     auto oldFlux = flux;
+    PointNeighborhood<NumericType, D> pointNeighborhood;
+    if (numNeighbors == 1) {
+      // re-use the neighborhood from the geometry
+      pointNeighborhood = geometry_.getPointNeighborhood();
+    } else {
+      // create a new neighborhood with a larger radius
+      auto boundingBox = geometry_.getBoundingBox();
+      std::vector<Vec3D<NumericType>> points(geometry_.getNumPoints());
+#pragma omp parallel for
+      for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
+        points[idx] = geometry_.getPoint(idx);
+      }
+      pointNeighborhood = PointNeighborhood<NumericType, D>(
+          points, numNeighbors * 2 * diskRadius_, boundingBox[0],
+          boundingBox[1]);
+    }
+
 #pragma omp parallel for
     for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
-      auto neighborhood = geometry_.getNeighborIndicies(idx);
+
+      NumericType vv = oldFlux[idx];
+
+      auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
+      NumericType sum = 1.;
+      auto const normal = geometry_.getPrimNormal(idx);
+
       for (auto const &nbi : neighborhood) {
-        flux[idx] += oldFlux[nbi];
+        auto nnormal = geometry_.getPrimNormal(nbi);
+        auto weight = DotProduct(normal, nnormal);
+        if (weight > 0.) {
+          vv += oldFlux[nbi] * weight;
+          sum += weight;
+        }
       }
-      flux[idx] /= (neighborhood.size() + 1);
+
+      flux[idx] = vv / sum;
     }
   }
 
@@ -294,9 +322,11 @@ public:
     return pGlobalData_;
   }
 
+  Geometry<NumericType, D> &getGeometry() { return geometry_; }
+
   void setGlobalData(TracingData<NumericType> &data) { pGlobalData_ = &data; }
 
-  [[nodiscard]] TraceInfo getRayTraceInfo() { return RTInfo_; }
+  [[nodiscard]] TraceInfo getRayTraceInfo() const { return RTInfo_; }
 
   [[nodiscard]] DataLog<NumericType> &getDataLog() { return dataLog_; }
 
@@ -304,7 +334,7 @@ private:
   void checkRelativeError() {
     auto error = getRelativeError();
     const int numPoints = error.size();
-    int numThreads = omp_get_max_threads();
+    const int numThreads = omp_get_max_threads();
     std::vector<bool> passed(numThreads, true);
 
 #pragma omp parallel shared(error, passed)
@@ -359,7 +389,7 @@ private:
     }
   }
 
-  void initMemoryFlags() {
+  static void initMemoryFlags() {
 #ifdef ARCH_X86
     // for best performance set FTZ and DAZ flags in MXCSR control and status
     // register
