@@ -148,9 +148,6 @@ endif()
 if(${VIENNARAY_USE_GPU})
   # Add ViennaCore tools paths to our CMake code to the module path, so they can be found automatically by
   # CMake (i.e. FindCUDA and FindOptiX).
-  set(VIENNACORE_CMAKE_TOOLS
-      "${ViennaCore_SOURCE_DIR}/tools"
-      CACHE STRING "CMake helper files ViennaCORE")
   set(CMAKE_MODULE_PATH ${VIENNACORE_CMAKE_TOOLS} ${CMAKE_MODULE_PATH})
   find_package(CUDA 5.0 QUIET)
 

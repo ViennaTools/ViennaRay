@@ -1,5 +1,7 @@
 #include <gpu/raygTrace.hpp>
 
+#include <gpu/vcContext.hpp>
+
 using namespace viennaray;
 
 int main(int argc, char **argv) {
