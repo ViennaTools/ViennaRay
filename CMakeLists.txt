@@ -12,10 +12,10 @@ option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
-option(VIENNARAY_DISABLE_GPU "Disable ViennaRay from checking for a GPU." OFF)
+option(VIENNARAY_USE_GPU "Disable ViennaRay from checking for a GPU." OFF)
 
-option(VIENNARAY_BUILD_EXAMPLES "Build examples" ON)
-option(VIENNARAY_BUILD_TESTS "Build tests" ON)
+option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
+option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -145,10 +145,13 @@ endif()
 # Setup GPU
 # --------------------------------------------------------------------------------------------------------
 
-if(NOT VIENNARAY_DISABLE_GPU)
-  # Add paths to our CMake code to the module path, so they can be found automatically by
+if(${VIENNARAY_USE_GPU})
+  # Add ViennaCore tools paths to our CMake code to the module path, so they can be found automatically by
   # CMake (i.e. FindCUDA and FindOptiX).
-  set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+  set(VIENNACORE_CMAKE_TOOLS
+      "${ViennaCore_SOURCE_DIR}/tools"
+      CACHE STRING "CMake helper files ViennaCORE")
+  set(CMAKE_MODULE_PATH ${VIENNACORE_CMAKE_TOOLS} ${CMAKE_MODULE_PATH})
   find_package(CUDA 5.0 QUIET)
 
   # Find OptiX
@@ -169,19 +172,13 @@ if(NOT VIENNARAY_DISABLE_GPU)
 
   # Requires both CUDA and OptiX
   if(CUDA_FOUND AND OptiX_INCLUDE)
-    set(VIENNARAY_USE_GPU
-        ON
-        CACHE BOOL "Use GPU for ViennaRay")
     message(STATUS "Found CUDA Toolkit: ${CUDA_TOOLKIT_ROOT_DIR}")
-
     add_subdirectory(gpu)
   else()
-    set(VIENNARAY_USE_GPU
-        OFF
-        CACHE BOOL "Use GPU for ViennaRay")
+    set(VIENNARAY_USE_GPU OFF)
     message(WARNING "CUDA Toolkit or OptiX not found. Skipping GPU build.")
   endif()
-endif(NOT VIENNARAY_DISABLE_GPU)
+endif()
 
 # --------------------------------------------------------------------------------------------------------
 # Install Target

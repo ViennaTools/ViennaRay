@@ -82,7 +82,7 @@ mark_as_advanced(CLEAR CUDA_64_BIT_DEVICE_CODE)
 # as much as you wish from the GUI or from ccmake.
 if(NOT PASSED_FIRST_CONFIGURE)
   message(STATUS "Setting default NVCC flags for first time configuration.")
-  include("../cmake/cuda_helper.cmake")
+  include("${VIENNACORE_CMAKE_TOOLS}/cuda_helper.cmake")
 
   set(CUDA_NVCC_FLAGS_DESCRIPTION "Semi-colon delimit multiple arguments.")
   string(REPLACE "sm_" "compute_" CUDA_MIN_SM_COMPUTE_TARGET ${CUDA_MIN_SM_TARGET})
