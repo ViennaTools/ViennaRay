@@ -14,6 +14,14 @@ int main(int argc, char **argv) {
   Context context;
   context.create();
 
+  NumericType gridDelta;
+  std::vector<Vec3D<NumericType>> points;
+  std::vector<Vec3D<NumericType>> normals;
+  rayInternal::readGridFromFile("../../tests/Resources/trenchGrid2D.dat", gridDelta,
+                                points, normals);
+
+  std::vector<int> materialIds(points.size(), 0);
+
   gpu::Trace<NumericType, D> tracer(context);
 
   context.destroy();
