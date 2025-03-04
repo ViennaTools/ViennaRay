@@ -131,6 +131,7 @@ public:
     }
 
     for (size_t i = 0; i < particles.size(); i++) {
+      launchParams.particleIdx = static_cast<unsigned>(i);
       launchParams.cosineExponent =
           static_cast<float>(particles[i].cosineExponent);
       launchParams.sticking = static_cast<float>(particles[i].sticking);

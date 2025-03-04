@@ -15,6 +15,7 @@ struct LaunchParams {
   unsigned int *dataPerParticle; // to determine result buffer index
   bool periodicBoundary = false;
   unsigned int maxRayDepth = 100;
+  unsigned int particleIdx = 0;
 
   // std::unordered_map<int, float> sticking;
   int *materialIds;
@@ -36,12 +37,12 @@ struct LaunchParams {
 };
 
 #ifdef __CUDACC__
-__device__ __forceinline__ unsigned int getIdx(int particleIdx, int dataIdx,
-                                               LaunchParams *launchParams) {
+__device__ __forceinline__ unsigned int
+getIdx(int dataIdx, const LaunchParams &launchParams) {
   unsigned int offset = 0;
-  for (unsigned int i = 0; i < particleIdx; i++)
-    offset += launchParams->dataPerParticle[i];
-  offset = (offset + dataIdx) * launchParams->numElements;
+  for (unsigned int i = 0; i < launchParams.particleIdx; i++)
+    offset += launchParams.dataPerParticle[i];
+  offset = (offset + dataIdx) * launchParams.numElements;
   return offset + optixGetPrimitiveIndex();
 }
 #endif

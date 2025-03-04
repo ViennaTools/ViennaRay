@@ -50,7 +50,8 @@ extern "C" __global__ void __closesthit__Particle() {
     if (materialId > 2) {
       printf("Material ID %d is not supported\n", materialId);
     }
-    atomicAdd(&launchParams.resultBuffer[primID], prd->rayWeight);
+    atomicAdd(&launchParams.resultBuffer[getIdx(0, launchParams)],
+              prd->rayWeight);
     float sticking = launchParams.materialSticking[materialId];
     prd->rayWeight -= prd->rayWeight * sticking;
     if (prd->rayWeight > launchParams.rayWeightThreshold)
