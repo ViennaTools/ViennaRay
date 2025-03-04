@@ -104,6 +104,32 @@ public:
         .addDebug("Number of rays: " + util::prettyDouble(numRays))
         .print();
 
+    // set up material specific sticking probabilities
+    materialStickingBuffer.resize(particles.size());
+    for (size_t i = 0; i < particles.size(); i++) {
+      if (!particles[i].materialSticking.empty()) {
+        if (uniqueMaterialIds.empty() || materialIdsBuffer.sizeInBytes == 0) {
+          Logger::getInstance()
+              .addError("Material IDs not set, when using material dependent "
+                        "sticking.")
+              .print();
+        }
+        std::vector<float> materialSticking(uniqueMaterialIds.size());
+        unsigned currentId = 0;
+        for (auto &matId : uniqueMaterialIds) {
+          if (particles[i].materialSticking.find(matId) ==
+              particles[i].materialSticking.end()) {
+            materialSticking[currentId++] =
+                static_cast<float>(particles[i].sticking);
+          } else {
+            materialSticking[currentId++] =
+                static_cast<float>(particles[i].materialSticking[matId]);
+          }
+        }
+        materialStickingBuffer[i].allocUpload(materialSticking);
+      }
+    }
+
     for (size_t i = 0; i < particles.size(); i++) {
       launchParams.cosineExponent =
           static_cast<float>(particles[i].cosineExponent);
@@ -250,32 +276,6 @@ public:
     Logger::getInstance()
         .addDebug("Number of flux arrays: " + std::to_string(numRates))
         .print();
-
-    materialStickingBuffer.resize(particles.size());
-    for (size_t i = 0; i < particles.size(); i++) {
-      // set up material specific sticking probabilities
-      if (!particles[i].materialSticking.empty()) {
-        if (uniqueMaterialIds.empty() || materialIdsBuffer.sizeInBytes == 0) {
-          Logger::getInstance()
-              .addError("Material IDs not set, when using material dependent "
-                        "sticking.")
-              .print();
-        }
-        std::vector<float> materialSticking(uniqueMaterialIds.size());
-        unsigned currentId = 0;
-        for (auto &matId : uniqueMaterialIds) {
-          if (particles[i].materialSticking.find(matId) ==
-              particles[i].materialSticking.end()) {
-            materialSticking[currentId++] =
-                static_cast<float>(particles[i].sticking);
-          } else {
-            materialSticking[currentId++] =
-                static_cast<float>(particles[i].materialSticking[matId]);
-          }
-        }
-        materialStickingBuffer[i].allocUpload(materialSticking);
-      }
-    }
 
     return numRates;
   }

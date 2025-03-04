@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
   tracer.setPipeline("TestPipeline", context.modulePath);
-  tracer.setNumberOfRaysPerPoint(1);
+  tracer.setNumberOfRaysPerPoint(100);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
