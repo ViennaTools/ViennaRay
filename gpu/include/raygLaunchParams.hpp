@@ -3,6 +3,8 @@
 #include <optix_types.h>
 #include <vcVectorUtil.hpp>
 
+#include <unordered_map>
+
 namespace viennaray::gpu {
 
 struct LaunchParams {
@@ -11,10 +13,14 @@ struct LaunchParams {
   unsigned int seed = 0;
   unsigned int numElements;
   unsigned int *dataPerParticle; // to determine result buffer index
+  bool periodicBoundary = false;
+  unsigned int maxRayDepth = 100;
+
+  // std::unordered_map<int, float> sticking;
+  int *materialIds;
+  float *materialSticking;
   float sticking = 1.f;
   float cosineExponent = 1.f;
-  bool periodicBoundary = true;
-  unsigned int maxRayDepth = 1000;
   void *customData;
 
   // source plane params

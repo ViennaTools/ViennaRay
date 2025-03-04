@@ -14,6 +14,7 @@
 #include "raygSBTRecords.hpp"
 #include "raygTriangleGeometry.hpp"
 
+#include <set>
 #include <vcChecks.hpp>
 #include <vcContext.hpp>
 #include <vcCudaBuffer.hpp>
@@ -70,6 +71,10 @@ public:
     resultBuffer.allocInit(launchParams.numElements * numRates, float(0));
     launchParams.resultBuffer = (float *)resultBuffer.dPointer();
 
+    if (materialIdsBuffer.sizeInBytes != 0) {
+      launchParams.materialIds = (int *)materialIdsBuffer.dPointer();
+    }
+
     if (useRandomSeed) {
       std::random_device rd;
       std::uniform_int_distribution<unsigned int> gen;
@@ -100,10 +105,14 @@ public:
         .print();
 
     for (size_t i = 0; i < particles.size(); i++) {
-
       launchParams.cosineExponent =
           static_cast<float>(particles[i].cosineExponent);
       launchParams.sticking = static_cast<float>(particles[i].sticking);
+      if (!particles[i].materialSticking.empty()) {
+        assert(materialStickingBuffer[i].sizeInBytes != 0);
+        launchParams.materialSticking =
+            (float *)materialStickingBuffer[i].dPointer();
+      }
       Vec3Df direction{static_cast<float>(particles[i].direction[0]),
                        static_cast<float>(particles[i].direction[1]),
                        static_cast<float>(particles[i].direction[2])};
@@ -136,41 +145,6 @@ public:
     normalize();
   }
 
-  // void translateToPointData(SmartPointer<viennals::Mesh<T>> mesh,
-  //                           CudaBuffer &pointDataBuffer, T radius = 0.,
-  //                           const bool download = false) {
-  //   // upload oriented pointcloud data to device
-  //   assert(mesh->nodes.size() != 0 &&
-  //          "Passing empty mesh in translateToPointValuesSphere.");
-  //   if (radius == 0.)
-  //     radius = launchParams.source.gridDelta;
-  //   size_t numValues = mesh->nodes.size();
-  //   CudaBuffer pointBuffer;
-  //   pointBuffer.allocUpload(mesh->nodes);
-  //   pointDataBuffer.allocInit(numValues * numRates, T(0));
-
-  //   CUdeviceptr d_vertex = geometry.geometryVertexBuffer.dPointer();
-  //   CUdeviceptr d_index = geometry.geometryIndexBuffer.dPointer();
-  //   CUdeviceptr d_values = resultBuffer.dPointer();
-  //   CUdeviceptr d_point = pointBuffer.dPointer();
-  //   CUdeviceptr d_pointValues = pointDataBuffer.dPointer();
-
-  //   void *kernel_args[] = {
-  //       &d_vertex,      &d_index, &d_values,  &d_point,
-  //       &d_pointValues, &radius,  &numValues, &launchParams.numElements,
-  //       &numRates};
-
-  //   LaunchKernel::launch(translateModuleName, translateToPointDataKernelName,
-  //                        kernel_args, context, sizeof(int));
-
-  //   if (download) {
-  //     downloadResultsToPointData(mesh->getCellData(), pointDataBuffer,
-  //                                mesh->nodes.size());
-  //   }
-
-  //   pointBuffer.free();
-  // }
-
   void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
     assert(passedCellDataBuffer.sizeInBytes / sizeof(float) / numData ==
            launchParams.numElements);
@@ -178,41 +152,37 @@ public:
     numCellData = numData;
   }
 
-  // void translateFromPointData(SmartPointer<viennals::Mesh<T>> mesh,
-  //                             CudaBuffer &pointDataBuffer, unsigned numData)
-  //                             {
-  //   // upload oriented pointcloud data to device
-  //   size_t numPoints = mesh->nodes.size();
-  //   assert(mesh->nodes.size() > 0);
-  //   assert(pointDataBuffer.sizeInBytes / sizeof(T) / numData == numPoints);
-  //   assert(numData > 0);
+  template <class NumericType>
+  void setMaterialIds(const std::vector<NumericType> &materialIds,
+                      const bool mapToConsecutive = true) {
+    assert(materialIds.size() == launchParams.numElements);
 
-  //   CudaBuffer pointBuffer;
-  //   pointBuffer.allocUpload(mesh->nodes);
+    if (mapToConsecutive) {
+      uniqueMaterialIds.clear();
+      for (auto &matId : materialIds) {
+        uniqueMaterialIds.insert(static_cast<int>(matId));
+      }
+      std::unordered_map<NumericType, unsigned> materialIdMap;
+      int currentId = 0;
+      for (auto &uniqueMaterialId : uniqueMaterialIds) {
+        materialIdMap[uniqueMaterialId] = currentId++;
+      }
+      assert(currentId == materialIdMap.size());
 
-  //   cellDataBuffer.alloc(launchParams.numElements * numData * sizeof(T));
-
-  //   CUdeviceptr d_vertex = geometry.geometryVertexBuffer.dPointer();
-  //   CUdeviceptr d_index = geometry.geometryIndexBuffer.dPointer();
-  //   CUdeviceptr d_values = cellDataBuffer.dPointer();
-  //   CUdeviceptr d_point = pointBuffer.dPointer();
-  //   CUdeviceptr d_pointValues = pointDataBuffer.dPointer();
-
-  //   void *kernel_args[] = {&d_vertex,
-  //                          &d_index,
-  //                          &d_values,
-  //                          &d_point,
-  //                          &d_pointValues,
-  //                          &numPoints,
-  //                          &launchParams.numElements,
-  //                          &numData};
-
-  //   LaunchKernel::launch(translateModuleName,
-  //   translateFromPointDataKernelName,
-  //                        kernel_args, context, sizeof(int));
-
-  //   pointBuffer.free();
-  // }
+      std::vector<int> materialIdsMapped(launchParams.numElements);
+#pragma omp parallel for
+      for (size_t i = 0; i < launchParams.numElements; i++) {
+        materialIdsMapped[i] = materialIdMap[materialIds[i]];
+      }
+      materialIdsBuffer.allocUpload(materialIdsMapped);
+    } else {
+      std::vector<int> materialIdsMapped(launchParams.numElements);
+      for (size_t i = 0; i < launchParams.numElements; i++) {
+        materialIdsMapped[i] = static_cast<int>(materialIds[i]);
+      }
+      materialIdsBuffer.allocUpload(materialIdsMapped);
+    }
+  }
 
   void setNumberOfRaysPerPoint(const size_t pNumRays) {
     numberOfRaysPerPoint = pNumRays;
@@ -281,67 +251,34 @@ public:
         .addDebug("Number of flux arrays: " + std::to_string(numRates))
         .print();
 
+    materialStickingBuffer.resize(particles.size());
+    for (size_t i = 0; i < particles.size(); i++) {
+      // set up material specific sticking probabilities
+      if (!particles[i].materialSticking.empty()) {
+        if (uniqueMaterialIds.empty() || materialIdsBuffer.sizeInBytes == 0) {
+          Logger::getInstance()
+              .addError("Material IDs not set, when using material dependent "
+                        "sticking.")
+              .print();
+        }
+        std::vector<float> materialSticking(uniqueMaterialIds.size());
+        unsigned currentId = 0;
+        for (auto &matId : uniqueMaterialIds) {
+          if (particles[i].materialSticking.find(matId) ==
+              particles[i].materialSticking.end()) {
+            materialSticking[currentId++] =
+                static_cast<float>(particles[i].sticking);
+          } else {
+            materialSticking[currentId++] =
+                static_cast<float>(particles[i].materialSticking[matId]);
+          }
+        }
+        materialStickingBuffer[i].allocUpload(materialSticking);
+      }
+    }
+
     return numRates;
   }
-
-  // void downloadResultsToPointData(viennals::PointData<T> &pointData,
-  //                                 CudaBuffer &valueBuffer,
-  //                                 unsigned int numPoints) {
-  //   T *temp = new T[numPoints * numRates];
-  //   valueBuffer.download(temp, numPoints * numRates);
-  //
-  //   int offset = 0;
-  //   for (int pIdx = 0; pIdx < particles.size(); pIdx++) {
-  //     for (int dIdx = 0; dIdx < particles[pIdx].dataLabels.size(); dIdx++) {
-  //       int tmpOffset = offset + dIdx;
-  //       auto name = particles[pIdx].dataLabels[dIdx];
-  //
-  //       std::vector<T> *values = pointData.getScalarData(name, true);
-  //       if (values == nullptr) {
-  //         std::vector<T> val(numPoints);
-  //         pointData.insertNextScalarData(std::move(val), name);
-  //         values = pointData.getScalarData(name);
-  //       }
-  //       if (values->size() != numPoints)
-  //         values->resize(numPoints);
-  //
-  //       std::memcpy(values->data(), &temp[tmpOffset * numPoints],
-  //                   numPoints * sizeof(T));
-  //     }
-  //     offset += particles[pIdx].dataLabels.size();
-  //   }
-  //
-  //   delete temp;
-  // }
-  //
-  // void downloadResultsToPointData(viennals::PointData<float> &pointData) {
-  //   unsigned int numPoints = launchParams.numElements;
-  //   auto *temp = new float[numPoints * numRates];
-  //   resultBuffer.download(temp, numPoints * numRates);
-  //
-  //   int offset = 0;
-  //   for (int pIdx = 0; pIdx < particles.size(); pIdx++) {
-  //     for (int dIdx = 0; dIdx < particles[pIdx].dataLabels.size(); dIdx++) {
-  //       int tmpOffset = offset + dIdx;
-  //       auto name = particles[pIdx].dataLabels[dIdx];
-  //
-  //       std::vector<float> *values = pointData.getScalarData(name, true);
-  //       if (values == nullptr) {
-  //         std::vector<float> val(numPoints);
-  //         pointData.insertNextScalarData(std::move(val), name);
-  //         values = pointData.getScalarData(name);
-  //       }
-  //       if (values->size() != numPoints)
-  //         values->resize(numPoints);
-  //
-  //       std::memcpy(values->data(), &temp[tmpOffset * numPoints],
-  //                   numPoints * sizeof(float));
-  //     }
-  //     offset += particles[pIdx].dataLabels.size();
-  //   }
-  //
-  //   delete temp;
-  // }
 
   CudaBuffer &getData() { return cellDataBuffer; }
 
@@ -357,8 +294,8 @@ public:
     return launchParams.numElements;
   }
 
-  void setParameters(CUdeviceptr params) {
-    launchParams.customData = (void *)params;
+  void setParameters(CUdeviceptr d_params) {
+    launchParams.customData = (void *)d_params;
   }
 
   auto &getParameterBuffer() { return parameterBuffer; }
@@ -369,7 +306,7 @@ protected:
         (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]) *
         (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
     assert(resultBuffer.sizeInBytes != 0 &&
-           "Normalization: Result buffer not initiliazed.");
+           "Normalization: Result buffer not initialized.");
     CUdeviceptr d_data = resultBuffer.dPointer();
     CUdeviceptr d_vertex = geometry.geometryVertexBuffer.dPointer();
     CUdeviceptr d_index = geometry.geometryIndexBuffer.dPointer();
@@ -568,12 +505,15 @@ protected:
 
   // geometry
   TriangleGeometry geometry;
+  std::set<int> uniqueMaterialIds;
+  CudaBuffer materialIdsBuffer;
 
   // particles
-  std::vector<Particle<T>> particles;
-  CudaBuffer dataPerParticleBuffer;
   unsigned int numRates = 0;
-  CudaBuffer parameterBuffer;
+  std::vector<Particle<T>> particles;
+  CudaBuffer dataPerParticleBuffer;               // same for all particles
+  CudaBuffer parameterBuffer;                     // same for all particles
+  std::vector<CudaBuffer> materialStickingBuffer; // different for particles
 
   // sbt data
   CudaBuffer cellDataBuffer;

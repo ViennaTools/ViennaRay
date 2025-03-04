@@ -4,6 +4,8 @@
 #include <fstream>
 #include <omp.h>
 
+#define COUNT_RAYS
+
 using namespace viennaray;
 
 int main(int argc, char **argv) {
@@ -17,26 +19,47 @@ int main(int argc, char **argv) {
   context.create();
 
   const auto mesh = gpu::readMeshFromFile("trenchMesh.dat");
+  std::vector<int> materialIds(mesh.triangles.size(), 7);
+  for (int i = mesh.triangles.size() / 2; i < mesh.triangles.size(); ++i) {
+    materialIds[i] = 1;
+  }
 
   gpu::Particle<NumericType> particle;
   particle.direction = {0.0f, 0.0f, -1.0f};
   particle.name = "Particle";
-  particle.sticking = 0.1f;
+  particle.sticking = 1.f;
   particle.dataLabels = {"particleFlux"};
+  particle.materialSticking[7] = 1.f;
+  particle.materialSticking[1] = .1f;
 
   gpu::Trace<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
+  tracer.setMaterialIds(materialIds);
   tracer.setPipeline("TestPipeline", context.modulePath);
+  tracer.setNumberOfRaysPerPoint(1);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
+
+#ifdef COUNT_RAYS
+  int rayCount = 0;
+  CudaBuffer rayCountBuffer;
+  rayCountBuffer.alloc(sizeof(int));
+  rayCountBuffer.upload(&rayCount, 1);
+  tracer.setParameters(rayCountBuffer.dPointer());
+#endif
+
   tracer.apply();
 
   std::vector<float> flux(mesh.triangles.size());
   tracer.getFlux(flux.data(), 0, 0);
 
-  for (auto const &f : flux) {
-    std::cout << f << ", ";
-  }
+  rayCountBuffer.download(&rayCount, 1);
+  std::cout << "Ray count: " << rayCount << std::endl;
+
+  std::cout << "Num rays approx: " << mesh.triangles.size() * 1000 << std::endl;
+  // for (auto const &f : flux) {
+  //   std::cout << f << ", ";
+  // }
 
   tracer.freeBuffers();
 
