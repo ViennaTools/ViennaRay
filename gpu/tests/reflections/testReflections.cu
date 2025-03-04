@@ -2,7 +2,6 @@
 #include <cuda_runtime.h>
 
 #include <raygReflection.hpp>
-
 #include <vcVectorUtil.hpp>
 
 extern "C" __global__ void test_diffuse(viennacore::Vec3Df inDir, viennacore::Vec3Df normal,
@@ -12,12 +11,12 @@ extern "C" __global__ void test_diffuse(viennacore::Vec3Df inDir, viennacore::Ve
     unsigned int stride = blockDim.x * gridDim.x;
 
     for (; tidx < numResults; tidx += stride) {
-        // viennaray::gpu::PerRayData prd;
-        // initializeRNGState(&prd, tidx, 0);
-        // prd.dir = inDir;
+        viennaray::gpu::PerRayData prd;
+        initializeRNGState(&prd, tidx, 0);
+        prd.dir = inDir;
 
-        // diffuseReflection(&prd, normal);
-        // results[tidx] = prd.dir;
+        diffuseReflection(&prd, normal);
+        results[tidx] = prd.dir;
     }
 }
 
@@ -28,11 +27,11 @@ extern "C" __global__ void test_coned_cosine(viennacore::Vec3Df inDir, viennacor
     unsigned int stride = blockDim.x * gridDim.x;
 
     for (; tidx < numResults; tidx += stride) {
-        // viennaray::gpu::PerRayData prd;
-        // initializeRNGState(&prd, tidx, 0);
-        // prd.dir = inDir;
-        //
-        // conedCosineReflection(&prd, normal, coneAngle);
-        // results[tidx] = prd.dir;
+        viennaray::gpu::PerRayData prd;
+        initializeRNGState(&prd, tidx, 0);
+        prd.dir = inDir;
+
+        conedCosineReflection(&prd, normal, coneAngle);
+        results[tidx] = prd.dir;
     }
 }

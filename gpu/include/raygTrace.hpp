@@ -14,12 +14,11 @@
 #include "raygSBTRecords.hpp"
 #include "raygTriangleGeometry.hpp"
 
-#include <gpu/vcLaunchKernel.hpp>
-#include <gpu/vcLoadModules.hpp>
-
-#include <gpu/vcChecks.hpp>
-#include <gpu/vcContext.hpp>
-#include <gpu/vcCudaBuffer.hpp>
+#include <vcChecks.hpp>
+#include <vcContext.hpp>
+#include <vcCudaBuffer.hpp>
+#include <vcLaunchKernel.hpp>
+#include <vcLoadModules.hpp>
 #include <vcUtil.hpp>
 
 namespace viennaray::gpu {
@@ -34,7 +33,7 @@ public:
     initRayTracer();
   }
 
-  void setGeometry(const TriangleMesh<float> &passedMesh) {
+  void setGeometry(const TriangleMesh &passedMesh) {
     geometry.buildAccel(context, passedMesh, launchParams);
   }
 
@@ -231,11 +230,10 @@ public:
       if (particleIdx > i)
         offset += particles[i].dataLabels.size();
     }
-    auto temp = new float[numRates * launchParams.numElements];
-    resultBuffer.download(temp, launchParams.numElements * numRates);
+    std::vector<float> temp(numRates * launchParams.numElements);
+    resultBuffer.download(temp.data(), launchParams.numElements * numRates);
     offset = (offset + dataIdx) * launchParams.numElements;
-    std::memcpy(flux, &temp[offset], launchParams.numElements * sizeof(T));
-    delete temp;
+    std::memcpy(flux, &temp[offset], launchParams.numElements * sizeof(float));
   }
 
   void setUseCellData(unsigned numData) { numCellData = numData; }
@@ -254,6 +252,11 @@ public:
   }
 
   unsigned int prepareParticlePrograms() {
+    if (particles.empty()) {
+      Logger::getInstance().addWarning("No particles defined.").print();
+      return 0;
+    }
+
     createModule();
     createRaygenPrograms();
     createMissPrograms();
@@ -344,13 +347,15 @@ public:
 
   CudaBuffer &getResults() { return resultBuffer; }
 
-  std::size_t getNumberOfRays() const { return numRays; }
+  [[nodiscard]] std::size_t getNumberOfRays() const { return numRays; }
 
   std::vector<Particle<T>> &getParticles() { return particles; }
 
-  unsigned int getNumberOfRates() const { return numRates; }
+  [[nodiscard]] unsigned int getNumberOfRates() const { return numRates; }
 
-  unsigned int getNumberOfElements() const { return launchParams.numElements; }
+  [[nodiscard]] unsigned int getNumberOfElements() const {
+    return launchParams.numElements;
+  }
 
   void setParameters(CUdeviceptr params) {
     launchParams.customData = (void *)params;
@@ -504,22 +509,21 @@ protected:
     //     2 * 1024, // The direct stack size requirement for direct callables
     //               // invoked from RG, MS, or CH.
     //     2 * 1024, // The continuation stack requirement.
-    //     1         // The maximum depth of a traversable graph passed to
-    //     trace.
+    //     1         // The maximum depth of a traversable graph passed to trace
     //     ));
   }
 
   /// constructs the shader binding table
   void generateSBT(const size_t i) {
     // build raygen record
-    RaygenRecord raygenRecord;
+    RaygenRecord raygenRecord = {};
     optixSbtRecordPackHeader(raygenPGs[i], &raygenRecord);
     raygenRecord.data = nullptr;
     raygenRecordBuffer.allocUploadSingle(raygenRecord);
     sbts[i].raygenRecord = raygenRecordBuffer.dPointer();
 
     // build miss record
-    MissRecord missRecord;
+    MissRecord missRecord = {};
     optixSbtRecordPackHeader(missPGs[i], &missRecord);
     missRecord.data = nullptr;
     missRecordBuffer.allocUploadSingle(missRecord);
@@ -531,7 +535,7 @@ protected:
     std::vector<HitgroupRecord> hitgroupRecords;
 
     // geometry hitgroup
-    HitgroupRecord geometryHitgroupRecord;
+    HitgroupRecord geometryHitgroupRecord = {};
     optixSbtRecordPackHeader(hitgroupPGs[i], &geometryHitgroupRecord);
     geometryHitgroupRecord.data.vertex =
         (Vec3Df *)geometry.geometryVertexBuffer.dPointer();
@@ -542,7 +546,7 @@ protected:
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    HitgroupRecord boundaryHitgroupRecord;
+    HitgroupRecord boundaryHitgroupRecord = {};
     optixSbtRecordPackHeader(hitgroupPGs[i], &boundaryHitgroupRecord);
     boundaryHitgroupRecord.data.vertex =
         (Vec3Df *)geometry.boundaryVertexBuffer.dPointer();

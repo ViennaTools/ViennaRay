@@ -1,7 +1,7 @@
 #pragma once
 
-#include <gpu/vcContext.hpp>
-#include <gpu/vcCudaBuffer.hpp>
+#include <vcContext.hpp>
+#include <vcCudaBuffer.hpp>
 
 #include "raygLaunchParams.hpp"
 #include "raygMesh.hpp"
@@ -23,7 +23,7 @@ struct TriangleGeometry {
   CudaBuffer asBuffer;
 
   /// build acceleration structure from triangle mesh
-  void buildAccel(Context &context, const TriangleMesh<float> &mesh,
+  void buildAccel(Context &context, const TriangleMesh &mesh,
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
@@ -164,9 +164,8 @@ struct TriangleGeometry {
     launchParams.traversable = asHandle;
   }
 
-  static TriangleMesh<float>
-  makeBoundary(const TriangleMesh<float> &passedMesh) {
-    TriangleMesh<float> boundaryMesh;
+  static TriangleMesh makeBoundary(const TriangleMesh &passedMesh) {
+    TriangleMesh boundaryMesh;
 
     Vec3Df bbMin = passedMesh.minimumExtent;
     Vec3Df bbMax = passedMesh.maximumExtent;

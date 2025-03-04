@@ -1,5 +1,5 @@
 project(ViennaRay-GPU_Examples)
-include("../../cmake/generate_ptx.cmake")
 
-add_gpu_executable(trenchGPU target_name trench.cpp
-                   ${CMAKE_SOURCE_DIR}/gpu/pipelines/TestPipeline.cu)
+configure_file(Resources/trenchMesh.dat ${CMAKE_CURRENT_BINARY_DIR}/trenchMesh.dat COPYONLY)
+
+add_gpu_executable(trenchGPU target_name trench.cpp ${VIENNARAY_PIPELINE_DIR}/TestPipeline.cu)
