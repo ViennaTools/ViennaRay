@@ -12,10 +12,10 @@ option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
-option(VIENNARAY_USE_GPU "Disable ViennaRay from checking for a GPU." ON)
+option(VIENNARAY_USE_GPU "Disable ViennaRay from checking for a GPU." OFF)
 
-option(VIENNARAY_BUILD_EXAMPLES "Build examples" ON)
-option(VIENNARAY_BUILD_TESTS "Build tests" ON)
+option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
+option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
