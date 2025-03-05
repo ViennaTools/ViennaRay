@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 3.2.0)
+  VERSION 3.3.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library switches
@@ -12,6 +12,7 @@ option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
+option(VIENNARAY_USE_GPU "Disable ViennaRay from checking for a GPU." OFF)
 
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
@@ -91,13 +92,13 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 1.1.0
+  VERSION 1.3.0
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
-  OPTIONS "VIENNACORE_FORMAT_EXCLUDE docs/")
+  OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 
 CPMAddPackage(
   NAME PackageProject
-  VERSION 1.11.1
+  VERSION 1.13.0
   GIT_REPOSITORY "https://github.com/TheLartians/PackageProject.cmake")
 
 if(NOT VIENNARAY_SYSTEM_TBB)
@@ -137,6 +138,15 @@ if(VIENNARAY_BUILD_TESTS)
 
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+# --------------------------------------------------------------------------------------------------------
+# Setup GPU
+# --------------------------------------------------------------------------------------------------------
+
+# If CUDA or OptiX is not found in ViennaCore, VIENNACORE_PTX_DIR is not set
+if(VIENNARAY_USE_GPU AND VIENNACORE_PTX_DIR)
+  add_subdirectory(gpu)
 endif()
 
 # --------------------------------------------------------------------------------------------------------

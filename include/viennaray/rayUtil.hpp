@@ -32,7 +32,6 @@
 #endif
 
 namespace viennaray {
-
 using namespace viennacore;
 
 enum class NormalizationType : unsigned { SOURCE = 0, MAX = 1 };
@@ -47,7 +46,6 @@ enum class TraceDirection : unsigned {
 };
 
 template <class NumericType> struct DataLog {
-
   std::vector<std::vector<NumericType>> data;
 
   void merge(DataLog<NumericType> &pOther) {
@@ -74,11 +72,9 @@ struct TraceInfo {
   bool warning = false;
   bool error = false;
 };
-
 } // namespace viennaray
 
 namespace rayInternal {
-
 using namespace viennaray;
 using namespace viennacore;
 
@@ -404,6 +400,7 @@ void writeVTK(const std::string &filename,
 
   f.close();
 }
+
 /* -------------------------------------------------------------- */
 
 template <typename NumericType, int D>
