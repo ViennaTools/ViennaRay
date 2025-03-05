@@ -54,12 +54,7 @@ int main(int argc, char **argv) {
   tracer.getFlux(flux.data(), 0, 0);
 
   rayCountBuffer.download(&rayCount, 1);
-  std::cout << "Ray count: " << rayCount << std::endl;
-
-  std::cout << "Num rays approx: " << mesh.triangles.size() * 1000 << std::endl;
-  // for (auto const &f : flux) {
-  //   std::cout << f << ", ";
-  // }
+  std::cout << "Trace count: " << rayCount << std::endl;
 
   tracer.freeBuffers();
 

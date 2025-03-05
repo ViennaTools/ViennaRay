@@ -40,11 +40,6 @@ extern "C" __global__ void __closesthit__Particle() {
     }
   } else {
 
-#ifdef COUNT_RAYS
-    int *counter = reinterpret_cast<int *>(launchParams.customData);
-    atomicAdd(counter, 1);
-#endif
-
     const unsigned int primID = optixGetPrimitiveIndex();
     int materialId = launchParams.materialIds[primID];
     if (materialId > 2) {
@@ -102,5 +97,10 @@ extern "C" __global__ void __raygen__Particle() {
                RAY_TYPE_COUNT,                // SBT stride
                SURFACE_RAY_TYPE,              // missSBTIndex
                u0, u1);
+
+#ifdef COUNT_RAYS
+    int *counter = reinterpret_cast<int *>(launchParams.customData);
+    atomicAdd(counter, 1);
+#endif
   }
 }
