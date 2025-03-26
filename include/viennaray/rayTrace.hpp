@@ -333,12 +333,18 @@ private:
   void checkRelativeError() {
     auto error = getRelativeError();
     const int numPoints = error.size();
-    const int numThreads = omp_get_max_threads();
+    int numThreads = 1;
+#ifdef _OPENMP
+    numThreads = omp_get_max_threads();
+#endif
     std::vector<bool> passed(numThreads, true);
 
 #pragma omp parallel shared(error, passed)
     {
-      int threadId = omp_get_thread_num();
+      int threadId = 0;
+#ifdef _OPENMP
+      threadId = omp_get_thread_num();
+#endif
 #pragma omp for
       for (int i = 0; i < numPoints; i++) {
         if (error[i] > 0.05) {

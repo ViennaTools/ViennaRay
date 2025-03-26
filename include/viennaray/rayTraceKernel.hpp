@@ -67,7 +67,10 @@ public:
     auto const lambda = pParticle_->getMeanFreePath();
 
     // thread local data storage
-    const int numThreads = omp_get_max_threads();
+    const int numThreads = 1;
+#ifdef _OPENMP
+    numThreads = omp_get_max_threads();
+#endif
     std::vector<TracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *pLocalData_;
@@ -105,7 +108,10 @@ public:
       alignas(128) auto rayHit =
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-      const int threadID = omp_get_thread_num();
+      int threadID = 0;
+#ifdef _OPENMP
+      threadID = omp_get_thread_num();
+#endif
       unsigned int seed = runNumber_;
       if (useRandomSeeds_) {
         std::random_device rd;
