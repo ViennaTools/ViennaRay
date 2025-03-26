@@ -67,7 +67,7 @@ public:
     auto const lambda = pParticle_->getMeanFreePath();
 
     // thread local data storage
-    const int numThreads = 1;
+    int numThreads = 1;
 #ifdef _OPENMP
     numThreads = omp_get_max_threads();
 #endif
