@@ -191,7 +191,7 @@ public:
             if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
-              Vec3D<rtcNumericType> origin = {
+              const auto origin = Vec3D<rtcNumericType>{
                   static_cast<rtcNumericType>(ray.org_x + ray.dir_x * rnd),
                   static_cast<rtcNumericType>(ray.org_y + ray.dir_y * rnd),
                   static_cast<rtcNumericType>(ray.org_z + ray.dir_z * rnd)};
@@ -220,10 +220,10 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const Vec3D<rtcNumericType> hitPoint = {
-              ray.org_x + ray.dir_x * ray.tfar,
-              ray.org_y + ray.dir_y * ray.tfar,
-              ray.org_z + ray.dir_z * ray.tfar};
+          const auto hitPoint =
+              Vec3D<rtcNumericType>{ray.org_x + ray.dir_x * ray.tfar,
+                                    ray.org_y + ray.dir_y * ray.tfar,
+                                    ray.org_z + ray.dir_z * ray.tfar};
 
           /* -------- Hit from back -------- */
           const auto rayDir =
@@ -552,16 +552,16 @@ private:
   bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
                               rtcNumericType &impactDistance) const {
     auto const &rayOrigin =
-        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&ray.org_x);
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.org_x);
     auto const &rayDirection =
-        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&ray.dir_x);
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.dir_x);
 
     const auto &normal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
     const auto &diskOrigin =
-        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&disk);
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&disk);
 
-    auto prodOfDirections = DotProduct(normal, rayDirection);
+    auto prodOfDirections = ArrayDotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
       // Disk normal is pointing away from the ray direction,
       // i.e., this might be a hit from the back or no hit at all.
@@ -575,19 +575,22 @@ private:
     }
 
     // TODO: Memoize ddneg
-    auto ddneg = DotProduct(diskOrigin, normal);
-    auto tt = (ddneg - DotProduct(normal, rayOrigin)) / prodOfDirections;
+    auto ddneg = ArrayDotProduct(diskOrigin, normal);
+    auto tt = (ddneg - ArrayDotProduct(normal, rayOrigin)) / prodOfDirections;
     if (tt <= 0) {
       // Intersection point is behind or exactly on the ray origin.
       return false;
     }
 
     // copy ray direction
-    auto rayDirectionC = Vec3D<rtcNumericType>{rayDirection[0], rayDirection[1],
-                                               rayDirection[2]} *
-                         tt;
-    auto hitPoint = rayOrigin + rayDirectionC;
-    auto distance = Distance(hitPoint, diskOrigin);
+    auto hitPoint =
+        std::array<rtcNumericType, 3>{tt * rayDirection[0] + rayOrigin[0],
+                                      tt * rayDirection[1] + rayOrigin[1],
+                                      tt * rayDirection[2] + rayOrigin[2]};
+    for (int i = 0; i < 3; ++i) {
+      hitPoint[i] = hitPoint[i] - diskOrigin[i];
+    }
+    auto distance = sqrtf(ArrayDotProduct(hitPoint, hitPoint));
     auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;
@@ -619,6 +622,16 @@ private:
   HitCounter<NumericType> &hitCounter_;
   TraceInfo &traceInfo_;
   DataLog<NumericType> &dataLog_;
+
+  static rtcNumericType
+  ArrayDotProduct(const std::array<rtcNumericType, 3> &a,
+                  const std::array<rtcNumericType, 3> &b) {
+    rtcNumericType result = 0;
+    for (int i = 0; i < 3; ++i) {
+      result += a[i] * b[i];
+    }
+    return result;
+  }
 };
 
 } // namespace rayInternal

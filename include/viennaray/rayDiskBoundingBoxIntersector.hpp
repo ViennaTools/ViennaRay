@@ -2,7 +2,7 @@
 
 #include <rayUtil.hpp>
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #include <map>
 #include <utility>
@@ -30,7 +30,8 @@ public:
     assertInvariants();
   }
 
-  explicit DiskBoundingBoxXYIntersector(Vec2D<Vec3D<NumericType>> bdBox)
+  explicit DiskBoundingBoxXYIntersector(
+      std::array<Vec3D<NumericType>, 2> const &bdBox)
       : DiskBoundingBoxXYIntersector(bdBox[0][0], bdBox[0][1], bdBox[1][0],
                                      bdBox[1][1]) {}
 
@@ -389,10 +390,11 @@ private:
   intersectionPointPlaneAndXY(const Vec3D<NumericType> &point,
                               const Vec3D<NumericType> &normal, NumericType xx,
                               NumericType yy) {
-    return {xx, yy,
-            (normal[0] * point[0] + normal[1] * point[1] +
-             normal[2] * point[2] - normal[0] * xx - normal[1] * yy) /
-                normal[2]};
+    return Vec3D<NumericType>{xx, yy,
+                              (normal[0] * point[0] + normal[1] * point[1] +
+                               normal[2] * point[2] - normal[0] * xx -
+                               normal[1] * yy) /
+                                  normal[2]};
   }
 
   static Vec3D<NumericType>

@@ -22,8 +22,8 @@ int main() {
 
   NumericType extent = 10;
   NumericType gridDelta = 0.5;
-  std::vector<std::array<NumericType, D>> points;
-  std::vector<std::array<NumericType, D>> normals;
+  std::vector<VectorType<NumericType, D>> points;
+  std::vector<VectorType<NumericType, D>> normals;
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   auto rtcDevice = rtcNewDevice("");

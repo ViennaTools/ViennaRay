@@ -14,7 +14,7 @@ enum class BoundaryCondition : unsigned {
 };
 
 template <typename NumericType, int D> class Boundary {
-  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
+  using boundingBoxType = std::array<Vec3D<NumericType>, 2>;
 
 public:
   Boundary(RTCDevice &device, boundingBoxType const &boundingBox,
@@ -145,7 +145,9 @@ public:
     }
   }
 
-  [[nodiscard]] Vec2D<int> getDirs() const { return {firstDir_, secondDir_}; }
+  [[nodiscard]] std::array<int, 2> getDirs() const {
+    return {firstDir_, secondDir_};
+  }
 
 private:
   static Vec3D<rayInternal::rtcNumericType> getNewOrigin(const RTCRay &ray) {
@@ -154,7 +156,7 @@ private:
     auto xx = ray.org_x + ray.dir_x * ray.tfar;
     auto yy = ray.org_y + ray.dir_y * ray.tfar;
     auto zz = ray.org_z + ray.dir_z * ray.tfar;
-    return {xx, yy, zz};
+    return Vec3D<rayInternal::rtcNumericType>{xx, yy, zz};
   }
 
   void initBoundary(RTCDevice &pDevice) {
@@ -212,13 +214,13 @@ private:
         0, // slot
         RTC_FORMAT_UINT3, sizeof(triangle_t), numTriangles_);
 
-    constexpr std::array<Vec3D<uint32_t>, 4> xMinMaxPlanes = {0, 3, 7, 0, 7, 4,
-                                                              6, 2, 1, 6, 1, 5};
-    constexpr std::array<Vec3D<uint32_t>, 4> yMinMaxPlanes = {0, 4, 5, 0, 5, 1,
-                                                              6, 7, 3, 6, 3, 2};
-    constexpr std::array<Vec3D<uint32_t>, 4> zMinMaxPlanes = {0, 1, 2, 0, 2, 3,
-                                                              6, 5, 4, 6, 4, 7};
-    constexpr Vec3D<std::array<Vec3D<uint32_t>, 4>> Planes = {
+    constexpr std::array<std::array<uint32_t, 3>, 4> xMinMaxPlanes = {
+        0, 3, 7, 0, 7, 4, 6, 2, 1, 6, 1, 5};
+    constexpr std::array<std::array<uint32_t, 3>, 4> yMinMaxPlanes = {
+        0, 4, 5, 0, 5, 1, 6, 7, 3, 6, 3, 2};
+    constexpr std::array<std::array<uint32_t, 3>, 4> zMinMaxPlanes = {
+        0, 1, 2, 0, 2, 3, 6, 5, 4, 6, 4, 7};
+    constexpr std::array<std::array<std::array<uint32_t, 3>, 4>, 3> Planes = {
         xMinMaxPlanes, yMinMaxPlanes, zMinMaxPlanes};
 
     for (size_t idx = 0; idx < 4; ++idx) {

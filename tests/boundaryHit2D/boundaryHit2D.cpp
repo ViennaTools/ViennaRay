@@ -15,10 +15,10 @@ int main() {
   NumericType extent = 2;
   NumericType gridDelta = 0.5;
   NumericType eps = 1e-6;
-  auto normal = std::array<NumericType, D>{1., 0.};
-  auto point = std::array<NumericType, D>{0., 0.};
-  std::vector<std::array<NumericType, D>> normals;
-  std::vector<std::array<NumericType, D>> points;
+  auto normal = VectorType<NumericType, D>{1., 0.};
+  auto point = VectorType<NumericType, D>{0., 0.};
+  std::vector<VectorType<NumericType, D>> normals;
+  std::vector<VectorType<NumericType, D>> points;
   points.reserve(int(extent / gridDelta));
   normals.reserve(int(extent / gridDelta));
   for (NumericType yy = -extent; yy <= extent; yy += gridDelta) {

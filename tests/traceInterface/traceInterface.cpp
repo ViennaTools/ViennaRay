@@ -9,10 +9,10 @@ class MySource : public Source<NumericType> {
 public:
   MySource() {}
 
-  Vec2D<std::array<NumericType, D>>
+  std::array<Vec3D<NumericType>, 2>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
-    std::array<NumericType, D> origin = {0., 0., 0.};
-    std::array<NumericType, D> direction = {0., 0., 1.};
+    Vec3D<NumericType> origin{0., 0., 0.};
+    Vec3D<NumericType> direction{0., 0., 1.};
     return {origin, direction};
   }
 
@@ -28,8 +28,8 @@ int main() {
 
   NumericType extent = 5;
   NumericType gridDelta = 0.5;
-  std::vector<std::array<NumericType, D>> points;
-  std::vector<std::array<NumericType, D>> normals;
+  std::vector<VectorType<NumericType, D>> points;
+  std::vector<VectorType<NumericType, D>> normals;
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   std::vector<NumericType> matIds(points.size(), 0);
