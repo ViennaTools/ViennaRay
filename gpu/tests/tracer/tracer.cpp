@@ -1,5 +1,7 @@
 #include <raygTrace.hpp>
 
+#include <omp.h>
+
 using namespace viennaray;
 
 int main(int argc, char **argv) {
