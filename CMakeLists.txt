@@ -160,4 +160,4 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
   INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "embree;TBB;OpenMP;ViennaCore")
+  DEPENDENCIES "embree;TBB;ViennaCore")

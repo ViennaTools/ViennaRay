@@ -22,6 +22,7 @@ public:
             Vec3D<NumericType> const &maxCoords) {
     distance_ = distance;
     const auto numPoints = points.size();
+    pointNeighborhood_.clear();
     pointNeighborhood_.resize(numPoints, std::vector<unsigned int>{});
     if constexpr (D == 3) {
       std::vector<unsigned int> side1;
