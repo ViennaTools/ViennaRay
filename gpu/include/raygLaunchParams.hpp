@@ -5,6 +5,8 @@
 
 #include <unordered_map>
 
+#include "raygPerRayData.hpp"
+
 namespace viennaray::gpu {
 
 struct LaunchParams {
@@ -14,7 +16,7 @@ struct LaunchParams {
   unsigned int numElements;
   unsigned int *dataPerParticle; // to determine result buffer index
   bool periodicBoundary = false;
-  unsigned int maxRayDepth = 100;
+  unsigned int maxBoundaryHits = 100;
   unsigned int particleIdx = 0;
 
   // std::unordered_map<int, float> sticking;
@@ -44,6 +46,13 @@ getIdx(int dataIdx, const LaunchParams &launchParams) {
     offset += launchParams.dataPerParticle[i];
   offset = (offset + dataIdx) * launchParams.numElements;
   return offset + optixGetPrimitiveIndex();
+}
+
+__device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
+                                            const PerRayData &prd) {
+  return prd.rayWeight > launchParams.rayWeightThreshold &&
+         prd.numBoundaryHits < launchParams.maxBoundaryHits &&
+         prd.energy >= 0.f;
 }
 #endif
 

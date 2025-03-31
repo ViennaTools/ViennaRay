@@ -18,7 +18,7 @@ struct PerRayData {
 
   RNGState RNGstate;
 
-  float energy;
+  float energy = 0.f;
   unsigned int numBoundaryHits = 0;
 };
 
