@@ -12,7 +12,6 @@ option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
-option(VIENNARAY_USE_GPU "Disable ViennaRay from checking for a GPU." OFF)
 
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
@@ -94,7 +93,6 @@ CPMAddPackage(
   NAME ViennaCore
   VERSION 1.3.1
   GIT_TAG vector-type
-  OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}"
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore")
 
 CPMAddPackage(
@@ -145,7 +143,7 @@ endif()
 # --------------------------------------------------------------------------------------------------------
 
 # If CUDA or OptiX is not found in ViennaCore, VIENNACORE_PTX_DIR is not set
-if(VIENNARAY_USE_GPU AND VIENNACORE_PTX_DIR)
+if(VIENNACORE_USE_GPU AND VIENNACORE_PTX_DIR)
   add_subdirectory(gpu)
 endif()
 

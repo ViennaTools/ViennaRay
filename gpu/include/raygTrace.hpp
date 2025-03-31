@@ -34,6 +34,8 @@ public:
     initRayTracer();
   }
 
+  ~Trace() { freeBuffers(); }
+
   void setGeometry(const TriangleMesh &passedMesh) {
     geometry.buildAccel(context, passedMesh, launchParams);
   }
@@ -245,6 +247,11 @@ public:
     missRecordBuffer.free();
     raygenRecordBuffer.free();
     dataPerParticleBuffer.free();
+    launchParamsBuffer.free();
+    materialIdsBuffer.free();
+    for (auto &buffer : materialStickingBuffer) {
+      buffer.free();
+    }
     geometry.freeBuffers();
   }
 
@@ -298,8 +305,6 @@ public:
   void setParameters(CUdeviceptr d_params) {
     launchParams.customData = (void *)d_params;
   }
-
-  auto &getParameterBuffer() { return parameterBuffer; }
 
 protected:
   void normalize() {
@@ -513,7 +518,6 @@ protected:
   unsigned int numRates = 0;
   std::vector<Particle<T>> particles;
   CudaBuffer dataPerParticleBuffer;               // same for all particles
-  CudaBuffer parameterBuffer;                     // same for all particles
   std::vector<CudaBuffer> materialStickingBuffer; // different for particles
 
   // sbt data
