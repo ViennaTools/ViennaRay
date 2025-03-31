@@ -84,7 +84,7 @@ public:
   /// Set the ray tracing geometry
   /// It is possible to set a 2D geometry with 3D points.
   /// In this case the last dimension is ignored.
-  template <int Dim>
+  template <size_t Dim>
   void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
                    std::vector<VectorType<NumericType, Dim>> const &normals,
                    const NumericType gridDelta) {
@@ -98,7 +98,7 @@ public:
 
   /// Set the ray tracing geometry
   /// Specify the disk radius manually.
-  template <int Dim>
+  template <size_t Dim>
   void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
                    std::vector<VectorType<NumericType, Dim>> const &normals,
                    const NumericType gridDelta, const NumericType diskRadii) {

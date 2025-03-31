@@ -11,7 +11,6 @@ project(
 option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
-option(VIENNARAY_USE_OPENMP "Enable OpenMP support" ON)
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
 option(VIENNARAY_USE_GPU "Disable ViennaRay from checking for a GPU." OFF)
 
@@ -95,7 +94,7 @@ CPMAddPackage(
   NAME ViennaCore
   VERSION 1.3.1
   GIT_TAG vector-type
-  OPTIONS "VIENNACORE_USE_OPENMP ${VIENNARAY_USE_OPENMP}" "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}"
+  OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}"
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore")
 
 CPMAddPackage(

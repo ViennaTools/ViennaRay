@@ -184,7 +184,7 @@ private:
     }
   }
 
-  template <int Dim>
+  template <size_t Dim>
   bool checkDistance(const VectorType<NumericType, Dim> &p1,
                      const VectorType<NumericType, Dim> &p2) const {
     for (int i = 0; i < D; ++i) {

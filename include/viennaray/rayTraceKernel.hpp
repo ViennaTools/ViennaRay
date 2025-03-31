@@ -567,7 +567,7 @@ private:
     const auto &diskOrigin =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&disk);
 
-    auto prodOfDirections = ArrayDotProduct(normal, rayDirection);
+    auto prodOfDirections = DotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
       // Disk normal is pointing away from the ray direction,
       // i.e., this might be a hit from the back or no hit at all.
@@ -581,22 +581,19 @@ private:
     }
 
     // TODO: Memoize ddneg
-    auto ddneg = ArrayDotProduct(diskOrigin, normal);
-    auto tt = (ddneg - ArrayDotProduct(normal, rayOrigin)) / prodOfDirections;
+    auto ddneg = DotProduct(diskOrigin, normal);
+    auto tt = (ddneg - DotProduct(normal, rayOrigin)) / prodOfDirections;
     if (tt <= 0) {
       // Intersection point is behind or exactly on the ray origin.
       return false;
     }
 
     // copy ray direction
-    auto hitPoint =
-        std::array<rtcNumericType, 3>{tt * rayDirection[0] + rayOrigin[0],
-                                      tt * rayDirection[1] + rayOrigin[1],
-                                      tt * rayDirection[2] + rayOrigin[2]};
+    auto hitPoint = ScaleAdd(rayDirection, rayOrigin, tt);
     for (int i = 0; i < 3; ++i) {
       hitPoint[i] = hitPoint[i] - diskOrigin[i];
     }
-    auto distance = sqrtf(ArrayDotProduct(hitPoint, hitPoint));
+    auto distance = sqrtf(DotProduct(hitPoint, hitPoint));
     auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;
@@ -628,16 +625,6 @@ private:
   HitCounter<NumericType> &hitCounter_;
   TraceInfo &traceInfo_;
   DataLog<NumericType> &dataLog_;
-
-  static rtcNumericType
-  ArrayDotProduct(const std::array<rtcNumericType, 3> &a,
-                  const std::array<rtcNumericType, 3> &b) {
-    rtcNumericType result = 0;
-    for (int i = 0; i < 3; ++i) {
-      result += a[i] * b[i];
-    }
-    return result;
-  }
 };
 
 } // namespace rayInternal

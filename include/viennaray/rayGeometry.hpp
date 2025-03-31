@@ -11,7 +11,7 @@ template <typename NumericType, int D> class Geometry {
   using pointNeighborhoodType = std::vector<std::vector<unsigned int>>;
 
 public:
-  template <int Dim>
+  template <size_t Dim>
   void initGeometry(RTCDevice &device,
                     std::vector<VectorType<NumericType, Dim>> const &points,
                     std::vector<VectorType<NumericType, Dim>> const &normals,
