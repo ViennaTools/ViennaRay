@@ -3,7 +3,7 @@
 #include <vcCudaBuffer.hpp>
 #include <vcLaunchKernel.hpp>
 #include <vcRNG.hpp>
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -42,6 +42,8 @@ int main() {
     }
     file.close();
 #endif
+
+    resultBuffer.free();
   }
   {
     unsigned numResults = 10000;
@@ -92,5 +94,7 @@ int main() {
       file.close();
 #endif
     }
+
+    resultBuffer.free();
   }
 }

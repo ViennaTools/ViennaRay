@@ -2,7 +2,7 @@
 #include <cuda_runtime.h>
 
 #include <raygReflection.hpp>
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #define VIENNARAY_TEST
 
