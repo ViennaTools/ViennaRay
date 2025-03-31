@@ -19,6 +19,7 @@ struct PerRayData {
   RNGState RNGstate;
 
   float energy;
+  unsigned int numBoundaryHits = 0;
 };
 
 } // namespace viennaray::gpu

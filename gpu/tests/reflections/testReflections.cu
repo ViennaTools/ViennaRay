@@ -4,34 +4,41 @@
 #include <raygReflection.hpp>
 #include <vcVectorUtil.hpp>
 
-extern "C" __global__ void test_diffuse(viennacore::Vec3Df inDir, viennacore::Vec3Df normal,
-                                        viennacore::Vec3Df *results, unsigned numResults) {
-    using namespace viennacore;
-    unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int stride = blockDim.x * gridDim.x;
+#define VIENNARAY_TEST
 
-    for (; tidx < numResults; tidx += stride) {
-        viennaray::gpu::PerRayData prd;
-        initializeRNGState(&prd, tidx, 0);
-        prd.dir = inDir;
+extern "C" __global__ void test_diffuse(viennacore::Vec3Df inDir,
+                                        viennacore::Vec3Df normal,
+                                        viennacore::Vec3Df *results,
+                                        unsigned numResults) {
+  using namespace viennacore;
+  unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int stride = blockDim.x * gridDim.x;
 
-        diffuseReflection(&prd, normal);
-        results[tidx] = prd.dir;
-    }
+  for (; tidx < numResults; tidx += stride) {
+    viennaray::gpu::PerRayData prd;
+    initializeRNGState(&prd, tidx, 0);
+    prd.dir = inDir;
+
+    diffuseReflection(&prd, normal);
+    results[tidx] = prd.dir;
+  }
 }
 
-extern "C" __global__ void test_coned_cosine(viennacore::Vec3Df inDir, viennacore::Vec3Df normal, float coneAngle,
-                                             viennacore::Vec3Df *results, unsigned numResults) {
-    using namespace viennacore;
-    unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
-    unsigned int stride = blockDim.x * gridDim.x;
+extern "C" __global__ void test_coned_cosine(viennacore::Vec3Df inDir,
+                                             viennacore::Vec3Df normal,
+                                             float coneAngle,
+                                             viennacore::Vec3Df *results,
+                                             unsigned numResults) {
+  using namespace viennacore;
+  unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int stride = blockDim.x * gridDim.x;
 
-    for (; tidx < numResults; tidx += stride) {
-        viennaray::gpu::PerRayData prd;
-        initializeRNGState(&prd, tidx, 0);
-        prd.dir = inDir;
+  for (; tidx < numResults; tidx += stride) {
+    viennaray::gpu::PerRayData prd;
+    initializeRNGState(&prd, tidx, 0);
+    prd.dir = inDir;
 
-        conedCosineReflection(&prd, normal, coneAngle);
-        results[tidx] = prd.dir;
-    }
+    conedCosineReflection(&prd, normal, coneAngle);
+    results[tidx] = prd.dir;
+  }
 }

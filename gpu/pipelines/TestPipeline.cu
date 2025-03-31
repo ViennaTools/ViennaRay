@@ -36,7 +36,7 @@ extern "C" __global__ void __closesthit__Particle() {
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData);
     } else {
-      reflectFromBoundary(prd);
+      reflectFromBoundary(prd, sbtData);
     }
   } else {
 
@@ -84,7 +84,8 @@ extern "C" __global__ void __raygen__Particle() {
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
 
-  while (prd.rayWeight > launchParams.rayWeightThreshold) {
+  while (prd.rayWeight > launchParams.rayWeightThreshold &&
+         prd.numBoundaryHits < launchParams.maxRayDepth) {
     optixTrace(launchParams.traversable, // traversable GAS
                make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
                make_float3(prd.dir[0], prd.dir[1], prd.dir[2]), // direction
