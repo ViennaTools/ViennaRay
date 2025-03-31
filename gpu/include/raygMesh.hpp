@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #include <cassert>
 #include <fstream>

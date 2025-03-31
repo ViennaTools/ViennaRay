@@ -4,7 +4,7 @@
 #include "raygPerRayData.hpp"
 #include "raygRNG.hpp"
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #ifdef __CUDACC__
 __device__ std::array<viennacore::Vec3Df, 3>

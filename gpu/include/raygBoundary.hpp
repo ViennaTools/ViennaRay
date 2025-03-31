@@ -3,7 +3,7 @@
 #include "raygPerRayData.hpp"
 #include "raygSBTRecords.hpp"
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 // this can only get compiled if included in a cuda kernel
 #ifdef __CUDACC__

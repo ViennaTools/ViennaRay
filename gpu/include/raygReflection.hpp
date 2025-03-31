@@ -6,7 +6,7 @@
 #include "raygRNG.hpp"
 #include "raygSBTRecords.hpp"
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #ifdef __CUDACC__
 __device__ __inline__ viennacore::Vec3Df

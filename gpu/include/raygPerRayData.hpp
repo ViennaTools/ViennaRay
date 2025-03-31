@@ -4,7 +4,7 @@
 
 #include "raygRNG.hpp"
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #include <stdint.h>
 
