@@ -12,7 +12,6 @@ option(EMBREE_ISPC_SUPPORT "Enable Intel's SPMD Compiler" OFF)
 option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
-option(VIENNARAY_USE_GPU "Disable ViennaRay from checking for a GPU." OFF)
 
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
@@ -31,7 +30,7 @@ set(VIENNARAY_EMBREE_TAG
 
 if(VIENNARAY_EMBREE_TAG STREQUAL "Default")
   if(VIENNARAY_EMBREE_VERSION EQUAL 4)
-    set(VIENNARAY_EMBREE_TAG "v4.3.1")
+    set(VIENNARAY_EMBREE_TAG "v4.3.3")
   elseif(VIENNARAY_EMBREE_VERSION EQUAL 3)
     set(VIENNARAY_EMBREE_TAG "v3.13.0")
   else()
@@ -92,9 +91,8 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 1.3.0
-  GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
-  OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
+  VERSION 1.4.0
+  GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore")
 
 CPMAddPackage(
   NAME PackageProject
@@ -105,7 +103,7 @@ if(NOT VIENNARAY_SYSTEM_TBB)
   CPMFindPackage(
     NAME TBB
     VERSION 2020.0
-    GIT_TAG v2021.11.0
+    GIT_TAG v2022.1.0
     GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
     OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 endif()
@@ -117,8 +115,7 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/embree/embree"
   OPTIONS "EMBREE_TUTORIALS OFF")
 
-find_package(OpenMP REQUIRED)
-target_link_libraries(${PROJECT_NAME} INTERFACE embree OpenMP::OpenMP_CXX ViennaTools::ViennaCore)
+target_link_libraries(${PROJECT_NAME} INTERFACE embree ViennaTools::ViennaCore)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Examples
@@ -145,7 +142,7 @@ endif()
 # --------------------------------------------------------------------------------------------------------
 
 # If CUDA or OptiX is not found in ViennaCore, VIENNACORE_PTX_DIR is not set
-if(VIENNARAY_USE_GPU AND VIENNACORE_PTX_DIR)
+if(VIENNACORE_USE_GPU AND VIENNACORE_PTX_DIR)
   add_subdirectory(gpu)
 endif()
 
@@ -160,4 +157,4 @@ packageProject(
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/viennaray
   INCLUDE_DESTINATION include/viennaray-${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "embree;TBB;OpenMP;ViennaCore")
+  DEPENDENCIES "embree;TBB;ViennaCore")

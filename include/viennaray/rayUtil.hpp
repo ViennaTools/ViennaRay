@@ -2,7 +2,7 @@
 
 #include <vcLogger.hpp>
 #include <vcRNG.hpp>
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #if VIENNARAY_EMBREE_VERSION < 4
 #include <embree3/rtcore.h>
@@ -87,7 +87,7 @@ constexpr double DiskFactor =
 
 /* -------------- Ray tracing preparation -------------- */
 template <typename NumericType, int D>
-void adjustBoundingBox(Vec2D<Vec3D<NumericType>> &bdBox,
+void adjustBoundingBox(std::array<Vec3D<NumericType>, 2> &bdBox,
                        TraceDirection const direction, NumericType discRadius) {
   // For 2D geometries adjust bounding box in z-direction
   if constexpr (D == 2) {
@@ -272,9 +272,9 @@ pickRandomPointOnUnitSphere(RNG &rngState) {
 // This function is deterministic, i.e., for one input it will return always
 // the same result.
 template <typename NumericType>
-[[nodiscard]] Vec3D<Vec3D<NumericType>>
+[[nodiscard]] std::array<Vec3D<NumericType>, 3>
 getOrthonormalBasis(const Vec3D<NumericType> &vec) {
-  Vec3D<Vec3D<NumericType>> rr;
+  std::array<Vec3D<NumericType>, 3> rr;
   rr[0] = vec;
 
   // Calculate a vector (rr[1]) which is perpendicular to rr[0]
@@ -316,10 +316,10 @@ getOrthonormalBasis(const Vec3D<NumericType> &vec) {
 template <typename NumericType>
 void createPlaneGrid(const NumericType gridDelta, const NumericType extent,
                      const std::array<int, 3> direction,
-                     std::vector<std::array<NumericType, 3>> &points,
-                     std::vector<std::array<NumericType, 3>> &normals) {
-  std::array<NumericType, 3> point = {-extent, -extent, -extent};
-  std::array<NumericType, 3> normal = {0., 0., 0.};
+                     std::vector<Vec3D<NumericType>> &points,
+                     std::vector<Vec3D<NumericType>> &normals) {
+  Vec3D<NumericType> point{-extent, -extent, -extent};
+  Vec3D<NumericType> normal{0., 0., 0.};
   point[direction[2]] = 0;
   normal[direction[2]] = 1.;
 
@@ -405,7 +405,7 @@ void writeVTK(const std::string &filename,
 
 template <typename NumericType, int D>
 [[nodiscard]] std::vector<Vec3D<NumericType>>
-createSourceGrid(const Vec2D<Vec3D<NumericType>> &pBdBox,
+createSourceGrid(const std::array<Vec3D<NumericType>, 2> &pBdBox,
                  const size_t pNumPoints, const NumericType pGridDelta,
                  const std::array<int, 5> &pTraceSettings) {
   std::vector<Vec3D<NumericType>> sourceGrid;

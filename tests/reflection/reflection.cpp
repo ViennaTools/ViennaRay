@@ -18,7 +18,7 @@ int main() {
     std::array<Vec3D<NumericType>, N> directions;
 
     // diffuse reflection
-    Vec3D<NumericType> normal = {0.0, 0.0, 1.0};
+    Vec3D<NumericType> normal{0.0, 0.0, 1.0};
 
     timer.start();
     for (int i = 0; i < N; ++i) {
@@ -39,10 +39,10 @@ int main() {
 #endif
   }
 
-  Vec3D<NumericType> normal = {0.0, 0.0, 1.0};
+  Vec3D<NumericType> normal{0.0, 0.0, 1.0};
   NumericType const minAngle = 85.0 * M_PI / 180.0;
   NumericType incAngle = 75.0 * M_PI / 180.0;
-  Vec3D<NumericType> rayDir = {0.0, -std::sin(incAngle), -std::cos(incAngle)};
+  Vec3D<NumericType> rayDir{0.0, -std::sin(incAngle), -std::cos(incAngle)};
   auto coneAngle = M_PI_2 - std::min(incAngle, minAngle);
 
   std::cout << "minAngle: " << minAngle << std::endl;

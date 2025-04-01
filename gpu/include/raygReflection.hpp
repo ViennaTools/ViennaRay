@@ -2,20 +2,29 @@
 
 #include <curand.h>
 
-#include "raygBoundary.hpp"
 #include "raygPerRayData.hpp"
 #include "raygRNG.hpp"
 #include "raygSBTRecords.hpp"
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #ifdef __CUDACC__
+__device__ __inline__ viennacore::Vec3Df
+computeNormal(const viennaray::gpu::HitSBTData *sbt,
+              const unsigned int primID) {
+  using namespace viennacore;
+  const Vec3D<unsigned> &index = sbt->index[primID];
+  const Vec3Df &A = sbt->vertex[index[0]];
+  const Vec3Df &B = sbt->vertex[index[1]];
+  const Vec3Df &C = sbt->vertex[index[2]];
+  return Normalize<float, 3>(CrossProduct<float>(B - A, C - A));
+}
 
 static __device__ __forceinline__ void
 specularReflection(viennaray::gpu::PerRayData *prd,
                    const viennacore::Vec3Df &geoNormal) {
   using namespace viennacore;
-#ifndef PSCU_TEST
+#ifndef VIENNARAY_TEST
   prd->pos = prd->pos + optixGetRayTmax() * prd->dir;
 #endif
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
@@ -110,7 +119,7 @@ PickRandomPointOnUnitSphere(viennaray::gpu::RNGState *state) {
 static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
                                          const viennacore::Vec3Df &geoNormal) {
   using namespace viennacore;
-#ifndef PSCU_TEST
+#ifndef VIENNARAY_TEST
   prd->pos = prd->pos + optixGetRayTmax() * prd->dir;
 #endif
   const Vec3Df randomDirection = PickRandomPointOnUnitSphere(&prd->RNGstate);

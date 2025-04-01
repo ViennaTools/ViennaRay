@@ -8,14 +8,13 @@ using namespace viennacore;
 
 template <typename NumericType, int D>
 class SourceRandom : public Source<NumericType> {
-  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
+  using boundingBoxType = std::array<Vec3D<NumericType>, 2>;
 
 public:
-  SourceRandom(
-      const boundingBoxType &boundingBox, NumericType cosinePower,
-      std::array<int, 5> &pTraceSettings, const size_t numPoints_,
-      const bool customDirection,
-      const std::array<std::array<NumericType, 3>, 3> &orthonormalBasis)
+  SourceRandom(const boundingBoxType &boundingBox, NumericType cosinePower,
+               std::array<int, 5> &pTraceSettings, const size_t numPoints_,
+               const bool customDirection,
+               const std::array<Vec3D<NumericType>, 3> &orthonormalBasis)
       : bdBox_(boundingBox), rayDir_(pTraceSettings[0]),
         firstDir_(pTraceSettings[1]), secondDir_(pTraceSettings[2]),
         minMax_(pTraceSettings[3]), posNeg_(pTraceSettings[4]),
@@ -23,7 +22,7 @@ public:
         numPoints_(numPoints_), customDirection_(customDirection),
         orthonormalBasis_(orthonormalBasis) {}
 
-  Vec2D<Vec3D<NumericType>>
+  std::array<Vec3D<NumericType>, 2>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
     auto origin = getOrigin(rngState);
     Vec3D<NumericType> direction;

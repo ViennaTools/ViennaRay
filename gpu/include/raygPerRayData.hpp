@@ -4,7 +4,7 @@
 
 #include "raygRNG.hpp"
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #include <stdint.h>
 
@@ -18,7 +18,8 @@ struct PerRayData {
 
   RNGState RNGstate;
 
-  float energy;
+  float energy = 0.f;
+  unsigned int numBoundaryHits = 0;
 };
 
 } // namespace viennaray::gpu

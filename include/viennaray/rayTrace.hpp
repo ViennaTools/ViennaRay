@@ -40,7 +40,7 @@ public:
     auto boundary = Boundary<NumericType, D>(
         device_, boundingBox, boundaryConditions_, traceSettings);
 
-    Vec3D<Vec3D<NumericType>> orthonormalBasis;
+    std::array<Vec3D<NumericType>, 3> orthonormalBasis;
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
     if (!useCustomSource)
@@ -84,9 +84,9 @@ public:
   /// Set the ray tracing geometry
   /// It is possible to set a 2D geometry with 3D points.
   /// In this case the last dimension is ignored.
-  template <std::size_t Dim>
-  void setGeometry(std::vector<std::array<NumericType, Dim>> const &points,
-                   std::vector<std::array<NumericType, Dim>> const &normals,
+  template <size_t Dim>
+  void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
+                   std::vector<VectorType<NumericType, Dim>> const &normals,
                    const NumericType gridDelta) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
@@ -98,9 +98,9 @@ public:
 
   /// Set the ray tracing geometry
   /// Specify the disk radius manually.
-  template <std::size_t Dim>
-  void setGeometry(std::vector<std::array<NumericType, Dim>> const &points,
-                   std::vector<std::array<NumericType, Dim>> const &normals,
+  template <size_t Dim>
+  void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
+                   std::vector<VectorType<NumericType, Dim>> const &normals,
                    const NumericType gridDelta, const NumericType diskRadii) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
@@ -274,9 +274,8 @@ public:
       for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
         points[idx] = geometry_.getPoint(idx);
       }
-      pointNeighborhood = PointNeighborhood<NumericType, D>(
-          points, numNeighbors * 2 * diskRadius_, boundingBox[0],
-          boundingBox[1]);
+      pointNeighborhood.template init<3>(points, numNeighbors * 2 * diskRadius_,
+                                         boundingBox[0], boundingBox[1]);
     }
 
 #pragma omp parallel for
@@ -334,12 +333,18 @@ private:
   void checkRelativeError() {
     auto error = getRelativeError();
     const int numPoints = error.size();
-    const int numThreads = omp_get_max_threads();
+    int numThreads = 1;
+#ifdef _OPENMP
+    numThreads = omp_get_max_threads();
+#endif
     std::vector<bool> passed(numThreads, true);
 
 #pragma omp parallel shared(error, passed)
     {
-      int threadId = omp_get_thread_num();
+      int threadId = 0;
+#ifdef _OPENMP
+      threadId = omp_get_thread_num();
+#endif
 #pragma omp for
       for (int i = 0; i < numPoints; i++) {
         if (error[i] > 0.05) {
@@ -412,7 +417,7 @@ private:
 
   BoundaryCondition boundaryConditions_[D] = {};
   TraceDirection sourceDirection_ = TraceDirection::POS_Z;
-  Vec3D<NumericType> primaryDirection_ = {0.};
+  Vec3D<NumericType> primaryDirection_{NumericType(0)};
 
   bool usePrimaryDirection_ = false;
   bool useRandomSeeds_ = false;

@@ -67,7 +67,10 @@ public:
     auto const lambda = pParticle_->getMeanFreePath();
 
     // thread local data storage
-    const int numThreads = omp_get_max_threads();
+    int numThreads = 1;
+#ifdef _OPENMP
+    numThreads = omp_get_max_threads();
+#endif
     std::vector<TracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *pLocalData_;
@@ -105,7 +108,10 @@ public:
       alignas(128) auto rayHit =
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-      const int threadID = omp_get_thread_num();
+      int threadID = 0;
+#ifdef _OPENMP
+      threadID = omp_get_thread_num();
+#endif
       unsigned int seed = runNumber_;
       if (useRandomSeeds_) {
         std::random_device rd;
@@ -191,7 +197,7 @@ public:
             if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
-              Vec3D<rtcNumericType> origin = {
+              const auto origin = Vec3D<rtcNumericType>{
                   static_cast<rtcNumericType>(ray.org_x + ray.dir_x * rnd),
                   static_cast<rtcNumericType>(ray.org_y + ray.dir_y * rnd),
                   static_cast<rtcNumericType>(ray.org_z + ray.dir_z * rnd)};
@@ -220,10 +226,10 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const Vec3D<rtcNumericType> hitPoint = {
-              ray.org_x + ray.dir_x * ray.tfar,
-              ray.org_y + ray.dir_y * ray.tfar,
-              ray.org_z + ray.dir_z * ray.tfar};
+          const auto hitPoint =
+              Vec3D<rtcNumericType>{ray.org_x + ray.dir_x * ray.tfar,
+                                    ray.org_y + ray.dir_y * ray.tfar,
+                                    ray.org_z + ray.dir_z * ray.tfar};
 
           /* -------- Hit from back -------- */
           const auto rayDir =
@@ -435,7 +441,7 @@ public:
 
 private:
   static bool rejectionControl(NumericType &rayWeight,
-                               const NumericType &initWeight, RNG &RNG) {
+                               const NumericType &initWeight, RNG &rng) {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;
@@ -449,9 +455,9 @@ private:
     // We want to set the weight of (the reflection of) the ray to the value of
     // renewWeight. In order to stay unbiased we kill the reflection with a
     // probability of (1 - rayWeight / renewWeight).
-    auto rnd = RNG();
+    auto rnd = static_cast<double>(rng() / RNG::max());
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rnd < (killProbability * RNG::max())) {
+    if (rnd < killProbability) {
       // kill the ray
       return false;
     }
@@ -552,14 +558,14 @@ private:
   bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
                               rtcNumericType &impactDistance) const {
     auto const &rayOrigin =
-        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&ray.org_x);
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.org_x);
     auto const &rayDirection =
-        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&ray.dir_x);
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.dir_x);
 
     const auto &normal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
     const auto &diskOrigin =
-        *reinterpret_cast<Vec3D<rtcNumericType> const *>(&disk);
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&disk);
 
     auto prodOfDirections = DotProduct(normal, rayDirection);
     if (prodOfDirections > 0.f) {
@@ -583,11 +589,11 @@ private:
     }
 
     // copy ray direction
-    auto rayDirectionC = Vec3D<rtcNumericType>{rayDirection[0], rayDirection[1],
-                                               rayDirection[2]} *
-                         tt;
-    auto hitPoint = rayOrigin + rayDirectionC;
-    auto distance = Distance(hitPoint, diskOrigin);
+    auto hitPoint = ScaleAdd(rayDirection, rayOrigin, tt);
+    for (int i = 0; i < 3; ++i) {
+      hitPoint[i] = hitPoint[i] - diskOrigin[i];
+    }
+    auto distance = sqrtf(DotProduct(hitPoint, hitPoint));
     auto const &radius = disk[3];
     if (radius > distance) {
       impactDistance = distance;

@@ -15,7 +15,7 @@ int main() {
 
   auto device = rtcNewDevice("");
   Geometry<NumericType, D> geometry;
-  geometry.initGeometry(device, points, normals, gridDelta);
+  geometry.initGeometry<3>(device, points, normals, gridDelta);
 
   auto boundingBox = geometry.getBoundingBox();
 

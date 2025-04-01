@@ -13,8 +13,8 @@ template <typename NumericType, int D> class Geometry {
 public:
   template <size_t Dim>
   void initGeometry(RTCDevice &device,
-                    std::vector<std::array<NumericType, Dim>> const &points,
-                    std::vector<std::array<NumericType, Dim>> const &normals,
+                    std::vector<VectorType<NumericType, Dim>> const &points,
+                    std::vector<VectorType<NumericType, Dim>> const &normals,
                     NumericType const discRadii) {
     static_assert(!(D == 3 && Dim == 2) &&
                   "Setting 2D geometry in 3D trace object");
@@ -101,8 +101,8 @@ public:
     }
 
     // Initialize point neighborhood
-    pointNeighborhood_ = PointNeighborhood<NumericType, D>(
-        points, 2 * discRadii_, minCoords_, maxCoords_);
+    pointNeighborhood_.template init<Dim>(points, 2 * discRadii_, minCoords_,
+                                          maxCoords_);
   }
 
   template <typename MatIdType>
@@ -116,14 +116,15 @@ public:
     }
   }
 
-  [[nodiscard]] Vec2D<Vec3D<NumericType>> getBoundingBox() const {
+  [[nodiscard]] std::array<Vec3D<NumericType>, 2> getBoundingBox() const {
     return {minCoords_, maxCoords_};
   }
 
   [[nodiscard]] Vec3D<NumericType> getPoint(const unsigned int primID) const {
     assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &pnt = pPointBuffer_[primID];
-    return {(NumericType)pnt.xx, (NumericType)pnt.yy, (NumericType)pnt.zz};
+    return Vec3D<NumericType>{(NumericType)pnt.xx, (NumericType)pnt.yy,
+                              (NumericType)pnt.zz};
   }
 
   [[nodiscard]] std::vector<unsigned int> const &
@@ -149,8 +150,8 @@ public:
   getPrimNormal(const unsigned int primID) const {
     assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
     auto const &normal = pNormalVecBuffer_[primID];
-    return {(NumericType)normal.xx, (NumericType)normal.yy,
-            (NumericType)normal.zz};
+    return Vec3D<NumericType>{(NumericType)normal.xx, (NumericType)normal.yy,
+                              (NumericType)normal.zz};
   }
 
   [[nodiscard]] std::array<rayInternal::rtcNumericType, 4> &
@@ -160,10 +161,10 @@ public:
         &pPointBuffer_[primID]);
   }
 
-  [[nodiscard]] Vec3D<rayInternal::rtcNumericType> &
+  [[nodiscard]] std::array<rayInternal::rtcNumericType, 3> &
   getNormalRef(unsigned int primID) {
     assert(primID < numPoints_ && "Geometry: Prim ID out of bounds");
-    return *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
+    return *reinterpret_cast<std::array<rayInternal::rtcNumericType, 3> *>(
         &pNormalVecBuffer_[primID]);
   }
 

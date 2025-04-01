@@ -8,7 +8,7 @@ using namespace viennacore;
 
 template <typename NumericType, int D>
 class SourceGrid : public Source<NumericType> {
-  using boundingBoxType = Vec2D<Vec3D<NumericType>>;
+  using boundingBoxType = std::array<Vec3D<NumericType>, 2>;
 
 public:
   SourceGrid(const boundingBoxType &boundingBox,
@@ -20,7 +20,7 @@ public:
         minMax_(traceSettings[3]), posNeg_(traceSettings[4]),
         ee_(static_cast<NumericType>(2) / (cosinePower + 1)) {}
 
-  Vec2D<Vec3D<NumericType>>
+  std::array<Vec3D<NumericType>, 2>
   getOriginAndDirection(const size_t idx, RNG &rngState) const override {
     auto origin = sourceGrid_[idx % numPoints_];
     auto direction = getDirection(rngState);

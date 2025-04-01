@@ -19,8 +19,8 @@ int main() {
 
   // Read stored geometry grid
   NumericType gridDelta;
-  std::vector<std::array<NumericType, 3>> points;
-  std::vector<std::array<NumericType, 3>> normals;
+  std::vector<VectorType<NumericType, 3>> points;
+  std::vector<VectorType<NumericType, 3>> normals;
   rayInternal::readGridFromFile("trenchGrid2D.dat", gridDelta, points, normals);
 
   // Ray tracer boundary conditions:

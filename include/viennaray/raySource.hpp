@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vcRNG.hpp>
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 namespace viennaray {
 
@@ -11,7 +11,7 @@ template <typename NumericType> class Source {
 public:
   virtual ~Source() = default;
 
-  virtual Vec2D<Vec3D<NumericType>>
+  virtual std::array<Vec3D<NumericType>, 2>
   getOriginAndDirection(size_t idx, RNG &rngState) const = 0;
   [[nodiscard]] virtual size_t getNumPoints() const = 0;
   virtual NumericType getSourceArea() const = 0;

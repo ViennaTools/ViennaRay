@@ -175,7 +175,7 @@ int main() {
     rayInternal::adjustBoundingBox<NumericType, D>(boundingBox, direction,
                                                    gridDelta);
     auto traceSetting = rayInternal::getTraceSettings(direction);
-    viennacore::Vec3D<NumericType> primaryDir = {1., 1., -1.};
+    viennacore::Vec3D<NumericType> primaryDir{1., 1., -1.};
     viennacore::Normalize(primaryDir);
     auto orthoBasis = rayInternal::getOrthonormalBasis(primaryDir);
     auto source =

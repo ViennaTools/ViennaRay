@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 #include <cassert>
 #include <vector>
@@ -17,12 +17,12 @@ public:
   PointNeighborhood() = default;
 
   template <size_t Dim>
-  PointNeighborhood(std::vector<std::array<NumericType, Dim>> const &points,
-                    NumericType distance, Vec3D<NumericType> const &minCoords,
-                    Vec3D<NumericType> const &maxCoords)
-      : distance_(distance) {
-
+  void init(std::vector<VectorType<NumericType, Dim>> const &points,
+            NumericType distance, Vec3D<NumericType> const &minCoords,
+            Vec3D<NumericType> const &maxCoords) {
+    distance_ = distance;
     const auto numPoints = points.size();
+    pointNeighborhood_.clear();
     pointNeighborhood_.resize(numPoints, std::vector<unsigned int>{});
     if constexpr (D == 3) {
       std::vector<unsigned int> side1;
@@ -186,8 +186,8 @@ private:
   }
 
   template <size_t Dim>
-  bool checkDistance(const std::array<NumericType, Dim> &p1,
-                     const std::array<NumericType, Dim> &p2) const {
+  bool checkDistance(const VectorType<NumericType, Dim> &p1,
+                     const VectorType<NumericType, Dim> &p2) const {
     for (int i = 0; i < D; ++i) {
       if (std::abs(p1[i] - p2[i]) >= distance_)
         return false;

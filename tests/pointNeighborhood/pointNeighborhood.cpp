@@ -10,8 +10,8 @@ int main() {
   NumericType extent = 10;
   NumericType gridDelta = 0.5;
   NumericType eps = 1e-6;
-  std::vector<std::array<NumericType, D>> points;
-  std::vector<std::array<NumericType, D>> normals;
+  std::vector<VectorType<NumericType, D>> points;
+  std::vector<VectorType<NumericType, D>> normals;
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   // setup simple plane grid with normal in z-direction with discs only

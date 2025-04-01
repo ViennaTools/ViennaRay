@@ -18,8 +18,8 @@ int main() {
 
   // reflective boundary on x-y plane
   {
-    std::vector<std::array<NumericType, D>> points;
-    std::vector<std::array<NumericType, D>> normals;
+    std::vector<VectorType<NumericType, D>> points;
+    std::vector<VectorType<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
     Geometry<NumericType, D> geometry;
@@ -78,8 +78,8 @@ int main() {
   }
   // reflective boundary on x-z plane
   {
-    std::vector<std::array<NumericType, D>> points;
-    std::vector<std::array<NumericType, D>> normals;
+    std::vector<VectorType<NumericType, D>> points;
+    std::vector<VectorType<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 2, 1}, points, normals);
 
     Geometry<NumericType, D> geometry;
@@ -138,8 +138,8 @@ int main() {
   }
   // periodic boundary on x-y plane
   {
-    std::vector<std::array<NumericType, D>> points;
-    std::vector<std::array<NumericType, D>> normals;
+    std::vector<VectorType<NumericType, D>> points;
+    std::vector<VectorType<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
     Geometry<NumericType, D> geometry;

@@ -7,8 +7,8 @@ int main() {
   using NumericType = float;
   constexpr int D = 3;
   NumericType gridDelta = 1.0;
-  std::vector<std::array<NumericType, D>> points;
-  std::vector<std::array<NumericType, D>> normals;
+  std::vector<VectorType<NumericType, D>> points;
+  std::vector<VectorType<NumericType, D>> normals;
 
   points.push_back({0, 0, 0});
   points.push_back({1, 0, 0});
@@ -22,7 +22,7 @@ int main() {
   normals.push_back({0, 0, 1});
   normals.push_back({0, 0, 1});
 
-  const Vec3D<NumericType> direction = {0, 1, 0};
+  const Vec3D<NumericType> direction{0, 1, 0};
   normals.push_back(Normalize(direction));
   normals.push_back(Normalize(direction));
   normals.push_back(Normalize(direction));

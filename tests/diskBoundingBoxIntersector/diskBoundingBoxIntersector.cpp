@@ -2,7 +2,7 @@
 #include <rayGeometry.hpp>
 #include <rayUtil.hpp>
 
-#include <vcVectorUtil.hpp>
+#include <vcVectorType.hpp>
 
 constexpr int D = 3;
 using namespace viennaray;
