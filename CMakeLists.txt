@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 3.3.0)
+  VERSION 3.4.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library switches
