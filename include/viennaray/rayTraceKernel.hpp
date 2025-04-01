@@ -441,7 +441,7 @@ public:
 
 private:
   static bool rejectionControl(NumericType &rayWeight,
-                               const NumericType &initWeight, RNG &RNG) {
+                               const NumericType &initWeight, RNG &rng) {
     // Choosing a good value for the weight lower threshold is important
     NumericType lowerThreshold = 0.1 * initWeight;
     NumericType renewWeight = 0.3 * initWeight;
@@ -455,9 +455,9 @@ private:
     // We want to set the weight of (the reflection of) the ray to the value of
     // renewWeight. In order to stay unbiased we kill the reflection with a
     // probability of (1 - rayWeight / renewWeight).
-    auto rnd = RNG();
+    auto rnd = static_cast<double>(rng() / RNG::max());
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rnd < (killProbability * RNG::max())) {
+    if (rnd < killProbability) {
       // kill the ray
       return false;
     }
