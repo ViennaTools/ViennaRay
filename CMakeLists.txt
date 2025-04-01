@@ -103,7 +103,7 @@ if(NOT VIENNARAY_SYSTEM_TBB)
   CPMFindPackage(
     NAME TBB
     VERSION 2020.0
-    GIT_TAG v2021.11.0
+    GIT_TAG v2022.1.0
     GIT_REPOSITORY "https://github.com/oneapi-src/oneTBB"
     OPTIONS "TBB_TEST OFF" "TBB_STRICT OFF")
 endif()
