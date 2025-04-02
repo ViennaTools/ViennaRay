@@ -132,6 +132,11 @@ public:
       }
     }
 
+    CUstream stream;
+    CUDA_CHECK(StreamCreate(&stream));
+    /// TODO: optimize by running multiple particles in parallel on different
+    /// streams
+
     for (size_t i = 0; i < particles.size(); i++) {
       launchParams.particleIdx = static_cast<unsigned>(i);
       launchParams.cosineExponent =
@@ -149,8 +154,6 @@ public:
           rayInternal::getOrthonormalBasis<float>(direction);
       launchParamsBuffer.upload(&launchParams, 1);
 
-      CUstream stream;
-      CUDA_CHECK(StreamCreate(&stream));
       generateSBT(i);
       OPTIX_CHECK(optixLaunch(pipelines[i], stream,
                               /*! parameters and SBT */
@@ -160,7 +163,6 @@ public:
                               numPointsPerDim, numPointsPerDim,
                               numberOfRaysPerPoint));
     }
-
     // std::cout << util::prettyDouble(numRays * particles.size()) << std::endl;
     // float *temp = new float[launchParams.numElements];
     // resultBuffer.download(temp, launchParams.numElements);
@@ -170,7 +172,9 @@ public:
     // delete temp;
 
     // sync - maybe remove in future
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
+    CUDA_CHECK(StreamSynchronize(stream));
+    CUDA_CHECK(StreamDestroy(stream));
     normalize();
   }
 
