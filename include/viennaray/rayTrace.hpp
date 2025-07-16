@@ -71,9 +71,9 @@ public:
       } else if (cosinePower > 1) {
         pDirection_ = std::make_shared<DirectionPowerCosine<NumericType, D>>(
             traceSettings, cosinePower, usePrimaryDirection_, orthonormalBasis);
-      } else if (kappa >= 0) {
-        // pDirection_ = std::make_shared<DirectionVMF<NumericType, D>>(
-        //     traceSettings, kappa);
+      } else if (kappa > 0) {
+        pDirection_ = std::make_shared<DirectionVMF<NumericType, D>>(
+            traceSettings, kappa, usePrimaryDirection_, orthonormalBasis);
       } else {
         viennacore::Logger::getInstance()
             .addError("Invalid source distribution parameters.")

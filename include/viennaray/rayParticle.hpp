@@ -150,7 +150,8 @@ public:
     localData.getVectorData(0)[primID] += rayWeight;
   }
 
-  NumericType getSourceDistributionPower() const final { return 1.; }
+  NumericType getSourceDistributionPower() const final { return -1.; }
+  NumericType getSourceDistributionKappa() const final { return 1.; }
 
   [[nodiscard]] std::vector<std::string> getLocalDataLabels() const final {
     return {"testFlux"};

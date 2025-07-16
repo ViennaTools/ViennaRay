@@ -15,7 +15,7 @@ int main() {
   using NumericType = float;
 
   // Set the number of threads to use in OpenMP parallelization
-  omp_set_num_threads(6);
+  omp_set_num_threads(1);
 
   // Read stored geometry grid
   NumericType gridDelta;

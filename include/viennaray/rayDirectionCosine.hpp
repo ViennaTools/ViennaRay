@@ -24,11 +24,11 @@ public:
 
     if constexpr (D == 2) {
       direction[secondDir_] = 0.f;
+      Normalize(direction);
     } else {
       direction[secondDir_] = sinf(M_PI * 2.f * r1) * sqrtf(1.f - r2);
     }
 
-    Normalize(direction);
     return direction;
   }
 

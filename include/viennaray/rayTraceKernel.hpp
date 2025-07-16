@@ -155,10 +155,13 @@ public:
               rngState); // try using direction from particle
           if (isZero(direction)) {
             // use direction from source
-            direction = pDirection_->getDirection(idx, rngState);
+            auto sourceDirection = pDirection_->getDirection(idx, rngState);
+            assert(IsNormalized(sourceDirection));
+            fillRayDirection(rayHit.ray, sourceDirection);
+          } else {
+            assert(IsNormalized(direction));
+            fillRayDirection(rayHit.ray, direction);
           }
-          assert(IsNormalized(direction));
-          fillRayDirection(rayHit.ray, direction);
         }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
