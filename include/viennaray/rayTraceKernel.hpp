@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rayBoundary.hpp>
+#include <rayDirection.hpp>
 #include <rayDiskBoundingBoxIntersector.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
@@ -24,6 +25,7 @@ public:
   TraceKernel(RTCDevice &device, Geometry<NumericType, D> &geometry,
               Boundary<NumericType, D> &boundary,
               std::shared_ptr<Source<NumericType>> source,
+              std::shared_ptr<Direction<NumericType>> direction,
               std::unique_ptr<AbstractParticle<NumericType>> &particle,
               DataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
               const size_t numRaysFixed, const bool useRandomSeed,
@@ -31,7 +33,7 @@ public:
               const size_t runNumber, HitCounter<NumericType> &hitCounter,
               TraceInfo &traceInfo)
       : device_(device), geometry_(geometry), boundary_(boundary),
-        pSource_(source), pParticle_(particle->clone()),
+        pSource_(source), pDirection_(direction), pParticle_(particle->clone()),
         numRays_(numRaysFixed == 0 ? pSource_->getNumPoints() * numRaysPerPoint
                                    : numRaysFixed),
         useRandomSeeds_(useRandomSeed), runNumber_(runNumber),
@@ -59,6 +61,8 @@ public:
     auto const geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
     assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
            "Embree device error");
+    assert(pSource_);
+    assert(pDirection_);
 
     size_t geoHits = 0;
     size_t nonGeoHits = 0;
@@ -143,17 +147,18 @@ public:
         {
           particle->initNew(rngState);
           particle->logData(myDataLog);
-          auto direction = particle->initNewWithDirection(rngState);
 
-          auto originAndDirection =
-              pSource_->getOriginAndDirection(idx, rngState);
-          fillRayPosition(rayHit.ray, originAndDirection[0]);
+          auto origin = pSource_->getOrigin(idx, rngState);
+          fillRayPosition(rayHit.ray, origin);
+
+          auto direction = particle->initNewWithDirection(
+              rngState); // try using direction from particle
           if (isZero(direction)) {
-            fillRayDirection(rayHit.ray, originAndDirection[1]);
-          } else {
-            assert(IsNormalized(direction));
-            fillRayDirection(rayHit.ray, direction);
+            // use direction from source
+            direction = pDirection_->getDirection(idx, rngState);
           }
+          assert(IsNormalized(direction));
+          fillRayDirection(rayHit.ray, direction);
         }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
@@ -612,6 +617,7 @@ private:
   Geometry<NumericType, D> &geometry_;
   Boundary<NumericType, D> const &boundary_;
   std::shared_ptr<Source<NumericType>> const pSource_;
+  std::shared_ptr<Direction<NumericType>> const pDirection_;
   std::unique_ptr<AbstractParticle<NumericType>> const pParticle_;
 
   const long long numRays_;

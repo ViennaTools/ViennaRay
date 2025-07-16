@@ -63,6 +63,9 @@ public:
   /// Set the power of the cosine source distribution for this particle.
   virtual NumericType getSourceDistributionPower() const = 0;
 
+  /// Set the kappa value for the VMF source distribution of this particle.
+  virtual NumericType getSourceDistributionKappa() const = 0;
+
   // Set the mean free path of the particle. If the mean free path is negative,
   // the mean free path is infinite.
   virtual NumericType getMeanFreePath() const = 0;
@@ -105,7 +108,10 @@ public:
                         const TracingData<NumericType> *globalData,
                         RNG &rngState) override { // collect data for this hit
   }
+  // Either power or kappa must be set to a valid value.
   NumericType getSourceDistributionPower() const override { return 1.; }
+  // If the particle does not use VMF distribution, return -1.
+  NumericType getSourceDistributionKappa() const override { return -1.; }
   NumericType getMeanFreePath() const override { return -1.; }
   [[nodiscard]] std::vector<std::string> getLocalDataLabels() const override {
     return {};

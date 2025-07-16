@@ -1,6 +1,9 @@
 #pragma once
 
 #include <rayBoundary.hpp>
+#include <rayDirectionCosine.hpp>
+#include <rayDirectionPowerCosine.hpp>
+#include <rayDirectionVMF.hpp>
 #include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
 #include <raySourceRandom.hpp>
@@ -40,13 +43,53 @@ public:
     auto boundary = Boundary<NumericType, D>(
         device_, boundingBox, boundaryConditions_, traceSettings);
 
+    if (!useCustomSource) {
+      pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
+          boundingBox, traceSettings, geometry_.getNumPoints());
+    }
+
     std::array<Vec3D<NumericType>, 3> orthonormalBasis;
     if (usePrimaryDirection_)
       orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
-    if (!useCustomSource)
-      pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
-          boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
-          geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
+
+    if (!useCustomDirection_) {
+      auto cosinePower = pParticle_->getSourceDistributionPower();
+      auto kappa = pParticle_->getSourceDistributionKappa();
+      if (cosinePower < 0 && kappa < 0) {
+        viennacore::Logger::getInstance()
+            .addError("Either power or kappa must be set to a valid value.")
+            .print();
+      } else if (cosinePower >= 0 && kappa >= 0) {
+        viennacore::Logger::getInstance()
+            .addError("Either power or kappa must be set, but not both.")
+            .print();
+      }
+
+      if (cosinePower == 1) {
+        pDirection_ =
+            std::make_shared<DirectionCosine<NumericType, D>>(traceSettings);
+      } else if (cosinePower > 1) {
+        pDirection_ = std::make_shared<DirectionPowerCosine<NumericType, D>>(
+            traceSettings, cosinePower, usePrimaryDirection_, orthonormalBasis);
+      } else if (kappa >= 0) {
+        // pDirection_ = std::make_shared<DirectionVMF<NumericType, D>>(
+        //     traceSettings, kappa);
+      } else {
+        viennacore::Logger::getInstance()
+            .addError("Invalid source distribution parameters.")
+            .print();
+      }
+    } else {
+      if (pDirection_ == nullptr) {
+        viennacore::Logger::getInstance()
+            .addError("Custom direction is set, but no direction object is "
+                      "provided.")
+            .print();
+      }
+      viennacore::Logger::getInstance()
+          .addDebug("Using custom direction for ray tracing.")
+          .print();
+    }
 
     auto localDataLabels = pParticle_->getLocalDataLabels();
     if (!localDataLabels.empty()) {
@@ -58,9 +101,9 @@ public:
     }
 
     rayInternal::TraceKernel tracer(
-        device_, geometry_, boundary, pSource_, pParticle_, dataLog_,
-        numberOfRaysPerPoint_, numberOfRaysFixed_, useRandomSeeds_, calcFlux_,
-        printProgress_, runNumber_++, hitCounter_, RTInfo_);
+        device_, geometry_, boundary, pSource_, pDirection_, pParticle_,
+        dataLog_, numberOfRaysPerPoint_, numberOfRaysFixed_, useRandomSeeds_,
+        calcFlux_, printProgress_, runNumber_++, hitCounter_, RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
 
@@ -138,6 +181,18 @@ public:
   void resetSource() {
     pSource_.reset();
     useCustomSource = false;
+  }
+
+  /// Set a custom direction for the ray tracing.
+  void setDirection(std::shared_ptr<Direction<NumericType>> direction) {
+    pDirection_ = direction;
+    useCustomDirection_ = true;
+  }
+
+  /// Reset the direction to the default random direction.
+  void resetDirection() {
+    pDirection_.reset();
+    useCustomDirection_ = false;
   }
 
   void enableProgressBar() { printProgress_ = true; }
@@ -408,6 +463,7 @@ private:
 
   Geometry<NumericType, D> geometry_;
   std::shared_ptr<Source<NumericType>> pSource_ = nullptr;
+  std::shared_ptr<Direction<NumericType>> pDirection_ = nullptr;
   std::unique_ptr<AbstractParticle<NumericType>> pParticle_ = nullptr;
 
   size_t numberOfRaysPerPoint_ = 1000;
@@ -422,6 +478,7 @@ private:
   bool usePrimaryDirection_ = false;
   bool useRandomSeeds_ = false;
   bool useCustomSource = false;
+  bool useCustomDirection_ = false;
   size_t runNumber_ = 0;
   bool calcFlux_ = true;
   bool checkError_ = true;
