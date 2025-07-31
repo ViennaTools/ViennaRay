@@ -63,7 +63,7 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
 * Installation with CPM
 
   ```cmake
-  CPMAddPackage("gh:viennatools/viennaray@3.4.1")
+  CPMAddPackage("gh:viennatools/viennaray@3.4.2")
   ```
 
 * With a local installation
@@ -113,4 +113,8 @@ ViennaRay was developed under the aegis of the 'Institute for Microelectronics' 
 http://www.iue.tuwien.ac.at/
 
 ## License
-See [LICENSE](LICENSE) file in the base directory.
+
+ViennaRay is licensed under the [MIT License](./LICENSE).
+
+Some third-party libraries used by ViennaRay are under their own permissive licenses (MIT, BSD, Apache-2.0).  
+See [`THIRD_PARTY_LICENSES.md`](./THIRD_PARTY_LICENSES.md) for details.
