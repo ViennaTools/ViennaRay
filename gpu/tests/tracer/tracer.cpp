@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
   Logger::setLogLevel(LogLevel::DEBUG);
 
   Context context;
-  context.create();
+  context.create("../../../lib/ptx"); // relative to build directory
 
   gpu::Trace<NumericType, D> tracer(context);
 

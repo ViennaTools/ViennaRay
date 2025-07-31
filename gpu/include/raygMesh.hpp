@@ -50,7 +50,9 @@ inline TriangleMesh readMeshFromFile(const std::string &fileName) {
   TriangleMesh mesh;
   std::ifstream dataFile(fileName);
   if (!dataFile.is_open()) {
-    std::cout << "Cannot read file " << fileName << std::endl;
+    Logger::getInstance()
+        .addError("Failed to open mesh file: " + fileName)
+        .print();
     return mesh;
   }
   std::string id;

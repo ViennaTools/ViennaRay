@@ -16,7 +16,7 @@ int main() {
   Logger::setLogLevel(LogLevel::DEBUG);
 
   Context context;
-  context.create();
+  context.create("../../../lib/ptx"); // relative to build directory
   const std::string moduleName = "testReflections.ptx";
   context.addModule(moduleName);
   {

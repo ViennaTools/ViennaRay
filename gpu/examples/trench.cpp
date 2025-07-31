@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
   Logger::setLogLevel(LogLevel::DEBUG);
 
   Context context;
-  context.create();
+  context.create("../../lib/ptx"); // relative to build directory
 
   const auto mesh = gpu::readMeshFromFile("trenchMesh.dat");
   std::vector<int> materialIds(mesh.triangles.size(), 7);
