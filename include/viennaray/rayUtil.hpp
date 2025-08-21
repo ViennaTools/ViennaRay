@@ -248,17 +248,17 @@ inline void fillRayPosition<float>(RTCRay &ray, const Vec3D<float> &origin,
 
 /* ------------------------------------------------------ */
 
+// Marsaglia's method to pick a random point on the unit sphere
 template <typename NumericType>
 [[nodiscard]] static Vec3D<NumericType>
 pickRandomPointOnUnitSphere(RNG &rngState) {
-  std::uniform_real_distribution<NumericType> uniDist;
-  NumericType x, y, z, x2, y2, x2py2;
+  static thread_local std::uniform_real_distribution<NumericType> uniDist(
+      NumericType(0), NumericType(1));
+  NumericType x, y, z, x2py2;
   do {
     x = 2 * uniDist(rngState) - 1.;
-    x2 = x * x;
     y = 2 * uniDist(rngState) - 1.;
-    y2 = y * y;
-    x2py2 = x2 + y2;
+    x2py2 = x * x + y * y;
   } while (x2py2 >= 1.);
   NumericType tmp = 2 * std::sqrt(1. - x2py2);
   x *= tmp;
