@@ -159,6 +159,7 @@ public:
     config_.numRaysPerPoint = 0;
   }
 
+  /// Set the maximum number of reflections a ray is allowed to perform.
   void setMaxReflections(const unsigned maxReflections) {
     config_.maxReflections = maxReflections;
   }

@@ -593,7 +593,7 @@ private:
       return false;
     }
 
-    // TODO: Memoize ddneg
+    // TODO: Memoize ddneg (tested: no significant speedup)
     auto ddneg = DotProduct(diskOrigin, normal);
     auto tt = (ddneg - DotProduct(normal, rayOrigin)) / prodOfDirections;
     if (tt <= 0) {

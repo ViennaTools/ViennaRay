@@ -267,49 +267,48 @@ pickRandomPointOnUnitSphere(RNG &rngState) {
   return Vec3D<NumericType>{x, y, z};
 }
 
-// Returns some orthonormal basis containing a the input vector
-// (possibly scaled) as the first element of the return value.
-// This function is deterministic, i.e., for one input it will return always
-// the same result.
-template <typename NumericType>
-[[nodiscard]] std::array<Vec3D<NumericType>, 3>
-getOrthonormalBasis(const Vec3D<NumericType> &vec) {
-  std::array<Vec3D<NumericType>, 3> rr;
-  rr[0] = vec;
+// Build an orthonormal basis {u,v,w} with u = normalized(vec).
+// Deterministic. Few branches. Numerically stable.
+template <typename T>
+[[nodiscard]] std::array<Vec3D<T>, 3> getOrthonormalBasis(const Vec3D<T> &vec) {
+  std::array<Vec3D<T>, 3> B;
 
-  // Calculate a vector (rr[1]) which is perpendicular to rr[0]
-  // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector#answer-211195
-  Vec3D<NumericType> candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
-  Vec3D<NumericType> candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
-  Vec3D<NumericType> candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
-  // We choose the candidate which maximizes the sum of its components,
-  // because we want to avoid numeric errors and that the result is (0, 0, 0).
-  std::array<Vec3D<NumericType>, 3> cc = {candidate0, candidate1, candidate2};
-  auto sumFun = [](const Vec3D<NumericType> &oo) {
-    return oo[0] + oo[1] + oo[2];
-  };
-  size_t maxIdx = 0;
-  for (size_t idx = 1; idx < cc.size(); ++idx) {
-    if (sumFun(cc[idx]) > sumFun(cc[maxIdx])) {
-      maxIdx = idx;
-    }
+  // 1) normalize the input (handle zero safely)
+  Vec3D<T> u = vec;
+  const T len2 = Norm2(u);
+  if (len2 == T(0)) {
+    Logger::getInstance()
+        .addError("Cannot build orthonormal basis for zero-length vector")
+        .print();
+    return B;
   }
-  assert(maxIdx < 3 && "Error in computation of perpendicular vector");
-  rr[1] = cc[maxIdx];
+  const T invLen = T(1) / std::sqrt(len2);
+  u[0] *= invLen;
+  u[1] *= invLen;
+  u[2] *= invLen;
+  B[0] = u;
 
-  rr[2] = CrossProduct(rr[0], rr[1]);
-  Normalize(rr[0]);
-  Normalize(rr[1]);
-  Normalize(rr[2]);
+  // 2) choose a helper vector not collinear with u
+  //    pick the axis where |component| is smallest to avoid near-zero cross.
+  Vec3D<T> h;
+  if (std::abs(u[0]) > std::abs(u[2])) {
+    // u.x dominates x/z → use (-y, x, 0)
+    h = Vec3D<T>{-u[1], u[0], T(0)};
+  } else {
+    // z dominates → use (0, -z, y)
+    h = Vec3D<T>{T(0), -u[2], u[1]};
+  }
 
-  // Sanity check
-  assert(std::abs(DotProduct(rr[0], rr[1])) < 1e-6 &&
-         "Error in orthonormal basis computation");
-  assert(std::abs(DotProduct(rr[1], rr[2])) < 1e-6 &&
-         "Error in orthonormal basis computation");
-  assert(std::abs(DotProduct(rr[2], rr[0])) < 1e-6 &&
-         "Error in orthonormal basis computation");
-  return rr;
+  // 3) v = normalized(h)
+  auto v = h;
+  Normalize(v);
+  B[1] = v;
+
+  // 4) w = u × v  (already unit-length up to tiny FP error)
+  auto w = CrossProduct(u, v);
+  B[2] = w;
+
+  return B;
 }
 
 /* -------- Create or read simple geometries for testing -------- */
