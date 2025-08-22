@@ -7,36 +7,19 @@
 #include <vcVectorType.hpp>
 
 #ifdef __CUDACC__
-__device__ std::array<viennacore::Vec3Df, 3>
-getOrthonormalBasis(const viennacore::Vec3Df &vec) {
-  std::array<viennacore::Vec3Df, 3> rr;
-  rr[0] = vec;
+__device__ __forceinline__ std::array<viennacore::Vec3Df, 3>
+getOrthonormalBasis(const viennacore::Vec3Df &n) {
 
-  // Calculate a vector (rr[1]) which is perpendicular to rr[0]
-  viennacore::Vec3Df candidate0{rr[0][2], rr[0][2], -(rr[0][0] + rr[0][1])};
-  viennacore::Vec3Df candidate1{rr[0][1], -(rr[0][0] + rr[0][2]), rr[0][1]};
-  viennacore::Vec3Df candidate2{-(rr[0][1] + rr[0][2]), rr[0][0], rr[0][0]};
-  // We choose the candidate which maximizes the sum of its components,
-  // because we want to avoid numeric errors and that the result is (0, 0, 0).
-  std::array<viennacore::Vec3Df, 3> cc = {candidate0, candidate1, candidate2};
-  auto sumFun = [](const viennacore::Vec3Df &oo) {
-    return oo[0] + oo[1] + oo[2];
-  };
-  int maxIdx = 0;
-  for (size_t idx = 1; idx < cc.size(); ++idx) {
-    if (sumFun(cc[idx]) > sumFun(cc[maxIdx])) {
-      maxIdx = idx;
-    }
-  }
-  assert(maxIdx < 3 && "Error in computation of perpendicular vector");
-  rr[1] = cc[maxIdx];
+  // Frisvad 2012 (branchless)
+  const float sign = copysignf(1.0f, n[2]);
+  const float a = -1.0f / (sign + n[2]);
+  const float b = n[0] * n[1] * a;
 
-  rr[2] = viennacore::CrossProduct(rr[0], rr[1]);
-  viennacore::Normalize(rr[0]);
-  viennacore::Normalize(rr[1]);
-  viennacore::Normalize(rr[2]);
+  viennacore::Vec3Df t{1.0f + sign * n[0] * n[0] * a, sign * b, -sign * n[0]};
+  viennacore::Vec3Df b2{b, sign + n[1] * n[1] * a, -n[1]};
 
-  return rr;
+  // (t, b2) are already unit and orthogonal to n; no extra normalize needed.
+  return {n, t, b2};
 }
 
 __device__ void initializeRayDirection(viennaray::gpu::PerRayData *prd,
