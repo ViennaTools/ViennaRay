@@ -57,12 +57,12 @@ public:
       }
     }
 
-    rayInternal::TraceKernel tracer(
-        device_, geometry_, boundary, pSource_, pParticle_, dataLog_,
-        numberOfRaysPerPoint_, numberOfRaysFixed_, useRandomSeeds_, calcFlux_,
-        printProgress_, runNumber_++, hitCounter_, RTInfo_);
+    rayInternal::TraceKernel tracer(device_, geometry_, boundary, pSource_,
+                                    pParticle_, config_, dataLog_, hitCounter_,
+                                    RTInfo_);
     tracer.setTracingData(&localData_, pGlobalData_);
     tracer.apply();
+    config_.runNumber++;
 
     if (checkError_)
       checkRelativeError();
@@ -140,23 +140,27 @@ public:
     useCustomSource = false;
   }
 
-  void enableProgressBar() { printProgress_ = true; }
+  void enableProgressBar() { config_.printProgress = true; }
 
-  void disableProgressBar() { printProgress_ = false; }
+  void disableProgressBar() { config_.printProgress = false; }
 
   /// Set the number of rays per geometry point.
   /// The total number of rays, that are traced, is the set number set here
   /// times the number of points in the geometry.
   void setNumberOfRaysPerPoint(const size_t numRaysPerPoint) {
-    numberOfRaysPerPoint_ = numRaysPerPoint;
-    numberOfRaysFixed_ = 0;
+    config_.numRaysPerPoint = numRaysPerPoint;
+    config_.numRaysFixed = 0;
   }
 
   /// Set the number of total rays traced to a fixed amount,
   /// independent of the geometry
   void setNumberOfRaysFixed(const size_t numRaysFixed) {
-    numberOfRaysFixed_ = numRaysFixed;
-    numberOfRaysPerPoint_ = 0;
+    config_.numRaysFixed = numRaysFixed;
+    config_.numRaysPerPoint = 0;
+  }
+
+  void setMaxReflections(const unsigned maxReflections) {
+    config_.maxReflections = maxReflections;
   }
 
   /// Set the source direction, where the rays should be traced from.
@@ -176,13 +180,15 @@ public:
 
   /// Set whether random seeds for the internal random number generators
   /// should be used.
-  void setUseRandomSeeds(const bool useRand) { useRandomSeeds_ = useRand; }
+  void setUseRandomSeeds(const bool useRand) {
+    config_.useRandomSeed = useRand;
+  }
 
   /// Set whether the flux and hit counts should be recorded. If not needed,
   /// this should be turned off to increase performance. If set to false, the
   /// functions getTotalFlux(), getNormalizedFlux(), getHitCounts() and
   /// getRelativeError() can not be used.
-  void setCalculateFlux(const bool calcFlux) { calcFlux_ = calcFlux; }
+  void setCalculateFlux(const bool calcFlux) { config_.calcFlux = calcFlux; }
 
   /// Set whether to check the relative error after a tracing. If the relative
   /// error at a surface point is larger than 0.05 a warning is printed. The
@@ -240,9 +246,10 @@ public:
         break;
       }
       NumericType sourceArea = pSource_->getSourceArea();
-      auto numTotalRays = numberOfRaysFixed_ == 0
-                              ? pSource_->getNumPoints() * numberOfRaysPerPoint_
-                              : numberOfRaysFixed_;
+      auto numTotalRays =
+          config_.numRaysFixed == 0
+              ? pSource_->getNumPoints() * config_.numRaysPerPoint
+              : config_.numRaysFixed;
       NumericType normFactor = sourceArea / numTotalRays;
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
@@ -410,22 +417,19 @@ private:
   std::shared_ptr<Source<NumericType>> pSource_ = nullptr;
   std::unique_ptr<AbstractParticle<NumericType>> pParticle_ = nullptr;
 
-  size_t numberOfRaysPerPoint_ = 1000;
-  size_t numberOfRaysFixed_ = 0;
   NumericType diskRadius_ = 0;
   NumericType gridDelta_ = 0;
 
   BoundaryCondition boundaryConditions_[D] = {};
   TraceDirection sourceDirection_ = TraceDirection::POS_Z;
-  Vec3D<NumericType> primaryDirection_{NumericType(0)};
+  Vec3D<NumericType> primaryDirection_{NumericType(0), NumericType(0),
+                                       NumericType(0)};
 
   bool usePrimaryDirection_ = false;
-  bool useRandomSeeds_ = false;
   bool useCustomSource = false;
-  size_t runNumber_ = 0;
-  bool calcFlux_ = true;
   bool checkError_ = true;
-  bool printProgress_ = false;
+
+  rayInternal::KernelConfig config_;
 
   HitCounter<NumericType> hitCounter_;
   TracingData<NumericType> localData_;

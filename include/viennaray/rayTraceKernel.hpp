@@ -19,23 +19,31 @@ namespace rayInternal {
 
 using namespace viennaray;
 
+struct KernelConfig {
+  size_t numRaysPerPoint = 1000;
+  size_t numRaysFixed = 0;
+  unsigned maxReflections = std::numeric_limits<unsigned>::max();
+
+  bool useRandomSeed = false;
+  bool calcFlux = true;
+  bool printProgress = false;
+
+  unsigned runNumber = 1;
+};
+
 template <typename NumericType, int D> class TraceKernel {
 public:
   TraceKernel(RTCDevice &device, Geometry<NumericType, D> &geometry,
               Boundary<NumericType, D> &boundary,
               std::shared_ptr<Source<NumericType>> source,
               std::unique_ptr<AbstractParticle<NumericType>> &particle,
-              DataLog<NumericType> &dataLog, const size_t numRaysPerPoint,
-              const size_t numRaysFixed, const bool useRandomSeed,
-              const bool calcFlux, const bool printProgress,
-              const size_t runNumber, HitCounter<NumericType> &hitCounter,
-              TraceInfo &traceInfo)
+              KernelConfig const &config, DataLog<NumericType> &dataLog,
+              HitCounter<NumericType> &hitCounter, TraceInfo &traceInfo)
       : device_(device), geometry_(geometry), boundary_(boundary),
-        pSource_(source), pParticle_(particle->clone()),
-        numRays_(numRaysFixed == 0 ? pSource_->getNumPoints() * numRaysPerPoint
-                                   : numRaysFixed),
-        useRandomSeeds_(useRandomSeed), runNumber_(runNumber),
-        calcFlux_(calcFlux), printProgress_(printProgress),
+        pSource_(source), pParticle_(particle->clone()), config_(config),
+        // numRays(numRaysFixed == 0 ? pSource_->getNumPoints() *
+        // numRaysPerPoint
+        //                            : numRaysFixed),
         hitCounter_(hitCounter), traceInfo_(traceInfo), dataLog_(dataLog) {
     assert(rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_VERSION) >=
                30601 &&
@@ -65,6 +73,11 @@ public:
     size_t totalTraces = 0;
     size_t particleHits = 0;
     auto const lambda = pParticle_->getMeanFreePath();
+    const long long numRays =
+        config_.numRaysFixed == 0
+            ? static_cast<long long>(pSource_->getNumPoints()) *
+                  static_cast<long long>(config_.numRaysPerPoint)
+            : static_cast<long long>(config_.numRaysFixed);
 
     // thread local data storage
     int numThreads = 1;
@@ -89,8 +102,8 @@ public:
     // hit counters
     std::vector<HitCounter<NumericType>> threadLocalHitCounter(numThreads);
     hitCounter_.clear();
-    hitCounter_.resize(geometry_.getNumPoints(), calcFlux_);
-    if (calcFlux_) {
+    hitCounter_.resize(geometry_.getNumPoints(), config_.calcFlux);
+    if (config_.calcFlux) {
       for (auto &hitC : threadLocalHitCounter) {
         hitC = hitCounter_;
       }
@@ -112,8 +125,8 @@ public:
 #ifdef _OPENMP
       threadID = omp_get_thread_num();
 #endif
-      unsigned int seed = runNumber_;
-      if (useRandomSeeds_) {
+      unsigned int seed = config_.runNumber;
+      if (config_.useRandomSeed) {
         std::random_device rd;
         seed = static_cast<unsigned int>(rd());
       }
@@ -130,8 +143,8 @@ public:
       rtcInitIntersectContext(&rtcContext);
 #endif
 
-#pragma omp for schedule(dynamic)
-      for (long long idx = 0; idx < numRays_; ++idx) {
+#pragma omp for schedule(guided, 64)
+      for (long long idx = 0; idx < numRays; ++idx) {
         // particle specific RNG seed
         auto particleSeed = tea<3>(idx, seed);
         RNG rngState(particleSeed);
@@ -139,6 +152,7 @@ public:
         // probabilistic weight
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
+        unsigned int numReflections = 0;
 
         {
           particle->initNew(rngState);
@@ -160,8 +174,8 @@ public:
         rayHit.ray.mask = -1;
 #endif
 
-        if (printProgress_ && threadID == 0) {
-          util::ProgressBar(idx, numRays_);
+        if (config_.printProgress && threadID == 0) {
+          util::ProgressBar(idx, numRays);
         }
 
         bool reflect = false;
@@ -189,6 +203,7 @@ public:
             break;
           }
 
+          // check for scattering event
           if (lambda > 0.) {
             std::uniform_real_distribution<NumericType> dist(0., 1.);
             NumericType scatterProbability =
@@ -202,11 +217,13 @@ public:
                   static_cast<rtcNumericType>(ray.org_y + ray.dir_y * rnd),
                   static_cast<rtcNumericType>(ray.org_z + ray.dir_z * rnd)};
 
-              Vec3D<rtcNumericType> direction{0, 0, 0};
-              for (int i = 0; i < D; ++i) {
-                direction[i] = 2.f * dist(rngState) - 1.f;
+              auto direction =
+                  rayInternal::pickRandomPointOnUnitSphere<rtcNumericType>(
+                      rngState);
+              if constexpr (D == 2) {
+                direction[2] = 0.f;
+                Normalize(direction);
               }
-              Normalize(direction);
 
               // Update ray direction and origin
               fillRayPosition(rayHit.ray, origin);
@@ -240,21 +257,13 @@ public:
             // greater than zero, then we hit the back face of the disk.
             if (hitFromBack) {
               // if hitFromBack == true, then the ray hits the back of a disk
-              // the second time. In this case we ignore the ray.
+              // the second time. In this case we discard the ray.
               break;
             }
             hitFromBack = true;
             // Let ray through, i.e., continue.
             reflect = true;
-#ifdef ARCH_X86
-            reinterpret_cast<__m128 &>(rayHit.ray) =
-                _mm_set_ps(1e-4f, hitPoint[2], hitPoint[1], hitPoint[0]);
-#else
-            rayHit.ray.org_x = hitPoint[0];
-            rayHit.ray.org_y = hitPoint[1];
-            rayHit.ray.org_z = hitPoint[2];
-            rayHit.ray.tnear = 1e-4f;
-#endif
+            fillRayPosition(rayHit.ray, hitPoint);
             // keep ray direction as it is
             continue;
           }
@@ -316,7 +325,7 @@ public:
               rngState);
           auto valueToDrop = rayWeight * stickingDirection.first;
 
-          if (calcFlux_) {
+          if (config_.calcFlux) {
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
 #ifdef VIENNARAY_USE_WDIST
               auto distRayWeight = valueToDrop / impactDistances[diskId] /
@@ -337,6 +346,10 @@ public:
           if (!reflect) {
             break;
           }
+          if (++numReflections > config_.maxReflections) {
+            // terminate ray if too many reflections
+            break;
+          }
 
           // Update ray direction and origin
           fillRayPosition(rayHit.ray, hitPoint);
@@ -353,7 +366,7 @@ public:
 
     // merge hit counters and  data logs
     for (int i = 0; i < numThreads; ++i) {
-      hitCounter_.merge(threadLocalHitCounter[i], calcFlux_);
+      hitCounter_.merge(threadLocalHitCounter[i], config_.calcFlux);
       dataLog_.merge(threadLocalDataLog[i]);
     }
     // merge local data
@@ -422,7 +435,7 @@ public:
       }
     }
 
-    traceInfo_.numRays = numRays_;
+    traceInfo_.numRays = numRays;
     traceInfo_.totalRaysTraced = totalTraces;
     traceInfo_.totalDiskHits = hitCounter_.getTotalCounts();
     traceInfo_.nonGeometryHits = nonGeoHits;
@@ -614,11 +627,7 @@ private:
   std::shared_ptr<Source<NumericType>> const pSource_;
   std::unique_ptr<AbstractParticle<NumericType>> const pParticle_;
 
-  const long long numRays_;
-  const bool useRandomSeeds_;
-  const size_t runNumber_;
-  const bool calcFlux_;
-  const bool printProgress_;
+  const KernelConfig config_;
 
   TracingData<NumericType> *pLocalData_ = nullptr;
   TracingData<NumericType> const *pGlobalData_ = nullptr;
