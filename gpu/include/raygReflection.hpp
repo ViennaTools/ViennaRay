@@ -103,17 +103,14 @@ conedCosineReflection(viennaray::gpu::PerRayData *prd,
 
 static __device__ viennacore::Vec3Df
 PickRandomPointOnUnitSphere(viennaray::gpu::RNGState *state) {
-  float x, y, z, x2py2;
-  do {
-    x = 2.f * curand_uniform(state) - 1.f;
-    y = 2.f * curand_uniform(state) - 1.f;
-    x2py2 = x * x + y * y;
-  } while (x2py2 >= 1.);
-  float tmp = 2.f * sqrtf(1.f - x2py2);
-  x *= tmp;
-  y *= tmp;
-  z = 1.f - 2.f * x2py2;
-  return viennacore::Vec3Df{x, y, z};
+  const float4 u = curand_uniform4(state); // (0,1]
+  const float z = 1.0f - 2.0f * u.x;       // uniform in [-1,1]
+  const float r2 = fmaxf(0.0f, 1.0f - z * z);
+  const float r = sqrtf(r2);
+  const float phi = 2.0f * M_PIf * u.y;
+  float s, c;
+  __sincosf(phi, &s, &c); // branch-free sin+cos
+  return viennacore::Vec3Df{r * c, r * s, z};
 }
 
 static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,

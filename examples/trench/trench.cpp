@@ -45,7 +45,6 @@ int main() {
   rayTracer.setParticleType(particle);
 
   // Ray settings
-  rayTracer.setSourceDirection(TraceDirection::POS_Z);
   rayTracer.setNumberOfRaysPerPoint(2000);
 
   // Run the ray tracer

@@ -53,9 +53,12 @@ int main() {
 
   DataLog<NumericType> log;
   TraceInfo info;
+  rayInternal::KernelConfig config;
+  config.numRaysPerPoint = 1;
+  config.numRaysFixed = 0;
   rayInternal::TraceKernel<NumericType, D> tracer(
-      device, geometry, boundary, std::move(raySource), cp, log, 1, 0, false,
-      true, false, 0, hitCounter, info);
+      device, geometry, boundary, std::move(raySource), cp, config, log,
+      hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
   auto diskAreas = hitCounter.getDiskAreas();

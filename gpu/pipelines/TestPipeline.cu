@@ -77,8 +77,7 @@ extern "C" __global__ void __raygen__Particle() {
   initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, &launchParams);
-  initializeRayDirection(&prd, launchParams.cosineExponent);
+  initializeRayPositionAndDirection(&prd, &launchParams);
 
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
