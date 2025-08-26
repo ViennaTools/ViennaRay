@@ -82,12 +82,12 @@ conedCosineReflection(viennaray::gpu::PerRayData *prd,
     a1 = prd->dir[0];
   }
 
-  temp = sqrtf(max(1. - cosTheta * cosTheta, 0.) / (temp * (1. - a0 * a0)));
+  temp = sqrtf(max(1.f - cosTheta * cosTheta, 0.f) / (temp * (1.f - a0 * a0)));
   sinphi *= temp;
   cosphi *= temp;
   temp = cosTheta + a0 * sinphi;
 
-  randomDir[0] = a0 * cosTheta - (1. - a0 * a0) * sinphi;
+  randomDir[0] = a0 * cosTheta - (1.f - a0 * a0) * sinphi;
   randomDir[1] = a1 * temp + prd->dir[2] * cosphi;
   randomDir[2] = prd->dir[2] * temp - a1 * cosphi;
 
