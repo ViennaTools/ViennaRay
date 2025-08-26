@@ -10,10 +10,14 @@ int main(int argc, char **argv) {
   using NumericType = double;
   Logger::setLogLevel(LogLevel::DEBUG);
 
-  Context context;
-  context.create("../../../lib/ptx"); // relative to build directory
-
+  auto context = DeviceContext::createContext("../../../lib/ptx",
+                                              0); // relative to build directory
   gpu::Trace<NumericType, D> tracer(context);
 
-  context.destroy();
+  {
+    // second tracer, should use same context
+    gpu::Trace<NumericType, D> tracer(0);
+  }
+
+  context->destroy();
 }

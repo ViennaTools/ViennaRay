@@ -15,7 +15,7 @@ using namespace viennaray;
 int main() {
   Logger::setLogLevel(LogLevel::DEBUG);
 
-  Context context;
+  DeviceContext context;
   context.create("../../../lib/ptx"); // relative to build directory
   const std::string moduleName = "testReflections.ptx";
   context.addModule(moduleName);

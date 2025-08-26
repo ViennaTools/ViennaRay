@@ -30,14 +30,28 @@ template <class T, int D> class Trace {
 public:
   /// constructor - performs all setup, including initializing
   /// optix, creates module, pipeline, programs, SBT, etc.
-  explicit Trace(Context &passedContext) : context(passedContext) {
+  explicit Trace(std::shared_ptr<DeviceContext> &passedContext)
+      : context(passedContext) {
+    initRayTracer();
+  }
+
+  explicit Trace(unsigned deviceID = 0) {
+    context = DeviceContext::getContextFromRegistry(deviceID);
+    if (!context) {
+      Logger::getInstance()
+          .addError("No context found for device ID " +
+                    std::to_string(deviceID) +
+                    ". Create and register a context first.")
+          .print();
+    }
     initRayTracer();
   }
 
   ~Trace() { freeBuffers(); }
 
   void setGeometry(const TriangleMesh &passedMesh) {
-    geometry.buildAccel(context, passedMesh, launchParams);
+    assert(context);
+    geometry.buildAccel(*context, passedMesh, launchParams);
   }
 
   void setPipeline(std::string fileName, const std::filesystem::path &path) {
@@ -324,11 +338,11 @@ protected:
         &d_data,     &d_vertex, &d_index, &launchParams.numElements,
         &sourceArea, &numRays,  &numRates};
 
-    LaunchKernel::launch(normModuleName, normKernelName, kernel_args, context);
+    LaunchKernel::launch(normModuleName, normKernelName, kernel_args, *context);
   }
 
   void initRayTracer() {
-    context.addModule(normModuleName);
+    context->addModule(normModuleName);
     launchParamsBuffer.alloc(sizeof(launchParams));
     normKernelName.push_back(NumericType);
   }
@@ -359,7 +373,7 @@ protected:
     size_t inputSize = 0;
     auto pipelineInput = getInputData(pipelineFile.c_str(), inputSize);
 
-    OPTIX_CHECK(optixModuleCreate(context.optix, &moduleCompileOptions,
+    OPTIX_CHECK(optixModuleCreate(context->optix, &moduleCompileOptions,
                                   &pipelineCompileOptions, pipelineInput,
                                   inputSize, log, &sizeof_log, &module));
     // if (sizeof_log > 1)
@@ -380,8 +394,9 @@ protected:
       // OptixProgramGroup raypg;
       char log[2048];
       size_t sizeof_log = sizeof(log);
-      OPTIX_CHECK(optixProgramGroupCreate(context.optix, &pgDesc, 1, &pgOptions,
-                                          log, &sizeof_log, &raygenPGs[i]));
+      OPTIX_CHECK(optixProgramGroupCreate(context->optix, &pgDesc, 1,
+                                          &pgOptions, log, &sizeof_log,
+                                          &raygenPGs[i]));
       // if (sizeof_log > 1)
       //   PRINT(log);
     }
@@ -401,8 +416,9 @@ protected:
       // OptixProgramGroup raypg;
       char log[2048];
       size_t sizeof_log = sizeof(log);
-      OPTIX_CHECK(optixProgramGroupCreate(context.optix, &pgDesc, 1, &pgOptions,
-                                          log, &sizeof_log, &missPGs[i]));
+      OPTIX_CHECK(optixProgramGroupCreate(context->optix, &pgDesc, 1,
+                                          &pgOptions, log, &sizeof_log,
+                                          &missPGs[i]));
       // if (sizeof_log > 1)
       //   PRINT(log);
     }
@@ -421,8 +437,9 @@ protected:
 
       char log[2048];
       size_t sizeof_log = sizeof(log);
-      OPTIX_CHECK(optixProgramGroupCreate(context.optix, &pgDesc, 1, &pgOptions,
-                                          log, &sizeof_log, &hitgroupPGs[i]));
+      OPTIX_CHECK(optixProgramGroupCreate(context->optix, &pgDesc, 1,
+                                          &pgOptions, log, &sizeof_log,
+                                          &hitgroupPGs[i]));
       // if (sizeof_log > 1)
       //   PRINT(log);
     }
@@ -440,7 +457,7 @@ protected:
       char log[2048];
       size_t sizeof_log = sizeof(log);
       OPTIX_CHECK(optixPipelineCreate(
-          context.optix, &pipelineCompileOptions, &pipelineLinkOptions,
+          context->optix, &pipelineCompileOptions, &pipelineLinkOptions,
           programGroups.data(), static_cast<int>(programGroups.size()), log,
           &sizeof_log, &pipelines[i]));
       // #ifndef NDEBUG
@@ -510,7 +527,7 @@ protected:
 
 protected:
   // context for cuda kernels
-  Context &context;
+  std::shared_ptr<DeviceContext> context;
   std::filesystem::path pipelineFile;
 
   // geometry

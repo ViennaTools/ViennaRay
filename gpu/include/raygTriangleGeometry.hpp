@@ -23,7 +23,7 @@ struct TriangleGeometry {
   CudaBuffer asBuffer;
 
   /// build acceleration structure from triangle mesh
-  void buildAccel(Context &context, const TriangleMesh &mesh,
+  void buildAccel(DeviceContext &context, const TriangleMesh &mesh,
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
