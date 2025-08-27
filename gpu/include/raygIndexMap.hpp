@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "raygParticle.hpp"
+#include <rayParticle.hpp>
 
 namespace viennaray::gpu {
 
