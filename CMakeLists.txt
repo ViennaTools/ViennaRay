@@ -148,6 +148,8 @@ endif()
 if(VIENNARAY_USE_GPU AND VIENNACORE_PTX_DIR)
   message(STATUS "[ViennaRay] Enabling GPU support")
   add_subdirectory(gpu)
+  target_include_directories(
+    ${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gpu/include>)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
