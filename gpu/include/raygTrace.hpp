@@ -6,11 +6,11 @@
 #include <cstring>
 #include <filesystem>
 
+#include <rayParticle.hpp>
 #include <rayUtil.hpp>
 
 #include "raygBoundary.hpp"
 #include "raygLaunchParams.hpp"
-#include "raygParticle.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygTriangleGeometry.hpp"
 
