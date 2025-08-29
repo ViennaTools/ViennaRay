@@ -46,14 +46,14 @@ int main() {
     resultBuffer.free();
   }
   {
-    unsigned numResults = 10000;
+    unsigned numResults = 100000;
     CudaBuffer resultBuffer;
     std::vector<Vec3Df> results(numResults, Vec3Df{0.0f, 0.0f, 0.0f});
     resultBuffer.allocUpload(results);
 
     Vec3Df normal = {0.0, 0.0, 1.0};
     float const minAngle = 85.0 * M_PI / 180.0;
-    float incAngle = 45.0 * M_PI / 180.0;
+    float incAngle = 89.0 * M_PI / 180.0;
     Vec3Df inDir = {0.0, -std::sin(incAngle), -std::cos(incAngle)};
     float coneAngle = M_PI_2 - std::min(incAngle, minAngle);
 
@@ -66,7 +66,6 @@ int main() {
     void *kernel_args[] = {&inDir, &normal, &coneAngle, &d_data, &numResults};
 
     LaunchKernel::launch(moduleName, "test_coned_cosine", kernel_args, context);
-
     resultBuffer.download(results.data(), numResults);
 
 #ifdef WRITE_TO_FILE
@@ -81,10 +80,15 @@ int main() {
       std::vector<Vec3Df> directions(numResults);
       viennacore::RNG rngState(21631274);
       // coned specular reflection
+      viennacore::Timer timer;
+      timer.start();
       for (int i = 0; i < numResults; ++i) {
-        directions[i] = viennaray::ReflectionConedCosine<float, 3>(
-            inDir, normal, rngState, coneAngle);
+        directions[i] =
+            ReflectionConedCosine<float, 3>(inDir, normal, rngState, coneAngle);
       }
+      timer.finish();
+      std::cout << "CPU coned cosine reflection time: " << timer.currentDuration
+                << " ns (" << timer.totalDuration << " ns total)" << std::endl;
 
 #ifdef WRITE_TO_FILE
       std::ofstream file("coned_specular_reflection_cpu.txt");
