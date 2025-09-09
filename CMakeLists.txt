@@ -92,8 +92,7 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 1.5.1
-  GIT_TAG context-update
+  VERSION 1.6.0
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 
