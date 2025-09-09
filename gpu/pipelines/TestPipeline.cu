@@ -49,8 +49,14 @@ extern "C" __global__ void __closesthit__Particle() {
               prd->rayWeight);
     float sticking = launchParams.materialSticking[materialId];
     prd->rayWeight -= prd->rayWeight * sticking;
-    if (prd->rayWeight > launchParams.rayWeightThreshold)
-      diffuseReflection(prd);
+    if (prd->rayWeight > launchParams.rayWeightThreshold) {
+      auto geomNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
+      auto cosTheta = -viennacore::DotProduct(prd->dir, geomNormal);
+      float incomingAngle = acosf(max(min(cosTheta, 1.f), 0.f));
+      conedCosineReflection(prd, geomNormal,
+                            M_PI_2f - min(incomingAngle, 0.1f));
+      // diffuseReflection(prd);
+    }
   }
 }
 

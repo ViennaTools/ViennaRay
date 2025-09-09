@@ -15,8 +15,8 @@ int main(int argc, char **argv) {
   using NumericType = double;
   Logger::setLogLevel(LogLevel::DEBUG);
 
-  Context context;
-  context.create("../../lib/ptx"); // relative to build directory
+  auto context = DeviceContext::createContext("../../lib/ptx", 0);
+  // relative to build directory
 
   const auto mesh = gpu::readMeshFromFile("trenchMesh.dat");
   std::vector<int> materialIds(mesh.triangles.size(), 7);
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
   gpu::Trace<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
-  tracer.setPipeline("TestPipeline", context.modulePath);
+  tracer.setPipeline("TestPipeline", context->modulePath);
   tracer.setNumberOfRaysPerPoint(100);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
@@ -58,5 +58,5 @@ int main(int argc, char **argv) {
 
   tracer.freeBuffers();
 
-  context.destroy();
+  context->destroy();
 }

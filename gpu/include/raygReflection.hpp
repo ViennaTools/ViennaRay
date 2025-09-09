@@ -39,66 +39,141 @@ specularReflection(viennaray::gpu::PerRayData *prd) {
   specularReflection(prd, geoNormal);
 }
 
-static __device__ void
+// GPU coned specular reflection (fast, branch-light). Expects getNextRand(&rng)
+// in [0,1). Requires: Vec3D<T>, DotProduct, Normalize, Inv, ReflectionSpecular,
+// ReflectionDiffuse.
+// template <typename T, int D, typename RNG>
+// __forceinline__ __device__ Vec3D<T>
+// ReflectionConedCosineGPU(const Vec3D<T> &rayDir, const Vec3D<T> &geomNormal,
+//                          RNG &rng, const T maxConeAngle) {
+//   constexpr T kPi = T(3.14159265358979323846);
+//   constexpr T kTwoPi = T(6.2831853071795864769);
+//   constexpr T kHalfPi = T(1.57079632679489661923);
+
+//   if (maxConeAngle <= T(0))
+//     return ReflectionSpecular<T>(rayDir, geomNormal);
+//   if (maxConeAngle >= kHalfPi)
+//     return ReflectionDiffuse<T, D>(geomNormal, rng);
+
+//   // Specular direction
+//   const auto v = Inv(rayDir);
+//   Vec3D<T> w = (T(2) * DotProduct(geomNormal, v)) * geomNormal - v;
+//   Normalize(w);
+
+//   // Frisvad ONB around w
+//   Vec3D<T> t, b;
+//   if (w[2] < T(-0.999999)) {
+//     t = {T(0), T(-1), T(0)};
+//     b = {T(-1), T(0), T(0)};
+//   } else {
+//     const T a = T(1) / (T(1) + w[2]);
+//     const T bx = -w[0] * w[1] * a;
+//     t = {T(1) - w[0] * w[0] * a, bx, -w[0]};
+//     b = {bx, T(1) - w[1] * w[1] * a, -w[1]};
+//   }
+
+//   // Sample polar angle via accept-reject (keeps your distribution)
+//   T theta;
+//   for (;;) {
+//     const T u = sqrt(static_cast<T>(getNextRand(&rng))); // in (0,1)
+//     const T s = sqrt(fmax(T(0), T(1) - u));              // sqrt(1-u)
+//     theta = maxConeAngle * s;
+//     // RHS = cos(pi/2 * s) * sin(theta)
+//     T sT, cT;
+//     if constexpr (std::is_same<T, float>::value) {
+//       __sincosf(theta, &sT, &cT);
+//     } else {
+//       sincos(theta, &sT, &cT);
+//     }
+//     const T rhs = (std::is_same<T, float>::value)
+//                       ? __cosf(T(1.5707963267948966f) * s) * sT
+//                       : cos(T(1.5707963267948966) * s) * sT;
+//     if (static_cast<T>(getNextRand(&rng)) * theta * u <= rhs)
+//       break;
+//   }
+
+//   // One azimuth sample
+//   const T phi = kTwoPi * static_cast<T>(getNextRand(&rng));
+//   T sP, cP, sT, cT;
+//   if constexpr (std::is_same<T, float>::value) {
+//     __sincosf(theta, &sT, &cT);
+//     __sincosf(phi, &sP, &cP);
+//   } else {
+//     sincos(theta, &sT, &cT);
+//     sincos(phi, &sP, &cP);
+//   }
+
+//   // Combine: d = sinT*(cosP*t + sinP*b) + cosT*w
+//   Vec3D<T> dir{sT * (cP * t[0] + sP * b[0]) + cT * w[0],
+//                sT * (cP * t[1] + sP * b[1]) + cT * w[1],
+//                sT * (cP * t[2] + sP * b[2]) + cT * w[2]};
+
+//   // Ensure correct hemisphere without retry
+//   const T dp = DotProduct(dir, geomNormal);
+//   if (dp <= T(0))
+//     dir = dir - T(2) * dp * geomNormal;
+
+//   if constexpr (D == 2) {
+//     dir[2] = T(0);
+//     Normalize(dir);
+//   }
+//   Normalize(dir);
+//   return dir;
+// }
+
+static __device__ __forceinline__ void
 conedCosineReflection(viennaray::gpu::PerRayData *prd,
                       const viennacore::Vec3Df &geomNormal,
-                      const float avgReflAngle) {
+                      const float maxConeAngle) {
   using namespace viennacore;
   // Calculate specular direction
   specularReflection(prd, geomNormal);
 
-  float u, sqrt_1m_u;
-  float angle;
-  Vec3Df randomDir;
-
-  // accept-reject method
-  do { // generate a random angle between 0 and specular angle
-    u = sqrtf(getNextRand(&prd->RNGstate));
-    sqrt_1m_u = sqrtf(1. - u);
-    angle = avgReflAngle * sqrt_1m_u;
-  } while (getNextRand(&prd->RNGstate) * angle * u >
-           cosf(M_PI_2f * sqrt_1m_u) * sinf(angle));
-
-  float cosTheta = cosf(angle);
-
-  // Random Azimuthal Rotation
-  float cosphi, sinphi;
-  float temp;
-  do {
-    cosphi = getNextRand(&prd->RNGstate) - 0.5;
-    sinphi = getNextRand(&prd->RNGstate) - 0.5;
-    temp = cosphi * cosphi + sinphi * sinphi;
-  } while (temp >= 0.25 || temp <= 1e-6f);
-
-  // Rotate
-  float a0;
-  float a1;
-
-  if (abs(prd->dir[0]) <= abs(prd->dir[1])) {
-    a0 = prd->dir[0];
-    a1 = prd->dir[1];
+  // Frisvad ONB around specular direction
+  const auto &w = prd->dir;
+  Vec3Df t, b;
+  if (w[2] < -0.999999f) {
+    t = {0.f, -1.f, 0.f};
+    b = {-1.f, 0.f, 0.f};
   } else {
-    a0 = prd->dir[1];
-    a1 = prd->dir[0];
+    const float a = 1.f / (1.f + w[2]);
+    const float bx = -w[0] * w[1] * a;
+    t = {1.f - w[0] * w[0] * a, bx, -w[0]};
+    b = {bx, 1.f - w[1] * w[1] * a, -w[1]};
   }
 
-  temp = sqrtf(max(1. - cosTheta * cosTheta, 0.) / (temp * (1. - a0 * a0)));
-  sinphi *= temp;
-  cosphi *= temp;
-  temp = cosTheta + a0 * sinphi;
-
-  randomDir[0] = a0 * cosTheta - (1. - a0 * a0) * sinphi;
-  randomDir[1] = a1 * temp + prd->dir[2] * cosphi;
-  randomDir[2] = prd->dir[2] * temp - a1 * cosphi;
-
-  if (a0 != prd->dir[0]) {
-    // swap
-    temp = randomDir[0];
-    randomDir[0] = randomDir[1];
-    randomDir[1] = temp;
+  // Sample polar angle via accept-reject
+  float theta;
+  for (;;) {
+    const float u = sqrt(getNextRand(&prd->RNGstate)); // in (0,1)
+    const float s = sqrt(fmax(0.f, 1.f - u));          // sqrt(1-u)
+    theta = maxConeAngle * s;
+    // RHS = cos(pi/2 * s) * sin(theta)
+    float sT, cT;
+    __sincosf(theta, &sT, &cT);
+    const float rhs = __cosf(M_PI_2f * s) * sT;
+    if (getNextRand(&prd->RNGstate) * theta * u <= rhs)
+      break;
   }
 
-  prd->dir = randomDir;
+  // One azimuth sample
+  const float phi = M_PIf * 2.f * getNextRand(&prd->RNGstate);
+  float sP, cP, sT, cT;
+  __sincosf(theta, &sT, &cT);
+  __sincosf(phi, &sP, &cP);
+
+  // Combine: d = sinT*(cosP*t + sinP*b) + cosT*w using FMA for efficiency
+  Vec3Df dir{__fmaf_rn(sT, __fmaf_rn(cP, t[0], sP * b[0]), cT * w[0]),
+             __fmaf_rn(sT, __fmaf_rn(cP, t[1], sP * b[1]), cT * w[1]),
+             __fmaf_rn(sT, __fmaf_rn(cP, t[2], sP * b[2]), cT * w[2])};
+
+  // Ensure correct hemisphere without retry
+  const float dp = DotProduct(dir, geomNormal);
+  if (dp <= 0.f)
+    dir = dir - 2.f * dp * geomNormal;
+  Normalize(dir);
+
+  prd->dir = dir;
 }
 
 static __device__ viennacore::Vec3Df

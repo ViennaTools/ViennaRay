@@ -129,6 +129,5 @@ function(add_GPU_executable target_name_base target_name_var)
   # the cmake_options parsed out of the arguments.
   message(STATUS "Adding target: ${target_name}")
   add_executable(${target_name} ${source_files} ${generated_files} ${cmake_options})
-  target_include_directories(${target_name} PRIVATE ${OptiX_INCLUDE_DIR} ${VIENNARAY_GPU_INCLUDE})
-  target_link_libraries(${target_name} PRIVATE ViennaRay ${VIENNACORE_GPU_LIBS})
+  target_link_libraries(${target_name} PRIVATE ViennaRay)
 endfunction()
