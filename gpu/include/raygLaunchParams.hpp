@@ -9,6 +9,26 @@
 
 namespace viennaray::gpu {
 
+enum class ParticleType : unsigned {
+  NEUTRAL = 0,
+  ION = 1,
+  UNDEFINED = 2,
+  COUNT
+};
+
+enum class CallableSlot : unsigned {
+  COLLISION = 0,
+  REFLECTION = 1,
+  INIT = 2,
+  COUNT
+};
+
+__forceinline__ __both__ unsigned callableIndex(ParticleType p,
+                                                CallableSlot s) {
+  return static_cast<unsigned>(p) * static_cast<unsigned>(CallableSlot::COUNT) +
+         static_cast<unsigned>(s);
+}
+
 struct LaunchParams {
   float *resultBuffer;
   float rayWeightThreshold = 0.01f;
@@ -18,6 +38,14 @@ struct LaunchParams {
   bool periodicBoundary = false;
   unsigned int maxBoundaryHits = 100;
   unsigned int particleIdx = 0;
+  ParticleType particleType = ParticleType::UNDEFINED;
+  float gridDelta = 1.f;
+
+  // Only needed when using CPU_DISK equivalent neighbor detection
+  int *neighbors = nullptr;
+  int maxNeighbors = 0;
+
+  int D = 3; // Dimension
 
   // std::unordered_map<int, float> sticking;
   int *materialIds;

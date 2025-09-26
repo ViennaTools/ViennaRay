@@ -1,6 +1,8 @@
 #pragma once
 
+// #include "optix_types.h"
 #include <cuda.h>
+// #include <optix_stack_size.h>
 #include <optix_stubs.h>
 
 #include <cstring>
@@ -13,6 +15,11 @@
 #include "raygLaunchParams.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygTriangleGeometry.hpp"
+
+#include "raygDiskGeometry.hpp"
+#include <rayBoundary.hpp>
+#include <rayDiskBoundingBoxIntersector.hpp>
+#include <rayGeometry.hpp>
 
 #include <set>
 #include <vcChecks.hpp>
@@ -51,7 +58,22 @@ public:
 
   void setGeometry(const TriangleMesh &passedMesh) {
     assert(context);
-    geometry.buildAccel(*context, passedMesh, launchParams);
+    triangleGeometry.buildAccel(*context, passedMesh, launchParams);
+    geometryType = "Triangle";
+  }
+
+  void setGeometry(const DiskMesh &passedMesh) {
+    assert(context);
+    minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
+    maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);
+    gridDelta = static_cast<float>(passedMesh.gridDelta);
+    launchParams.D = D;
+    diskMesh = passedMesh;
+    pointNeighborhood.template init<3>(passedMesh.points, 2 * passedMesh.radius,
+                                       passedMesh.minimumExtent,
+                                       passedMesh.maximumExtent);
+    diskGeometry.buildAccel(*context, passedMesh, launchParams);
+    geometryType = "Disk";
   }
 
   void setPipeline(std::string fileName, const std::filesystem::path &path) {
@@ -99,6 +121,8 @@ public:
       launchParams.seed = runNumber++;
     }
 
+    launchParams.gridDelta = gridDelta;
+
     int numPointsPerDim =
         static_cast<int>(std::sqrt(static_cast<T>(launchParams.numElements)));
 
@@ -144,6 +168,31 @@ public:
         }
         materialStickingBuffer[i].allocUpload(materialSticking);
       }
+    }
+
+    if (geometryType == "Disk") {
+      // Has to be higher than expected due to more neighbors at corners
+      int maxNeighbors = (D == 2) ? 4 : 20;
+      std::vector<int> neighborIdx;
+      for (int i = 0; i < getNumberOfElements(); ++i) {
+        std::vector<unsigned int> neighbors =
+            pointNeighborhood.getNeighborIndices(i);
+        if (neighbors.size() > maxNeighbors) {
+          Logger::getInstance()
+              .addError("More neighbors (" + std::to_string(neighbors.size()) +
+                        ") than maxNeighbors (" + std::to_string(maxNeighbors) +
+                        ")! Increase maxNeighbors.")
+              .print();
+        }
+        for (int j = 0; j < maxNeighbors; ++j) {
+          int id = (j < neighbors.size()) ? neighbors[j] : -1;
+          neighborIdx.push_back(id);
+        }
+      }
+
+      neighborsBuffer.allocUpload(neighborIdx);
+      launchParams.neighbors = (int *)neighborsBuffer.dPointer();
+      launchParams.maxNeighbors = maxNeighbors;
     }
 
     CUstream stream;
@@ -270,7 +319,9 @@ public:
     for (auto &buffer : materialStickingBuffer) {
       buffer.free();
     }
-    geometry.freeBuffers();
+    triangleGeometry.freeBuffers();
+    diskGeometry.freeBuffers();
+    neighborsBuffer.free();
   }
 
   unsigned int prepareParticlePrograms() {
@@ -326,19 +377,111 @@ public:
 
 protected:
   void normalize() {
-    float sourceArea =
-        (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]) *
-        (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
+    float sourceArea = 0.f;
+    if constexpr (D == 2) {
+      sourceArea =
+          (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]);
+    } else {
+      sourceArea =
+          (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]) *
+          (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
+    }
     assert(resultBuffer.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
-    CUdeviceptr d_data = resultBuffer.dPointer();
-    CUdeviceptr d_vertex = geometry.geometryVertexBuffer.dPointer();
-    CUdeviceptr d_index = geometry.geometryIndexBuffer.dPointer();
-    void *kernel_args[] = {
-        &d_data,     &d_vertex, &d_index, &launchParams.numElements,
-        &sourceArea, &numRays,  &numRates};
 
-    LaunchKernel::launch(normModuleName, normKernelName, kernel_args, *context);
+    if (geometryType == "Triangle") {
+      CUdeviceptr d_data = resultBuffer.dPointer();
+      CUdeviceptr d_vertex = triangleGeometry.geometryVertexBuffer.dPointer();
+      CUdeviceptr d_index = triangleGeometry.geometryIndexBuffer.dPointer();
+      void *kernel_args[] = {
+          &d_data,     &d_vertex, &d_index, &launchParams.numElements,
+          &sourceArea, &numRays,  &numRates};
+      LaunchKernel::launch(normModuleName, normKernelName, kernel_args,
+                           *context);
+
+    } else if (geometryType == "Disk") {
+      CUdeviceptr d_data = resultBuffer.dPointer();
+      CUdeviceptr d_points = diskGeometry.geometryPointBuffer.dPointer();
+      CUdeviceptr d_normals = diskGeometry.geometryNormalBuffer.dPointer();
+
+      // calculate areas on host and send to device for now
+      Vec2D<Vec3Df> bdBox = {minBox, maxBox};
+      std::vector<float> areas(launchParams.numElements);
+      DiskBoundingBoxXYIntersector<float> bdDiskIntersector(bdBox);
+
+      // 0 = REFLECTIVE, 1 = PERIODIC, 2 = IGNORE
+      std::array<BoundaryCondition, 2> boundaryConds = {
+          BoundaryCondition::REFLECTIVE, BoundaryCondition::REFLECTIVE};
+      const std::array<int, 2> boundaryDirs = {0, 1};
+      constexpr float eps = 1e-4f;
+#pragma omp for
+      for (long idx = 0; idx < launchParams.numElements; ++idx) {
+        std::array<float, 4> disk{0.f, 0.f, 0.f, diskMesh.radius};
+        Vec3Df coord = diskMesh.points[idx];
+        Vec3Df normal = diskMesh.normals[idx];
+        disk[0] = coord[0];
+        disk[1] = coord[1];
+        disk[2] = coord[2];
+
+        if constexpr (D == 3) {
+          areas[idx] = disk[3] * disk[3] * M_PIf; // full disk area
+          if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::IGNORE &&
+              boundaryConds[boundaryDirs[1]] == BoundaryCondition::IGNORE) {
+            // no boundaries
+            continue;
+          }
+
+          if (boundaryDirs[0] != 2 && boundaryDirs[1] != 2) {
+            // Disk-BBox intersection only works with boundaries in x and y
+            // direction
+            areas[idx] = bdDiskIntersector.areaInside(disk, normal);
+            continue;
+          }
+        } else { // 2D
+          areas[idx] = 2 * disk[3];
+
+          // test min boundary
+          if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
+              (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+               disk[3])) {
+            T insideTest =
+                1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+            if (insideTest > eps) {
+              insideTest =
+                  std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) /
+                  std::sqrt(insideTest);
+              if (insideTest < disk[3]) {
+                areas[idx] -= disk[3] - insideTest;
+              }
+            }
+          }
+
+          // test max boundary
+          if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
+              (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+               disk[3])) {
+            T insideTest =
+                1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+            if (insideTest > eps) {
+              insideTest =
+                  std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) /
+                  std::sqrt(insideTest);
+              if (insideTest < disk[3]) {
+                areas[idx] -= disk[3] - insideTest;
+              }
+            }
+          }
+        }
+      }
+      areaBuffer.allocUpload(areas);
+      CUdeviceptr d_areas = areaBuffer.dPointer();
+
+      normKernelName = "normalizeDisk";
+      void *kernel_args[] = {&d_data,     &d_areas, &launchParams.numElements,
+                             &sourceArea, &numRays, &numRates};
+      LaunchKernel::launch(normModuleName, normKernelName, kernel_args,
+                           *context);
+    }
   }
 
   void initRayTracer() {
@@ -496,33 +639,63 @@ protected:
     sbts[i].missRecordCount = 1;
 
     // build hitgroup records
-    std::vector<HitgroupRecord> hitgroupRecords;
+    // Triangle hitgroup
+    if (geometryType == "Triangle") {
+      std::vector<HitgroupRecord> hitgroupRecords;
+      HitgroupRecord geometryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPGs[i], &geometryHitgroupRecord);
+      geometryHitgroupRecord.data.vertex =
+          (Vec3Df *)triangleGeometry.geometryVertexBuffer.dPointer();
+      geometryHitgroupRecord.data.index =
+          (Vec3D<unsigned> *)triangleGeometry.geometryIndexBuffer.dPointer();
+      geometryHitgroupRecord.data.isBoundary = false;
+      geometryHitgroupRecord.data.cellData = (void *)cellDataBuffer.dPointer();
+      hitgroupRecords.push_back(geometryHitgroupRecord);
 
-    // geometry hitgroup
-    HitgroupRecord geometryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPGs[i], &geometryHitgroupRecord);
-    geometryHitgroupRecord.data.vertex =
-        (Vec3Df *)geometry.geometryVertexBuffer.dPointer();
-    geometryHitgroupRecord.data.index =
-        (Vec3D<unsigned> *)geometry.geometryIndexBuffer.dPointer();
-    geometryHitgroupRecord.data.isBoundary = false;
-    geometryHitgroupRecord.data.cellData = (void *)cellDataBuffer.dPointer();
-    hitgroupRecords.push_back(geometryHitgroupRecord);
+      // boundary hitgroup
+      HitgroupRecord boundaryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPGs[i], &boundaryHitgroupRecord);
+      boundaryHitgroupRecord.data.vertex =
+          (Vec3Df *)triangleGeometry.boundaryVertexBuffer.dPointer();
+      boundaryHitgroupRecord.data.index =
+          (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
+      boundaryHitgroupRecord.data.isBoundary = true;
+      hitgroupRecords.push_back(boundaryHitgroupRecord);
 
-    // boundary hitgroup
-    HitgroupRecord boundaryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPGs[i], &boundaryHitgroupRecord);
-    boundaryHitgroupRecord.data.vertex =
-        (Vec3Df *)geometry.boundaryVertexBuffer.dPointer();
-    boundaryHitgroupRecord.data.index =
-        (Vec3D<unsigned> *)geometry.boundaryIndexBuffer.dPointer();
-    boundaryHitgroupRecord.data.isBoundary = true;
-    hitgroupRecords.push_back(boundaryHitgroupRecord);
+      hitgroupRecordBuffer.allocUpload(hitgroupRecords);
+      sbts[i].hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
+      sbts[i].hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
+      sbts[i].hitgroupRecordCount = 2;
+    } // Disk hitgroup
+    else if (geometryType == "Disk") {
+      std::vector<HitgroupRecordDisk> hitgroupRecords;
+      HitgroupRecordDisk geometryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPGs[i], &geometryHitgroupRecord);
+      geometryHitgroupRecord.data.point =
+          (Vec3Df *)diskGeometry.geometryPointBuffer.dPointer();
+      geometryHitgroupRecord.data.normal =
+          (Vec3Df *)diskGeometry.geometryNormalBuffer.dPointer();
+      geometryHitgroupRecord.data.radius = diskMesh.radius;
+      geometryHitgroupRecord.data.isBoundary = false;
+      geometryHitgroupRecord.data.cellData = (void *)cellDataBuffer.dPointer();
+      hitgroupRecords.push_back(geometryHitgroupRecord);
 
-    hitgroupRecordBuffer.allocUpload(hitgroupRecords);
-    sbts[i].hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
-    sbts[i].hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
-    sbts[i].hitgroupRecordCount = 2;
+      // boundary hitgroup
+      HitgroupRecordDisk boundaryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPGs[i], &boundaryHitgroupRecord);
+      boundaryHitgroupRecord.data.point =
+          (Vec3Df *)diskGeometry.boundaryPointBuffer.dPointer();
+      boundaryHitgroupRecord.data.normal =
+          (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
+      boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
+      boundaryHitgroupRecord.data.isBoundary = true;
+      hitgroupRecords.push_back(boundaryHitgroupRecord);
+
+      hitgroupRecordBuffer.allocUpload(hitgroupRecords);
+      sbts[i].hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
+      sbts[i].hitgroupRecordStrideInBytes = sizeof(HitgroupRecordDisk);
+      sbts[i].hitgroupRecordCount = 2;
+    }
   }
 
 protected:
@@ -530,10 +703,26 @@ protected:
   std::shared_ptr<DeviceContext> context;
   std::filesystem::path pipelineFile;
 
-  // geometry
-  TriangleGeometry geometry;
+  // triangleGeometry
+  TriangleGeometry triangleGeometry;
+  DiskGeometry<D> diskGeometry;
+
+  // Disk specific
+  DiskMesh diskMesh;
+  PointNeighborhood<float, D> pointNeighborhood;
+
+  std::string geometryType = "Triangle";
+
   std::set<int> uniqueMaterialIds;
   CudaBuffer materialIdsBuffer;
+
+  CudaBuffer neighborsBuffer;
+  float gridDelta = 0.0f;
+
+  CudaBuffer areaBuffer;
+
+  Vec3Df minBox;
+  Vec3Df maxBox;
 
   // particles
   unsigned int numRates = 0;

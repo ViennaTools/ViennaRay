@@ -13,8 +13,9 @@ struct HitSBTData {
 };
 
 struct HitSBTDiskData {
-  viennacore::Vec3Df *vertex;
-  viennacore::Vec3D<unsigned> *index;
+  viennacore::Vec3Df *point;
+  viennacore::Vec3Df *normal;
+  float radius;
   bool isBoundary;
   void *cellData;
 };

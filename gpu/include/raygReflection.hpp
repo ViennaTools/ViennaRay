@@ -20,6 +20,12 @@ computeNormal(const viennaray::gpu::HitSBTData *sbt,
   return Normalize<float, 3>(CrossProduct<float>(B - A, C - A));
 }
 
+__device__ __inline__ viennacore::Vec3Df
+computeNormalDisk(const viennaray::gpu::HitSBTDiskData *sbt,
+                  const unsigned int primID) {
+  return sbt->normal[primID];
+}
+
 static __device__ __forceinline__ void
 specularReflection(viennaray::gpu::PerRayData *prd,
                    const viennacore::Vec3Df &geoNormal) {

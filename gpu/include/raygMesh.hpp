@@ -28,6 +28,16 @@ struct TriangleMesh {
   float gridDelta;
 };
 
+struct DiskMesh {
+  std::vector<Vec3Df> points;
+  std::vector<Vec3Df> normals;
+
+  Vec3Df minimumExtent;
+  Vec3Df maximumExtent;
+  float radius;
+  float gridDelta;
+};
+
 struct SphereMesh {
   std::vector<Vec3Df> vertices;
   std::vector<float> radii;
