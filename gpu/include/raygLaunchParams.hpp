@@ -76,6 +76,15 @@ getIdx(int dataIdx, const LaunchParams &launchParams) {
   return offset + optixGetPrimitiveIndex();
 }
 
+__device__ __forceinline__ unsigned int
+getIdxOffset(int dataIdx, const LaunchParams &launchParams) {
+  unsigned int offset = 0;
+  for (unsigned int i = 0; i < launchParams.particleIdx; i++)
+    offset += launchParams.dataPerParticle[i];
+  offset = (offset + dataIdx) * launchParams.numElements;
+  return offset;
+}
+
 __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
                                             const PerRayData &prd) {
   return prd.rayWeight > launchParams.rayWeightThreshold &&

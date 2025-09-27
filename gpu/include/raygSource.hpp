@@ -23,7 +23,7 @@ getOrthonormalBasis(const viennacore::Vec3Df &n) {
 }
 
 __device__ void initializeRayDirection(viennaray::gpu::PerRayData *prd,
-                                       const float power) {
+                                       const float power, const int D) {
   // source direction
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   const float tt = powf(u.w, 2.f / (power + 1.f));
@@ -31,14 +31,20 @@ __device__ void initializeRayDirection(viennaray::gpu::PerRayData *prd,
   __sincosf(2.f * M_PIf * u.x, &s, &c);
   float sqrt1mtt = sqrtf(1 - tt);
   prd->dir[0] = c * sqrt1mtt;
-  prd->dir[1] = s * sqrt1mtt;
-  prd->dir[2] = -1.f * sqrtf(tt);
+  if (D == 2) {
+    prd->dir[1] = -1.f * sqrtf(tt);
+    prd->dir[2] = 0.f;
+  } else {
+    prd->dir[1] = s * sqrt1mtt;
+    prd->dir[2] = -1.f * sqrtf(tt);
+  }
   viennacore::Normalize(prd->dir);
 }
 
 __device__ void
 initializeRayDirection(viennaray::gpu::PerRayData *prd, const float power,
-                       const std::array<viennacore::Vec3Df, 3> &basis) {
+                       const std::array<viennacore::Vec3Df, 3> &basis,
+                       const int D) {
   // source direction
   do {
     const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
@@ -58,20 +64,33 @@ initializeRayDirection(viennaray::gpu::PerRayData *prd, const float power,
                   basis[1][2] * rndDirection[1] + basis[2][2] * rndDirection[2];
   } while (prd->dir[2] >= 0.f);
 
+  if (D == 2)
+    prd->dir[2] = 0.f;
+
   viennacore::Normalize(prd->dir);
 }
 
 __device__ void
 initializeRayPosition(viennaray::gpu::PerRayData *prd,
-                      viennaray::gpu::LaunchParams *launchParams) {
+                      viennaray::gpu::LaunchParams *launchParams, const int D) {
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   prd->pos[0] = launchParams->source.minPoint[0] +
                 u.x * (launchParams->source.maxPoint[0] -
                        launchParams->source.minPoint[0]);
-  prd->pos[1] = launchParams->source.minPoint[1] +
-                u.y * (launchParams->source.maxPoint[1] -
-                       launchParams->source.minPoint[1]);
-  prd->pos[2] = launchParams->source.planeHeight;
+  // prd->pos[1] = launchParams->source.minPoint[1] +
+  //               u.y * (launchParams->source.maxPoint[1] -
+  //                      launchParams->source.minPoint[1]);
+  // prd->pos[2] = launchParams->source.planeHeight;
+
+  if (D == 2) {
+    prd->pos[1] = launchParams->source.planeHeight;
+    prd->pos[2] = 0.f;
+  } else {
+    prd->pos[1] = launchParams->source.minPoint[1] +
+                  u.y * (launchParams->source.maxPoint[1] -
+                        launchParams->source.minPoint[1]);
+    prd->pos[2] = launchParams->source.planeHeight;
+  }
 }
 
 // This is slightly faster because there is only one call to curand_uniform4

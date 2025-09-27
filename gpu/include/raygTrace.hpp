@@ -2,7 +2,7 @@
 
 // #include "optix_types.h"
 #include <cuda.h>
-// #include <optix_stack_size.h>
+#include <optix_stack_size.h>
 #include <optix_stubs.h>
 
 #include <cstring>
@@ -66,6 +66,10 @@ public:
     assert(context);
     minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
     maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);
+    if constexpr (D == 2) {
+      minBox[2] = -passedMesh.gridDelta;
+      maxBox[2] = passedMesh.gridDelta;
+    }
     gridDelta = static_cast<float>(passedMesh.gridDelta);
     launchParams.D = D;
     diskMesh = passedMesh;
@@ -195,13 +199,25 @@ public:
       launchParams.maxNeighbors = maxNeighbors;
     }
 
-    CUstream stream;
-    CUDA_CHECK(StreamCreate(&stream));
-    /// TODO: optimize by running multiple particles in parallel on different
-    /// streams
+    // Every particle gets its own stream and launch parameters
+    std::vector<cudaStream_t> streams(particles.size());
+    launchParamsBuffers.resize(particles.size());
 
     for (size_t i = 0; i < particles.size(); i++) {
       launchParams.particleIdx = static_cast<unsigned>(i);
+      // TODO: make this more robust
+      if (particles[i].name == "Neutral" || particles[i].name == "Particle" ||
+          particles[i].name == "SingleParticle") {
+        launchParams.particleType = ParticleType::NEUTRAL;
+      } else if (particles[i].name == "Ion") {
+        launchParams.particleType = ParticleType::ION;
+      } else {
+        Logger::getInstance()
+            .addError("Unknown particle name: " + particles[i].name)
+            .print();
+        launchParams.particleType = ParticleType::UNDEFINED;
+      }
+
       launchParams.cosineExponent =
           static_cast<float>(particles[i].cosineExponent);
       launchParams.sticking = static_cast<float>(particles[i].sticking);
@@ -215,16 +231,24 @@ public:
                        static_cast<float>(particles[i].direction[2])};
       launchParams.source.directionBasis =
           rayInternal::getOrthonormalBasis<float>(direction);
-      launchParamsBuffer.upload(&launchParams, 1);
 
-      generateSBT(i);
-      OPTIX_CHECK(optixLaunch(pipelines[i], stream,
+      launchParamsBuffers[i].alloc(sizeof(launchParams));
+      launchParamsBuffers[i].upload(&launchParams, 1);
+
+      CUDA_CHECK(StreamCreate(&streams[i]));
+    }
+
+    generateSBT(0);
+
+    // TODO: Multiple streams seem to give same performance as single stream
+    for (size_t i = 0; i < particles.size(); i++) {
+      OPTIX_CHECK(optixLaunch(pipelines[0], streams[0],
                               /*! parameters and SBT */
-                              launchParamsBuffer.dPointer(),
-                              launchParamsBuffer.sizeInBytes, &sbts[i],
+                              launchParamsBuffers[i].dPointer(),
+                              launchParamsBuffers[i].sizeInBytes, &sbts[0],
                               /*! dimensions of the launch: */
-                              numPointsPerDim, numPointsPerDim,
-                              numberOfRaysPerPoint));
+                              numberOfRaysPerPoint, numPointsPerDim,
+                              numPointsPerDim));
     }
     // std::cout << util::prettyDouble(numRays * particles.size()) << std::endl;
     // float *temp = new float[launchParams.numElements];
@@ -236,8 +260,10 @@ public:
 
     // sync - maybe remove in future
     // cudaDeviceSynchronize();
-    CUDA_CHECK(StreamSynchronize(stream));
-    CUDA_CHECK(StreamDestroy(stream));
+    for (auto &s : streams) {
+      CUDA_CHECK(StreamSynchronize(s));
+      CUDA_CHECK(StreamDestroy(s));
+    }
     normalize();
   }
 
@@ -313,8 +339,11 @@ public:
     hitgroupRecordBuffer.free();
     missRecordBuffer.free();
     raygenRecordBuffer.free();
+    directCallableRecordBuffer.free();
     dataPerParticleBuffer.free();
-    launchParamsBuffer.free();
+    for (auto &buffer : launchParamsBuffers) {
+      buffer.free();
+    }
     materialIdsBuffer.free();
     for (auto &buffer : materialStickingBuffer) {
       buffer.free();
@@ -322,6 +351,7 @@ public:
     triangleGeometry.freeBuffers();
     diskGeometry.freeBuffers();
     neighborsBuffer.free();
+    areaBuffer.free();
   }
 
   unsigned int prepareParticlePrograms() {
@@ -334,6 +364,7 @@ public:
     createRaygenPrograms();
     createMissPrograms();
     createHitgroupPrograms();
+    createDirectCallablePrograms();
     createPipelines();
     if (sbts.empty()) {
       for (size_t i = 0; i < particles.size(); i++) {
@@ -476,7 +507,7 @@ protected:
       areaBuffer.allocUpload(areas);
       CUdeviceptr d_areas = areaBuffer.dPointer();
 
-      normKernelName = "normalizeDisk";
+      normKernelName = "normalize_surface_disk_f";
       void *kernel_args[] = {&d_data,     &d_areas, &launchParams.numElements,
                              &sourceArea, &numRays, &numRates};
       LaunchKernel::launch(normModuleName, normKernelName, kernel_args,
@@ -486,7 +517,7 @@ protected:
 
   void initRayTracer() {
     context->addModule(normModuleName);
-    launchParamsBuffer.alloc(sizeof(launchParams));
+    // launchParamsBuffer.alloc(sizeof(launchParams));
     normKernelName.push_back(NumericType);
   }
 
@@ -503,12 +534,12 @@ protected:
         OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
     pipelineCompileOptions.usesMotionBlur = false;
     pipelineCompileOptions.numPayloadValues = 2;
-    pipelineCompileOptions.numAttributeValues = 2;
+    pipelineCompileOptions.numAttributeValues = 4; // TODO: what is this
     pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
     pipelineCompileOptions.pipelineLaunchParamsVariableName =
         globalParamsName.c_str();
 
-    pipelineLinkOptions.maxTraceDepth = 2;
+    pipelineLinkOptions.maxTraceDepth = 1;
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
@@ -527,7 +558,7 @@ protected:
   void createRaygenPrograms() {
     raygenPGs.resize(particles.size());
     for (size_t i = 0; i < particles.size(); i++) {
-      std::string entryFunctionName = "__raygen__" + particles[i].name;
+      std::string entryFunctionName = "__raygen__";
       OptixProgramGroupOptions pgOptions = {};
       OptixProgramGroupDesc pgDesc = {};
       pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
@@ -549,7 +580,7 @@ protected:
   void createMissPrograms() {
     missPGs.resize(particles.size());
     for (size_t i = 0; i < particles.size(); i++) {
-      std::string entryFunctionName = "__miss__" + particles[i].name;
+      std::string entryFunctionName = "__miss__";
       OptixProgramGroupOptions pgOptions = {};
       OptixProgramGroupDesc pgDesc = {};
       pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
@@ -571,18 +602,101 @@ protected:
   void createHitgroupPrograms() {
     hitgroupPGs.resize(particles.size());
     for (size_t i = 0; i < particles.size(); i++) {
-      std::string entryFunctionName = "__closesthit__" + particles[i].name;
+      std::string entryFunctionNameIS = "__intersection__";
+      std::string entryFunctionNameCH = "__closesthit__";
       OptixProgramGroupOptions pgOptions = {};
       OptixProgramGroupDesc pgDesc = {};
       pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
       pgDesc.hitgroup.moduleCH = module;
-      pgDesc.hitgroup.entryFunctionNameCH = entryFunctionName.c_str();
+      pgDesc.hitgroup.entryFunctionNameCH = entryFunctionNameCH.c_str();
+
+      if (geometryType != "Triangle") {
+        pgDesc.hitgroup.moduleIS = module;
+        pgDesc.hitgroup.entryFunctionNameIS = entryFunctionNameIS.c_str();
+      }
 
       char log[2048];
       size_t sizeof_log = sizeof(log);
       OPTIX_CHECK(optixProgramGroupCreate(context->optix, &pgDesc, 1,
                                           &pgOptions, log, &sizeof_log,
                                           &hitgroupPGs[i]));
+      // if (sizeof_log > 1)
+      //   PRINT(log);
+    }
+  }
+
+  /// does all setup for the direct callables
+  void createDirectCallablePrograms() {
+    unsigned numCallables = static_cast<unsigned>(ParticleType::COUNT) *
+                            static_cast<unsigned>(CallableSlot::COUNT);
+    std::vector<std::string> entryFunctionNames(numCallables,
+                                                "__direct_callable__noop");
+    // TODO: move this to a separate function/file
+    std::string processName = "MultiParticleProcess";
+    if (processName == "DefaultProcess") {
+      processName = "SingleParticleProcess";
+      Logger::getInstance()
+          .addWarning(
+              "No process name set, using 'SingleParticleProcess' as default.")
+          .print();
+    }
+
+    if (processName == "SingleParticleProcess") {
+      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+                                       CallableSlot::COLLISION)] =
+          "__direct_callable__singleNeutralCollision";
+      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+                                       CallableSlot::REFLECTION)] =
+          "__direct_callable__singleNeutralReflection";
+    }
+
+    if (processName == "MultiParticleProcess") {
+      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+                                       CallableSlot::COLLISION)] =
+          "__direct_callable__multiNeutralCollision";
+      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+                                       CallableSlot::REFLECTION)] =
+          "__direct_callable__multiNeutralReflection";
+      entryFunctionNames[callableIndex(ParticleType::ION,
+                                       CallableSlot::COLLISION)] =
+          "__direct_callable__multiIonCollision";
+      entryFunctionNames[callableIndex(ParticleType::ION,
+                                       CallableSlot::REFLECTION)] =
+          "__direct_callable__multiIonReflection";
+      entryFunctionNames[callableIndex(ParticleType::ION, CallableSlot::INIT)] =
+          "__direct_callable__multiIonInit";
+    }
+
+    if (processName == "SF6O2Etching" || processName == "HBrO2Etching") {
+      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+                                       CallableSlot::COLLISION)] =
+          "__direct_callable__plasmaNeutralCollision";
+      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+                                       CallableSlot::REFLECTION)] =
+          "__direct_callable__plasmaNeutralReflection";
+      entryFunctionNames[callableIndex(ParticleType::ION,
+                                       CallableSlot::COLLISION)] =
+          "__direct_callable__plasmaIonCollision";
+      entryFunctionNames[callableIndex(ParticleType::ION,
+                                       CallableSlot::REFLECTION)] =
+          "__direct_callable__plasmaIonReflection";
+      entryFunctionNames[callableIndex(ParticleType::ION, CallableSlot::INIT)] =
+          "__direct_callable__plasmaIonInit";
+    }
+
+    directCallablePGs.resize(entryFunctionNames.size());
+    for (size_t i = 0; i < entryFunctionNames.size(); i++) {
+      OptixProgramGroupOptions dcOptions = {};
+      OptixProgramGroupDesc dcDesc = {};
+      dcDesc.kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
+      dcDesc.callables.moduleDC = module;
+      dcDesc.callables.entryFunctionNameDC = entryFunctionNames[i].c_str();
+
+      char log[2048];
+      size_t sizeof_log = sizeof(log);
+      OPTIX_CHECK(optixProgramGroupCreate(context->optix, &dcDesc, 1,
+                                          &dcOptions, log, &sizeof_log,
+                                          &directCallablePGs[i]));
       // if (sizeof_log > 1)
       //   PRINT(log);
     }
@@ -597,16 +711,45 @@ protected:
       programGroups.push_back(missPGs[i]);
       programGroups.push_back(hitgroupPGs[i]);
 
+      for (size_t j = 0; j < directCallablePGs.size(); j++) {
+        programGroups.push_back(directCallablePGs[j]);
+      }
+
       char log[2048];
       size_t sizeof_log = sizeof(log);
       OPTIX_CHECK(optixPipelineCreate(
           context->optix, &pipelineCompileOptions, &pipelineLinkOptions,
           programGroups.data(), static_cast<int>(programGroups.size()), log,
-          &sizeof_log, &pipelines[i]));
+          &sizeof_log, &pipelines[0]));
       // #ifndef NDEBUG
       //       if (sizeof_log > 1)
       //         PRINT(log);
       // #endif
+
+      OptixStackSizes stackSizes = {};
+      for (auto &pg : programGroups) {
+        optixUtilAccumulateStackSizes(pg, &stackSizes, pipelines[0]);
+      }
+
+      unsigned int dcStackFromTrav = 0;
+      unsigned int dcStackFromState = 0;
+      unsigned int continuationStack = 0;
+
+      // These need to be adjusted when using nested callables
+      // or recursive tracing
+      OPTIX_CHECK(optixUtilComputeStackSizes(
+          &stackSizes,
+          pipelineLinkOptions.maxTraceDepth, // OptixTrace recursion depth
+          0,                                 // continuation callable depth
+          1,                                 // direct callable depth
+          &dcStackFromTrav, &dcStackFromState, &continuationStack));
+
+      OPTIX_CHECK(optixPipelineSetStackSize(
+          pipelines[0],
+          dcStackFromTrav,  // stack size for DirectCallables from IS or AH.
+          dcStackFromState, // stack size for DirectCallables from RG, MS or CH.
+          continuationStack, // continuation stack size
+          1));               // nested traversable graph depth
     }
     // probably not needed in current implementation but maybe something to
     // think about in future OPTIX_CHECK(optixPipelineSetStackSize(
@@ -695,6 +838,23 @@ protected:
       sbts[i].hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
       sbts[i].hitgroupRecordStrideInBytes = sizeof(HitgroupRecordDisk);
       sbts[i].hitgroupRecordCount = 2;
+
+      // callable programs
+      std::vector<CallableRecord> callableRecords(directCallablePGs.size());
+      for (size_t j = 0; j < directCallablePGs.size(); ++j) {
+        CallableRecord callableRecord = {};
+        optixSbtRecordPackHeader(directCallablePGs[j], &callableRecord);
+        callableRecords[j] = callableRecord;
+      }
+      directCallableRecordBuffer.allocUpload(callableRecords);
+
+      sbts[i].callablesRecordBase = directCallableRecordBuffer.dPointer();
+      sbts[i].callablesRecordStrideInBytes = sizeof(CallableRecord);
+      sbts[i].callablesRecordCount =
+          static_cast<unsigned int>(directCallablePGs.size());
+    } else {
+      std::cout << "Unknown geometry type: " << geometryType << std::endl;
+      std::exit(1);
     }
   }
 
@@ -711,7 +871,7 @@ protected:
   DiskMesh diskMesh;
   PointNeighborhood<float, D> pointNeighborhood;
 
-  std::string geometryType = "Triangle";
+  std::string geometryType = "Disk";
 
   std::set<int> uniqueMaterialIds;
   CudaBuffer materialIdsBuffer;
@@ -747,11 +907,13 @@ protected:
   CudaBuffer missRecordBuffer;
   std::vector<OptixProgramGroup> hitgroupPGs;
   CudaBuffer hitgroupRecordBuffer;
+  std::vector<OptixProgramGroup> directCallablePGs;
+  CudaBuffer directCallableRecordBuffer;
   std::vector<OptixShaderBindingTable> sbts;
 
   // launch parameters, on the host, constant for all particles
   LaunchParams launchParams;
-  CudaBuffer launchParamsBuffer;
+  std::vector<CudaBuffer> launchParamsBuffers;
 
   // results Buffer
   CudaBuffer resultBuffer;

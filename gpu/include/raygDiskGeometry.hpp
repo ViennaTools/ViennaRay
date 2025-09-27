@@ -11,7 +11,7 @@ namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <int D = 3> struct DiskGeometry {
+template <int D> struct DiskGeometry {
   // geometry
   CudaBuffer geometryPointBuffer;
   CudaBuffer geometryNormalBuffer;
@@ -274,6 +274,8 @@ template <int D = 3> struct DiskGeometry {
   void freeBuffers() {
     geometryPointBuffer.free();
     geometryNormalBuffer.free();
+    boundaryPointBuffer.free();
+    boundaryNormalBuffer.free();
     asBuffer.free();
   }
 };

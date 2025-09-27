@@ -48,4 +48,10 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordDisk {
   HitSBTDiskData data;
 };
 
+struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) CallableRecord {
+  __align__(
+      OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+  void *data; // dummy value
+};
+
 } // namespace viennaray::gpu

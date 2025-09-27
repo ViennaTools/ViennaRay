@@ -31,7 +31,8 @@ specularReflection(viennaray::gpu::PerRayData *prd,
                    const viennacore::Vec3Df &geoNormal) {
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
-  prd->pos = prd->pos + optixGetRayTmax() * prd->dir;
+  prd->pos = prd->pos +
+             prd->tMin * prd->dir; // TODO: incompatible with triangle pipeline
 #endif
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
@@ -39,9 +40,9 @@ specularReflection(viennaray::gpu::PerRayData *prd,
 static __device__ __forceinline__ void
 specularReflection(viennaray::gpu::PerRayData *prd) {
   using namespace viennacore;
-  const viennaray::gpu::HitSBTData *sbtData =
-      (const viennaray::gpu::HitSBTData *)optixGetSbtDataPointer();
-  const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
+  const viennaray::gpu::HitSBTDiskData *sbtData =
+      (const viennaray::gpu::HitSBTDiskData *)optixGetSbtDataPointer();
+  const Vec3Df geoNormal = computeNormalDisk(sbtData, optixGetPrimitiveIndex());
   specularReflection(prd, geoNormal);
 }
 
@@ -130,7 +131,7 @@ specularReflection(viennaray::gpu::PerRayData *prd) {
 static __device__ __forceinline__ void
 conedCosineReflection(viennaray::gpu::PerRayData *prd,
                       const viennacore::Vec3Df &geomNormal,
-                      const float maxConeAngle) {
+                      const float maxConeAngle, const int D) {
   using namespace viennacore;
   // Calculate specular direction
   specularReflection(prd, geomNormal);
@@ -177,8 +178,10 @@ conedCosineReflection(viennaray::gpu::PerRayData *prd,
   const float dp = DotProduct(dir, geomNormal);
   if (dp <= 0.f)
     dir = dir - 2.f * dp * geomNormal;
-  Normalize(dir);
 
+  if (D == 2)
+    dir[2] = 0.f;
+  Normalize(dir);
   prd->dir = dir;
 }
 
@@ -195,22 +198,29 @@ PickRandomPointOnUnitSphere(viennaray::gpu::RNGState *state) {
 }
 
 static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
-                                         const viennacore::Vec3Df &geoNormal) {
+                                         const viennacore::Vec3Df &geoNormal,
+                                         const int D) {
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
-  prd->pos = prd->pos + optixGetRayTmax() * prd->dir;
+  prd->pos = prd->pos +
+             prd->tMin * prd->dir; // TODO: incompatible with triangle pipeline
 #endif
   const Vec3Df randomDirection = PickRandomPointOnUnitSphere(&prd->RNGstate);
   prd->dir = geoNormal + randomDirection;
+
+  if (D == 2)
+    prd->dir[2] = 0.f;
+
   Normalize(prd->dir);
 }
 
-static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd) {
+static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
+                                         const int D) {
   using namespace viennacore;
 
-  const viennaray::gpu::HitSBTData *sbtData =
-      (const viennaray::gpu::HitSBTData *)optixGetSbtDataPointer();
-  const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
-  diffuseReflection(prd, geoNormal);
+  const viennaray::gpu::HitSBTDiskData *sbtData =
+      (const viennaray::gpu::HitSBTDiskData *)optixGetSbtDataPointer();
+  const Vec3Df geoNormal = computeNormalDisk(sbtData, optixGetPrimitiveIndex());
+  diffuseReflection(prd, geoNormal, D);
 }
 #endif

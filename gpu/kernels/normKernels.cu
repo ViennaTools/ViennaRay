@@ -46,3 +46,20 @@ normalize_surface_d(double *data, const viennacore::Vec3Df *vertex,
       data[tidx] = 0.;
   }
 }
+
+// Areas precomputed on the CPU
+extern "C" __global__ void
+normalize_surface_disk_f(float *data, float *areas, const unsigned int numDisks,
+                    float sourceArea, const size_t numRays, const int numData) {
+  unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int stride = blockDim.x * gridDim.x;
+
+  for (; tidx < numDisks * numData; tidx += stride) {
+    float area = areas[tidx % numDisks];
+
+    if (area > 1e-5f)
+      data[tidx] *= sourceArea / (area * (float)numRays);
+    else
+      data[tidx] = 0.f;
+  }
+}
