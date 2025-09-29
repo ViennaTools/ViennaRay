@@ -31,7 +31,7 @@ __forceinline__ __both__ unsigned callableIndex(ParticleType p,
 
 struct LaunchParams {
   float *resultBuffer;
-  float rayWeightThreshold = 0.01f;
+  float rayWeightThreshold = 0.1f;
   unsigned int seed = 0;
   unsigned int numElements;
   unsigned int *dataPerParticle; // to determine result buffer index

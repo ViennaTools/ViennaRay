@@ -37,12 +37,14 @@ template <class T, int D> class Trace {
 public:
   /// constructor - performs all setup, including initializing
   /// optix, creates module, pipeline, programs, SBT, etc.
-  explicit Trace(std::shared_ptr<DeviceContext> &passedContext)
-      : context(passedContext) {
+  explicit Trace(std::shared_ptr<DeviceContext> &passedContext,
+                 const std::string &geometryType)
+      : context(passedContext), geometryType_(geometryType) {
     initRayTracer();
   }
 
-  explicit Trace(unsigned deviceID = 0) {
+  explicit Trace(std::string &geometryType, unsigned deviceID = 0) {
+    geometryType_ = geometryType;
     context = DeviceContext::getContextFromRegistry(deviceID);
     if (!context) {
       Logger::getInstance()
@@ -56,10 +58,11 @@ public:
 
   ~Trace() { freeBuffers(); }
 
+  void setGeometryType(const std::string &type) { geometryType_ = type; }
+
   void setGeometry(const TriangleMesh &passedMesh) {
     assert(context);
     triangleGeometry.buildAccel(*context, passedMesh, launchParams);
-    geometryType = "Triangle";
   }
 
   void setGeometry(const DiskMesh &passedMesh) {
@@ -77,8 +80,9 @@ public:
                                        passedMesh.minimumExtent,
                                        passedMesh.maximumExtent);
     diskGeometry.buildAccel(*context, passedMesh, launchParams);
-    geometryType = "Disk";
   }
+
+  void setProcessName(const std::string &name) { processName_ = name; }
 
   void setPipeline(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
@@ -87,11 +91,16 @@ public:
         fileName += ".optixir";
     }
 
-    pipelineFile = path / fileName;
+    std::filesystem::path p(fileName);
+    std::string base = p.stem().string();
+    std::string ext = p.extension().string();
+    std::string finalName = base + geometryType_ + ext;
+
+    pipelineFile = path / finalName;
 
     if (!std::filesystem::exists(pipelineFile)) {
       Logger::getInstance()
-          .addError("Pipeline file " + fileName + " not found.")
+          .addError("Pipeline file " + finalName + " not found.")
           .print();
     }
   }
@@ -174,7 +183,7 @@ public:
       }
     }
 
-    if (geometryType == "Disk") {
+    if (geometryType_ == "Disk") {
       // Has to be higher than expected due to more neighbors at corners
       int maxNeighbors = (D == 2) ? 4 : 20;
       std::vector<int> neighborIdx;
@@ -360,6 +369,12 @@ public:
       return 0;
     }
 
+    if (geometryType_ == "Undefined") {
+      Logger::getInstance()
+          .addError("No geometry set. Call setgeometryType_() first.")
+          .print();
+    }
+
     createModule();
     createRaygenPrograms();
     createMissPrograms();
@@ -420,7 +435,7 @@ protected:
     assert(resultBuffer.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
 
-    if (geometryType == "Triangle") {
+    if (geometryType_ == "Triangle") {
       CUdeviceptr d_data = resultBuffer.dPointer();
       CUdeviceptr d_vertex = triangleGeometry.geometryVertexBuffer.dPointer();
       CUdeviceptr d_index = triangleGeometry.geometryIndexBuffer.dPointer();
@@ -430,7 +445,7 @@ protected:
       LaunchKernel::launch(normModuleName, normKernelName, kernel_args,
                            *context);
 
-    } else if (geometryType == "Disk") {
+    } else if (geometryType_ == "Disk") {
       CUdeviceptr d_data = resultBuffer.dPointer();
       CUdeviceptr d_points = diskGeometry.geometryPointBuffer.dPointer();
       CUdeviceptr d_normals = diskGeometry.geometryNormalBuffer.dPointer();
@@ -507,7 +522,6 @@ protected:
       areaBuffer.allocUpload(areas);
       CUdeviceptr d_areas = areaBuffer.dPointer();
 
-      normKernelName = "normalize_surface_disk_f";
       void *kernel_args[] = {&d_data,     &d_areas, &launchParams.numElements,
                              &sourceArea, &numRays, &numRates};
       LaunchKernel::launch(normModuleName, normKernelName, kernel_args,
@@ -518,6 +532,7 @@ protected:
   void initRayTracer() {
     context->addModule(normModuleName);
     // launchParamsBuffer.alloc(sizeof(launchParams));
+    normKernelName.append(geometryType_ + "_");
     normKernelName.push_back(NumericType);
   }
 
@@ -526,6 +541,8 @@ protected:
   void createModule() {
     moduleCompileOptions.maxRegisterCount =
         OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
+    // moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
+    // moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
     moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
     moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 
@@ -610,7 +627,7 @@ protected:
       pgDesc.hitgroup.moduleCH = module;
       pgDesc.hitgroup.entryFunctionNameCH = entryFunctionNameCH.c_str();
 
-      if (geometryType != "Triangle") {
+      if (geometryType_ != "Triangle") {
         pgDesc.hitgroup.moduleIS = module;
         pgDesc.hitgroup.entryFunctionNameIS = entryFunctionNameIS.c_str();
       }
@@ -632,16 +649,15 @@ protected:
     std::vector<std::string> entryFunctionNames(numCallables,
                                                 "__direct_callable__noop");
     // TODO: move this to a separate function/file
-    std::string processName = "MultiParticleProcess";
-    if (processName == "DefaultProcess") {
-      processName = "SingleParticleProcess";
+    if (processName_ == "DefaultProcess") {
+      processName_ = "SingleParticleProcess";
       Logger::getInstance()
           .addWarning(
               "No process name set, using 'SingleParticleProcess' as default.")
           .print();
     }
 
-    if (processName == "SingleParticleProcess") {
+    if (processName_ == "SingleParticleProcess") {
       entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
                                        CallableSlot::COLLISION)] =
           "__direct_callable__singleNeutralCollision";
@@ -650,24 +666,24 @@ protected:
           "__direct_callable__singleNeutralReflection";
     }
 
-    if (processName == "MultiParticleProcess") {
+    if (processName_ == "MultiParticleProcess") {
       entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
                                        CallableSlot::COLLISION)] =
-          "__direct_callable__multiNeutralCollision";
+          "__direct_callable__multiNeutralCollision" + geometryType_;
       entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
                                        CallableSlot::REFLECTION)] =
-          "__direct_callable__multiNeutralReflection";
+          "__direct_callable__multiNeutralReflection" + geometryType_;
       entryFunctionNames[callableIndex(ParticleType::ION,
                                        CallableSlot::COLLISION)] =
-          "__direct_callable__multiIonCollision";
+          "__direct_callable__multiIonCollision" + geometryType_;
       entryFunctionNames[callableIndex(ParticleType::ION,
                                        CallableSlot::REFLECTION)] =
-          "__direct_callable__multiIonReflection";
+          "__direct_callable__multiIonReflection" + geometryType_;
       entryFunctionNames[callableIndex(ParticleType::ION, CallableSlot::INIT)] =
           "__direct_callable__multiIonInit";
     }
 
-    if (processName == "SF6O2Etching" || processName == "HBrO2Etching") {
+    if (processName_ == "SF6O2Etching" || processName_ == "HBrO2Etching") {
       entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
                                        CallableSlot::COLLISION)] =
           "__direct_callable__plasmaNeutralCollision";
@@ -751,16 +767,6 @@ protected:
           continuationStack, // continuation stack size
           1));               // nested traversable graph depth
     }
-    // probably not needed in current implementation but maybe something to
-    // think about in future OPTIX_CHECK(optixPipelineSetStackSize(
-    //     pipeline,
-    //     2 * 1024, // The direct stack size requirement for direct callables
-    //               // invoked from IS or AH.
-    //     2 * 1024, // The direct stack size requirement for direct callables
-    //               // invoked from RG, MS, or CH.
-    //     2 * 1024, // The continuation stack requirement.
-    //     1         // The maximum depth of a traversable graph passed to trace
-    //     ));
   }
 
   /// constructs the shader binding table
@@ -783,7 +789,7 @@ protected:
 
     // build hitgroup records
     // Triangle hitgroup
-    if (geometryType == "Triangle") {
+    if (geometryType_ == "Triangle") {
       std::vector<HitgroupRecord> hitgroupRecords;
       HitgroupRecord geometryHitgroupRecord = {};
       optixSbtRecordPackHeader(hitgroupPGs[i], &geometryHitgroupRecord);
@@ -810,7 +816,7 @@ protected:
       sbts[i].hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
       sbts[i].hitgroupRecordCount = 2;
     } // Disk hitgroup
-    else if (geometryType == "Disk") {
+    else if (geometryType_ == "Disk") {
       std::vector<HitgroupRecordDisk> hitgroupRecords;
       HitgroupRecordDisk geometryHitgroupRecord = {};
       optixSbtRecordPackHeader(hitgroupPGs[i], &geometryHitgroupRecord);
@@ -838,24 +844,25 @@ protected:
       sbts[i].hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
       sbts[i].hitgroupRecordStrideInBytes = sizeof(HitgroupRecordDisk);
       sbts[i].hitgroupRecordCount = 2;
-
-      // callable programs
-      std::vector<CallableRecord> callableRecords(directCallablePGs.size());
-      for (size_t j = 0; j < directCallablePGs.size(); ++j) {
-        CallableRecord callableRecord = {};
-        optixSbtRecordPackHeader(directCallablePGs[j], &callableRecord);
-        callableRecords[j] = callableRecord;
-      }
-      directCallableRecordBuffer.allocUpload(callableRecords);
-
-      sbts[i].callablesRecordBase = directCallableRecordBuffer.dPointer();
-      sbts[i].callablesRecordStrideInBytes = sizeof(CallableRecord);
-      sbts[i].callablesRecordCount =
-          static_cast<unsigned int>(directCallablePGs.size());
     } else {
-      std::cout << "Unknown geometry type: " << geometryType << std::endl;
-      std::exit(1);
+      Logger::getInstance()
+          .addError("Unknown geometry type: " + geometryType_)
+          .print();
     }
+
+    // callable programs
+    std::vector<CallableRecord> callableRecords(directCallablePGs.size());
+    for (size_t j = 0; j < directCallablePGs.size(); ++j) {
+      CallableRecord callableRecord = {};
+      optixSbtRecordPackHeader(directCallablePGs[j], &callableRecord);
+      callableRecords[j] = callableRecord;
+    }
+    directCallableRecordBuffer.allocUpload(callableRecords);
+
+    sbts[i].callablesRecordBase = directCallableRecordBuffer.dPointer();
+    sbts[i].callablesRecordStrideInBytes = sizeof(CallableRecord);
+    sbts[i].callablesRecordCount =
+        static_cast<unsigned int>(directCallablePGs.size());
   }
 
 protected:
@@ -871,7 +878,8 @@ protected:
   DiskMesh diskMesh;
   PointNeighborhood<float, D> pointNeighborhood;
 
-  std::string geometryType = "Disk";
+  std::string geometryType_ = "Undefined";
+  std::string processName_ = "Undefined";
 
   std::set<int> uniqueMaterialIds;
   CudaBuffer materialIdsBuffer;

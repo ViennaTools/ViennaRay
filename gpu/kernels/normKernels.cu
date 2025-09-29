@@ -4,7 +4,7 @@
 #include <vcVectorType.hpp>
 
 extern "C" __global__ void
-normalize_surface_f(float *data, const viennacore::Vec3Df *vertex,
+normalize_surface_Triangle_f(float *data, const viennacore::Vec3Df *vertex,
                     const viennacore::Vec3D<unsigned> *index,
                     const unsigned int numTriangles, const float sourceArea,
                     const size_t numRays, const int numData) {
@@ -26,7 +26,7 @@ normalize_surface_f(float *data, const viennacore::Vec3Df *vertex,
 }
 
 extern "C" __global__ void
-normalize_surface_d(double *data, const viennacore::Vec3Df *vertex,
+normalize_surface_Triangle_d(double *data, const viennacore::Vec3Df *vertex,
                     const viennacore::Vec3D<unsigned> *index,
                     const unsigned int numTriangles, const double sourceArea,
                     const size_t numRays, const int numData) {
@@ -49,7 +49,7 @@ normalize_surface_d(double *data, const viennacore::Vec3Df *vertex,
 
 // Areas precomputed on the CPU
 extern "C" __global__ void
-normalize_surface_disk_f(float *data, float *areas, const unsigned int numDisks,
+normalize_surface_Disk_f(float *data, float *areas, const unsigned int numDisks,
                     float sourceArea, const size_t numRays, const int numData) {
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int stride = blockDim.x * gridDim.x;
