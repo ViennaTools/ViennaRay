@@ -76,9 +76,9 @@ public:
     gridDelta = static_cast<float>(passedMesh.gridDelta);
     launchParams.D = D;
     diskMesh = passedMesh;
-    pointNeighborhood.template init<3>(passedMesh.points, 2 * passedMesh.radius,
-                                       passedMesh.minimumExtent,
-                                       passedMesh.maximumExtent);
+    pointNeighborhood_.template init<3>(
+        passedMesh.points, 2 * passedMesh.radius, passedMesh.minimumExtent,
+        passedMesh.maximumExtent);
     diskGeometry.buildAccel(*context, passedMesh, launchParams);
   }
 
@@ -189,7 +189,7 @@ public:
       std::vector<int> neighborIdx;
       for (int i = 0; i < getNumberOfElements(); ++i) {
         std::vector<unsigned int> neighbors =
-            pointNeighborhood.getNeighborIndices(i);
+            pointNeighborhood_.getNeighborIndices(i);
         if (neighbors.size() > maxNeighbors) {
           Logger::getInstance()
               .addError("More neighbors (" + std::to_string(neighbors.size()) +
@@ -274,6 +274,9 @@ public:
       CUDA_CHECK(StreamDestroy(s));
     }
     normalize();
+    results.resize(launchParams.numElements * numRates);
+    // cudaDeviceSynchronize(); // download is sync anyway
+    resultBuffer.download(results.data(), launchParams.numElements * numRates);
   }
 
   void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
@@ -325,16 +328,52 @@ public:
 
   void setUseRandomSeeds(const bool set) { useRandomSeed = set; }
 
-  void getFlux(float *flux, int particleIdx, int dataIdx) {
+  void getFlux(float *flux, int particleIdx, int dataIdx,
+               int smoothingNeighbors = 0) {
     unsigned int offset = 0;
     for (size_t i = 0; i < particles.size(); i++) {
       if (particleIdx > i)
         offset += particles[i].dataLabels.size();
     }
-    std::vector<float> temp(numRates * launchParams.numElements);
-    resultBuffer.download(temp.data(), launchParams.numElements * numRates);
     offset = (offset + dataIdx) * launchParams.numElements;
-    std::memcpy(flux, &temp[offset], launchParams.numElements * sizeof(float));
+    std::vector<float> temp(launchParams.numElements);
+    std::memcpy(temp.data(), results.data() + offset,
+                launchParams.numElements * sizeof(float));
+    if (smoothingNeighbors > 0)
+      smoothFlux(temp, smoothingNeighbors);
+    std::memcpy(flux, temp.data(), launchParams.numElements * sizeof(float));
+  }
+
+  void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {
+    if (geometryType_ == "Disk") {
+      auto oldFlux = flux;
+      PointNeighborhood<float, D> pointNeighborhood;
+      if (smoothingNeighbors == 1) {
+        // re-use the neighborhood from setGeometry
+        pointNeighborhood = pointNeighborhood_;
+      } else {  // TODO: creates a new neighborhood for each particle
+        // create a new neighborhood with a larger radius
+        pointNeighborhood.template init<3>(
+            diskMesh.points, smoothingNeighbors * 2 * diskMesh.radius,
+            diskMesh.minimumExtent, diskMesh.maximumExtent);
+      }
+#pragma omp parallel for
+      for (int idx = 0; idx < launchParams.numElements; idx++) {
+        float vv = oldFlux[idx];
+        auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
+        float sum = 1.f;
+        auto const normal = diskMesh.normals[idx];
+        for (auto const &nbi : neighborhood) {
+          auto nnormal = diskMesh.normals[nbi];
+          auto weight = DotProduct(normal, nnormal);
+          if (weight > 0.) {
+            vv += oldFlux[nbi] * weight;
+            sum += weight;
+          }
+        }
+        flux[idx] = vv / sum;
+      }
+    }
   }
 
   void setUseCellData(unsigned numData) { numCellData = numData; }
@@ -856,7 +895,7 @@ protected:
 
   // Disk specific
   DiskMesh diskMesh;
-  PointNeighborhood<float, D> pointNeighborhood;
+  PointNeighborhood<float, D> pointNeighborhood_;
 
   std::string geometryType_ = "Undefined";
   std::string processName_ = "Undefined";
@@ -905,6 +944,7 @@ protected:
 
   // results Buffer
   CudaBuffer resultBuffer;
+  std::vector<float> results;
 
   bool useRandomSeed = false;
   unsigned numCellData = 0;
