@@ -32,7 +32,7 @@ specularReflection(viennaray::gpu::PerRayData *prd,
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
   prd->pos = prd->pos +
-             prd->tMin * prd->dir; // TODO: incompatible with triangle pipeline
+             prd->tMin * prd->dir;
 #endif
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
@@ -146,7 +146,7 @@ static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
   prd->pos = prd->pos +
-             prd->tMin * prd->dir; // TODO: incompatible with triangle pipeline
+             prd->tMin * prd->dir;
 #endif
   const Vec3Df randomDirection = PickRandomPointOnUnitSphere(&prd->RNGstate);
   prd->dir = geoNormal + randomDirection;
