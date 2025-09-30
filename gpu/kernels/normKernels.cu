@@ -63,3 +63,21 @@ normalize_surface_Disk_f(float *data, float *areas, const unsigned int numDisks,
       data[tidx] = 0.f;
   }
 }
+
+// Areas precomputed on the CPU
+extern "C" __global__ void
+normalize_surface_Line_f(float *data, float *areas, const unsigned int numLines,
+                    float sourceArea, const size_t numRays, const int numData) {
+  unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int stride = blockDim.x * gridDim.x;
+
+  for (; tidx < numLines * numData; tidx += stride) {
+    float area = areas[tidx % numLines];
+
+    // data[tidx] = area;
+    if (area > 1e-5f)
+      data[tidx] *= sourceArea / (area * (float)numRays);
+    else
+      data[tidx] = 0.f;
+  }
+}

@@ -344,14 +344,14 @@ public:
     std::memcpy(flux, temp.data(), launchParams.numElements * sizeof(float));
   }
 
-  void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {
+  virtual void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {
     if (geometryType_ == "Disk") {
       auto oldFlux = flux;
       PointNeighborhood<float, D> pointNeighborhood;
       if (smoothingNeighbors == 1) {
         // re-use the neighborhood from setGeometry
         pointNeighborhood = pointNeighborhood_;
-      } else {  // TODO: creates a new neighborhood for each particle
+      } else { // TODO: creates a new neighborhood for each particle
         // create a new neighborhood with a larger radius
         pointNeighborhood.template init<3>(
             diskMesh.points, smoothingNeighbors * 2 * diskMesh.radius,
@@ -456,7 +456,7 @@ public:
   }
 
 protected:
-  void normalize() {
+  virtual void normalize() {
     float sourceArea = 0.f;
     if constexpr (D == 2) {
       sourceArea =
@@ -788,8 +788,10 @@ protected:
         1));               // nested traversable graph depth
   }
 
+  virtual void buildHitGroups() {}
+
   /// constructs the shader binding table
-  void generateSBT() {
+  virtual void generateSBT() {
     // build raygen record
     RaygenRecord raygenRecord = {};
     optixSbtRecordPackHeader(raygenPG, &raygenRecord);
@@ -863,6 +865,8 @@ protected:
       sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
       sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordDisk);
       sbt.hitgroupRecordCount = 2;
+    } else if (geometryType_ == "Line") {
+      buildHitGroups();
     } else {
       Logger::getInstance()
           .addError("Unknown geometry type: " + geometryType_)

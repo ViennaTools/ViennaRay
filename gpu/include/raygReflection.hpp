@@ -23,6 +23,15 @@ computeNormal(const SBTData *sbt, const unsigned int primID) {
     const Vec3Df &B = sbt->vertex[index[1]];
     const Vec3Df &C = sbt->vertex[index[2]];
     return Normalize<float, 3>(CrossProduct<float>(B - A, C - A));
+  } else if constexpr (std::is_same<SBTData,
+                                    viennaray::gpu::HitSBTLineData>::value) {
+    using namespace viennacore;
+    Vec3Df p0 = sbt->nodes[sbt->lines[primID][0]];
+    Vec3Df p1 = sbt->nodes[sbt->lines[primID][1]];
+    Vec3Df lineDir = p1 - p0;
+    Vec3Df normal = Vec3Df{-lineDir[1], lineDir[0], 0.0f};
+    Normalize(normal);
+    return normal;
   }
 }
 
@@ -31,8 +40,7 @@ specularReflection(viennaray::gpu::PerRayData *prd,
                    const viennacore::Vec3Df &geoNormal) {
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
-  prd->pos = prd->pos +
-             prd->tMin * prd->dir;
+  prd->pos = prd->pos + prd->tMin * prd->dir;
 #endif
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
@@ -145,8 +153,7 @@ static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
                                          const int D) {
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
-  prd->pos = prd->pos +
-             prd->tMin * prd->dir;
+  prd->pos = prd->pos + prd->tMin * prd->dir;
 #endif
   const Vec3Df randomDirection = PickRandomPointOnUnitSphere(&prd->RNGstate);
   prd->dir = geoNormal + randomDirection;

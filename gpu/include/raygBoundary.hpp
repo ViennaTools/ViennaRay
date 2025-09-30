@@ -28,6 +28,11 @@ __device__ __inline__ void reflectFromBoundary(viennaray::gpu::PerRayData *prd,
     prd->dir[dim] -= 2 * prd->dir[dim];
     prd->pos[dim] = hsd->vertex[hsd->index[primID][0]][dim];
     prd->numBoundaryHits++;
+  } else if constexpr (std::is_same<SBTData,
+                                    viennaray::gpu::HitSBTLineData>::value) {
+    prd->pos = prd->pos + prd->dir * (optixGetRayTmax() - prd->tThreshold);
+    if (primID == 0 || primID == 1) // x boundary
+      prd->dir[0] -= 2 * prd->dir[0];
   }
 }
 
@@ -55,6 +60,14 @@ applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
     unsigned dim = primID / 4;
     prd->pos[dim] = hsd->vertex[hsd->index[primID ^ 2][0]][dim];
     prd->numBoundaryHits++;
+  } else if constexpr (std::is_same<SBTData,
+                                    viennaray::gpu::HitSBTLineData>::value) {
+    prd->pos = prd->pos + prd->dir * (optixGetRayTmax() - prd->tThreshold);
+    if (primID == 0) { // xmin
+      prd->pos[0] = hsd->nodes[1][0];
+    } else if (primID == 1) { // xmax
+      prd->pos[0] = hsd->nodes[0][0];
+    }
   }
 
   // prd->pos = prd->pos + optixGetRayTmax() * prd->dir;

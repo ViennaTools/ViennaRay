@@ -20,6 +20,13 @@ struct HitSBTDiskData {
   void *cellData;
 };
 
+struct HitSBTLineData {
+  viennacore::Vec3Df *nodes;
+  viennacore::Vec2D<unsigned> *lines;
+  bool isBoundary;
+  void *cellData;
+};
+
 // SBT record for a raygen program
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord {
   __align__(
@@ -46,6 +53,12 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordDisk {
   __align__(
       OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
   HitSBTDiskData data;
+};
+
+struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordLine {
+  __align__(
+      OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+  HitSBTLineData data;
 };
 
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) CallableRecord {
