@@ -223,6 +223,8 @@ template <typename NumericType, int D = 3> struct LineGeometry {
   void freeBuffers() {
     geometryNodesBuffer.free();
     geometryLinesBuffer.free();
+    boundaryNodesBuffer.free();
+    boundaryLinesBuffer.free();
     asBuffer.free();
   }
 };

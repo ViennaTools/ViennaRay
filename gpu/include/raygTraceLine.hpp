@@ -1,8 +1,6 @@
 #pragma once
 
 #include "raygLineGeometry.hpp"
-// #include <rayDiskBoundingBoxIntersector.hpp>
-
 #include "raygTrace.hpp"
 
 namespace viennaray::gpu {
@@ -18,19 +16,19 @@ public:
   TraceLine(std::string &geometryType, unsigned deviceID = 0)
       : Trace<T, D>(geometryType, deviceID) {}
 
-  void setGeometry(const LineMesh &passedMesh) {
+  ~TraceLine() { lineGeometry.freeBuffers(); }
+
+  void setGeometry(const LineMesh &passedMesh) override {
     this->minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
     this->maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);
     this->gridDelta = static_cast<float>(passedMesh.gridDelta);
-    cNodes = passedMesh.nodes;
-    cLines = passedMesh.lines;
-    mesh = passedMesh;
+    lineMesh = passedMesh;
     launchParams.D = D;
     lineGeometry.buildAccel(*context, passedMesh, launchParams);
-    std::vector<Vec3Df> midPoints(mesh.lines.size());
-    for (int i = 0; i < mesh.lines.size(); ++i) {
-      midPoints[i] =
-          0.5f * (mesh.nodes[mesh.lines[i][0]] + mesh.nodes[mesh.lines[i][1]]);
+    std::vector<Vec3Df> midPoints(lineMesh.lines.size());
+    for (int i = 0; i < lineMesh.lines.size(); ++i) {
+      midPoints[i] = 0.5f * (lineMesh.nodes[lineMesh.lines[i][0]] +
+                             lineMesh.nodes[lineMesh.lines[i][1]]);
     }
     this->pointNeighborhood_.template init<3>(
         midPoints, 1 * std::sqrt(2) * this->gridDelta, this->minBox,
@@ -46,10 +44,11 @@ public:
       // TODO: this will rebuild the neighborhood for every call
       // to getFlux (number of rates)
       // create a new neighborhood with a larger radius
-      std::vector<Vec3Df> midPoints(cLines.size());
+      std::vector<Vec3Df> midPoints(lineMesh.lines.size());
 #pragma omp parallel for
-      for (int i = 0; i < cLines.size(); ++i) {
-        midPoints[i] = 0.5f * (cNodes[cLines[i][0]] + cNodes[cLines[i][1]]);
+      for (int i = 0; i < lineMesh.lines.size(); ++i) {
+        midPoints[i] = 0.5f * (lineMesh.nodes[lineMesh.lines[i][0]] +
+                               lineMesh.nodes[lineMesh.lines[i][1]]);
       }
       pointNeighborhood.template init<3>(
           midPoints, numNeighbors * std::sqrt(2) * this->gridDelta,
@@ -61,9 +60,9 @@ public:
     auto oldFlux = flux;
 
 #pragma omp parallel for
-    for (int idx = 0; idx < cLines.size(); idx++) {
-      Vec3Df p0 = cNodes[cLines[idx][0]];
-      Vec3Df p1 = cNodes[cLines[idx][1]];
+    for (int idx = 0; idx < lineMesh.lines.size(); idx++) {
+      Vec3Df p0 = lineMesh.nodes[lineMesh.lines[idx][0]];
+      Vec3Df p1 = lineMesh.nodes[lineMesh.lines[idx][1]];
       Vec3Df lineDir = p1 - p0;
       Vec3Df normal = Vec3Df{lineDir[1], -lineDir[0], 0.0f};
       Normalize(normal);
@@ -73,8 +72,8 @@ public:
       float sum = 1.f;
 
       for (auto const &nbi : neighborhood) {
-        Vec3Df np0 = cNodes[cLines[nbi][0]];
-        Vec3Df np1 = cNodes[cLines[nbi][1]];
+        Vec3Df np0 = lineMesh.nodes[lineMesh.lines[nbi][0]];
+        Vec3Df np1 = lineMesh.nodes[lineMesh.lines[nbi][1]];
         Vec3Df nlineDir = np1 - np0;
         Vec3Df nnormal = Vec3Df{nlineDir[1], -nlineDir[0], 0.0f};
         Normalize(nnormal);
@@ -114,8 +113,8 @@ protected:
     // TODO: this interprets the lines as disks, which is alright
     // Maybe look for other algorithms in future
     for (int idx = 0; idx < launchParams.numElements; ++idx) {
-      Vec3Df p0 = cNodes[cLines[idx][0]];
-      Vec3Df p1 = cNodes[cLines[idx][1]];
+      Vec3Df p0 = lineMesh.nodes[lineMesh.lines[idx][0]];
+      Vec3Df p1 = lineMesh.nodes[lineMesh.lines[idx][1]];
       Vec3Df lineDir = p1 - p0;
       Vec3Df midPoint = (p0 + p1) / 2.f;
       Vec3Df normal = Vec3Df{lineDir[1], -lineDir[0], 0.0f};
@@ -195,13 +194,8 @@ protected:
     sbt.hitgroupRecordCount = 2;
   }
 
-  LineMesh mesh;
+  LineMesh lineMesh;
   LineGeometry<float, D> lineGeometry;
-
-  // TODO: only needed for normalization, maybe find prettier solution
-  std::vector<Vec3Df> cNodes;
-  std::vector<Vec2D<unsigned>> cLines;
-  float Cradius;
 
   using Trace<T, D>::context;
 
