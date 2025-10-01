@@ -12,6 +12,7 @@
 #include <rayUtil.hpp>
 
 #include "raygLaunchParams.hpp"
+#include "raygProcessMap.hpp"
 #include "raygSBTRecords.hpp"
 
 #include <set>
@@ -513,57 +514,74 @@ protected:
                             static_cast<unsigned>(CallableSlot::COUNT);
     std::vector<std::string> entryFunctionNames(numCallables,
                                                 "__direct_callable__noop");
-    // TODO: move this to a separate function/file
-    if (processName_ == "DefaultProcess") {
-      processName_ = "SingleParticleProcess";
+    if (processName_ == "Undefined") {
       Logger::getInstance()
-          .addWarning("No process name set, using 'SingleParticleProcess' as "
-                      "default.")
+          .addError("Process model does not have a name set.")
           .print();
     }
 
-    if (processName_ == "SingleParticleProcess") {
-      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
-                                       CallableSlot::COLLISION)] =
-          "__direct_callable__singleNeutralCollision";
-      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
-                                       CallableSlot::REFLECTION)] =
-          "__direct_callable__singleNeutralReflection";
+    auto it = processMap.find(processName_);
+    if (it == processMap.end()) {
+      Logger::getInstance()
+          .addError("Unknown process name: " + processName_)
+          .print();
     }
 
-    if (processName_ == "MultiParticleProcess") {
-      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
-                                       CallableSlot::COLLISION)] =
-          "__direct_callable__multiNeutralCollision" + geometryType_;
-      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
-                                       CallableSlot::REFLECTION)] =
-          "__direct_callable__multiNeutralReflection" + geometryType_;
-      entryFunctionNames[callableIndex(ParticleType::ION,
-                                       CallableSlot::COLLISION)] =
-          "__direct_callable__multiIonCollision" + geometryType_;
-      entryFunctionNames[callableIndex(ParticleType::ION,
-                                       CallableSlot::REFLECTION)] =
-          "__direct_callable__multiIonReflection" + geometryType_;
-      entryFunctionNames[callableIndex(ParticleType::ION, CallableSlot::INIT)] =
-          "__direct_callable__multiIonInit";
+    for (const auto &cfg : it->second) {
+      std::string callable = cfg.callable;
+      if (processName_ != "SingleParticleProcess" &&
+          callable.find("Init") == std::string::npos) {
+        callable += geometryType_;
+      }
+      entryFunctionNames[callableIndex(cfg.particle, cfg.slot)] = callable;
+      std::cout << callable << std::endl;
     }
 
-    if (processName_ == "SF6O2Etching" || processName_ == "HBrO2Etching") {
-      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
-                                       CallableSlot::COLLISION)] =
-          "__direct_callable__plasmaNeutralCollision";
-      entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
-                                       CallableSlot::REFLECTION)] =
-          "__direct_callable__plasmaNeutralReflection";
-      entryFunctionNames[callableIndex(ParticleType::ION,
-                                       CallableSlot::COLLISION)] =
-          "__direct_callable__plasmaIonCollision";
-      entryFunctionNames[callableIndex(ParticleType::ION,
-                                       CallableSlot::REFLECTION)] =
-          "__direct_callable__plasmaIonReflection";
-      entryFunctionNames[callableIndex(ParticleType::ION, CallableSlot::INIT)] =
-          "__direct_callable__plasmaIonInit";
-    }
+    // if (processName_ == "SingleParticleProcess") {
+    //   entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+    //                                    CallableSlot::COLLISION)] =
+    //       "__direct_callable__singleNeutralCollision";
+    //   entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+    //                                    CallableSlot::REFLECTION)] =
+    //       "__direct_callable__singleNeutralReflection";
+    // } else if (processName_ == "MultiParticleProcess") {
+    //   entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+    //                                    CallableSlot::COLLISION)] =
+    //       "__direct_callable__multiNeutralCollision" + geometryType_;
+    //   entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+    //                                    CallableSlot::REFLECTION)] =
+    //       "__direct_callable__multiNeutralReflection" + geometryType_;
+    //   entryFunctionNames[callableIndex(ParticleType::ION,
+    //                                    CallableSlot::COLLISION)] =
+    //       "__direct_callable__multiIonCollision" + geometryType_;
+    //   entryFunctionNames[callableIndex(ParticleType::ION,
+    //                                    CallableSlot::REFLECTION)] =
+    //       "__direct_callable__multiIonReflection" + geometryType_;
+    //   entryFunctionNames[callableIndex(ParticleType::ION,
+    //   CallableSlot::INIT)] =
+    //       "__direct_callable__multiIonInit";
+    // } else if (processName_ == "SF6O2Etching" ||
+    //            processName_ == "HBrO2Etching") {
+    //   entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+    //                                    CallableSlot::COLLISION)] =
+    //       "__direct_callable__plasmaNeutralCollision";
+    //   entryFunctionNames[callableIndex(ParticleType::NEUTRAL,
+    //                                    CallableSlot::REFLECTION)] =
+    //       "__direct_callable__plasmaNeutralReflection";
+    //   entryFunctionNames[callableIndex(ParticleType::ION,
+    //                                    CallableSlot::COLLISION)] =
+    //       "__direct_callable__plasmaIonCollision";
+    //   entryFunctionNames[callableIndex(ParticleType::ION,
+    //                                    CallableSlot::REFLECTION)] =
+    //       "__direct_callable__plasmaIonReflection";
+    //   entryFunctionNames[callableIndex(ParticleType::ION,
+    //   CallableSlot::INIT)] =
+    //       "__direct_callable__plasmaIonInit";
+    // } else {
+    //   Logger::getInstance()
+    //       .addError("Unknown process name: " + processName_)
+    //       .print();
+    // }
 
     directCallablePGs.resize(entryFunctionNames.size());
     for (size_t i = 0; i < entryFunctionNames.size(); i++) {
