@@ -9,13 +9,6 @@
 
 namespace viennaray::gpu {
 
-enum class ParticleType : unsigned {
-  NEUTRAL = 0,
-  ION = 1,
-  UNDEFINED = 2,
-  COUNT
-};
-
 enum class CallableSlot : unsigned {
   COLLISION = 0,
   REFLECTION = 1,
@@ -23,9 +16,14 @@ enum class CallableSlot : unsigned {
   COUNT
 };
 
-__forceinline__ __both__ unsigned callableIndex(ParticleType p,
-                                                CallableSlot s) {
-  return static_cast<unsigned>(p) * static_cast<unsigned>(CallableSlot::COUNT) +
+struct CallableConfig {
+  unsigned particle;
+  CallableSlot slot;
+  std::string callable;
+};
+
+__forceinline__ __both__ unsigned callableIndex(unsigned p, CallableSlot s) {
+  return p * static_cast<unsigned>(CallableSlot::COUNT) +
          static_cast<unsigned>(s);
 }
 
@@ -38,7 +36,7 @@ struct LaunchParams {
   bool periodicBoundary = false;
   unsigned int maxBoundaryHits = 100;
   unsigned int particleIdx = 0;
-  ParticleType particleType = ParticleType::UNDEFINED;
+  unsigned particleType = 0;
   float gridDelta = 1.f;
 
   int D = 3; // Dimension

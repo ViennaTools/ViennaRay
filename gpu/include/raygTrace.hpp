@@ -12,7 +12,6 @@
 #include <rayUtil.hpp>
 
 #include "raygLaunchParams.hpp"
-#include "raygProcessMap.hpp"
 #include "raygSBTRecords.hpp"
 
 #include <set>
@@ -163,20 +162,14 @@ public:
     launchParamsBuffers.resize(particles.size());
 
     for (size_t i = 0; i < particles.size(); i++) {
-      launchParams.particleIdx = static_cast<unsigned>(i);
-      // TODO: make this more robust
-      if (particles[i].name == "Neutral" || particles[i].name == "Particle" ||
-          particles[i].name == "SingleParticle") {
-        launchParams.particleType = ParticleType::NEUTRAL;
-      } else if (particles[i].name == "Ion") {
-        launchParams.particleType = ParticleType::ION;
-      } else {
+      auto it = particleMap_.find(particles[i].name);
+      if (it == particleMap_.end()) {
         Logger::getInstance()
             .addError("Unknown particle name: " + particles[i].name)
             .print();
-        launchParams.particleType = ParticleType::UNDEFINED;
       }
-
+      launchParams.particleType = it->second;
+      launchParams.particleIdx = static_cast<unsigned>(i);
       launchParams.cosineExponent =
           static_cast<float>(particles[i].cosineExponent);
       launchParams.sticking = static_cast<float>(particles[i].sticking);
@@ -278,6 +271,14 @@ public:
 
   void setUseRandomSeeds(const bool set) { useRandomSeed = set; }
 
+  void
+  setParticleCallableMap(std::tuple<std::unordered_map<std::string, unsigned>,
+                                    std::vector<viennaray::gpu::CallableConfig>>
+                             maps) {
+    particleMap_ = std::get<0>(maps);
+    callableMap_ = std::get<1>(maps);
+  }
+
   void getFlux(float *flux, int particleIdx, int dataIdx,
                int smoothingNeighbors = 0) {
     unsigned int offset = 0;
@@ -324,12 +325,6 @@ public:
     if (particles.empty()) {
       Logger::getInstance().addWarning("No particles defined.").print();
       return 0;
-    }
-
-    if (geometryType_ == "Undefined") {
-      Logger::getInstance()
-          .addError("No geometry set. Call setgeometryType_() first.")
-          .print();
     }
 
     createModule();
@@ -485,30 +480,16 @@ protected:
 
   /// does all setup for the direct callables
   void createDirectCallablePrograms() {
-    unsigned numCallables = static_cast<unsigned>(ParticleType::COUNT) *
-                            static_cast<unsigned>(CallableSlot::COUNT);
+    unsigned numCallables =
+        maxParticleTypes * static_cast<unsigned>(CallableSlot::COUNT);
     std::vector<std::string> entryFunctionNames(numCallables,
                                                 "__direct_callable__noop");
-    if (processName_ == "Undefined") {
-      Logger::getInstance()
-          .addError("Process model does not have a name set.")
-          .print();
+    for (const auto &cfg : callableMap_) {
+      entryFunctionNames[callableIndex(cfg.particle, cfg.slot)] = cfg.callable;
     }
 
-    auto it = processMap.find(processName_);
-    if (it == processMap.end()) {
-      Logger::getInstance()
-          .addError("Unknown process name: " + processName_)
-          .print();
-    }
-
-    for (const auto &cfg : it->second) {
-      std::string callable = cfg.callable;
-      entryFunctionNames[callableIndex(cfg.particle, cfg.slot)] = callable;
-    }
-
-    directCallablePGs.resize(entryFunctionNames.size());
-    for (size_t i = 0; i < entryFunctionNames.size(); i++) {
+    directCallablePGs.resize(numCallables);
+    for (size_t i = 0; i < numCallables; i++) {
       OptixProgramGroupOptions dcOptions = {};
       OptixProgramGroupDesc dcDesc = {};
       dcDesc.kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
@@ -622,6 +603,12 @@ protected:
   std::string geometryType_;
   std::string processName_ = "Undefined";
 
+  std::unordered_map<std::string, unsigned> particleMap_ = {{"Particle", 0}};
+  std::vector<CallableConfig> callableMap_ = {
+      {0, CallableSlot::COLLISION, "__direct_callable__singleNeutralCollision"},
+      {0, CallableSlot::REFLECTION,
+       "__direct_callable__singleNeutralReflection"}};
+
   std::set<int> uniqueMaterialIds;
   CudaBuffer materialIdsBuffer;
 
@@ -634,6 +621,8 @@ protected:
   Vec3Df maxBox;
 
   // particles
+  unsigned int maxParticleTypes = 5; // max nr. of different particle types
+                                     // nr. of particles per type is not limited
   unsigned int numRates = 0;
   std::vector<Particle<T>> particles;
   CudaBuffer dataPerParticleBuffer;               // same for all particles
