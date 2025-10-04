@@ -173,8 +173,9 @@ protected:
         (Vec3Df *)lineGeometry.geometryNodesBuffer.dPointer();
     geometryHitgroupRecord.data.lines =
         (Vec2D<unsigned> *)lineGeometry.geometryLinesBuffer.dPointer();
-    geometryHitgroupRecord.data.isBoundary = false;
-    geometryHitgroupRecord.data.cellData =
+    geometryHitgroupRecord.data.base.geometryType = 2;
+    geometryHitgroupRecord.data.base.isBoundary = false;
+    geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
@@ -185,7 +186,8 @@ protected:
         (Vec3Df *)lineGeometry.boundaryNodesBuffer.dPointer();
     boundaryHitgroupRecord.data.lines =
         (Vec2D<unsigned> *)lineGeometry.boundaryLinesBuffer.dPointer();
-    boundaryHitgroupRecord.data.isBoundary = true;
+    boundaryHitgroupRecord.data.base.geometryType = 2;
+    boundaryHitgroupRecord.data.base.isBoundary = true;
     hitgroupRecords.push_back(boundaryHitgroupRecord);
 
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);

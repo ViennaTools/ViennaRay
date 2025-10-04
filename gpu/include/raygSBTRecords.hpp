@@ -5,26 +5,29 @@
 
 namespace viennaray::gpu {
 
-struct HitSBTData {
-  viennacore::Vec3Df *vertex;
-  viennacore::Vec3D<unsigned> *index;
-  bool isBoundary;
+struct HitSBTDataBase {
   void *cellData;
+  bool isBoundary;
+  int geometryType;
 };
 
-struct HitSBTDiskData {
+struct HitSBTDataDisk {
+  HitSBTDataBase base;
   viennacore::Vec3Df *point;
   viennacore::Vec3Df *normal;
   float radius;
-  bool isBoundary;
-  void *cellData;
 };
 
-struct HitSBTLineData {
+struct HitSBTDataTriangle {
+  HitSBTDataBase base;
+  viennacore::Vec3Df *vertex;
+  viennacore::Vec3D<unsigned> *index;
+};
+
+struct HitSBTDataLine {
+  HitSBTDataBase base;
   viennacore::Vec3Df *nodes;
   viennacore::Vec2D<unsigned> *lines;
-  bool isBoundary;
-  void *cellData;
 };
 
 // SBT record for a raygen program
@@ -42,23 +45,23 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) MissRecord {
 };
 
 // SBT record for a hitgroup program
-struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecord {
+struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordTriangle {
   __align__(
       OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-  HitSBTData data;
+  HitSBTDataTriangle data;
 };
 
 // SBT record for a hitgroup program
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordDisk {
   __align__(
       OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-  HitSBTDiskData data;
+  HitSBTDataDisk data;
 };
 
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordLine {
   __align__(
       OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
-  HitSBTLineData data;
+  HitSBTDataLine data;
 };
 
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) CallableRecord {

@@ -50,31 +50,33 @@ protected:
 
   void buildHitGroups() override {
     // geometry hitgroup
-    std::vector<HitgroupRecord> hitgroupRecords;
-    HitgroupRecord geometryHitgroupRecord = {};
+    std::vector<HitgroupRecordTriangle> hitgroupRecords;
+    HitgroupRecordTriangle geometryHitgroupRecord = {};
     optixSbtRecordPackHeader(hitgroupPG, &geometryHitgroupRecord);
     geometryHitgroupRecord.data.vertex =
         (Vec3Df *)triangleGeometry.geometryVertexBuffer.dPointer();
     geometryHitgroupRecord.data.index =
         (Vec3D<unsigned> *)triangleGeometry.geometryIndexBuffer.dPointer();
-    geometryHitgroupRecord.data.isBoundary = false;
-    geometryHitgroupRecord.data.cellData =
+    geometryHitgroupRecord.data.base.geometryType = 0;
+    geometryHitgroupRecord.data.base.isBoundary = false;
+    geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    HitgroupRecord boundaryHitgroupRecord = {};
+    HitgroupRecordTriangle boundaryHitgroupRecord = {};
     optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
     boundaryHitgroupRecord.data.vertex =
         (Vec3Df *)triangleGeometry.boundaryVertexBuffer.dPointer();
     boundaryHitgroupRecord.data.index =
         (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
-    boundaryHitgroupRecord.data.isBoundary = true;
+    boundaryHitgroupRecord.data.base.geometryType = 0;
+    boundaryHitgroupRecord.data.base.isBoundary = true;
     hitgroupRecords.push_back(boundaryHitgroupRecord);
 
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
     sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
-    sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecord);
+    sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordTriangle);
     sbt.hitgroupRecordCount = 2;
   }
 

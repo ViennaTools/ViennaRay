@@ -14,7 +14,7 @@ __device__ __inline__ void reflectFromBoundary(viennaray::gpu::PerRayData *prd,
   using namespace viennacore;
   const unsigned int primID = optixGetPrimitiveIndex();
 
-  if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTDiskData>::value) {
+  if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTDataDisk>::value) {
     prd->pos = prd->pos + prd->dir * (optixGetRayTmax() - prd->tThreshold);
     if (primID == 0 || primID == 1) {
       prd->dir[0] -= 2 * prd->dir[0]; // x boundary
@@ -22,14 +22,14 @@ __device__ __inline__ void reflectFromBoundary(viennaray::gpu::PerRayData *prd,
       prd->dir[1] -= 2 * prd->dir[1]; // y boundary
     }
   } else if constexpr (std::is_same<SBTData,
-                                    viennaray::gpu::HitSBTData>::value) {
+                                    viennaray::gpu::HitSBTDataTriangle>::value) {
     prd->pos = prd->pos + prd->dir * optixGetRayTmax();
     unsigned dim = primID / 4;
     prd->dir[dim] -= 2 * prd->dir[dim];
     prd->pos[dim] = hsd->vertex[hsd->index[primID][0]][dim];
     prd->numBoundaryHits++;
   } else if constexpr (std::is_same<SBTData,
-                                    viennaray::gpu::HitSBTLineData>::value) {
+                                    viennaray::gpu::HitSBTDataLine>::value) {
     prd->pos = prd->pos + prd->dir * (optixGetRayTmax() - prd->tThreshold);
     if (primID == 0 || primID == 1) // x boundary
       prd->dir[0] -= 2 * prd->dir[0];
@@ -43,7 +43,7 @@ applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
   using namespace viennacore;
   const unsigned int primID = optixGetPrimitiveIndex();
 
-  if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTDiskData>::value) {
+  if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTDataDisk>::value) {
     prd->pos = prd->pos + prd->dir * (optixGetRayTmax() - prd->tThreshold);
     if (primID == 0) { // xmin
       prd->pos[0] = hsd->point[1][0];
@@ -55,13 +55,13 @@ applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
       prd->pos[1] = hsd->point[2][1];
     }
   } else if constexpr (std::is_same<SBTData,
-                                    viennaray::gpu::HitSBTData>::value) {
+                                    viennaray::gpu::HitSBTDataTriangle>::value) {
     prd->pos = prd->pos + prd->dir * optixGetRayTmax();
     unsigned dim = primID / 4;
     prd->pos[dim] = hsd->vertex[hsd->index[primID ^ 2][0]][dim];
     prd->numBoundaryHits++;
   } else if constexpr (std::is_same<SBTData,
-                                    viennaray::gpu::HitSBTLineData>::value) {
+                                    viennaray::gpu::HitSBTDataLine>::value) {
     prd->pos = prd->pos + prd->dir * (optixGetRayTmax() - prd->tThreshold);
     if (primID == 0) { // xmin
       prd->pos[0] = hsd->nodes[1][0];
@@ -99,7 +99,7 @@ applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
 
 // __device__ __inline__ void
 // reflectFromBoundaryDisk(viennaray::gpu::PerRayData *prd,
-//                         const viennaray::gpu::HitSBTDiskData *hsd,
+//                         const viennaray::gpu::HitSBTDataDisk *hsd,
 //                         const int D) {
 //   using namespace viennacore;
 //   const unsigned int primID = optixGetPrimitiveIndex();
@@ -114,7 +114,7 @@ applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
 
 // __device__ __inline__ void
 // applyPeriodicBoundaryDisk(viennaray::gpu::PerRayData *prd,
-//                           const viennaray::gpu::HitSBTDiskData *hsd,
+//                           const viennaray::gpu::HitSBTDataDisk *hsd,
 //                           const int D) {
 //   using namespace viennacore;
 //   const unsigned int primID = optixGetPrimitiveIndex();

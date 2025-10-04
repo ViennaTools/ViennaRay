@@ -10,28 +10,43 @@
 
 #include <vcVectorType.hpp>
 
+using namespace viennaray::gpu;
+
 #ifdef __CUDACC__
-template <typename SBTData>
 __device__ __inline__ viennacore::Vec3Df
-computeNormal(const SBTData *sbt, const unsigned int primID) {
-  if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTDiskData>::value)
-    return sbt->normal[primID];
-  else if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTData>::value) {
+computeNormal(const void *sbtData, const unsigned int primID) {
+  const HitSBTDataBase *baseData =
+      reinterpret_cast<const HitSBTDataBase *>(sbtData);
+  switch (baseData->geometryType) {
+  case 0: {
     using namespace viennacore;
+    const HitSBTDataTriangle *sbt =
+        reinterpret_cast<const HitSBTDataTriangle *>(sbtData);
     const Vec3D<unsigned> &index = sbt->index[primID];
     const Vec3Df &A = sbt->vertex[index[0]];
     const Vec3Df &B = sbt->vertex[index[1]];
     const Vec3Df &C = sbt->vertex[index[2]];
     return Normalize<float, 3>(CrossProduct<float>(B - A, C - A));
-  } else if constexpr (std::is_same<SBTData,
-                                    viennaray::gpu::HitSBTLineData>::value) {
+  } break;
+  case 1: {
+    const HitSBTDataDisk *sbt =
+        reinterpret_cast<const HitSBTDataDisk *>(sbtData);
+    return sbt->normal[primID];
+  } break;
+  case 2: {
     using namespace viennacore;
+    const HitSBTDataLine *sbt =
+        reinterpret_cast<const HitSBTDataLine *>(sbtData);
     Vec3Df p0 = sbt->nodes[sbt->lines[primID][0]];
     Vec3Df p1 = sbt->nodes[sbt->lines[primID][1]];
     Vec3Df lineDir = p1 - p0;
     Vec3Df normal = Vec3Df{-lineDir[1], lineDir[0], 0.0f};
     Normalize(normal);
     return normal;
+  } break;
+  default: {
+    printf("Unknown geometry type in computeNormal\n");
+  } break;
   }
 }
 
@@ -45,14 +60,14 @@ specularReflection(viennaray::gpu::PerRayData *prd,
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
 
-static __device__ __forceinline__ void
-specularReflection(viennaray::gpu::PerRayData *prd) {
-  using namespace viennacore;
-  const viennaray::gpu::HitSBTDiskData *sbtData =
-      (const viennaray::gpu::HitSBTDiskData *)optixGetSbtDataPointer();
-  const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
-  specularReflection(prd, geoNormal);
-}
+// static __device__ __forceinline__ void
+// specularReflection(viennaray::gpu::PerRayData *prd) {
+//   using namespace viennacore;
+//   const viennaray::gpu::HitSBTDataDisk *sbtData =
+//       (const viennaray::gpu::HitSBTDataDisk *)optixGetSbtDataPointer();
+//   const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
+//   specularReflection(prd, geoNormal);
+// }
 
 // GPU coned specular reflection (fast, branch-light). Expects getNextRand(&rng)
 // in [0,1). Requires: Vec3D<T>, DotProduct, Normalize, Inv, ReflectionSpecular,
@@ -168,8 +183,8 @@ static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
                                          const int D) {
   using namespace viennacore;
 
-  const viennaray::gpu::HitSBTDiskData *sbtData =
-      (const viennaray::gpu::HitSBTDiskData *)optixGetSbtDataPointer();
+  const viennaray::gpu::HitSBTDataDisk *sbtData =
+      (const viennaray::gpu::HitSBTDataDisk *)optixGetSbtDataPointer();
   const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
   diffuseReflection(prd, geoNormal, D);
 }

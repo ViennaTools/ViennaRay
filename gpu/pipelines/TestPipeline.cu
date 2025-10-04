@@ -29,10 +29,10 @@ extern "C" __constant__ LaunchParams launchParams;
 enum { SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT };
 
 extern "C" __global__ void __closesthit__Particle() {
-  const HitSBTData *sbtData = (const HitSBTData *)optixGetSbtDataPointer();
+  const HitSBTDataTriangle *sbtData = (const HitSBTDataTriangle *)optixGetSbtDataPointer();
   PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
 
-  if (sbtData->isBoundary) {
+  if (sbtData->base.isBoundary) {
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData);
     } else {

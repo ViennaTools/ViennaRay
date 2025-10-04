@@ -170,8 +170,9 @@ protected:
     geometryHitgroupRecord.data.normal =
         (Vec3Df *)diskGeometry.geometryNormalBuffer.dPointer();
     geometryHitgroupRecord.data.radius = diskMesh.radius;
-    geometryHitgroupRecord.data.isBoundary = false;
-    geometryHitgroupRecord.data.cellData =
+    geometryHitgroupRecord.data.base.geometryType = 1;
+    geometryHitgroupRecord.data.base.isBoundary = false;
+    geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
@@ -183,7 +184,8 @@ protected:
     boundaryHitgroupRecord.data.normal =
         (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
     boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
-    boundaryHitgroupRecord.data.isBoundary = true;
+    boundaryHitgroupRecord.data.base.geometryType = 1;
+    boundaryHitgroupRecord.data.base.isBoundary = true;
     hitgroupRecords.push_back(boundaryHitgroupRecord);
 
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
