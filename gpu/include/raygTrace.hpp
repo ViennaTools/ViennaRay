@@ -158,31 +158,6 @@ public:
       }
     }
 
-    if (geometryType_ == "Disk") {
-      // Has to be higher than expected due to more neighbors at corners
-      int maxNeighbors = (D == 2) ? 4 : 20;
-      std::vector<int> neighborIdx;
-      for (int i = 0; i < getNumberOfElements(); ++i) {
-        std::vector<unsigned int> neighbors =
-            pointNeighborhood_.getNeighborIndices(i);
-        if (neighbors.size() > maxNeighbors) {
-          Logger::getInstance()
-              .addError("More neighbors (" + std::to_string(neighbors.size()) +
-                        ") than maxNeighbors (" + std::to_string(maxNeighbors) +
-                        ")! Increase maxNeighbors.")
-              .print();
-        }
-        for (int j = 0; j < maxNeighbors; ++j) {
-          int id = (j < neighbors.size()) ? neighbors[j] : -1;
-          neighborIdx.push_back(id);
-        }
-      }
-
-      neighborsBuffer.allocUpload(neighborIdx);
-      launchParams.neighbors = (int *)neighborsBuffer.dPointer();
-      launchParams.maxNeighbors = maxNeighbors;
-    }
-
     // Every particle gets its own stream and launch parameters
     std::vector<cudaStream_t> streams(particles.size());
     launchParamsBuffers.resize(particles.size());
@@ -226,7 +201,7 @@ public:
 
     // TODO: Multiple streams seem to give same performance as single stream
     for (size_t i = 0; i < particles.size(); i++) {
-      OPTIX_CHECK(optixLaunch(pipeline, streams[0],
+      OPTIX_CHECK(optixLaunch(pipeline, streams[i],
                               /*! parameters and SBT */
                               launchParamsBuffers[i].dPointer(),
                               launchParamsBuffers[i].sizeInBytes, &sbt,

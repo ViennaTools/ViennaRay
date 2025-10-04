@@ -41,10 +41,6 @@ struct LaunchParams {
   ParticleType particleType = ParticleType::UNDEFINED;
   float gridDelta = 1.f;
 
-  // Only needed when using CPU_DISK equivalent neighbor detection
-  int *neighbors = nullptr;
-  int maxNeighbors = 0;
-
   int D = 3; // Dimension
 
   // std::unordered_map<int, float> sticking;
