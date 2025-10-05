@@ -53,7 +53,7 @@ public:
           this->minBox, this->maxBox);
     }
 
-    assert(flux.size() == pointNeighborhood_.getNumPoints() &&
+    assert(flux.size() == this->pointNeighborhood_.getNumPoints() &&
            "Unequal number of points in smoothFlux");
     auto oldFlux = flux;
 
