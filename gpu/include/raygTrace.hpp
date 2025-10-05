@@ -31,13 +31,13 @@ public:
   /// constructor - performs all setup, including initializing
   /// optix, creates module, pipeline, programs, SBT, etc.
   explicit Trace(std::shared_ptr<DeviceContext> &passedContext,
-                 const std::string &geometryType)
-      : context(passedContext), geometryType_(geometryType) {
+                 std::string &&geometryType)
+      : context(passedContext), geometryType_(std::move(geometryType)) {
     initRayTracer();
   }
 
-  explicit Trace(std::string &geometryType, unsigned deviceID = 0) {
-    geometryType_ = geometryType;
+  explicit Trace(std::string &&geometryType, unsigned deviceID = 0)
+      : geometryType_(std::move(geometryType)) {
     context = DeviceContext::getContextFromRegistry(deviceID);
     if (!context) {
       Logger::getInstance()
@@ -51,13 +51,9 @@ public:
 
   ~Trace() { freeBuffers(); }
 
-  void setGeometryType(const std::string &type) { geometryType_ = type; }
-
   virtual void setGeometry(const LineMesh &passedMesh) {}
   virtual void setGeometry(const DiskMesh &passedMesh) {}
   virtual void setGeometry(const TriangleMesh &passedMesh) {}
-
-  void setProcessName(const std::string &name) { processName_ = name; }
 
   void setPipeline(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
@@ -160,6 +156,12 @@ public:
     // Every particle gets its own stream and launch parameters
     std::vector<cudaStream_t> streams(particles.size());
     launchParamsBuffers.resize(particles.size());
+
+    if (particleMap_.empty()) {
+      Logger::getInstance()
+          .addError("No particle name->particleType mapping provided.")
+          .print();
+    }
 
     for (size_t i = 0; i < particles.size(); i++) {
       auto it = particleMap_.find(particles[i].name);
@@ -373,12 +375,6 @@ protected:
 
   void initRayTracer() {
     context->addModule(normModuleName);
-    if (geometryType_ != "Line" && geometryType_ != "Disk" &&
-        geometryType_ != "Triangle") {
-      Logger::getInstance()
-          .addError("Unknown geometry type: " + geometryType_)
-          .print();
-    }
     // launchParamsBuffer.alloc(sizeof(launchParams));
     normKernelName.append(geometryType_ + "_");
     normKernelName.push_back(NumericType);
@@ -480,6 +476,11 @@ protected:
 
   /// does all setup for the direct callables
   void createDirectCallablePrograms() {
+    if (callableMap_.empty()) {
+      Logger::getInstance()
+          .addError("No particleType->callable mapping provided.")
+          .print();
+    }
     unsigned numCallables =
         maxParticleTypes * static_cast<unsigned>(CallableSlot::COUNT);
     std::vector<std::string> entryFunctionNames(numCallables,
@@ -601,13 +602,8 @@ protected:
   PointNeighborhood<float, D> pointNeighborhood_;
 
   std::string geometryType_;
-  std::string processName_ = "Undefined";
-
-  std::unordered_map<std::string, unsigned> particleMap_ = {{"Particle", 0}};
-  std::vector<CallableConfig> callableMap_ = {
-      {0, CallableSlot::COLLISION, "__direct_callable__singleNeutralCollision"},
-      {0, CallableSlot::REFLECTION,
-       "__direct_callable__singleNeutralReflection"}};
+  std::unordered_map<std::string, unsigned> particleMap_;
+  std::vector<CallableConfig> callableMap_;
 
   std::set<int> uniqueMaterialIds;
   CudaBuffer materialIdsBuffer;

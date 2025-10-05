@@ -9,12 +9,10 @@ using namespace viennacore;
 
 template <class T, int D> class TraceTriangle : public Trace<T, D> {
 public:
-  TraceTriangle(std::shared_ptr<DeviceContext> &passedContext,
-                const std::string &geometryType)
-      : Trace<T, D>(passedContext, geometryType) {}
+  TraceTriangle(std::shared_ptr<DeviceContext> &passedContext)
+      : Trace<T, D>(passedContext, "Triangle") {}
 
-  TraceTriangle(std::string &geometryType, unsigned deviceID = 0)
-      : Trace<T, D>(geometryType, deviceID) {}
+  TraceTriangle(unsigned deviceID = 0) : Trace<T, D>("Triangle", deviceID) {}
 
   ~TraceTriangle() { triangleGeometry.freeBuffers(); }
 

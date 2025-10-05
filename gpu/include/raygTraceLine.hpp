@@ -9,12 +9,10 @@ using namespace viennacore;
 
 template <class T, int D> class TraceLine : public Trace<T, D> {
 public:
-  TraceLine(std::shared_ptr<DeviceContext> &passedContext,
-            const std::string &geometryType)
-      : Trace<T, D>(passedContext, geometryType) {}
+  TraceLine(std::shared_ptr<DeviceContext> passedContext)
+      : Trace<T, D>(passedContext, "Line") {}
 
-  TraceLine(std::string &geometryType, unsigned deviceID = 0)
-      : Trace<T, D>(geometryType, deviceID) {}
+  TraceLine(unsigned deviceID = 0) : Trace<T, D>("Line", deviceID) {}
 
   ~TraceLine() { lineGeometry.freeBuffers(); }
 
@@ -200,6 +198,7 @@ protected:
   LineGeometry<float, D> lineGeometry;
 
   using Trace<T, D>::context;
+  using Trace<T, D>::geometryType_;
 
   using Trace<T, D>::launchParams;
   using Trace<T, D>::resultBuffer;

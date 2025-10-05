@@ -10,12 +10,10 @@ using namespace viennacore;
 
 template <class T, int D> class TraceDisk : public Trace<T, D> {
 public:
-  TraceDisk(std::shared_ptr<DeviceContext> &passedContext,
-            const std::string &geometryType)
-      : Trace<T, D>(passedContext, geometryType) {}
+  TraceDisk(std::shared_ptr<DeviceContext> &passedContext)
+      : Trace<T, D>(passedContext, "Disk") {}
 
-  TraceDisk(std::string &geometryType, unsigned deviceID = 0)
-      : Trace<T, D>(geometryType, deviceID) {}
+  TraceDisk(unsigned deviceID = 0) : Trace<T, D>(deviceID, "Disk") {}
 
   ~TraceDisk() { diskGeometry.freeBuffers(); }
 
@@ -198,6 +196,7 @@ protected:
   DiskGeometry<D> diskGeometry;
 
   using Trace<T, D>::context;
+  using Trace<T, D>::geometryType_;
 
   using Trace<T, D>::launchParams;
   using Trace<T, D>::resultBuffer;
