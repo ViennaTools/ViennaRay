@@ -2,6 +2,7 @@
 
 #include "raygDiskGeometry.hpp"
 #include "raygTrace.hpp"
+#include <rayBoundary.hpp>
 #include <rayDiskBoundingBoxIntersector.hpp>
 
 namespace viennaray::gpu {

@@ -2,6 +2,7 @@
 
 #include "raygLineGeometry.hpp"
 #include "raygTrace.hpp"
+#include <rayBoundary.hpp>
 
 namespace viennaray::gpu {
 

@@ -1,5 +1,7 @@
 #include <raygMesh.hpp>
-#include <raygTrace.hpp>
+#include <raygTraceDisk.hpp>
+#include <raygTraceLine.hpp>
+#include <raygTraceTriangle.hpp>
 
 #include <fstream>
 #include <omp.h>
@@ -32,10 +34,17 @@ int main(int argc, char **argv) {
   particle.materialSticking[7] = 1.f;
   particle.materialSticking[1] = .1f;
 
-  gpu::Trace<NumericType, D> tracer(context);
+  std::unordered_map<std::string, unsigned int> pMap = {{"Particle", 0}};
+  std::vector<gpu::CallableConfig> cMap = {
+      {0, gpu::CallableSlot::COLLISION, "__direct_callable__particleCollision"},
+      {0, gpu::CallableSlot::REFLECTION,
+       "__direct_callable__particleReflection"}};
+
+  gpu::TraceTriangle<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
-  tracer.setPipeline("TestPipeline", context->modulePath);
+  tracer.setPipeline("GeneralPipeline", context->modulePath);
+  tracer.setParticleCallableMap({pMap, cMap});
   tracer.setNumberOfRaysPerPoint(100);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
