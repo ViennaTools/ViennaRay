@@ -44,6 +44,7 @@ int main(int argc, char **argv) {
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
   tracer.setPipeline("GeneralPipeline", context->modulePath);
+  tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
   tracer.setNumberOfRaysPerPoint(100);
   tracer.insertNextParticle(particle);

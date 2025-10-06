@@ -4,6 +4,7 @@
 #include <vcVectorType.hpp>
 
 #include <raygReflection.hpp>
+#include "raygLaunchParams.hpp"
 
 extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 

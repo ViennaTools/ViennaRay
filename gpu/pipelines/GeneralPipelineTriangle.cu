@@ -12,7 +12,7 @@
 #include <raygSBTRecords.hpp>
 #include <raygSource.hpp>
 
-#include "CallableWrapper.cuh"
+// #include "CallableWrapper.cu"
 
 #include <vcContext.hpp>
 

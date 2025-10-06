@@ -2,11 +2,9 @@
 
 #include <curand.h>
 
-// #include "raygBoundary.hpp"
 #include "raygPerRayData.hpp"
 #include "raygRNG.hpp"
 #include "raygSBTRecords.hpp"
-#include "raygSource.hpp"
 
 #include <vcVectorType.hpp>
 

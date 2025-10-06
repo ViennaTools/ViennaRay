@@ -2,7 +2,6 @@
 
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
-#include "raygRNG.hpp"
 
 #include <vcVectorType.hpp>
 

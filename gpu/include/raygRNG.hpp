@@ -32,11 +32,11 @@ static __device__ __inline__ unsigned int tea(unsigned int val0,
   return v0;
 }
 
-__device__ float getNextRand(viennaray::gpu::RNGState *state) {
+__device__ __inline__ float getNextRand(viennaray::gpu::RNGState *state) {
   return (float)(curand_uniform(state));
 }
 
-__device__ float getNormalDistRand(viennaray::gpu::RNGState *state) {
+__device__ __inline__ float getNormalDistRand(viennaray::gpu::RNGState *state) {
   float u0 = curand_uniform(state);
   float u1 = curand_uniform(state);
   float r = sqrtf(-2.f * logf(u0));

@@ -76,6 +76,27 @@ public:
     }
   }
 
+  void setCallables(std::string fileName, const std::filesystem::path &path) {
+    // check if filename ends in .optixir
+    if (fileName.find(".optixir") == std::string::npos) {
+      if (fileName.find(".ptx") == std::string::npos)
+        fileName += ".optixir";
+    }
+
+    std::filesystem::path p(fileName);
+    std::string base = p.stem().string();
+    std::string ext = p.extension().string();
+    std::string finalName = base + ext;
+
+    callableFile = path / finalName;
+
+    if (!std::filesystem::exists(callableFile)) {
+      Logger::getInstance()
+          .addError("Callable file " + finalName + " not found.")
+          .print();
+    }
+  }
+
   void insertNextParticle(const Particle<T> &particle) {
     particles.push_back(particle);
   }
@@ -413,6 +434,14 @@ protected:
                                   inputSize, log, &sizeof_log, &module));
     // if (sizeof_log > 1)
     //   PRINT(log);
+
+    auto callableInput = getInputData(callableFile.c_str(), inputSize);
+
+    OPTIX_CHECK(optixModuleCreate(
+        context->optix, &moduleCompileOptions, &pipelineCompileOptions,
+        callableInput, inputSize, log, &sizeof_log, &moduleCallable));
+    // if (sizeof_log > 1)
+    //   PRINT(log);
   }
 
   /// does all setup for the raygen program
@@ -494,7 +523,7 @@ protected:
       OptixProgramGroupOptions dcOptions = {};
       OptixProgramGroupDesc dcDesc = {};
       dcDesc.kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
-      dcDesc.callables.moduleDC = module;
+      dcDesc.callables.moduleDC = moduleCallable;
       dcDesc.callables.entryFunctionNameDC = entryFunctionNames[i].c_str();
 
       char log[2048];
@@ -597,6 +626,7 @@ protected:
   // context for cuda kernels
   std::shared_ptr<DeviceContext> context;
   std::filesystem::path pipelineFile;
+  std::filesystem::path callableFile;
 
   // Disk specific
   PointNeighborhood<float, D> pointNeighborhood_;
@@ -632,6 +662,7 @@ protected:
   OptixPipelineLinkOptions pipelineLinkOptions = {};
 
   OptixModule module{};
+  OptixModule moduleCallable{};
   OptixModuleCompileOptions moduleCompileOptions = {};
 
   // program groups, and the SBT built around
