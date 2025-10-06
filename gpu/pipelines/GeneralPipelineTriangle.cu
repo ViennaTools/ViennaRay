@@ -5,14 +5,13 @@
 #endif
 
 #include <raygBoundary.hpp>
+#include <raygCallableConfig.hpp>
 #include <raygLaunchParams.hpp>
 #include <raygPerRayData.hpp>
 #include <raygRNG.hpp>
 #include <raygReflection.hpp>
 #include <raygSBTRecords.hpp>
 #include <raygSource.hpp>
-
-// #include "CallableWrapper.cu"
 
 #include <vcContext.hpp>
 
@@ -36,17 +35,6 @@ extern "C" __global__ void __closesthit__() {
 
   if (sbtData->base.isBoundary) {
     prd->numBoundaryHits++;
-    // // This is effectively the miss shader
-    // if (launchParams.D == 2 &&
-    //     (primID == 2 || primID == 3)) { // bottom or top - ymin or ymax
-    //   prd->rayWeight = 0.0f;
-    //   return;
-    // }
-    // if (launchParams.D == 3 &&
-    //     (primID == 4 || primID == 5)) { // bottom or top - zmin or zmax
-    //   prd->rayWeight = 0.0f;
-    //   return;
-    // }
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary<viennaray::gpu::HitSBTDataTriangle>(prd, sbtData,
                                                                 launchParams.D);

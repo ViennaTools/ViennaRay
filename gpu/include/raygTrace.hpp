@@ -11,6 +11,7 @@
 #include <rayPointNeighborhood.hpp>
 #include <rayUtil.hpp>
 
+#include "raygCallableConfig.hpp"
 #include "raygLaunchParams.hpp"
 #include "raygSBTRecords.hpp"
 
@@ -126,6 +127,7 @@ public:
     }
 
     launchParams.gridDelta = gridDelta;
+    launchParams.tThreshold = 1.1 * gridDelta; // TODO: find the best value
 
     int numPointsPerDim =
         static_cast<int>(std::sqrt(static_cast<T>(launchParams.numElements)));
@@ -215,7 +217,17 @@ public:
 
     generateSBT();
 
-    // TODO: Multiple streams seem to give same performance as single stream
+#ifndef NDEBUG // Launch on single stream in debug mode
+    for (size_t i = 0; i < particles.size(); i++) {
+      OPTIX_CHECK(optixLaunch(pipeline, streams[0],
+                              /*! parameters and SBT */
+                              launchParamsBuffers[i].dPointer(),
+                              launchParamsBuffers[i].sizeInBytes, &sbt,
+                              /*! dimensions of the launch: */
+                              numberOfRaysPerPoint, numPointsPerDim,
+                              numPointsPerDim));
+    }
+#else // Launch on multiple streams in release mode
     for (size_t i = 0; i < particles.size(); i++) {
       OPTIX_CHECK(optixLaunch(pipeline, streams[i],
                               /*! parameters and SBT */
@@ -225,6 +237,8 @@ public:
                               numberOfRaysPerPoint, numPointsPerDim,
                               numPointsPerDim));
     }
+#endif
+
     // std::cout << util::prettyDouble(numRays * particles.size()) << std::endl;
     // float *temp = new float[launchParams.numElements];
     // resultBuffer.download(temp, launchParams.numElements);
@@ -350,7 +364,7 @@ public:
       return 0;
     }
 
-    createModule();
+    createModules();
     createRaygenPrograms();
     createMissPrograms();
     createHitgroupPrograms();
@@ -401,32 +415,36 @@ protected:
     normKernelName.push_back(NumericType);
   }
 
-  /// creates the module that contains all the programs we are going to use.
-  /// We use a single module from a single .cu file
-  void createModule() {
+  /// creates the modules that contains all the programs we are going to use.
+  /// We use one module for the pipeline programs, and one for the direct
+  /// callables
+  void createModules() {
     moduleCompileOptions.maxRegisterCount =
         OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-    // moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
-    // moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
+#ifndef NDEBUG
+    moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
+    moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
+#else
     moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
     moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
-
+#endif
     pipelineCompileOptions = {};
     pipelineCompileOptions.traversableGraphFlags =
         OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
     pipelineCompileOptions.usesMotionBlur = false;
     pipelineCompileOptions.numPayloadValues = 2;
-    pipelineCompileOptions.numAttributeValues = 4; // TODO: what is this
+    pipelineCompileOptions.numAttributeValues = 0;
     pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
     pipelineCompileOptions.pipelineLaunchParamsVariableName =
         globalParamsName.c_str();
 
     pipelineLinkOptions.maxTraceDepth = 1;
 
+    size_t inputSize = 0;
+
     char log[2048];
     size_t sizeof_log = sizeof(log);
 
-    size_t inputSize = 0;
     auto pipelineInput = getInputData(pipelineFile.c_str(), inputSize);
 
     OPTIX_CHECK(optixModuleCreate(context->optix, &moduleCompileOptions,
@@ -435,13 +453,17 @@ protected:
     // if (sizeof_log > 1)
     //   PRINT(log);
 
+    char logCallable[2048];
+    size_t sizeof_log_callable = sizeof(logCallable);
+
     auto callableInput = getInputData(callableFile.c_str(), inputSize);
 
-    OPTIX_CHECK(optixModuleCreate(
-        context->optix, &moduleCompileOptions, &pipelineCompileOptions,
-        callableInput, inputSize, log, &sizeof_log, &moduleCallable));
-    // if (sizeof_log > 1)
-    //   PRINT(log);
+    OPTIX_CHECK(optixModuleCreate(context->optix, &moduleCompileOptions,
+                                  &pipelineCompileOptions, callableInput,
+                                  inputSize, logCallable, &sizeof_log_callable,
+                                  &moduleCallable));
+    // if (sizeof_log_callable > 1)
+    //   PRINT(logCallable);
   }
 
   /// does all setup for the raygen program
@@ -510,8 +532,13 @@ protected:
           .addError("No particleType->callable mapping provided.")
           .print();
     }
+    unsigned maxParticleTypeId = 0;
+    for (const auto &p : particleMap_) {
+      if (p.second >= maxParticleTypeId)
+        maxParticleTypeId = p.second;
+    }
     unsigned numCallables =
-        maxParticleTypes * static_cast<unsigned>(CallableSlot::COUNT);
+        (maxParticleTypeId + 1) * static_cast<unsigned>(CallableSlot::COUNT);
     std::vector<std::string> entryFunctionNames(numCallables,
                                                 "__direct_callable__noop");
     for (const auto &cfg : callableMap_) {
@@ -647,8 +674,6 @@ protected:
   Vec3Df maxBox;
 
   // particles
-  unsigned int maxParticleTypes = 5; // max nr. of different particle types
-                                     // nr. of particles per type is not limited
   unsigned int numRates = 0;
   std::vector<Particle<T>> particles;
   CudaBuffer dataPerParticleBuffer;               // same for all particles

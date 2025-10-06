@@ -11,8 +11,7 @@
 #include <raygReflection.hpp>
 #include <raygSBTRecords.hpp>
 #include <raygSource.hpp>
-
-// #include "CallableWrapper.cu"
+#include <raygCallableConfig.hpp>
 
 #include <vcContext.hpp>
 
@@ -55,7 +54,7 @@ extern "C" __global__ void __intersection__() {
     }
 
     // Has to pass a dummy t value so later intersections are not ignored
-    optixReportIntersection(t + prd->tThreshold, 0);
+    optixReportIntersection(t + launchParams.tThreshold, 0);
   }
 }
 
@@ -65,7 +64,7 @@ extern "C" __global__ void __closesthit__() {
   PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
 
   const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax() - prd->tThreshold;
+  prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
   prd->primID = primID;
 
   const Vec3Df normal = computeNormal(sbtData, primID);
@@ -100,7 +99,7 @@ extern "C" __global__ void __closesthit__() {
     // Keep only hits close to tMin
     prd->ISCount = 0;
     for (int i = 0; i < prd->tempCount; ++i) {
-      if (fabsf(prd->tValues[i] - prd->tMin) < prd->tThreshold &&
+      if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
           prd->ISCount < MAX_NEIGHBORS) {
         prd->TIndex[prd->ISCount++] = prd->primIDs[i];
       }
@@ -114,35 +113,6 @@ extern "C" __global__ void __closesthit__() {
     //   if (distance < 2 * sbtData->radius && prd->ISCount < MAX_NEIGHBORS) {
     //     prd->TIndex[prd->ISCount++] = prd->primIDs[i];
     //   }
-    // }
-
-    // // Actual equivalent to CPU version
-    // prd->TIndex[0] = primID;
-    // prd->ISCount = 1;
-    // for (int i = 0; i < launchParams.maxNeighbors; ++i) {
-    //   int neighborIdx =
-    //       launchParams.neighbors[primID * launchParams.maxNeighbors + i];
-    //   if (neighborIdx == -1)
-    //     continue;
-    //   const Vec3Df diskOrigin = sbtData->point[neighborIdx];
-    //   const Vec3Df normal = sbtData->normal[neighborIdx];
-    //   const float radius = sbtData->radius;
-
-    //   bool valid = true;
-    //   float prodOfDirections = DotProduct(normal, prd->dir);
-    //   // valid &= DotProduct(prd->dir, normal) <= 0.0f;
-    //   valid &= fabsf(prodOfDirections) >= 1e-6f;
-
-    //   float ddneg = DotProduct(diskOrigin, normal);
-    //   float t = (ddneg - DotProduct(normal, prd->pos)) / prodOfDirections;
-    //   valid &= t > 1e-4f;
-
-    //   const Vec3Df intersection = prd->pos + prd->dir * t;
-    //   const Vec3Df diff = intersection - diskOrigin;
-    //   float distance = DotProduct(diff, diff);
-    //   valid &= distance < radius * radius;
-    //   if (valid)
-    //     prd->TIndex[prd->ISCount++] = neighborIdx;
     // }
 
     // ------------- SURFACE COLLISION --------------- //
@@ -170,8 +140,6 @@ extern "C" __global__ void __raygen__() {
 
   // per-ray data
   PerRayData prd;
-  prd.tThreshold = 1.1f * launchParams.gridDelta;
-  // prd.tThreshold = 0.f;
   // each ray has its own RNG state
   initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
 

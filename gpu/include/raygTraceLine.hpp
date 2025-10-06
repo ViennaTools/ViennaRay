@@ -102,15 +102,12 @@ protected:
     Vec2D<Vec3Df> bdBox = {this->minBox, this->maxBox};
     std::vector<float> areas(launchParams.numElements, 0.f);
 
-    // TODO: properly set this up
     // 0 = REFLECTIVE, 1 = PERIODIC, 2 = IGNORE
     std::array<BoundaryCondition, 2> boundaryConds = {
         BoundaryCondition::REFLECTIVE, BoundaryCondition::IGNORE};
     const std::array<int, 2> boundaryDirs = {0, 1};
     const float eps = 1e-5f;
-
-    // TODO: this interprets the lines as disks, which is alright
-    // Maybe look for other algorithms in future
+#pragma omp for
     for (int idx = 0; idx < launchParams.numElements; ++idx) {
       Vec3Df p0 = lineMesh.nodes[lineMesh.lines[idx][0]];
       Vec3Df p1 = lineMesh.nodes[lineMesh.lines[idx][1]];

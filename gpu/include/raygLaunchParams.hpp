@@ -3,26 +3,12 @@
 #include <optix_types.h>
 #include <vcVectorType.hpp>
 
-#include <unordered_map>
-
 #include "raygPerRayData.hpp"
+#include "raygCallableConfig.hpp"
 
 namespace viennaray::gpu {
 
-enum class CallableSlot : unsigned {
-  COLLISION = 0,
-  REFLECTION = 1,
-  INIT = 2,
-  COUNT
-};
-
-struct CallableConfig {
-  unsigned particle;
-  CallableSlot slot;
-  std::string callable;
-};
-
-__forceinline__ __both__ unsigned callableIndex(unsigned p, CallableSlot s) {
+__both__ __forceinline__ unsigned callableIndex(unsigned p, CallableSlot s) {
   return p * static_cast<unsigned>(CallableSlot::COUNT) +
          static_cast<unsigned>(s);
 }
@@ -38,6 +24,7 @@ struct LaunchParams {
   unsigned int particleIdx = 0;
   unsigned particleType = 0;
   float gridDelta = 1.f;
+  float tThreshold = 0.5f;
 
   int D = 3; // Dimension
 

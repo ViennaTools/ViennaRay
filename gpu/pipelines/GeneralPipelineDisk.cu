@@ -11,8 +11,7 @@
 #include <raygReflection.hpp>
 #include <raygSBTRecords.hpp>
 #include <raygSource.hpp>
-
-// #include "CallableWrapper.cu"
+#include <raygCallableConfig.hpp>
 
 #include <vcContext.hpp>
 
@@ -67,7 +66,7 @@ extern "C" __global__ void __intersection__() {
     }
 
     // Has to pass a dummy t value so later intersections are not ignored
-    optixReportIntersection(t + prd->tThreshold, 0);
+    optixReportIntersection(t + launchParams.tThreshold, 0);
   }
 }
 
@@ -77,7 +76,7 @@ extern "C" __global__ void __closesthit__() {
   PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
 
   const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax() - prd->tThreshold;
+  prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
   prd->primID = primID;
 
   const Vec3Df normal = sbtData->normal[primID];
@@ -118,7 +117,7 @@ extern "C" __global__ void __closesthit__() {
     // Keep only hits close to tMin
     prd->ISCount = 0;
     for (int i = 0; i < prd->tempCount; ++i) {
-      if (fabsf(prd->tValues[i] - prd->tMin) < prd->tThreshold &&
+      if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
           prd->ISCount < MAX_NEIGHBORS) {
         prd->TIndex[prd->ISCount++] = prd->primIDs[i];
       }
@@ -159,8 +158,6 @@ extern "C" __global__ void __raygen__() {
 
   // per-ray data
   PerRayData prd;
-  prd.tThreshold = 1.1f * launchParams.gridDelta;
-  // prd.tThreshold = 0.f;
   // each ray has its own RNG state
   initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
 
