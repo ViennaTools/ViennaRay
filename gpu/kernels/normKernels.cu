@@ -3,11 +3,10 @@
 
 #include <vcVectorType.hpp>
 
-extern "C" __global__ void
-normalize_surface_Triangle_f(float *data, const viennacore::Vec3Df *vertex,
-                    const viennacore::Vec3D<unsigned> *index,
-                    const unsigned int numTriangles, const float sourceArea,
-                    const size_t numRays, const int numData) {
+extern "C" __global__ void normalize_surface_Triangle_f(
+    float *data, const viennacore::Vec3Df *vertex,
+    const viennacore::Vec3D<unsigned> *index, const unsigned int numTriangles,
+    const float sourceArea, const size_t numRays, const int numData) {
   using namespace viennacore;
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int stride = blockDim.x * gridDim.x;
@@ -25,11 +24,10 @@ normalize_surface_Triangle_f(float *data, const viennacore::Vec3Df *vertex,
   }
 }
 
-extern "C" __global__ void
-normalize_surface_Triangle_d(double *data, const viennacore::Vec3Df *vertex,
-                    const viennacore::Vec3D<unsigned> *index,
-                    const unsigned int numTriangles, const double sourceArea,
-                    const size_t numRays, const int numData) {
+extern "C" __global__ void normalize_surface_Triangle_d(
+    double *data, const viennacore::Vec3Df *vertex,
+    const viennacore::Vec3D<unsigned> *index, const unsigned int numTriangles,
+    const double sourceArea, const size_t numRays, const int numData) {
   using namespace viennacore;
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int stride = blockDim.x * gridDim.x;
@@ -48,9 +46,11 @@ normalize_surface_Triangle_d(double *data, const viennacore::Vec3Df *vertex,
 }
 
 // Areas precomputed on the CPU
-extern "C" __global__ void
-normalize_surface_Disk_f(float *data, float *areas, const unsigned int numDisks,
-                    float sourceArea, const size_t numRays, const int numData) {
+extern "C" __global__ void normalize_surface_Disk_f(float *data, float *areas,
+                                                    const unsigned int numDisks,
+                                                    float sourceArea,
+                                                    const size_t numRays,
+                                                    const int numData) {
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int stride = blockDim.x * gridDim.x;
 
@@ -65,9 +65,11 @@ normalize_surface_Disk_f(float *data, float *areas, const unsigned int numDisks,
 }
 
 // Areas precomputed on the CPU
-extern "C" __global__ void
-normalize_surface_Line_f(float *data, float *areas, const unsigned int numLines,
-                    float sourceArea, const size_t numRays, const int numData) {
+extern "C" __global__ void normalize_surface_Line_f(float *data, float *areas,
+                                                    const unsigned int numLines,
+                                                    float sourceArea,
+                                                    const size_t numRays,
+                                                    const int numData) {
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int stride = blockDim.x * gridDim.x;
 

@@ -87,7 +87,7 @@ initializeRayPosition(viennaray::gpu::PerRayData *prd,
   } else {
     prd->pos[1] = launchParams->source.minPoint[1] +
                   u.y * (launchParams->source.maxPoint[1] -
-                        launchParams->source.minPoint[1]);
+                         launchParams->source.minPoint[1]);
     prd->pos[2] = launchParams->source.planeHeight;
   }
 }

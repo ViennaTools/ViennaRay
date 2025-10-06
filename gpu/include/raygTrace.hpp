@@ -52,10 +52,6 @@ public:
 
   ~Trace() { freeBuffers(); }
 
-  virtual void setGeometry(const LineMesh &passedMesh) {}
-  virtual void setGeometry(const DiskMesh &passedMesh) {}
-  virtual void setGeometry(const TriangleMesh &passedMesh) {}
-
   void setPipeline(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
     if (fileName.find(".optixir") == std::string::npos) {

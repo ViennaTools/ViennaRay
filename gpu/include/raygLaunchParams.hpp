@@ -3,8 +3,8 @@
 #include <optix_types.h>
 #include <vcVectorType.hpp>
 
-#include "raygPerRayData.hpp"
 #include "raygCallableConfig.hpp"
+#include "raygPerRayData.hpp"
 
 namespace viennaray::gpu {
 

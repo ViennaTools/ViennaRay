@@ -5,13 +5,13 @@
 #endif
 
 #include <raygBoundary.hpp>
+#include <raygCallableConfig.hpp>
 #include <raygLaunchParams.hpp>
 #include <raygPerRayData.hpp>
 #include <raygRNG.hpp>
 #include <raygReflection.hpp>
 #include <raygSBTRecords.hpp>
 #include <raygSource.hpp>
-#include <raygCallableConfig.hpp>
 
 #include <vcContext.hpp>
 

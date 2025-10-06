@@ -19,7 +19,7 @@ extern "C" __global__ void test_diffuse(viennacore::Vec3Df inDir,
     initializeRNGState(&prd, tidx, 0);
     prd.dir = inDir;
 
-    diffuseReflection(&prd, normal);
+    diffuseReflection(&prd, normal, 3);
     results[tidx] = prd.dir;
   }
 }
@@ -38,7 +38,7 @@ extern "C" __global__ void test_coned_cosine(viennacore::Vec3Df inDir,
     initializeRNGState(&prd, tidx, 0);
     prd.dir = inDir;
 
-    conedCosineReflection(&prd, normal, coneAngle);
+    conedCosineReflection(&prd, normal, coneAngle, 3);
     results[tidx] = prd.dir;
   }
 }

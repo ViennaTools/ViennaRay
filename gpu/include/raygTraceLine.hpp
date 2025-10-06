@@ -17,7 +17,7 @@ public:
 
   ~TraceLine() { lineGeometry.freeBuffers(); }
 
-  void setGeometry(const LineMesh &passedMesh) override {
+  void setGeometry(const LineMesh &passedMesh) {
     this->minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
     this->maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);
     this->gridDelta = static_cast<float>(passedMesh.gridDelta);

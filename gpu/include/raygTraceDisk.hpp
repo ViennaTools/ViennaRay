@@ -14,11 +14,11 @@ public:
   TraceDisk(std::shared_ptr<DeviceContext> &passedContext)
       : Trace<T, D>(passedContext, "Disk") {}
 
-  TraceDisk(unsigned deviceID = 0) : Trace<T, D>(deviceID, "Disk") {}
+  TraceDisk(unsigned deviceID = 0) : Trace<T, D>("Disk", deviceID) {}
 
   ~TraceDisk() { diskGeometry.freeBuffers(); }
 
-  void setGeometry(const DiskMesh &passedMesh) override {
+  void setGeometry(const DiskMesh &passedMesh) {
     assert(context);
     this->minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
     this->maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);

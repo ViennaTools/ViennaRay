@@ -16,7 +16,7 @@ public:
 
   ~TraceTriangle() { triangleGeometry.freeBuffers(); }
 
-  void setGeometry(const TriangleMesh &passedMesh) override {
+  void setGeometry(const TriangleMesh &passedMesh) {
     assert(context);
     triangleGeometry.buildAccel(*context, passedMesh, launchParams);
   }

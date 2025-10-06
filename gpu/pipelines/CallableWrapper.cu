@@ -23,18 +23,18 @@ extern "C" __device__ void __direct_callable__noop(void *, void *) {
 
 extern "C" __device__ void
 __direct_callable__particleCollision(const void *sbtData,
-                                          viennaray::gpu::PerRayData *prd) {
+                                     viennaray::gpu::PerRayData *prd) {
   particleCollision(prd);
 }
 
 extern "C" __device__ void
 __direct_callable__particleReflection(const void *sbtData,
-                                           viennaray::gpu::PerRayData *prd) {
+                                      viennaray::gpu::PerRayData *prd) {
   particleReflection(sbtData, prd);
 }
 
 extern "C" __device__ void
 __direct_callable__particleInit(const void *sbtData,
-                                           viennaray::gpu::PerRayData *prd) {
+                                viennaray::gpu::PerRayData *prd) {
   particleInit(prd);
 }
