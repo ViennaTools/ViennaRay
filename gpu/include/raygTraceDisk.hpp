@@ -41,7 +41,8 @@ public:
     if (smoothingNeighbors == 1) {
       // re-use the neighborhood from setGeometry
       pointNeighborhood = this->pointNeighborhood_;
-    } else { // TODO: creates a new neighborhood for each particle
+    } else { // TODO: this will rebuild the neighborhood for every call
+      // to getFlux (number of rates)
       // create a new neighborhood with a larger radius
       pointNeighborhood.template init<3>(
           diskMesh.points, smoothingNeighbors * 2 * diskMesh.radius,

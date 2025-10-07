@@ -411,7 +411,7 @@ protected:
     normKernelName.push_back(NumericType);
   }
 
-  /// creates the modules that contains all the programs we are going to use.
+  /// Creates the modules that contain all the programs we are going to use.
   /// We use one module for the pipeline programs, and one for the direct
   /// callables
   void createModules() {
