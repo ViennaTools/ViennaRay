@@ -23,8 +23,9 @@ struct KernelConfig {
   size_t numRaysPerPoint = 1000;
   size_t numRaysFixed = 0;
   unsigned maxReflections = std::numeric_limits<unsigned>::max();
+  unsigned rngSeed = 0;
 
-  bool useRandomSeed = false;
+  bool useRandomSeed = true;
   bool calcFlux = true;
   bool printProgress = false;
 
@@ -125,7 +126,7 @@ public:
 #ifdef _OPENMP
       threadID = omp_get_thread_num();
 #endif
-      unsigned int seed = config_.runNumber;
+      unsigned int seed = config_.runNumber + config_.rngSeed;
       if (config_.useRandomSeed) {
         std::random_device rd;
         seed = static_cast<unsigned int>(rd());
