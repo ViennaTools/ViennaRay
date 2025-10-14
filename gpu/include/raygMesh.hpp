@@ -11,7 +11,7 @@ namespace viennaray::gpu {
 using namespace viennacore;
 
 struct LineMesh {
-  std::vector<Vec3Df> vertices;
+  std::vector<Vec3Df> nodes;
   std::vector<Vec2D<unsigned>> lines;
 
   Vec3Df minimumExtent;
@@ -25,6 +25,16 @@ struct TriangleMesh {
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;
+  float gridDelta;
+};
+
+struct DiskMesh {
+  std::vector<Vec3Df> points;
+  std::vector<Vec3Df> normals;
+
+  Vec3Df minimumExtent;
+  Vec3Df maximumExtent;
+  float radius;
   float gridDelta;
 };
 

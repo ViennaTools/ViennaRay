@@ -8,18 +8,30 @@
 
 #include <stdint.h>
 
+#define MAX_NEIGHBORS 8
+
 namespace viennaray::gpu {
 
 struct PerRayData {
   float rayWeight = 1.f;
   viennacore::Vec3Df pos;
   viennacore::Vec3Df dir;
-  float tmax;
 
   RNGState RNGstate;
 
   float energy = 0.f;
   unsigned int numBoundaryHits = 0;
+
+  unsigned primID = 0;
+  float tMin = 1e20f;
+
+  // Variables for neighbor intersections (overlapping disks and lines)
+  int TIndex[MAX_NEIGHBORS];    // Indices of neighbor hits
+  int ISCount = 0;              // Number of hits starting from 1
+  int tempCount = 0;            // total intersections recorded
+  float tValues[MAX_NEIGHBORS]; // all intersection distances
+  int primIDs[MAX_NEIGHBORS];   // their primitive IDs
+  bool hitFromBack = false;
 };
 
 } // namespace viennaray::gpu

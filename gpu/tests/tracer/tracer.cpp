@@ -1,4 +1,6 @@
-#include <raygTrace.hpp>
+#include <raygTraceDisk.hpp>
+#include <raygTraceLine.hpp>
+#include <raygTraceTriangle.hpp>
 
 #include <omp.h>
 
@@ -12,11 +14,15 @@ int main(int argc, char **argv) {
 
   auto context = DeviceContext::createContext("../../../lib/ptx",
                                               0); // relative to build directory
-  gpu::Trace<NumericType, D> tracer(context);
 
+  gpu::TraceTriangle<NumericType, D> tracer(context);
   {
     // second tracer, should use same context
-    gpu::Trace<NumericType, D> tracer(0);
+    gpu::TraceDisk<NumericType, D> tracer(0);
+  }
+  {
+    // third tracer, should use same context
+    gpu::TraceLine<NumericType, D> tracer(0);
   }
 
   context->destroy();
