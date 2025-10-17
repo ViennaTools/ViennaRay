@@ -59,7 +59,7 @@ function(generate_kernel generated_files)
 endfunction()
 
 # In CMake, functions have their own scope, whereas macros use the scope of the caller.
-function(add_GPU_executable target_name_base target_name_var)
+function(add_gpu_executable target_name_base target_name_var)
   set(target_name ${target_name_base})
   set(${target_name_var}
       ${target_name}
@@ -109,7 +109,6 @@ function(add_GPU_executable target_name_base target_name_var)
       ${cu_optix_source_files}
       ${cmake_options}
       OPTIONS
-      --relocatable-device-code true # needed for using DirectCallables
       ${options})
     list(APPEND generated_files ${generated_optixir_files})
   endif()
@@ -121,7 +120,6 @@ function(add_GPU_executable target_name_base target_name_var)
       ${cu_optix_source_files}
       ${cmake_options}
       OPTIONS
-      --relocatable-device-code true # needed for using DirectCallables
       ${options})
     list(APPEND generated_files ${generated_ptx_files})
   endif()
