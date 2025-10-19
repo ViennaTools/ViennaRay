@@ -82,6 +82,12 @@ function(add_gpu_executable target_name_base target_name_var)
     endif()
   endforeach()
 
+  # Add the general pipelines and callable wrapper
+  list(APPEND cu_optix_source_files ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu)
+  list(APPEND cu_optix_source_files ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu)
+  list(APPEND cu_optix_source_files ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu)
+  list(APPEND cu_optix_source_files ${VIENNARAY_PIPELINE_DIR}/CallableWrapper.cu)
+
   # Add the path to the OptiX headers to our include paths.
   cuda_include_directories(${OptiX_INCLUDE_DIR})
 
