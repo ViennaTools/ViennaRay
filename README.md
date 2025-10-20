@@ -63,7 +63,7 @@ We recommend using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) to consum
 * Installation with CPM
 
   ```cmake
-  CPMAddPackage("gh:viennatools/viennaray@3.5.0")
+  CPMAddPackage("gh:viennatools/viennaray@3.6.0")
   ```
 
 * With a local installation
@@ -104,8 +104,6 @@ ctest --test-dir build
 If you want to contribute to ViennaRay, make sure to follow the [LLVM Coding guidelines](https://llvm.org/docs/CodingStandards.html). Before creating a pull request, make sure ALL files have been formatted by clang-format.
 
 ## Authors
-
-Current contributors: Tobias Reiter
 
 Contact us via: viennatools@iue.tuwien.ac.at
 
