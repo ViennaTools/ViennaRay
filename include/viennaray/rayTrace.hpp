@@ -185,6 +185,11 @@ public:
     config_.useRandomSeed = useRand;
   }
 
+  void setRngSeed(const unsigned int seed) {
+    config_.rngSeed = seed;
+    config_.useRandomSeed = false;
+  }
+
   /// Set whether the flux and hit counts should be recorded. If not needed,
   /// this should be turned off to increase performance. If set to false, the
   /// functions getTotalFlux(), getNormalizedFlux(), getHitCounts() and
