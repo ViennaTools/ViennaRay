@@ -20,7 +20,7 @@ public:
   ~TraceDisk() { diskGeometry.freeBuffers(); }
 
   void setGeometry(const DiskMesh &passedMesh) {
-    assert(context);
+    assert(context_ && "Context not initialized.");
     diskMesh = passedMesh;
     if (diskMesh.gridDelta <= 0.f) {
       Logger::getInstance()
