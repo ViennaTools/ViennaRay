@@ -20,17 +20,17 @@ public:
   void setGeometry(const LineMesh &passedMesh) {
     minBox = passedMesh.minimumExtent;
     maxBox = passedMesh.maximumExtent;
-    this->gridDelta = static_cast<float>(passedMesh.gridDelta);
+    this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
     lineMesh = passedMesh;
     launchParams.D = D;
-    lineGeometry.buildAccel(*context, passedMesh, launchParams);
+    lineGeometry.buildAccel(*context_, passedMesh, launchParams);
     std::vector<Vec3Df> midPoints(lineMesh.lines.size());
     for (int i = 0; i < lineMesh.lines.size(); ++i) {
       midPoints[i] = 0.5f * (lineMesh.nodes[lineMesh.lines[i][0]] +
                              lineMesh.nodes[lineMesh.lines[i][1]]);
     }
     pointNeighborhood_.template init<3>(
-        midPoints, 1 * std::sqrt(2) * this->gridDelta, minBox, maxBox);
+        midPoints, 1 * std::sqrt(2) * this->gridDelta_, minBox, maxBox);
   }
 
   void smoothFlux(std::vector<float> &flux, int numNeighbors) override {
@@ -49,7 +49,7 @@ public:
                                lineMesh.nodes[lineMesh.lines[i][1]]);
       }
       pointNeighborhood.template init<3>(
-          midPoints, numNeighbors * std::sqrt(2) * this->gridDelta, minBox,
+          midPoints, numNeighbors * std::sqrt(2) * this->gridDelta_, minBox,
           maxBox);
     }
 
@@ -148,14 +148,14 @@ protected:
       }
     }
 
-    this->areaBuffer.allocUpload(areas);
-    CUdeviceptr d_areas = this->areaBuffer.dPointer();
+    this->areaBuffer_.allocUpload(areas);
+    CUdeviceptr d_areas = this->areaBuffer_.dPointer();
 
     void *kernel_args[] = {
         &d_data,     &d_areas,       &launchParams.numElements,
-        &sourceArea, &this->numRays, &this->numRates};
+        &sourceArea, &this->numRays, &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
-                         kernel_args, *context);
+                         kernel_args, *context_);
   }
 
   void buildHitGroups() override {
@@ -171,7 +171,7 @@ protected:
     geometryHitgroupRecord.data.base.geometryType = 2;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
-        (void *)this->cellDataBuffer.dPointer();
+        (void *)this->cellDataBuffer_.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
@@ -199,7 +199,7 @@ private:
   Vec3Df minBox;
   Vec3Df maxBox;
 
-  using Trace<T, D>::context;
+  using Trace<T, D>::context_;
   using Trace<T, D>::geometryType_;
 
   using Trace<T, D>::launchParams;

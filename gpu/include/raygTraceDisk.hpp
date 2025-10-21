@@ -37,12 +37,12 @@ public:
       minBox[2] = -diskMesh.gridDelta;
       maxBox[2] = diskMesh.gridDelta;
     }
-    this->gridDelta = static_cast<float>(diskMesh.gridDelta);
+    this->gridDelta_ = static_cast<float>(diskMesh.gridDelta);
     launchParams.D = D;
-    pointNeighborhood_.template init<3>(diskMesh.points, 2 * diskMesh.radius,
+    pointNeighborhood_.template init<3>(diskMesh.nodes, 2 * diskMesh.radius,
                                         diskMesh.minimumExtent,
                                         diskMesh.maximumExtent);
-    diskGeometry.buildAccel(*context, diskMesh, launchParams);
+    diskGeometry.buildAccel(*context_, diskMesh, launchParams);
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
@@ -55,7 +55,7 @@ public:
       // to getFlux (number of rates)
       // create a new neighborhood with a larger radius
       pointNeighborhood.template init<3>(
-          diskMesh.points, smoothingNeighbors * 2 * diskMesh.radius,
+          diskMesh.nodes, smoothingNeighbors * 2 * diskMesh.radius,
           diskMesh.minimumExtent, diskMesh.maximumExtent);
     }
 #pragma omp parallel for
@@ -106,7 +106,7 @@ protected:
 #pragma omp for
     for (long idx = 0; idx < launchParams.numElements; ++idx) {
       std::array<float, 4> disk{0.f, 0.f, 0.f, diskMesh.radius};
-      Vec3Df coord = diskMesh.points[idx];
+      Vec3Df coord = diskMesh.nodes[idx];
       Vec3Df normal = diskMesh.normals[idx];
       disk[0] = coord[0];
       disk[1] = coord[1];
@@ -160,14 +160,14 @@ protected:
         }
       }
     }
-    this->areaBuffer.allocUpload(areas);
-    CUdeviceptr d_areas = this->areaBuffer.dPointer();
+    this->areaBuffer_.allocUpload(areas);
+    CUdeviceptr d_areas = this->areaBuffer_.dPointer();
 
     void *kernel_args[] = {
         &d_data,     &d_areas,       &launchParams.numElements,
-        &sourceArea, &this->numRays, &this->numRates};
+        &sourceArea, &this->numRays, &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
-                         kernel_args, *context);
+                         kernel_args, *context_);
   }
 
   void buildHitGroups() override {
@@ -183,7 +183,7 @@ protected:
     geometryHitgroupRecord.data.base.geometryType = 1;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
-        (void *)this->cellDataBuffer.dPointer();
+        (void *)this->cellDataBuffer_.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
@@ -211,7 +211,7 @@ protected:
   Vec3Df minBox;
   Vec3Df maxBox;
 
-  using Trace<T, D>::context;
+  using Trace<T, D>::context_;
   using Trace<T, D>::geometryType_;
 
   using Trace<T, D>::launchParams;

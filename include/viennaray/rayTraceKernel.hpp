@@ -19,19 +19,6 @@ namespace rayInternal {
 
 using namespace viennaray;
 
-struct KernelConfig {
-  size_t numRaysPerPoint = 1000;
-  size_t numRaysFixed = 0;
-  unsigned maxReflections = std::numeric_limits<unsigned>::max();
-  unsigned rngSeed = 0;
-
-  bool useRandomSeed = true;
-  bool calcFlux = true;
-  bool printProgress = false;
-
-  unsigned runNumber = 1;
-};
-
 template <typename NumericType, int D> class TraceKernel {
 public:
   TraceKernel(RTCDevice &device, Geometry<NumericType, D> &geometry,

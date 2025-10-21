@@ -1,4 +1,4 @@
-#include <raygTraceDisk.hpp>
+#include <raygTraceLine.hpp>
 
 #include <omp.h>
 
@@ -17,17 +17,14 @@ int main() {
   // Read stored geometry grid
   NumericType gridDelta;
   std::vector<VectorType<NumericType, D>> points;
-  std::vector<VectorType<NumericType, D>> normals;
-  rayInternal::readGridFromFile("trenchGrid3D.dat", gridDelta, points, normals);
 
-  gpu::DiskMesh mesh;
+  gpu::LineMesh mesh;
   mesh.nodes = points;
-  mesh.normals = normals;
   mesh.gridDelta = static_cast<float>(gridDelta);
   computeBoundingBox(mesh);
 
-  std::vector<int> materialIds(mesh.nodes.size(), 7);
-  for (int i = mesh.nodes.size() / 2; i < mesh.nodes.size(); ++i) {
+  std::vector<int> materialIds(mesh.lines.size(), 7);
+  for (int i = mesh.lines.size() / 2; i < mesh.lines.size(); ++i) {
     materialIds[i] = 1;
   }
 
@@ -45,7 +42,7 @@ int main() {
       {0, gpu::CallableSlot::REFLECTION,
        "__direct_callable__particleReflection"}};
 
-  gpu::TraceDisk<NumericType, D> tracer(context);
+  gpu::TraceLine<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
   tracer.setCallables("CallableWrapper", context->modulePath);
@@ -56,10 +53,8 @@ int main() {
 
   tracer.apply();
 
-  std::vector<float> flux(mesh.nodes.size());
+  std::vector<float> flux(mesh.lines.size());
   tracer.getFlux(flux.data(), 0, 0, 1);
-
-  rayInternal::writeVTK<float, D>("trenchResult.vtk", points, flux);
 
   return 0;
 }
