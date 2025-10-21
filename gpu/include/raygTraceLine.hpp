@@ -18,8 +18,8 @@ public:
   ~TraceLine() { lineGeometry.freeBuffers(); }
 
   void setGeometry(const LineMesh &passedMesh) {
-    this->minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
-    this->maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);
+    minBox = passedMesh.minimumExtent;
+    maxBox = passedMesh.maximumExtent;
     this->gridDelta = static_cast<float>(passedMesh.gridDelta);
     lineMesh = passedMesh;
     launchParams.D = D;
@@ -29,16 +29,15 @@ public:
       midPoints[i] = 0.5f * (lineMesh.nodes[lineMesh.lines[i][0]] +
                              lineMesh.nodes[lineMesh.lines[i][1]]);
     }
-    this->pointNeighborhood_.template init<3>(
-        midPoints, 1 * std::sqrt(2) * this->gridDelta, this->minBox,
-        this->maxBox);
+    pointNeighborhood_.template init<3>(
+        midPoints, 1 * std::sqrt(2) * this->gridDelta, minBox, maxBox);
   }
 
   void smoothFlux(std::vector<float> &flux, int numNeighbors) override {
     PointNeighborhood<float, D> pointNeighborhood;
     if (numNeighbors == 1) {
       // re-use the neighborhood from the setGeometry
-      pointNeighborhood = this->pointNeighborhood_;
+      pointNeighborhood = pointNeighborhood_;
     } else {
       // TODO: this will rebuild the neighborhood for every call
       // to getFlux (number of rates)
@@ -50,11 +49,11 @@ public:
                                lineMesh.nodes[lineMesh.lines[i][1]]);
       }
       pointNeighborhood.template init<3>(
-          midPoints, numNeighbors * std::sqrt(2) * this->gridDelta,
-          this->minBox, this->maxBox);
+          midPoints, numNeighbors * std::sqrt(2) * this->gridDelta, minBox,
+          maxBox);
     }
 
-    assert(flux.size() == this->pointNeighborhood_.getNumPoints() &&
+    assert(flux.size() == pointNeighborhood_.getNumPoints() &&
            "Unequal number of points in smoothFlux");
     auto oldFlux = flux;
 
@@ -99,7 +98,7 @@ protected:
     CUdeviceptr d_lines = lineGeometry.geometryLinesBuffer.dPointer();
 
     // calculate areas on host and send to device for now
-    Vec2D<Vec3Df> bdBox = {this->minBox, this->maxBox};
+    Vec2D<Vec3Df> bdBox = {minBox, maxBox};
     std::vector<float> areas(launchParams.numElements, 0.f);
 
     // 0 = REFLECTIVE, 1 = PERIODIC, 2 = IGNORE
@@ -192,8 +191,13 @@ protected:
     sbt.hitgroupRecordCount = 2;
   }
 
+private:
   LineMesh lineMesh;
   LineGeometry<float, D> lineGeometry;
+
+  PointNeighborhood<float, D> pointNeighborhood_;
+  Vec3Df minBox;
+  Vec3Df maxBox;
 
   using Trace<T, D>::context;
   using Trace<T, D>::geometryType_;

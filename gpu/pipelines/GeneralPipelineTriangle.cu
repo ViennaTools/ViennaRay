@@ -15,6 +15,8 @@
 
 #include <vcContext.hpp>
 
+// #define COUNT_RAYS
+
 using namespace viennaray::gpu;
 using namespace viennacore;
 

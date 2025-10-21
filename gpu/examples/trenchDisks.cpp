@@ -1,28 +1,33 @@
-#include <raygMesh.hpp>
 #include <raygTraceDisk.hpp>
-#include <raygTraceLine.hpp>
-#include <raygTraceTriangle.hpp>
 
-#include <fstream>
 #include <omp.h>
-
-#define COUNT_RAYS
 
 using namespace viennaray;
 
-int main(int argc, char **argv) {
+int main() {
 
   omp_set_num_threads(16);
   constexpr int D = 3;
-  using NumericType = double;
+  using NumericType = float;
   Logger::setLogLevel(LogLevel::DEBUG);
 
   auto context = DeviceContext::createContext("../../lib/ptx", 0);
   // relative to build directory
 
-  const auto mesh = gpu::readMeshFromFile("trenchMesh.dat");
-  std::vector<int> materialIds(mesh.triangles.size(), 7);
-  for (int i = mesh.triangles.size() / 2; i < mesh.triangles.size(); ++i) {
+  // Read stored geometry grid
+  NumericType gridDelta;
+  std::vector<VectorType<NumericType, D>> points;
+  std::vector<VectorType<NumericType, D>> normals;
+  rayInternal::readGridFromFile("trenchGrid3D.dat", gridDelta, points, normals);
+
+  gpu::DiskMesh mesh;
+  mesh.points = points;
+  mesh.normals = normals;
+  mesh.gridDelta = static_cast<float>(gridDelta);
+  mesh.computeBoundingBox();
+
+  std::vector<int> materialIds(mesh.points.size(), 7);
+  for (int i = mesh.points.size() / 2; i < mesh.points.size(); ++i) {
     materialIds[i] = 1;
   }
 
@@ -40,33 +45,21 @@ int main(int argc, char **argv) {
       {0, gpu::CallableSlot::REFLECTION,
        "__direct_callable__particleReflection"}};
 
-  gpu::TraceTriangle<NumericType, D> tracer(context);
+  gpu::TraceDisk<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
-  tracer.setPipeline("GeneralPipeline", context->modulePath);
   tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
-  tracer.setNumberOfRaysPerPoint(100);
+  tracer.setNumberOfRaysPerPoint(1000);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
-#ifdef COUNT_RAYS
-  int rayCount = 0;
-  CudaBuffer rayCountBuffer;
-  rayCountBuffer.alloc(sizeof(int));
-  rayCountBuffer.upload(&rayCount, 1);
-  tracer.setParameters(rayCountBuffer.dPointer());
-#endif
-
   tracer.apply();
 
-  std::vector<float> flux(mesh.triangles.size());
-  tracer.getFlux(flux.data(), 0, 0);
+  std::vector<float> flux(mesh.points.size());
+  tracer.getFlux(flux.data(), 0, 0, 1);
 
-  rayCountBuffer.download(&rayCount, 1);
-  std::cout << "Trace count: " << rayCount << std::endl;
+  rayInternal::writeVTK<float, D>("trenchResult.vtk", points, flux);
 
-  tracer.freeBuffers();
-
-  context->destroy();
+  return 0;
 }

@@ -52,27 +52,6 @@ public:
 
   ~Trace() { freeBuffers(); }
 
-  void setPipeline(std::string fileName, const std::filesystem::path &path) {
-    // check if filename ends in .optixir
-    if (fileName.find(".optixir") == std::string::npos) {
-      if (fileName.find(".ptx") == std::string::npos)
-        fileName += ".optixir";
-    }
-
-    std::filesystem::path p(fileName);
-    std::string base = p.stem().string();
-    std::string ext = p.extension().string();
-    std::string finalName = base + geometryType_ + ext;
-
-    pipelineFile = path / finalName;
-
-    if (!std::filesystem::exists(pipelineFile)) {
-      Logger::getInstance()
-          .addError("Pipeline file " + finalName + " not found.")
-          .print();
-    }
-  }
-
   void setCallables(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
     if (fileName.find(".optixir") == std::string::npos) {
@@ -440,8 +419,20 @@ protected:
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
+    std::string pipelineFile = "GeneralPipeline" + geometryType_ + ".optixir";
+    std::filesystem::path pipelinePath = context->modulePath / pipelineFile;
+    if (!std::filesystem::exists(pipelinePath)) {
+      Logger::getInstance()
+          .addError("Pipeline file " + pipelinePath.string() + " not found.")
+          .print();
+    }
 
-    auto pipelineInput = getInputData(pipelineFile.c_str(), inputSize);
+    auto pipelineInput = getInputData(pipelinePath.c_str(), inputSize);
+    if (!pipelineInput) {
+      Logger::getInstance()
+          .addError("Pipeline file " + pipelinePath.string() + " not found.")
+          .print();
+    }
 
     OPTIX_CHECK(optixModuleCreate(context->optix, &moduleCompileOptions,
                                   &pipelineCompileOptions, pipelineInput,
@@ -453,13 +444,19 @@ protected:
     size_t sizeof_log_callable = sizeof(logCallable);
 
     auto callableInput = getInputData(callableFile.c_str(), inputSize);
+    if (!callableInput) {
+      Logger::getInstance()
+          .addError("Callable file " + callableFile.string() + " not found.")
+          .print();
+    }
 
     OPTIX_CHECK(optixModuleCreate(context->optix, &moduleCompileOptions,
                                   &pipelineCompileOptions, callableInput,
                                   inputSize, logCallable, &sizeof_log_callable,
                                   &moduleCallable));
-    // if (sizeof_log_callable > 1)
-    //   PRINT(logCallable);
+    // if (sizeof_log_callable > 1) {
+    //   std::cout << "Callable module log: " << logCallable << std::endl;
+    // }
   }
 
   /// does all setup for the raygen program
@@ -648,11 +645,7 @@ protected:
 protected:
   // context for cuda kernels
   std::shared_ptr<DeviceContext> context;
-  std::filesystem::path pipelineFile;
   std::filesystem::path callableFile;
-
-  // Disk specific
-  PointNeighborhood<float, D> pointNeighborhood_;
 
   std::string geometryType_;
   std::unordered_map<std::string, unsigned> particleMap_;
@@ -665,9 +658,6 @@ protected:
   float gridDelta = 0.0f;
 
   CudaBuffer areaBuffer;
-
-  Vec3Df minBox;
-  Vec3Df maxBox;
 
   // particles
   unsigned int numRates = 0;

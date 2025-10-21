@@ -2,6 +2,7 @@
 
 #include "raygDiskGeometry.hpp"
 #include "raygTrace.hpp"
+
 #include <rayBoundary.hpp>
 #include <rayDiskBoundingBoxIntersector.hpp>
 
@@ -20,19 +21,28 @@ public:
 
   void setGeometry(const DiskMesh &passedMesh) {
     assert(context);
-    this->minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
-    this->maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);
-    if constexpr (D == 2) {
-      this->minBox[2] = -passedMesh.gridDelta;
-      this->maxBox[2] = passedMesh.gridDelta;
-    }
-    this->gridDelta = static_cast<float>(passedMesh.gridDelta);
-    launchParams.D = D;
     diskMesh = passedMesh;
-    this->pointNeighborhood_.template init<3>(
-        passedMesh.points, 2 * passedMesh.radius, passedMesh.minimumExtent,
-        passedMesh.maximumExtent);
-    diskGeometry.buildAccel(*context, passedMesh, launchParams);
+    if (diskMesh.gridDelta <= 0.f) {
+      Logger::getInstance()
+          .addError("DiskMesh gridDelta must be positive and non-zero.")
+          .print();
+    }
+    if (diskMesh.radius <= 0.f) {
+      diskMesh.radius = rayInternal::DiskFactor<3> * diskMesh.gridDelta;
+    }
+
+    minBox = diskMesh.minimumExtent;
+    maxBox = diskMesh.maximumExtent;
+    if constexpr (D == 2) {
+      minBox[2] = -diskMesh.gridDelta;
+      maxBox[2] = diskMesh.gridDelta;
+    }
+    this->gridDelta = static_cast<float>(diskMesh.gridDelta);
+    launchParams.D = D;
+    pointNeighborhood_.template init<3>(diskMesh.points, 2 * diskMesh.radius,
+                                        diskMesh.minimumExtent,
+                                        diskMesh.maximumExtent);
+    diskGeometry.buildAccel(*context, diskMesh, launchParams);
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
@@ -40,7 +50,7 @@ public:
     PointNeighborhood<float, D> pointNeighborhood;
     if (smoothingNeighbors == 1) {
       // re-use the neighborhood from setGeometry
-      pointNeighborhood = this->pointNeighborhood_;
+      pointNeighborhood = pointNeighborhood_;
     } else { // TODO: this will rebuild the neighborhood for every call
       // to getFlux (number of rates)
       // create a new neighborhood with a larger radius
@@ -84,7 +94,7 @@ protected:
     CUdeviceptr d_normals = diskGeometry.geometryNormalBuffer.dPointer();
 
     // calculate areas on host and send to device for now
-    Vec2D<Vec3Df> bdBox = {this->minBox, this->maxBox};
+    Vec2D<Vec3Df> bdBox = {minBox, maxBox};
     std::vector<float> areas(launchParams.numElements);
     DiskBoundingBoxXYIntersector<float> bdDiskIntersector(bdBox);
 
@@ -196,6 +206,10 @@ protected:
 
   DiskMesh diskMesh;
   DiskGeometry<D> diskGeometry;
+
+  PointNeighborhood<float, D> pointNeighborhood_;
+  Vec3Df minBox;
+  Vec3Df maxBox;
 
   using Trace<T, D>::context;
   using Trace<T, D>::geometryType_;

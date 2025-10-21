@@ -34,8 +34,23 @@ struct DiskMesh {
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;
-  float radius;
-  float gridDelta;
+  float radius = 0.f;
+  float gridDelta = 0.f;
+
+  void computeBoundingBox() {
+    if (points.empty())
+      return;
+    minimumExtent = points[0];
+    maximumExtent = points[0];
+    for (const auto &p : points) {
+      for (int d = 0; d < 3; ++d) {
+        if (p[d] < minimumExtent[d])
+          minimumExtent[d] = p[d];
+        if (p[d] > maximumExtent[d])
+          maximumExtent[d] = p[d];
+      }
+    }
+  }
 };
 
 struct SphereMesh {
