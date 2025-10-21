@@ -196,8 +196,8 @@ public:
     generateSBT();
 
 #ifndef NDEBUG // Launch on single stream in debug mode
-    for (size_t i = 0; i < particles.size(); i++) {
-      OPTIX_CHECK(optixLaunch(pipeline, streams[0],
+    for (size_t i = 0; i < particles_.size(); i++) {
+      OPTIX_CHECK(optixLaunch(pipeline_, streams[0],
                               /*! parameters and SBT */
                               launchParamsBuffers[i].dPointer(),
                               launchParamsBuffers[i].sizeInBytes, &sbt,
@@ -299,6 +299,8 @@ public:
     particleMap_ = std::get<0>(maps);
     callableMap_ = std::get<1>(maps);
   }
+
+  size_t getNumberOfRays() const { return numRays; }
 
   void getFlux(float *flux, int particleIdx, int dataIdx,
                int smoothingNeighbors = 0) {

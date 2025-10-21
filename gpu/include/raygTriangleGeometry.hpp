@@ -27,7 +27,6 @@ struct TriangleGeometry {
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
-    launchParams.source.gridDelta = mesh.gridDelta;
     launchParams.source.minPoint[0] = mesh.minimumExtent[0];
     launchParams.source.minPoint[1] = mesh.minimumExtent[1];
     launchParams.source.maxPoint[0] = mesh.maximumExtent[0];

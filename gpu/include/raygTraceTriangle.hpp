@@ -50,6 +50,7 @@ protected:
   void buildHitGroups() override {
     // geometry hitgroup
     std::vector<HitgroupRecordTriangle> hitgroupRecords;
+
     HitgroupRecordTriangle geometryHitgroupRecord = {};
     optixSbtRecordPackHeader(hitgroupPG, &geometryHitgroupRecord);
     geometryHitgroupRecord.data.vertex =
@@ -60,6 +61,8 @@ protected:
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer_.dPointer();
+
+    // add geometry hitgroup record
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
@@ -71,8 +74,11 @@ protected:
         (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
     boundaryHitgroupRecord.data.base.geometryType = 0;
     boundaryHitgroupRecord.data.base.isBoundary = true;
+
+    // add boundary hitgroup record
     hitgroupRecords.push_back(boundaryHitgroupRecord);
 
+    // upload hitgroup records
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
     sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordTriangle);
