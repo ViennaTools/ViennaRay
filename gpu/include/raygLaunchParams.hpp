@@ -39,7 +39,6 @@ struct LaunchParams {
   struct {
     viennacore::Vec2Df minPoint;
     viennacore::Vec2Df maxPoint;
-    float gridDelta;
     float planeHeight;
     std::array<viennacore::Vec3Df, 3> directionBasis;
   } source;

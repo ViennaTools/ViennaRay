@@ -30,7 +30,6 @@ template <int D> struct DiskGeometry {
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
-    launchParams.source.gridDelta = mesh.gridDelta;
     if constexpr (D == 2) {
       launchParams.source.minPoint[0] = mesh.minimumExtent[0];
       launchParams.source.maxPoint[0] = mesh.maximumExtent[0];

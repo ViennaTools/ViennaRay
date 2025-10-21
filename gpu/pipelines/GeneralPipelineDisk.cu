@@ -134,9 +134,8 @@ extern "C" __global__ void __closesthit__() {
     // }
 
     // ------------- SURFACE COLLISION --------------- //
-    unsigned callIdx;
-
-    callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
+    unsigned callIdx =
+        callableIndex(launchParams.particleType, CallableSlot::COLLISION);
     optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx,
                                                                 sbtData, prd);
 

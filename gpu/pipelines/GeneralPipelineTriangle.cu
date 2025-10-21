@@ -54,7 +54,6 @@ extern "C" __global__ void __closesthit__() {
                     PerRayData *>(callIdx, sbtData, prd);
 
     // ------------- REFLECTION --------------- //
-
     callIdx =
         callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
     optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(

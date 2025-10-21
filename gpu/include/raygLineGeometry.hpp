@@ -27,22 +27,20 @@ template <typename NumericType, int D = 3> struct LineGeometry {
   void buildAccel(DeviceContext &context, const LineMesh &mesh,
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
+    assert(mesh.gridDelta > 0.f && "Grid delta must be positive.");
 
-    launchParams.source.gridDelta = mesh.gridDelta;
     if constexpr (D == 2) {
       launchParams.source.minPoint[0] = mesh.minimumExtent[0];
       launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
       launchParams.source.planeHeight =
-          mesh.maximumExtent[1] +
-          2 * mesh.gridDelta * rayInternal::DiskFactor<D>;
+          mesh.maximumExtent[1] + 2 * mesh.gridDelta;
     } else {
       launchParams.source.minPoint[0] = mesh.minimumExtent[0];
       launchParams.source.minPoint[1] = mesh.minimumExtent[1];
       launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
       launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
       launchParams.source.planeHeight =
-          mesh.maximumExtent[2] +
-          2 * mesh.gridDelta * rayInternal::DiskFactor<D>;
+          mesh.maximumExtent[2] + 2 * mesh.gridDelta;
     }
     launchParams.numElements = mesh.lines.size();
 
