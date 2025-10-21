@@ -78,6 +78,19 @@ namespace rayInternal {
 using namespace viennaray;
 using namespace viennacore;
 
+struct KernelConfig {
+  size_t numRaysPerPoint = 1000;
+  size_t numRaysFixed = 0;
+  unsigned maxReflections = std::numeric_limits<unsigned>::max();
+  unsigned rngSeed = 0;
+
+  bool useRandomSeed = true;
+  bool calcFlux = true;
+  bool printProgress = false;
+
+  unsigned runNumber = 1;
+};
+
 // embree uses float internally
 using rtcNumericType = float;
 

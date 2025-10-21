@@ -41,7 +41,7 @@ struct TriangleGeometry {
 
     // ------------------- geometry input -------------------
     // upload the model to the device: the builder
-    geometryVertexBuffer.allocUpload(mesh.vertices);
+    geometryVertexBuffer.allocUpload(mesh.nodes);
     geometryIndexBuffer.allocUpload(mesh.triangles);
 
     // triangle inputs
@@ -56,7 +56,7 @@ struct TriangleGeometry {
     triangleInput[0].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
     triangleInput[0].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
     triangleInput[0].triangleArray.numVertices =
-        (unsigned int)mesh.vertices.size();
+        (unsigned int)mesh.nodes.size();
     triangleInput[0].triangleArray.vertexBuffers = &d_geoVertices;
 
     triangleInput[0].triangleArray.indexFormat =
@@ -77,7 +77,7 @@ struct TriangleGeometry {
     // ------------------------- boundary input -------------------------
     auto boundaryMesh = makeBoundary(mesh);
     // upload the model to the device: the builder
-    boundaryVertexBuffer.allocUpload(boundaryMesh.vertices);
+    boundaryVertexBuffer.allocUpload(boundaryMesh.nodes);
     boundaryIndexBuffer.allocUpload(boundaryMesh.triangles);
 
     // triangle inputs
@@ -91,8 +91,7 @@ struct TriangleGeometry {
 
     triangleInput[1].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
     triangleInput[1].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
-    triangleInput[1].triangleArray.numVertices =
-        (int)boundaryMesh.vertices.size();
+    triangleInput[1].triangleArray.numVertices = (int)boundaryMesh.nodes.size();
     triangleInput[1].triangleArray.vertexBuffers = &d_boundVertices;
 
     triangleInput[1].triangleArray.indexFormat =
@@ -173,19 +172,19 @@ struct TriangleGeometry {
     bbMax[2] += passedMesh.gridDelta;
     boundaryMesh.gridDelta = passedMesh.gridDelta;
 
-    boundaryMesh.vertices.reserve(8);
+    boundaryMesh.nodes.reserve(8);
     boundaryMesh.triangles.reserve(8);
 
     // bottom
-    boundaryMesh.vertices.push_back(Vec3Df{bbMin[0], bbMin[1], bbMin[2]});
-    boundaryMesh.vertices.push_back(Vec3Df{bbMax[0], bbMin[1], bbMin[2]});
-    boundaryMesh.vertices.push_back(Vec3Df{bbMax[0], bbMax[1], bbMin[2]});
-    boundaryMesh.vertices.push_back(Vec3Df{bbMin[0], bbMax[1], bbMin[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMin[1], bbMin[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMin[1], bbMin[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMax[1], bbMin[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMax[1], bbMin[2]});
     // top
-    boundaryMesh.vertices.push_back(Vec3Df{bbMin[0], bbMin[1], bbMax[2]});
-    boundaryMesh.vertices.push_back(Vec3Df{bbMax[0], bbMin[1], bbMax[2]});
-    boundaryMesh.vertices.push_back(Vec3Df{bbMax[0], bbMax[1], bbMax[2]});
-    boundaryMesh.vertices.push_back(Vec3Df{bbMin[0], bbMax[1], bbMax[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMin[1], bbMax[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMin[1], bbMax[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMax[1], bbMax[2]});
+    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMax[1], bbMax[2]});
 
     // x min max
     boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 3, 7}); // 0

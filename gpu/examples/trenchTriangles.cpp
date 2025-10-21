@@ -1,12 +1,8 @@
-#include <raygMesh.hpp>
-#include <raygTraceDisk.hpp>
-#include <raygTraceLine.hpp>
 #include <raygTraceTriangle.hpp>
 
-#include <fstream>
 #include <omp.h>
 
-#define COUNT_RAYS
+// #define COUNT_RAYS
 
 using namespace viennaray;
 
@@ -43,7 +39,6 @@ int main(int argc, char **argv) {
   gpu::TraceTriangle<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
-  tracer.setPipeline("GeneralPipeline", context->modulePath);
   tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
   tracer.setNumberOfRaysPerPoint(100);
@@ -63,8 +58,10 @@ int main(int argc, char **argv) {
   std::vector<float> flux(mesh.triangles.size());
   tracer.getFlux(flux.data(), 0, 0);
 
+#ifdef COUNT_RAYS
   rayCountBuffer.download(&rayCount, 1);
   std::cout << "Trace count: " << rayCount << std::endl;
+#endif
 
   tracer.freeBuffers();
 

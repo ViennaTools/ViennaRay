@@ -42,7 +42,7 @@ template <int D> struct DiskGeometry {
       launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
       launchParams.source.planeHeight = mesh.maximumExtent[2] + 2 * mesh.radius;
     }
-    launchParams.numElements = mesh.points.size();
+    launchParams.numElements = mesh.nodes.size();
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> diskInput{};
@@ -50,7 +50,7 @@ template <int D> struct DiskGeometry {
 
     // ------------------- geometry input -------------------
     // upload the model to the device: the builder
-    geometryPointBuffer.allocUpload(mesh.points);
+    geometryPointBuffer.allocUpload(mesh.nodes);
     geometryNormalBuffer.allocUpload(mesh.normals);
 
     // create local variables, because we need a *pointer* to the
@@ -59,10 +59,10 @@ template <int D> struct DiskGeometry {
     CUdeviceptr d_geoNormals = geometryNormalBuffer.dPointer();
 
     // AABB build input
-    std::vector<OptixAabb> aabb(mesh.points.size());
+    std::vector<OptixAabb> aabb(mesh.nodes.size());
 
-    for (size_t i = 0; i < mesh.points.size(); ++i) {
-      Vec3Df C = mesh.points[i];
+    for (size_t i = 0; i < mesh.nodes.size(); ++i) {
+      Vec3Df C = mesh.nodes[i];
       Vec3Df N = mesh.normals[i];
       Normalize(N);
 
@@ -89,7 +89,7 @@ template <int D> struct DiskGeometry {
     diskInput[0] = {};
     diskInput[0].type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
     diskInput[0].customPrimitiveArray.aabbBuffers = &d_aabb;
-    diskInput[0].customPrimitiveArray.numPrimitives = mesh.points.size();
+    diskInput[0].customPrimitiveArray.numPrimitives = mesh.nodes.size();
 
     uint32_t diskInput_flags[1] = {OPTIX_GEOMETRY_FLAG_NONE};
     diskInput[0].customPrimitiveArray.flags = diskInput_flags;
@@ -104,7 +104,7 @@ template <int D> struct DiskGeometry {
     // ------------------------- boundary input -------------------------
     auto boundaryMesh = makeBoundary(mesh);
     // upload the model to the device: the builder
-    boundaryPointBuffer.allocUpload(boundaryMesh.points);
+    boundaryPointBuffer.allocUpload(boundaryMesh.nodes);
     boundaryNormalBuffer.allocUpload(boundaryMesh.normals);
 
     // create local variables, because we need a *pointer* to the
@@ -113,9 +113,9 @@ template <int D> struct DiskGeometry {
     CUdeviceptr d_boundNormals = boundaryNormalBuffer.dPointer();
 
     // AABB build input for boundary disks
-    std::vector<OptixAabb> aabbBoundary(boundaryMesh.points.size());
-    for (size_t i = 0; i < boundaryMesh.points.size(); ++i) {
-      Vec3Df C = boundaryMesh.points[i];
+    std::vector<OptixAabb> aabbBoundary(boundaryMesh.nodes.size());
+    for (size_t i = 0; i < boundaryMesh.nodes.size(); ++i) {
+      Vec3Df C = boundaryMesh.nodes[i];
       Vec3Df N = boundaryMesh.normals[i];
       Normalize(N);
 
@@ -136,8 +136,7 @@ template <int D> struct DiskGeometry {
     diskInput[1] = {};
     diskInput[1].type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
     diskInput[1].customPrimitiveArray.aabbBuffers = &d_aabbBoundary;
-    diskInput[1].customPrimitiveArray.numPrimitives =
-        boundaryMesh.points.size();
+    diskInput[1].customPrimitiveArray.numPrimitives = boundaryMesh.nodes.size();
 
     diskInput[1].customPrimitiveArray.flags = diskInput_flags;
     diskInput[1].customPrimitiveArray.numSbtRecords = 1;
@@ -235,37 +234,37 @@ template <int D> struct DiskGeometry {
     // xmin - back 0
     Vec3Df xminPoint = {bbMin[0], (bbMin[1] + bbMax[1]) / 2,
                         (bbMin[2] + bbMax[2]) / 2};
-    boundaryMesh.points.push_back(xminPoint);
+    boundaryMesh.nodes.push_back(xminPoint);
     boundaryMesh.normals.push_back({1, 0, 0});
 
     // xmax - front 1
     Vec3Df xmaxPoint = {bbMax[0], (bbMin[1] + bbMax[1]) / 2,
                         (bbMin[2] + bbMax[2]) / 2};
-    boundaryMesh.points.push_back(xmaxPoint);
+    boundaryMesh.nodes.push_back(xmaxPoint);
     boundaryMesh.normals.push_back({-1, 0, 0});
 
     // ymin - left 2
     Vec3Df yminPoint = {(bbMin[0] + bbMax[0]) / 2, bbMin[1],
                         (bbMin[2] + bbMax[2]) / 2};
-    boundaryMesh.points.push_back(yminPoint);
+    boundaryMesh.nodes.push_back(yminPoint);
     boundaryMesh.normals.push_back({0, 1, 0});
 
     // ymax - right 3
     Vec3Df ymaxPoint = {(bbMin[0] + bbMax[0]) / 2, bbMax[1],
                         (bbMin[2] + bbMax[2]) / 2};
-    boundaryMesh.points.push_back(ymaxPoint);
+    boundaryMesh.nodes.push_back(ymaxPoint);
     boundaryMesh.normals.push_back({0, -1, 0});
 
     // zmin - bottom 4
     Vec3Df zminPoint = {(bbMin[0] + bbMax[0]) / 2, (bbMin[1] + bbMax[1]) / 2,
                         bbMin[2]};
-    boundaryMesh.points.push_back(zminPoint);
+    boundaryMesh.nodes.push_back(zminPoint);
     boundaryMesh.normals.push_back({0, 0, 1});
 
     // zmax - top 5
     Vec3Df zmaxPoint = {(bbMin[0] + bbMax[0]) / 2, (bbMin[1] + bbMax[1]) / 2,
                         bbMax[2]};
-    boundaryMesh.points.push_back(zmaxPoint);
+    boundaryMesh.nodes.push_back(zmaxPoint);
     boundaryMesh.normals.push_back({0, 0, -1});
 
     return boundaryMesh;

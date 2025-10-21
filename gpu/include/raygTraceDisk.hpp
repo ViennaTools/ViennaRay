@@ -2,6 +2,7 @@
 
 #include "raygDiskGeometry.hpp"
 #include "raygTrace.hpp"
+
 #include <rayBoundary.hpp>
 #include <rayDiskBoundingBoxIntersector.hpp>
 
@@ -20,19 +21,28 @@ public:
 
   void setGeometry(const DiskMesh &passedMesh) {
     assert(context);
-    this->minBox = static_cast<Vec3Df>(passedMesh.minimumExtent);
-    this->maxBox = static_cast<Vec3Df>(passedMesh.maximumExtent);
-    if constexpr (D == 2) {
-      this->minBox[2] = -passedMesh.gridDelta;
-      this->maxBox[2] = passedMesh.gridDelta;
-    }
-    this->gridDelta = static_cast<float>(passedMesh.gridDelta);
-    launchParams.D = D;
     diskMesh = passedMesh;
-    this->pointNeighborhood_.template init<3>(
-        passedMesh.points, 2 * passedMesh.radius, passedMesh.minimumExtent,
-        passedMesh.maximumExtent);
-    diskGeometry.buildAccel(*context, passedMesh, launchParams);
+    if (diskMesh.gridDelta <= 0.f) {
+      Logger::getInstance()
+          .addError("DiskMesh gridDelta must be positive and non-zero.")
+          .print();
+    }
+    if (diskMesh.radius <= 0.f) {
+      diskMesh.radius = rayInternal::DiskFactor<3> * diskMesh.gridDelta;
+    }
+
+    minBox = diskMesh.minimumExtent;
+    maxBox = diskMesh.maximumExtent;
+    if constexpr (D == 2) {
+      minBox[2] = -diskMesh.gridDelta;
+      maxBox[2] = diskMesh.gridDelta;
+    }
+    this->gridDelta_ = static_cast<float>(diskMesh.gridDelta);
+    launchParams.D = D;
+    pointNeighborhood_.template init<3>(diskMesh.nodes, 2 * diskMesh.radius,
+                                        diskMesh.minimumExtent,
+                                        diskMesh.maximumExtent);
+    diskGeometry.buildAccel(*context_, diskMesh, launchParams);
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
@@ -40,12 +50,12 @@ public:
     PointNeighborhood<float, D> pointNeighborhood;
     if (smoothingNeighbors == 1) {
       // re-use the neighborhood from setGeometry
-      pointNeighborhood = this->pointNeighborhood_;
+      pointNeighborhood = pointNeighborhood_;
     } else { // TODO: this will rebuild the neighborhood for every call
       // to getFlux (number of rates)
       // create a new neighborhood with a larger radius
       pointNeighborhood.template init<3>(
-          diskMesh.points, smoothingNeighbors * 2 * diskMesh.radius,
+          diskMesh.nodes, smoothingNeighbors * 2 * diskMesh.radius,
           diskMesh.minimumExtent, diskMesh.maximumExtent);
     }
 #pragma omp parallel for
@@ -84,7 +94,7 @@ protected:
     CUdeviceptr d_normals = diskGeometry.geometryNormalBuffer.dPointer();
 
     // calculate areas on host and send to device for now
-    Vec2D<Vec3Df> bdBox = {this->minBox, this->maxBox};
+    Vec2D<Vec3Df> bdBox = {minBox, maxBox};
     std::vector<float> areas(launchParams.numElements);
     DiskBoundingBoxXYIntersector<float> bdDiskIntersector(bdBox);
 
@@ -96,7 +106,7 @@ protected:
 #pragma omp for
     for (long idx = 0; idx < launchParams.numElements; ++idx) {
       std::array<float, 4> disk{0.f, 0.f, 0.f, diskMesh.radius};
-      Vec3Df coord = diskMesh.points[idx];
+      Vec3Df coord = diskMesh.nodes[idx];
       Vec3Df normal = diskMesh.normals[idx];
       disk[0] = coord[0];
       disk[1] = coord[1];
@@ -150,14 +160,14 @@ protected:
         }
       }
     }
-    this->areaBuffer.allocUpload(areas);
-    CUdeviceptr d_areas = this->areaBuffer.dPointer();
+    this->areaBuffer_.allocUpload(areas);
+    CUdeviceptr d_areas = this->areaBuffer_.dPointer();
 
     void *kernel_args[] = {
         &d_data,     &d_areas,       &launchParams.numElements,
-        &sourceArea, &this->numRays, &this->numRates};
+        &sourceArea, &this->numRays, &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
-                         kernel_args, *context);
+                         kernel_args, *context_);
   }
 
   void buildHitGroups() override {
@@ -173,7 +183,7 @@ protected:
     geometryHitgroupRecord.data.base.geometryType = 1;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
-        (void *)this->cellDataBuffer.dPointer();
+        (void *)this->cellDataBuffer_.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
@@ -197,7 +207,11 @@ protected:
   DiskMesh diskMesh;
   DiskGeometry<D> diskGeometry;
 
-  using Trace<T, D>::context;
+  PointNeighborhood<float, D> pointNeighborhood_;
+  Vec3Df minBox;
+  Vec3Df maxBox;
+
+  using Trace<T, D>::context_;
   using Trace<T, D>::geometryType_;
 
   using Trace<T, D>::launchParams;

@@ -17,8 +17,8 @@ public:
   ~TraceTriangle() { triangleGeometry.freeBuffers(); }
 
   void setGeometry(const TriangleMesh &passedMesh) {
-    assert(context);
-    triangleGeometry.buildAccel(*context, passedMesh, launchParams);
+    assert(context_);
+    triangleGeometry.buildAccel(*context_, passedMesh, launchParams);
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {}
@@ -39,11 +39,12 @@ protected:
     CUdeviceptr d_data = resultBuffer.dPointer();
     CUdeviceptr d_vertex = triangleGeometry.geometryVertexBuffer.dPointer();
     CUdeviceptr d_index = triangleGeometry.geometryIndexBuffer.dPointer();
-    void *kernel_args[] = {
-        &d_data,     &d_vertex,      &d_index,       &launchParams.numElements,
-        &sourceArea, &this->numRays, &this->numRates};
+    void *kernel_args[] = {&d_data,          &d_vertex,
+                           &d_index,         &launchParams.numElements,
+                           &sourceArea,      &this->numRays,
+                           &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
-                         kernel_args, *context);
+                         kernel_args, *context_);
   }
 
   void buildHitGroups() override {
@@ -58,7 +59,7 @@ protected:
     geometryHitgroupRecord.data.base.geometryType = 0;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
-        (void *)this->cellDataBuffer.dPointer();
+        (void *)this->cellDataBuffer_.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
@@ -81,7 +82,7 @@ protected:
   TriangleMesh triangleMesh;
   TriangleGeometry triangleGeometry;
 
-  using Trace<T, D>::context;
+  using Trace<T, D>::context_;
 
   using Trace<T, D>::launchParams;
   using Trace<T, D>::resultBuffer;

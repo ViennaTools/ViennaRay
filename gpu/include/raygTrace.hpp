@@ -29,18 +29,16 @@ using namespace viennacore;
 
 template <class T, int D> class Trace {
 public:
-  /// constructor - performs all setup, including initializing
-  /// optix, creates module, pipeline, programs, SBT, etc.
-  explicit Trace(std::shared_ptr<DeviceContext> &passedContext,
-                 std::string &&geometryType)
-      : context(passedContext), geometryType_(std::move(geometryType)) {
+  Trace(std::shared_ptr<DeviceContext> &passedContext,
+        std::string &&geometryType)
+      : context_(passedContext), geometryType_(std::move(geometryType)) {
     initRayTracer();
   }
 
-  explicit Trace(std::string &&geometryType, unsigned deviceID = 0)
+  Trace(std::string &&geometryType, unsigned deviceID = 0)
       : geometryType_(std::move(geometryType)) {
-    context = DeviceContext::getContextFromRegistry(deviceID);
-    if (!context) {
+    context_ = DeviceContext::getContextFromRegistry(deviceID);
+    if (!context_) {
       Logger::getInstance()
           .addError("No context found for device ID " +
                     std::to_string(deviceID) +
@@ -51,27 +49,6 @@ public:
   }
 
   ~Trace() { freeBuffers(); }
-
-  void setPipeline(std::string fileName, const std::filesystem::path &path) {
-    // check if filename ends in .optixir
-    if (fileName.find(".optixir") == std::string::npos) {
-      if (fileName.find(".ptx") == std::string::npos)
-        fileName += ".optixir";
-    }
-
-    std::filesystem::path p(fileName);
-    std::string base = p.stem().string();
-    std::string ext = p.extension().string();
-    std::string finalName = base + geometryType_ + ext;
-
-    pipelineFile = path / finalName;
-
-    if (!std::filesystem::exists(pipelineFile)) {
-      Logger::getInstance()
-          .addError("Pipeline file " + finalName + " not found.")
-          .print();
-    }
-  }
 
   void setCallables(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
@@ -85,9 +62,9 @@ public:
     std::string ext = p.extension().string();
     std::string finalName = base + ext;
 
-    callableFile = path / finalName;
+    callableFile_ = path / finalName;
 
-    if (!std::filesystem::exists(callableFile)) {
+    if (!std::filesystem::exists(callableFile_)) {
       Logger::getInstance()
           .addError("Callable file " + finalName + " not found.")
           .print();
@@ -95,86 +72,91 @@ public:
   }
 
   void insertNextParticle(const Particle<T> &particle) {
-    particles.push_back(particle);
+    particles_.push_back(particle);
   }
 
   void apply() {
-    // if (numCellData != 0 && cellDataBuffer.sizeInBytes == 0) {
-    //   cellDataBuffer.allocInit(numCellData * launchParams.numElements,
-    //                            float(0));
-    // }
-    assert(cellDataBuffer.sizeInBytes / sizeof(float) ==
-           numCellData * launchParams.numElements);
-
-    // resize our cuda result buffer
-    resultBuffer.allocInit(launchParams.numElements * numRates, float(0));
-    launchParams.resultBuffer = (float *)resultBuffer.dPointer();
-
-    if (materialIdsBuffer.sizeInBytes != 0) {
-      launchParams.materialIds = (int *)materialIdsBuffer.dPointer();
+    if (particles_.empty()) {
+      Logger::getInstance()
+          .addError("No particles inserted. Use insertNextParticle first.")
+          .print();
     }
 
-    if (useRandomSeed) {
+    if (cellDataBuffer_.sizeInBytes / sizeof(float) !=
+        numCellData * launchParams.numElements) {
+      Logger::getInstance()
+          .addError("Cell data buffer size does not match the expected size.")
+          .print();
+    }
+
+    // resize our cuda result buffer
+    resultBuffer.allocInit(launchParams.numElements * numFluxes_, float(0));
+    launchParams.resultBuffer = (float *)resultBuffer.dPointer();
+
+    if (materialIdsBuffer_.sizeInBytes != 0) {
+      launchParams.materialIds = (int *)materialIdsBuffer_.dPointer();
+    }
+
+    launchParams.seed = config_.rngSeed + config_.runNumber++;
+    if (config_.useRandomSeed) {
       std::random_device rd;
       std::uniform_int_distribution<unsigned int> gen;
       launchParams.seed = gen(rd);
-    } else {
-      launchParams.seed = runNumber++;
     }
 
-    launchParams.gridDelta = gridDelta;
-    launchParams.tThreshold = 1.1 * gridDelta; // TODO: find the best value
+    launchParams.gridDelta = gridDelta_;
+    launchParams.tThreshold = 1.1 * gridDelta_; // TODO: find the best value
 
     int numPointsPerDim =
         static_cast<int>(std::sqrt(static_cast<T>(launchParams.numElements)));
 
-    if (numberOfRaysFixed > 0) {
+    if (config_.numRaysFixed > 0) {
       numPointsPerDim = 1;
-      numberOfRaysPerPoint = numberOfRaysFixed;
+      config_.numRaysPerPoint = config_.numRaysFixed;
     }
 
-    numRays = numPointsPerDim * numPointsPerDim * numberOfRaysPerPoint;
+    numRays = numPointsPerDim * numPointsPerDim * config_.numRaysPerPoint;
     if (numRays > (1 << 29)) {
       Logger::getInstance()
           .addWarning("Too many rays for single launch: " +
                       util::prettyDouble(numRays))
           .print();
-      numberOfRaysPerPoint = (1 << 29) / (numPointsPerDim * numPointsPerDim);
-      numRays = numPointsPerDim * numPointsPerDim * numberOfRaysPerPoint;
+      config_.numRaysPerPoint = (1 << 29) / (numPointsPerDim * numPointsPerDim);
+      numRays = numPointsPerDim * numPointsPerDim * config_.numRaysPerPoint;
     }
     Logger::getInstance()
         .addDebug("Number of rays: " + util::prettyDouble(numRays))
         .print();
 
     // set up material specific sticking probabilities
-    materialStickingBuffer.resize(particles.size());
-    for (size_t i = 0; i < particles.size(); i++) {
-      if (!particles[i].materialSticking.empty()) {
-        if (uniqueMaterialIds.empty() || materialIdsBuffer.sizeInBytes == 0) {
+    materialStickingBuffer_.resize(particles_.size());
+    for (size_t i = 0; i < particles_.size(); i++) {
+      if (!particles_[i].materialSticking.empty()) {
+        if (uniqueMaterialIds_.empty() || materialIdsBuffer_.sizeInBytes == 0) {
           Logger::getInstance()
               .addError("Material IDs not set, when using material dependent "
                         "sticking.")
               .print();
         }
-        std::vector<float> materialSticking(uniqueMaterialIds.size());
+        std::vector<float> materialSticking(uniqueMaterialIds_.size());
         unsigned currentId = 0;
-        for (auto &matId : uniqueMaterialIds) {
-          if (particles[i].materialSticking.find(matId) ==
-              particles[i].materialSticking.end()) {
+        for (auto &matId : uniqueMaterialIds_) {
+          if (particles_[i].materialSticking.find(matId) ==
+              particles_[i].materialSticking.end()) {
             materialSticking[currentId++] =
-                static_cast<float>(particles[i].sticking);
+                static_cast<float>(particles_[i].sticking);
           } else {
             materialSticking[currentId++] =
-                static_cast<float>(particles[i].materialSticking[matId]);
+                static_cast<float>(particles_[i].materialSticking[matId]);
           }
         }
-        materialStickingBuffer[i].allocUpload(materialSticking);
+        materialStickingBuffer_[i].allocUpload(materialSticking);
       }
     }
 
     // Every particle gets its own stream and launch parameters
-    std::vector<cudaStream_t> streams(particles.size());
-    launchParamsBuffers.resize(particles.size());
+    std::vector<cudaStream_t> streams(particles_.size());
+    launchParamsBuffers.resize(particles_.size());
 
     if (particleMap_.empty()) {
       Logger::getInstance()
@@ -182,26 +164,26 @@ public:
           .print();
     }
 
-    for (size_t i = 0; i < particles.size(); i++) {
-      auto it = particleMap_.find(particles[i].name);
+    for (size_t i = 0; i < particles_.size(); i++) {
+      auto it = particleMap_.find(particles_[i].name);
       if (it == particleMap_.end()) {
         Logger::getInstance()
-            .addError("Unknown particle name: " + particles[i].name)
+            .addError("Unknown particle name: " + particles_[i].name)
             .print();
       }
       launchParams.particleType = it->second;
       launchParams.particleIdx = static_cast<unsigned>(i);
       launchParams.cosineExponent =
-          static_cast<float>(particles[i].cosineExponent);
-      launchParams.sticking = static_cast<float>(particles[i].sticking);
-      if (!particles[i].materialSticking.empty()) {
-        assert(materialStickingBuffer[i].sizeInBytes != 0);
+          static_cast<float>(particles_[i].cosineExponent);
+      launchParams.sticking = static_cast<float>(particles_[i].sticking);
+      if (!particles_[i].materialSticking.empty()) {
+        assert(materialStickingBuffer_[i].sizeInBytes != 0);
         launchParams.materialSticking =
-            (float *)materialStickingBuffer[i].dPointer();
+            (float *)materialStickingBuffer_[i].dPointer();
       }
-      Vec3Df direction{static_cast<float>(particles[i].direction[0]),
-                       static_cast<float>(particles[i].direction[1]),
-                       static_cast<float>(particles[i].direction[2])};
+      Vec3Df direction{static_cast<float>(particles_[i].direction[0]),
+                       static_cast<float>(particles_[i].direction[1]),
+                       static_cast<float>(particles_[i].direction[2])};
       launchParams.source.directionBasis =
           rayInternal::getOrthonormalBasis<float>(direction);
 
@@ -220,17 +202,17 @@ public:
                               launchParamsBuffers[i].dPointer(),
                               launchParamsBuffers[i].sizeInBytes, &sbt,
                               /*! dimensions of the launch: */
-                              numberOfRaysPerPoint, numPointsPerDim,
+                              config_.numRaysPerPoint, numPointsPerDim,
                               numPointsPerDim));
     }
 #else // Launch on multiple streams in release mode
-    for (size_t i = 0; i < particles.size(); i++) {
-      OPTIX_CHECK(optixLaunch(pipeline, streams[i],
+    for (size_t i = 0; i < particles_.size(); i++) {
+      OPTIX_CHECK(optixLaunch(pipeline_, streams[i],
                               /*! parameters and SBT */
                               launchParamsBuffers[i].dPointer(),
                               launchParamsBuffers[i].sizeInBytes, &sbt,
                               /*! dimensions of the launch: */
-                              numberOfRaysPerPoint, numPointsPerDim,
+                              config_.numRaysPerPoint, numPointsPerDim,
                               numPointsPerDim));
     }
 #endif
@@ -250,15 +232,16 @@ public:
       CUDA_CHECK(StreamDestroy(s));
     }
     normalize();
-    results.resize(launchParams.numElements * numRates);
+    results.resize(launchParams.numElements * numFluxes_);
     // cudaDeviceSynchronize(); // download is sync anyway
-    resultBuffer.download(results.data(), launchParams.numElements * numRates);
+    resultBuffer.download(results.data(),
+                          launchParams.numElements * numFluxes_);
   }
 
   void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
     assert(passedCellDataBuffer.sizeInBytes / sizeof(float) / numData ==
            launchParams.numElements);
-    cellDataBuffer = passedCellDataBuffer;
+    cellDataBuffer_ = passedCellDataBuffer;
     numCellData = numData;
   }
 
@@ -268,13 +251,13 @@ public:
     assert(materialIds.size() == launchParams.numElements);
 
     if (mapToConsecutive) {
-      uniqueMaterialIds.clear();
+      uniqueMaterialIds_.clear();
       for (auto &matId : materialIds) {
-        uniqueMaterialIds.insert(static_cast<int>(matId));
+        uniqueMaterialIds_.insert(static_cast<int>(matId));
       }
       std::unordered_map<NumericType, unsigned> materialIdMap;
       int currentId = 0;
-      for (auto &uniqueMaterialId : uniqueMaterialIds) {
+      for (auto &uniqueMaterialId : uniqueMaterialIds_) {
         materialIdMap[uniqueMaterialId] = currentId++;
       }
       assert(currentId == materialIdMap.size());
@@ -284,25 +267,30 @@ public:
       for (size_t i = 0; i < launchParams.numElements; i++) {
         materialIdsMapped[i] = materialIdMap[materialIds[i]];
       }
-      materialIdsBuffer.allocUpload(materialIdsMapped);
+      materialIdsBuffer_.allocUpload(materialIdsMapped);
     } else {
       std::vector<int> materialIdsMapped(launchParams.numElements);
       for (size_t i = 0; i < launchParams.numElements; i++) {
         materialIdsMapped[i] = static_cast<int>(materialIds[i]);
       }
-      materialIdsBuffer.allocUpload(materialIdsMapped);
+      materialIdsBuffer_.allocUpload(materialIdsMapped);
     }
   }
 
   void setNumberOfRaysPerPoint(const size_t pNumRays) {
-    numberOfRaysPerPoint = pNumRays;
+    config_.numRaysPerPoint = pNumRays;
   }
 
   void setNumberOfRaysFixed(const size_t pNumRays) {
-    numberOfRaysFixed = pNumRays;
+    config_.numRaysFixed = pNumRays;
   }
 
-  void setUseRandomSeeds(const bool set) { useRandomSeed = set; }
+  void setUseRandomSeeds(const bool set) { config_.useRandomSeed = set; }
+
+  void setRngSeed(const unsigned seed) {
+    config_.rngSeed = seed;
+    config_.useRandomSeed = false;
+  }
 
   void
   setParticleCallableMap(std::tuple<std::unordered_map<std::string, unsigned>,
@@ -315,9 +303,9 @@ public:
   void getFlux(float *flux, int particleIdx, int dataIdx,
                int smoothingNeighbors = 0) {
     unsigned int offset = 0;
-    for (size_t i = 0; i < particles.size(); i++) {
+    for (size_t i = 0; i < particles_.size(); i++) {
       if (particleIdx > i)
-        offset += particles[i].dataLabels.size();
+        offset += particles_[i].dataLabels.size();
     }
     offset = (offset + dataIdx) * launchParams.numElements;
     std::vector<float> temp(launchParams.numElements);
@@ -342,20 +330,20 @@ public:
     missRecordBuffer.free();
     raygenRecordBuffer.free();
     directCallableRecordBuffer.free();
-    dataPerParticleBuffer.free();
+    dataPerParticleBuffer_.free();
     for (auto &buffer : launchParamsBuffers) {
       buffer.free();
     }
-    materialIdsBuffer.free();
-    for (auto &buffer : materialStickingBuffer) {
+    materialIdsBuffer_.free();
+    for (auto &buffer : materialStickingBuffer_) {
       buffer.free();
     }
-    neighborsBuffer.free();
-    areaBuffer.free();
+    neighborsBuffer_.free();
+    areaBuffer_.free();
   }
 
   unsigned int prepareParticlePrograms() {
-    if (particles.empty()) {
+    if (particles_.empty()) {
       Logger::getInstance().addWarning("No particles defined.").print();
       return 0;
     }
@@ -367,31 +355,29 @@ public:
     createDirectCallablePrograms();
     createPipelines();
 
-    numRates = 0;
+    numFluxes_ = 0;
     std::vector<unsigned int> dataPerParticle;
-    for (const auto &p : particles) {
+    for (const auto &p : particles_) {
       dataPerParticle.push_back(p.dataLabels.size());
-      numRates += p.dataLabels.size();
+      numFluxes_ += p.dataLabels.size();
     }
-    dataPerParticleBuffer.allocUpload(dataPerParticle);
+    dataPerParticleBuffer_.allocUpload(dataPerParticle);
     launchParams.dataPerParticle =
-        (unsigned int *)dataPerParticleBuffer.dPointer();
+        (unsigned int *)dataPerParticleBuffer_.dPointer();
     Logger::getInstance()
-        .addDebug("Number of flux arrays: " + std::to_string(numRates))
+        .addDebug("Number of flux arrays: " + std::to_string(numFluxes_))
         .print();
 
-    return numRates;
+    return numFluxes_;
   }
 
-  CudaBuffer &getData() { return cellDataBuffer; }
+  CudaBuffer &getData() { return cellDataBuffer_; }
 
   CudaBuffer &getResults() { return resultBuffer; }
 
-  [[nodiscard]] std::size_t getNumberOfRays() const { return numRays; }
+  std::vector<Particle<T>> &getParticles() { return particles_; }
 
-  std::vector<Particle<T>> &getParticles() { return particles; }
-
-  [[nodiscard]] unsigned int getNumberOfRates() const { return numRates; }
+  [[nodiscard]] unsigned int getNumberOfRates() const { return numFluxes_; }
 
   [[nodiscard]] unsigned int getNumberOfElements() const {
     return launchParams.numElements;
@@ -405,61 +391,79 @@ protected:
   virtual void normalize() {}
 
   void initRayTracer() {
-    context->addModule(normModuleName);
+    context_->addModule(normModuleName);
+    normKernelName.append(geometryType_ + "_f");
     // launchParamsBuffer.alloc(sizeof(launchParams));
-    normKernelName.append(geometryType_ + "_");
-    normKernelName.push_back(NumericType);
+    // normKernelName.push_back(NumericType);
   }
 
   /// Creates the modules that contain all the programs we are going to use.
   /// We use one module for the pipeline programs, and one for the direct
   /// callables
   void createModules() {
-    moduleCompileOptions.maxRegisterCount =
+    moduleCompileOptions_.maxRegisterCount =
         OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 #ifndef NDEBUG
-    moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
-    moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
+    moduleCompileOptions_.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
+    moduleCompileOptions_.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
 #else
-    moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-    moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
+    moduleCompileOptions_.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
+    moduleCompileOptions_.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
-    pipelineCompileOptions = {};
-    pipelineCompileOptions.traversableGraphFlags =
+    pipelineCompileOptions_ = {};
+    pipelineCompileOptions_.traversableGraphFlags =
         OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
-    pipelineCompileOptions.usesMotionBlur = false;
-    pipelineCompileOptions.numPayloadValues = 2;
-    pipelineCompileOptions.numAttributeValues = 0;
-    pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
-    pipelineCompileOptions.pipelineLaunchParamsVariableName =
+    pipelineCompileOptions_.usesMotionBlur = false;
+    pipelineCompileOptions_.numPayloadValues = 2;
+    pipelineCompileOptions_.numAttributeValues = 0;
+    pipelineCompileOptions_.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
+    pipelineCompileOptions_.pipelineLaunchParamsVariableName =
         globalParamsName.c_str();
 
-    pipelineLinkOptions.maxTraceDepth = 1;
+    pipelineLinkOptions_.maxTraceDepth = 1;
 
     size_t inputSize = 0;
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
+    std::string pipelineFile = "GeneralPipeline" + geometryType_ + ".optixir";
+    std::filesystem::path pipelinePath = context_->modulePath / pipelineFile;
+    if (!std::filesystem::exists(pipelinePath)) {
+      Logger::getInstance()
+          .addError("Pipeline file " + pipelinePath.string() + " not found.")
+          .print();
+    }
 
-    auto pipelineInput = getInputData(pipelineFile.c_str(), inputSize);
+    auto pipelineInput = getInputData(pipelinePath.c_str(), inputSize);
+    if (!pipelineInput) {
+      Logger::getInstance()
+          .addError("Pipeline file " + pipelinePath.string() + " not found.")
+          .print();
+    }
 
-    OPTIX_CHECK(optixModuleCreate(context->optix, &moduleCompileOptions,
-                                  &pipelineCompileOptions, pipelineInput,
-                                  inputSize, log, &sizeof_log, &module));
+    OPTIX_CHECK(optixModuleCreate(context_->optix, &moduleCompileOptions_,
+                                  &pipelineCompileOptions_, pipelineInput,
+                                  inputSize, log, &sizeof_log, &module_));
     // if (sizeof_log > 1)
     //   PRINT(log);
 
     char logCallable[2048];
     size_t sizeof_log_callable = sizeof(logCallable);
 
-    auto callableInput = getInputData(callableFile.c_str(), inputSize);
+    auto callableInput = getInputData(callableFile_.c_str(), inputSize);
+    if (!callableInput) {
+      Logger::getInstance()
+          .addError("Callable file " + callableFile_.string() + " not found.")
+          .print();
+    }
 
-    OPTIX_CHECK(optixModuleCreate(context->optix, &moduleCompileOptions,
-                                  &pipelineCompileOptions, callableInput,
+    OPTIX_CHECK(optixModuleCreate(context_->optix, &moduleCompileOptions_,
+                                  &pipelineCompileOptions_, callableInput,
                                   inputSize, logCallable, &sizeof_log_callable,
-                                  &moduleCallable));
-    // if (sizeof_log_callable > 1)
-    //   PRINT(logCallable);
+                                  &moduleCallable_));
+    // if (sizeof_log_callable > 1) {
+    //   std::cout << "Callable module log: " << logCallable << std::endl;
+    // }
   }
 
   /// does all setup for the raygen program
@@ -468,13 +472,13 @@ protected:
     OptixProgramGroupOptions pgOptions = {};
     OptixProgramGroupDesc pgDesc = {};
     pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    pgDesc.raygen.module = module;
+    pgDesc.raygen.module = module_;
     pgDesc.raygen.entryFunctionName = entryFunctionName.c_str();
 
     // OptixProgramGroup raypg;
     char log[2048];
     size_t sizeof_log = sizeof(log);
-    OPTIX_CHECK(optixProgramGroupCreate(context->optix, &pgDesc, 1, &pgOptions,
+    OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &pgDesc, 1, &pgOptions,
                                         log, &sizeof_log, &raygenPG));
     // if (sizeof_log > 1)
     //   PRINT(log);
@@ -486,13 +490,13 @@ protected:
     OptixProgramGroupOptions pgOptions = {};
     OptixProgramGroupDesc pgDesc = {};
     pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-    pgDesc.miss.module = module;
+    pgDesc.miss.module = module_;
     pgDesc.miss.entryFunctionName = entryFunctionName.c_str();
 
     // OptixProgramGroup raypg;
     char log[2048];
     size_t sizeof_log = sizeof(log);
-    OPTIX_CHECK(optixProgramGroupCreate(context->optix, &pgDesc, 1, &pgOptions,
+    OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &pgDesc, 1, &pgOptions,
                                         log, &sizeof_log, &missPG));
     // if (sizeof_log > 1)
     //   PRINT(log);
@@ -505,17 +509,17 @@ protected:
     OptixProgramGroupOptions pgOptions = {};
     OptixProgramGroupDesc pgDesc = {};
     pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    pgDesc.hitgroup.moduleCH = module;
+    pgDesc.hitgroup.moduleCH = module_;
     pgDesc.hitgroup.entryFunctionNameCH = entryFunctionNameCH.c_str();
 
     if (geometryType_ != "Triangle") {
-      pgDesc.hitgroup.moduleIS = module;
+      pgDesc.hitgroup.moduleIS = module_;
       pgDesc.hitgroup.entryFunctionNameIS = entryFunctionNameIS.c_str();
     }
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
-    OPTIX_CHECK(optixProgramGroupCreate(context->optix, &pgDesc, 1, &pgOptions,
+    OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &pgDesc, 1, &pgOptions,
                                         log, &sizeof_log, &hitgroupPG));
     // if (sizeof_log > 1)
     //   PRINT(log);
@@ -546,12 +550,12 @@ protected:
       OptixProgramGroupOptions dcOptions = {};
       OptixProgramGroupDesc dcDesc = {};
       dcDesc.kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
-      dcDesc.callables.moduleDC = moduleCallable;
+      dcDesc.callables.moduleDC = moduleCallable_;
       dcDesc.callables.entryFunctionNameDC = entryFunctionNames[i].c_str();
 
       char log[2048];
       size_t sizeof_log = sizeof(log);
-      OPTIX_CHECK(optixProgramGroupCreate(context->optix, &dcDesc, 1,
+      OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &dcDesc, 1,
                                           &dcOptions, log, &sizeof_log,
                                           &directCallablePGs[i]));
       // if (sizeof_log > 1)
@@ -572,10 +576,10 @@ protected:
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
-    OPTIX_CHECK(optixPipelineCreate(context->optix, &pipelineCompileOptions,
-                                    &pipelineLinkOptions, programGroups.data(),
+    OPTIX_CHECK(optixPipelineCreate(context_->optix, &pipelineCompileOptions_,
+                                    &pipelineLinkOptions_, programGroups.data(),
                                     static_cast<int>(programGroups.size()), log,
-                                    &sizeof_log, &pipeline));
+                                    &sizeof_log, &pipeline_));
     // #ifndef NDEBUG
     //       if (sizeof_log > 1)
     //         PRINT(log);
@@ -583,7 +587,7 @@ protected:
 
     OptixStackSizes stackSizes = {};
     for (auto &pg : programGroups) {
-      optixUtilAccumulateStackSizes(pg, &stackSizes, pipeline);
+      optixUtilAccumulateStackSizes(pg, &stackSizes, pipeline_);
     }
 
     unsigned int dcStackFromTrav = 0;
@@ -594,13 +598,13 @@ protected:
     // or recursive tracing
     OPTIX_CHECK(optixUtilComputeStackSizes(
         &stackSizes,
-        pipelineLinkOptions.maxTraceDepth, // OptixTrace recursion depth
-        0,                                 // continuation callable depth
-        1,                                 // direct callable depth
+        pipelineLinkOptions_.maxTraceDepth, // OptixTrace recursion depth
+        0,                                  // continuation callable depth
+        1,                                  // direct callable depth
         &dcStackFromTrav, &dcStackFromState, &continuationStack));
 
     OPTIX_CHECK(optixPipelineSetStackSize(
-        pipeline,
+        pipeline_,
         dcStackFromTrav,   // stack size for DirectCallables from IS or AH.
         dcStackFromState,  // stack size for DirectCallables from RG, MS or CH.
         continuationStack, // continuation stack size
@@ -647,44 +651,37 @@ protected:
 
 protected:
   // context for cuda kernels
-  std::shared_ptr<DeviceContext> context;
-  std::filesystem::path pipelineFile;
-  std::filesystem::path callableFile;
-
-  // Disk specific
-  PointNeighborhood<float, D> pointNeighborhood_;
+  std::shared_ptr<DeviceContext> context_;
+  std::filesystem::path callableFile_;
 
   std::string geometryType_;
   std::unordered_map<std::string, unsigned> particleMap_;
   std::vector<CallableConfig> callableMap_;
 
-  std::set<int> uniqueMaterialIds;
-  CudaBuffer materialIdsBuffer;
+  std::set<int> uniqueMaterialIds_;
+  CudaBuffer materialIdsBuffer_;
 
-  CudaBuffer neighborsBuffer;
-  float gridDelta = 0.0f;
+  CudaBuffer neighborsBuffer_;
+  float gridDelta_ = 0.0f;
 
-  CudaBuffer areaBuffer;
-
-  Vec3Df minBox;
-  Vec3Df maxBox;
+  CudaBuffer areaBuffer_;
 
   // particles
-  unsigned int numRates = 0;
-  std::vector<Particle<T>> particles;
-  CudaBuffer dataPerParticleBuffer;               // same for all particles
-  std::vector<CudaBuffer> materialStickingBuffer; // different for particles
+  unsigned int numFluxes_ = 0;
+  std::vector<Particle<T>> particles_;
+  CudaBuffer dataPerParticleBuffer_;               // same for all particles
+  std::vector<CudaBuffer> materialStickingBuffer_; // different for particles
 
   // sbt data
-  CudaBuffer cellDataBuffer;
+  CudaBuffer cellDataBuffer_;
 
-  OptixPipeline pipeline{};
-  OptixPipelineCompileOptions pipelineCompileOptions = {};
-  OptixPipelineLinkOptions pipelineLinkOptions = {};
+  OptixPipeline pipeline_{};
+  OptixPipelineCompileOptions pipelineCompileOptions_ = {};
+  OptixPipelineLinkOptions pipelineLinkOptions_ = {};
 
-  OptixModule module{};
-  OptixModule moduleCallable{};
-  OptixModuleCompileOptions moduleCompileOptions = {};
+  OptixModule module_{};
+  OptixModule moduleCallable_{};
+  OptixModuleCompileOptions moduleCompileOptions_ = {};
 
   // program groups, and the SBT built around
   OptixProgramGroup raygenPG;
@@ -705,20 +702,14 @@ protected:
   CudaBuffer resultBuffer;
   std::vector<float> results;
 
-  bool useRandomSeed = false;
-  unsigned numCellData = 0;
-  unsigned numberOfRaysPerPoint = 3000;
-  unsigned numberOfRaysFixed = 0;
-  int runNumber = 0;
+  rayInternal::KernelConfig config_;
 
-  size_t numRays = 0;
-  std::string globalParamsName = "launchParams";
+  size_t numRays;
+  unsigned numCellData = 0;
+  const std::string globalParamsName = "launchParams";
 
   const std::string normModuleName = "normKernels.ptx";
   std::string normKernelName = "normalize_surface_";
-
-  static constexpr char NumericType =
-      'f'; // std::is_same_v<T, float> ? 'f' : 'd';
 };
 
 } // namespace viennaray::gpu

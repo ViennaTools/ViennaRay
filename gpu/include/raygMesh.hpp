@@ -16,45 +16,42 @@ struct LineMesh {
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;
-  float gridDelta;
+  float gridDelta = 0.f;
 };
 
 struct TriangleMesh {
-  std::vector<Vec3Df> vertices;
+  std::vector<Vec3Df> nodes;
   std::vector<Vec3D<unsigned>> triangles;
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;
-  float gridDelta;
+  float gridDelta = 0.f;
 };
 
 struct DiskMesh {
-  std::vector<Vec3Df> points;
+  std::vector<Vec3Df> nodes;
   std::vector<Vec3Df> normals;
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;
-  float radius;
-  float gridDelta;
+  float radius = 0.f;
+  float gridDelta = 0.f;
 };
 
-struct SphereMesh {
-  std::vector<Vec3Df> vertices;
-  std::vector<float> radii;
-
-  Vec3Df minimumExtent;
-  Vec3Df maximumExtent;
-  float gridDelta;
-};
-
-struct OrientedPointCloud {
-  std::vector<Vec3Df> vertices;
-  std::vector<Vec3Df> normals;
-
-  Vec3Df minimumExtent;
-  Vec3Df maximumExtent;
-  float gridDelta;
-};
+template <class MeshType> void computeBoundingBox(MeshType &mesh) {
+  if (mesh.nodes.empty())
+    return;
+  mesh.minimumExtent = mesh.nodes[0];
+  mesh.maximumExtent = mesh.nodes[0];
+  for (const auto &p : mesh.nodes) {
+    for (int d = 0; d < 3; ++d) {
+      if (p[d] < mesh.minimumExtent[d])
+        mesh.minimumExtent[d] = p[d];
+      if (p[d] > mesh.maximumExtent[d])
+        mesh.maximumExtent[d] = p[d];
+    }
+  }
+}
 
 inline TriangleMesh readMeshFromFile(const std::string &fileName) {
   TriangleMesh mesh;
@@ -90,13 +87,12 @@ inline TriangleMesh readMeshFromFile(const std::string &fileName) {
   size_t numTriangles;
   dataFile >> numTriangles;
 
-  mesh.vertices.resize(numPoints);
+  mesh.nodes.resize(numPoints);
   mesh.triangles.resize(numTriangles);
   for (size_t i = 0; i < numPoints; ++i) {
     dataFile >> id;
     assert(id == "n");
-    dataFile >> mesh.vertices[i][0] >> mesh.vertices[i][1] >>
-        mesh.vertices[i][2];
+    dataFile >> mesh.nodes[i][0] >> mesh.nodes[i][1] >> mesh.nodes[i][2];
   }
   for (size_t i = 0; i < numTriangles; ++i) {
     dataFile >> id;
