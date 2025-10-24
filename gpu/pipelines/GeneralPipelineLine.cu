@@ -41,20 +41,12 @@ extern "C" __global__ void __intersection__() {
   bool valid = true;
 
   float t = CrossProduct((p0 - prd->pos), lineDir)[2] / d[2];
-  valid &= t > 1e-4f;
+  valid &= t > 1e-5f;
   float s = CrossProduct((p0 - prd->pos), prd->dir)[2] / d[2];
-  valid &= s > 1e-4f && s < 1.0f - 1e-4f;
+  valid &= s > 1e-5f && s < 1.0f - 1e-5f;
 
   if (valid) {
-    // Collect all intersections and filter out overlapping lines in CH shader
-    if (!sbtData->base.isBoundary && prd->tempCount < MAX_NEIGHBORS) {
-      prd->tValues[prd->tempCount] = t;
-      prd->primIDs[prd->tempCount] = primID;
-      prd->tempCount++;
-    }
-
-    // Has to pass a dummy t value so later intersections are not ignored
-    optixReportIntersection(t + launchParams.tThreshold, 0);
+    optixReportIntersection(t, 0);
   }
 }
 
@@ -64,56 +56,19 @@ extern "C" __global__ void __closesthit__() {
   PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
 
   const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
+  prd->tMin = optixGetRayTmax();
   prd->primID = primID;
-
-  const Vec3Df normal = computeNormal(sbtData, primID);
-
-  // If closest hit was on backside, let it through once
-  if (DotProduct(prd->dir, normal) > 0.0f) {
-    // If back was hit a second time, kill the ray
-    if (prd->hitFromBack) {
-      prd->rayWeight = 0.f;
-      return;
-    }
-    prd->hitFromBack = true;
-    prd->pos = prd->pos + prd->tMin * prd->dir;
-    return;
-  }
 
   if (sbtData->base.isBoundary) {
     prd->numBoundaryHits++;
-    // This is effectively the miss shader
-    if (primID == 2 || primID == 3) { // bottom or top - ymin or ymax
-      prd->rayWeight = 0.0f;
-      return;
-    }
-
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData, launchParams.D);
     } else {
       reflectFromBoundary(prd, sbtData, launchParams.D);
     }
   } else {
-    // ------------- NEIGHBOR FILTERING --------------- //
-    // Keep only hits close to tMin
-    prd->ISCount = 0;
-    for (int i = 0; i < prd->tempCount; ++i) {
-      if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
-          prd->ISCount < MAX_NEIGHBORS) {
-        prd->TIndex[prd->ISCount++] = prd->primIDs[i];
-      }
-    }
-
-    // // CPU like neighbor detection
-    // prd->ISCount = 0;
-    // for (int i = 0; i < prd->tempCount; ++i) {
-    //   float distance = viennacore::Distance(sbtData->point[primID],
-    //                                         sbtData->point[prd->primIDs[i]]);
-    //   if (distance < 2 * sbtData->radius && prd->ISCount < MAX_NEIGHBORS) {
-    //     prd->TIndex[prd->ISCount++] = prd->primIDs[i];
-    //   }
-    // }
+    prd->ISCount = 1;
+    prd->TIndex[0] = primID;
 
     // ------------- SURFACE COLLISION --------------- //
     unsigned callIdx =
