@@ -36,11 +36,9 @@ extern "C" __global__ void __closesthit__() {
   if (sbtData->base.isBoundary) {
     prd->numBoundaryHits++;
     if (launchParams.periodicBoundary) {
-      applyPeriodicBoundary<viennaray::gpu::HitSBTDataTriangle>(prd, sbtData,
-                                                                launchParams.D);
+      applyPeriodicBoundary(prd, sbtData, launchParams.D);
     } else {
-      reflectFromBoundary<viennaray::gpu::HitSBTDataTriangle>(prd, sbtData,
-                                                              launchParams.D);
+      reflectFromBoundary(prd, sbtData, launchParams.D);
     }
   } else {
     prd->ISCount = 1;
@@ -80,8 +78,8 @@ extern "C" __global__ void __raygen__() {
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
-  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, nullptr,
-                                                              &prd);
+  optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(
+      callIdx, nullptr, &prd);
 
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
