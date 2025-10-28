@@ -9,6 +9,11 @@
 
 #include <memory>
 
+#define VIENNARAY_PARTICLE_STOP                                                \
+  std::pair<NumericType, Vec3D<NumericType>> {                                 \
+    1., Vec3D<NumericType> { 0., 0., 0. }                                      \
+  }
+
 namespace viennaray {
 
 using namespace viennacore;
@@ -95,8 +100,7 @@ public:
                     RNG &rngState) override {
     // return the sticking probability and direction after reflection for this
     // hit
-    return std::pair<NumericType, Vec3D<NumericType>>{
-        1., Vec3D<NumericType>{0., 0., 0.}};
+    return VIENNARAY_PARTICLE_STOP;
   }
   void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                         const Vec3D<NumericType> &geomNormal,
@@ -243,6 +247,7 @@ template <typename T> struct Particle {
   std::unordered_map<int, T> materialSticking;
   T cosineExponent = 1.;
 
+  bool useCustomDirection = false;
   Vec3D<T> direction = {0., 0., -1.0};
 };
 } // namespace gpu

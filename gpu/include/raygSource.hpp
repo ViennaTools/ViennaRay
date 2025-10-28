@@ -22,7 +22,7 @@ getOrthonormalBasis(const viennacore::Vec3Df &n) {
 }
 
 __device__ void initializeRayDirection(viennaray::gpu::PerRayData *prd,
-                                       const float power, const int D) {
+                                       const float power, const uint16_t D) {
   // source direction
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   const float tt = powf(u.w, 2.f / (power + 1.f));
@@ -43,7 +43,7 @@ __device__ void initializeRayDirection(viennaray::gpu::PerRayData *prd,
 __device__ void
 initializeRayDirection(viennaray::gpu::PerRayData *prd, const float power,
                        const std::array<viennacore::Vec3Df, 3> &basis,
-                       const int D) {
+                       const uint16_t D) {
   // source direction
   do {
     const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
@@ -71,20 +71,19 @@ initializeRayDirection(viennaray::gpu::PerRayData *prd, const float power,
 
 __device__ void
 initializeRayPosition(viennaray::gpu::PerRayData *prd,
-                      viennaray::gpu::LaunchParams *launchParams, const int D) {
+                      const viennaray::gpu::LaunchParams::SourcePlane &source,
+                      const uint16_t D) {
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
-  prd->pos[0] = launchParams->source.minPoint[0] +
-                u.x * (launchParams->source.maxPoint[0] -
-                       launchParams->source.minPoint[0]);
+  prd->pos[0] =
+      source.minPoint[0] + u.x * (source.maxPoint[0] - source.minPoint[0]);
 
   if (D == 2) {
-    prd->pos[1] = launchParams->source.planeHeight;
+    prd->pos[1] = source.planeHeight;
     prd->pos[2] = 0.f;
   } else {
-    prd->pos[1] = launchParams->source.minPoint[1] +
-                  u.y * (launchParams->source.maxPoint[1] -
-                         launchParams->source.minPoint[1]);
-    prd->pos[2] = launchParams->source.planeHeight;
+    prd->pos[1] =
+        source.minPoint[1] + u.y * (source.maxPoint[1] - source.minPoint[1]);
+    prd->pos[2] = source.planeHeight;
   }
 }
 

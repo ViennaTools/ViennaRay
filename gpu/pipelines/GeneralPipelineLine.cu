@@ -98,8 +98,13 @@ extern "C" __global__ void __raygen__() {
   initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, &launchParams, launchParams.D);
-  initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  initializeRayPosition(&prd, launchParams.source, launchParams.D);
+  if (launchParams.source.customDirectionBasis) {
+    initializeRayDirection(&prd, launchParams.cosineExponent,
+                           launchParams.source.directionBasis, launchParams.D);
+  } else {
+    initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  }
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);

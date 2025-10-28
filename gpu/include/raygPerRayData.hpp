@@ -22,15 +22,15 @@ struct PerRayData {
   float energy = 0.f;
   unsigned int numBoundaryHits = 0;
 
-  unsigned primID = 0;
-  float tMin = 1e20f;
+  unsigned int primID = 0; // primID of closest hit
+  float tMin = 1e20f;      // distance to closest hit
 
   // Variables for neighbor intersections (overlapping disks and lines)
-  int TIndex[MAX_NEIGHBORS];    // Indices of neighbor hits
-  int ISCount = 0;              // Number of hits starting from 1
-  int tempCount = 0;            // total intersections recorded
-  float tValues[MAX_NEIGHBORS]; // all intersection distances
-  int primIDs[MAX_NEIGHBORS];   // their primitive IDs
+  unsigned int TIndex[MAX_NEIGHBORS];  // Indices of neighbor hits
+  uint16_t ISCount = 0;                // Number of hits starting from 1
+  uint16_t tempCount = 0;              // total intersections recorded
+  float tValues[MAX_NEIGHBORS];        // all intersection distances
+  unsigned int primIDs[MAX_NEIGHBORS]; // their primitive IDs
   bool hitFromBack = false;
 };
 

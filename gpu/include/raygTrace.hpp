@@ -104,7 +104,6 @@ public:
       launchParams.seed = gen(rd);
     }
 
-    launchParams.gridDelta = gridDelta_;
     launchParams.tThreshold = 1.1 * gridDelta_; // TODO: find the best value
 
     int numPointsPerDim =
@@ -181,11 +180,15 @@ public:
         launchParams.materialSticking =
             (float *)materialStickingBuffer_[i].dPointer();
       }
-      Vec3Df direction{static_cast<float>(particles_[i].direction[0]),
-                       static_cast<float>(particles_[i].direction[1]),
-                       static_cast<float>(particles_[i].direction[2])};
-      launchParams.source.directionBasis =
-          rayInternal::getOrthonormalBasis<float>(direction);
+
+      if (particles_[i].useCustomDirection) {
+        Vec3Df direction{static_cast<float>(particles_[i].direction[0]),
+                         static_cast<float>(particles_[i].direction[1]),
+                         static_cast<float>(particles_[i].direction[2])};
+        launchParams.source.directionBasis =
+            rayInternal::getOrthonormalBasis<float>(direction);
+        launchParams.source.customDirectionBasis = true;
+      }
 
       launchParamsBuffers[i].alloc(sizeof(launchParams));
       launchParamsBuffers[i].upload(&launchParams, 1);

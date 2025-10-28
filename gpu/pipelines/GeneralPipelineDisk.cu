@@ -28,7 +28,7 @@ extern "C" __global__ void __intersection__() {
   PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
 
   // Get the index of the AABB box that was hit
-  const int primID = optixGetPrimitiveIndex();
+  const unsigned int primID = optixGetPrimitiveIndex();
 
   // Read geometric data from the primitive that is inside that AABB box
   const Vec3Df diskOrigin = sbtData->point[primID];
@@ -48,8 +48,7 @@ extern "C" __global__ void __intersection__() {
   float ddneg = DotProduct(diskOrigin, normal);
   float t = (ddneg - DotProduct(normal, prd->pos)) / prodOfDirections;
   // Avoid negative t or self intersections
-  valid &= t > 1e-4f; // Maybe lower this further, but 1e-4f works for now
-
+  valid &= t > optixGetRayTmin();
   const Vec3Df intersection = prd->pos + prd->dir * t;
 
   // Check if within disk radius
@@ -94,7 +93,6 @@ extern "C" __global__ void __closesthit__() {
   }
 
   if (sbtData->base.isBoundary) {
-    prd->numBoundaryHits++;
     // This is effectively the miss shader
     if (launchParams.D == 2 &&
         (primID == 2 || primID == 3)) { // bottom or top - ymin or ymax
@@ -112,6 +110,8 @@ extern "C" __global__ void __closesthit__() {
     } else {
       reflectFromBoundary(prd, sbtData, launchParams.D);
     }
+    prd->numBoundaryHits++;
+
   } else {
     // ------------- NEIGHBOR FILTERING --------------- //
     // Keep only hits close to tMin
@@ -161,8 +161,13 @@ extern "C" __global__ void __raygen__() {
   initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, &launchParams, launchParams.D);
-  initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  initializeRayPosition(&prd, launchParams.source, launchParams.D);
+  if (launchParams.source.customDirectionBasis) {
+    initializeRayDirection(&prd, launchParams.cosineExponent,
+                           launchParams.source.directionBasis, launchParams.D);
+  } else {
+    initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  }
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
