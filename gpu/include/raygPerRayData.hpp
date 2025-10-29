@@ -13,15 +13,16 @@
 namespace viennaray::gpu {
 
 struct PerRayData {
-  float rayWeight = 1.f;
   viennacore::Vec3Df pos;
   viennacore::Vec3Df dir;
 
+  float rayWeight = 1.f;
+  float energy = 0.f;
+  float load = 0.f;
+
   RNGState RNGstate;
 
-  float energy = 0.f;
   unsigned int numBoundaryHits = 0;
-
   unsigned int primID = 0; // primID of closest hit
   float tMin = 1e20f;      // distance to closest hit
 
