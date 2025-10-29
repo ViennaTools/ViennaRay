@@ -25,10 +25,10 @@ struct LaunchParams {
   unsigned int numElements;      // to determine result buffer index
   unsigned int *dataPerParticle; // to determine result buffer index
 
-  uint16_t maxBoundaryHits = 100;
-  uint16_t particleIdx = 0;
-  uint16_t particleType = 0;
-  uint16_t D = 3; // Dimension
+  unsigned maxBoundaryHits = 100;
+  uint8_t particleIdx = 0;
+  uint8_t particleType = 0;
+  uint8_t D = 3; // Dimension
 
   float sticking = 1.f;
   float cosineExponent = 1.f;

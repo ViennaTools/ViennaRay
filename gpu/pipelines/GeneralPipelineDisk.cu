@@ -58,10 +58,10 @@ extern "C" __global__ void __intersection__() {
 
   if (valid) {
     // Collect all intersections and filter neighbors in CH shader
-    if (!sbtData->base.isBoundary && prd->tempCount < MAX_NEIGHBORS) {
-      prd->tValues[prd->tempCount] = t;
-      prd->primIDs[prd->tempCount] = primID;
-      prd->tempCount++;
+    if (!sbtData->base.isBoundary && prd->totalCount < MAX_NEIGHBORS) {
+      prd->tValues[prd->totalCount] = t;
+      prd->primIDs[prd->totalCount] = primID;
+      prd->totalCount++;
     }
 
     // Has to pass a dummy t value so later intersections are not ignored
@@ -105,27 +105,27 @@ extern "C" __global__ void __closesthit__() {
       return;
     }
 
+    prd->numBoundaryHits++;
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData, launchParams.D);
     } else {
       reflectFromBoundary(prd, sbtData, launchParams.D);
     }
-    prd->numBoundaryHits++;
 
   } else {
     // ------------- NEIGHBOR FILTERING --------------- //
     // Keep only hits close to tMin
     prd->ISCount = 0;
-    for (int i = 0; i < prd->tempCount; ++i) {
+    for (int i = 0; i < prd->totalCount; ++i) {
       if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
           prd->ISCount < MAX_NEIGHBORS) {
-        prd->TIndex[prd->ISCount++] = prd->primIDs[i];
+        prd->primIDs[prd->ISCount++] = prd->primIDs[i];
       }
     }
 
     // // CPU like neighbor detection
     // prd->ISCount = 0;
-    // for (int i = 0; i < prd->tempCount; ++i) {
+    // for (int i = 0; i < prd->totalCount; ++i) {
     //   float distance = viennacore::Distance(sbtData->point[primID],
     //                                         sbtData->point[prd->primIDs[i]]);
     //   if (distance < 2 * sbtData->radius && prd->ISCount < MAX_NEIGHBORS) {
@@ -191,6 +191,6 @@ extern "C" __global__ void __raygen__() {
                RAY_TYPE_COUNT,                // SBT stride
                SURFACE_RAY_TYPE,              // missSBTIndex
                u0, u1);
-    prd.tempCount = 0; // Reset PerRayData
+    prd.totalCount = 0; // Reset PerRayData
   }
 }

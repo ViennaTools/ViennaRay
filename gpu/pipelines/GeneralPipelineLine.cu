@@ -68,7 +68,7 @@ extern "C" __global__ void __closesthit__() {
     }
   } else {
     prd->ISCount = 1;
-    prd->TIndex[0] = primID;
+    prd->primIDs[0] = primID;
 
     // ------------- SURFACE COLLISION --------------- //
     unsigned callIdx =
@@ -128,6 +128,6 @@ extern "C" __global__ void __raygen__() {
                RAY_TYPE_COUNT,                // SBT stride
                SURFACE_RAY_TYPE,              // missSBTIndex
                u0, u1);
-    prd.tempCount = 0; // Reset PerRayData
+    prd.totalCount = 0; // Reset PerRayData
   }
 }

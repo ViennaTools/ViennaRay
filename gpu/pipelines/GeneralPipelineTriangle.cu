@@ -42,7 +42,7 @@ extern "C" __global__ void __closesthit__() {
     }
   } else {
     prd->ISCount = 1;
-    prd->TIndex[0] = primID;
+    prd->primIDs[0] = primID;
 
     // ------------- SURFACE COLLISION --------------- //
     unsigned callIdx;
