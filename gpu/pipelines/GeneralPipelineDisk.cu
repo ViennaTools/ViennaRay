@@ -105,7 +105,6 @@ extern "C" __global__ void __closesthit__() {
       return;
     }
 
-    prd->numBoundaryHits++;
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData, launchParams.D);
     } else {

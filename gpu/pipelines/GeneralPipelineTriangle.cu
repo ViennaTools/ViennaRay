@@ -34,7 +34,6 @@ extern "C" __global__ void __closesthit__() {
   prd->primID = primID;
 
   if (sbtData->base.isBoundary) {
-    prd->numBoundaryHits++;
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData, launchParams.D);
     } else {
