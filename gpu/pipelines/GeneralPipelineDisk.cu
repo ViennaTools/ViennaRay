@@ -32,7 +32,7 @@ extern "C" __global__ void __intersection__() {
 
   // Read geometric data from the primitive that is inside that AABB box
   const Vec3Df diskOrigin = sbtData->point[primID];
-  const Vec3Df normal = sbtData->normal[primID];
+  const Vec3Df normal = sbtData->base.normal[primID];
   const float radius = sbtData->radius;
 
   bool valid = true;
@@ -78,7 +78,7 @@ extern "C" __global__ void __closesthit__() {
   prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
   prd->primID = primID;
 
-  const Vec3Df normal = sbtData->normal[primID];
+  const Vec3Df &normal = sbtData->base.normal[primID];
 
   // If closest hit was on backside, let it through once
   if (DotProduct(prd->dir, normal) > 0.0f) {

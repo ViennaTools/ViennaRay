@@ -15,6 +15,7 @@ template <typename NumericType, int D = 3> struct LineGeometry {
   // geometry
   CudaBuffer geometryNodesBuffer;
   CudaBuffer geometryLinesBuffer;
+  CudaBuffer geometryNormalsBuffer;
 
   // boundary
   CudaBuffer boundaryNodesBuffer;
@@ -52,6 +53,7 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     // upload the model to the device: the builder
     geometryNodesBuffer.allocUpload(mesh.nodes);
     geometryLinesBuffer.allocUpload(mesh.lines);
+    geometryNormalsBuffer.allocUpload(mesh.normals);
 
     // create local variables, because we need a *pointer* to the
     // device pointers

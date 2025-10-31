@@ -14,6 +14,7 @@ struct TriangleGeometry {
   // geometry
   CudaBuffer geometryVertexBuffer;
   CudaBuffer geometryIndexBuffer;
+  CudaBuffer geometryNormalBuffer;
 
   // boundary
   CudaBuffer boundaryVertexBuffer;
@@ -42,6 +43,7 @@ struct TriangleGeometry {
     // upload the model to the device: the builder
     geometryVertexBuffer.allocUpload(mesh.nodes);
     geometryIndexBuffer.allocUpload(mesh.triangles);
+    geometryNormalBuffer.allocUpload(mesh.normals);
 
     // triangle inputs
     triangleInput[0] = {};
@@ -51,6 +53,7 @@ struct TriangleGeometry {
     // device pointers
     CUdeviceptr d_geoVertices = geometryVertexBuffer.dPointer();
     CUdeviceptr d_geoIndices = geometryIndexBuffer.dPointer();
+    CUdeviceptr d_geoNormals = geometryNormalBuffer.dPointer();
 
     triangleInput[0].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
     triangleInput[0].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
