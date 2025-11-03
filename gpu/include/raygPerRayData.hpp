@@ -12,6 +12,8 @@
 
 namespace viennaray::gpu {
 
+// Per-ray data structure associated with each ray. Should be kept small to
+// optimize memory usage and performance.
 struct PerRayData {
   // Position and direction
   viennacore::Vec3Df pos;

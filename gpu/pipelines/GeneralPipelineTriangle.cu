@@ -22,8 +22,6 @@ using namespace viennacore;
 
 extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 
-enum { SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT };
-
 extern "C" __global__ void __closesthit__() {
   const HitSBTDataTriangle *sbtData =
       (const HitSBTDataTriangle *)optixGetSbtDataPointer();
@@ -98,10 +96,10 @@ extern "C" __global__ void __raygen__() {
                0.0f,                                            // rayTime
                OptixVisibilityMask(255),
                OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
-               SURFACE_RAY_TYPE,              // SBT offset
-               RAY_TYPE_COUNT,                // SBT stride
-               SURFACE_RAY_TYPE,              // missSBTIndex
-               u0, u1);
+               0,                             // SBT offset
+               1,                             // SBT stride
+               0,                             // missSBTIndex
+               u0, u1);                       // Payload
 
 #ifdef COUNT_RAYS
     int *counter = reinterpret_cast<int *>(launchParams.customData);

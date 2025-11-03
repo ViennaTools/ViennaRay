@@ -7,7 +7,8 @@ configure_file(Resources/trenchMesh.dat ${CMAKE_CURRENT_BINARY_DIR}/trenchMesh.d
 add_dependencies(ViennaRay-GPU_Examples ${target_name})
 
 add_gpu_executable(GPU_trenchDisks target_name trenchDisks.cpp)
-configure_file(${CMAKE_SOURCE_DIR}/examples/trench/trenchGrid3D.dat ${CMAKE_CURRENT_BINARY_DIR}/trenchGrid3D.dat COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/examples/trench/trenchGrid3D.dat
+               ${CMAKE_CURRENT_BINARY_DIR}/trenchGrid3D.dat COPYONLY)
 add_dependencies(ViennaRay-GPU_Examples ${target_name})
 
 add_gpu_executable(GPU_trenchLines target_name trenchLines.cpp)

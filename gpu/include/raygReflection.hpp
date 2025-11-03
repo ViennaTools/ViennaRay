@@ -168,7 +168,7 @@ PickRandomPointOnUnitSphere(viennaray::gpu::RNGState *state) {
 
 static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
                                          const viennacore::Vec3Df &geoNormal,
-                                         const int D) {
+                                         const uint8_t D) {
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
   prd->pos = prd->pos + prd->tMin * prd->dir;
@@ -183,7 +183,7 @@ static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
 }
 
 static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
-                                         const int D) {
+                                         const uint8_t D) {
   using namespace viennacore;
 
   const viennaray::gpu::HitSBTDataDisk *sbtData =
@@ -195,7 +195,7 @@ static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
 static __device__ __forceinline__ void
 conedCosineReflection(viennaray::gpu::PerRayData *prd,
                       const viennacore::Vec3Df &geomNormal,
-                      const float maxConeAngle, const int D) {
+                      const float maxConeAngle, const uint8_t D) {
   using namespace viennacore;
 
   // TODO: Is this needed? Done in the CPU version
