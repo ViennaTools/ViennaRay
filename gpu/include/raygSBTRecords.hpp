@@ -9,12 +9,12 @@ struct HitSBTDataBase {
   void *cellData;
   bool isBoundary;
   int geometryType;
+  viennacore::Vec3Df *normal; // optional normal buffer
 };
 
 struct HitSBTDataDisk {
   HitSBTDataBase base;
   viennacore::Vec3Df *point;
-  viennacore::Vec3Df *normal;
   float radius;
 };
 

@@ -13,11 +13,12 @@ using namespace viennaray::gpu;
 #ifdef __CUDACC__
 __device__ __inline__ viennacore::Vec3Df
 computeNormal(const void *sbtData, const unsigned int primID) {
+  using namespace viennacore;
   const HitSBTDataBase *baseData =
       reinterpret_cast<const HitSBTDataBase *>(sbtData);
   switch (baseData->geometryType) {
   case 0: {
-    using namespace viennacore;
+    // Triangles
     const HitSBTDataTriangle *sbt =
         reinterpret_cast<const HitSBTDataTriangle *>(sbtData);
     const Vec3D<unsigned> &index = sbt->index[primID];
@@ -27,12 +28,11 @@ computeNormal(const void *sbtData, const unsigned int primID) {
     return Normalize<float, 3>(CrossProduct<float>(B - A, C - A));
   } break;
   case 1: {
-    const HitSBTDataDisk *sbt =
-        reinterpret_cast<const HitSBTDataDisk *>(sbtData);
-    return sbt->normal[primID];
+    // Disks
+    return baseData->normal[primID];
   } break;
   case 2: {
-    using namespace viennacore;
+    // Lines
     const HitSBTDataLine *sbt =
         reinterpret_cast<const HitSBTDataLine *>(sbtData);
     Vec3Df p0 = sbt->nodes[sbt->lines[primID][0]];
@@ -46,6 +46,11 @@ computeNormal(const void *sbtData, const unsigned int primID) {
     printf("Unknown geometry type in computeNormal\n");
   } break;
   }
+}
+
+__device__ __forceinline__ viennacore::Vec3Df
+getNormal(const void *sbtData, const unsigned int primID) {
+  return reinterpret_cast<const HitSBTDataBase *>(sbtData)->normal[primID];
 }
 
 static __device__ __forceinline__ void
@@ -163,7 +168,7 @@ PickRandomPointOnUnitSphere(viennaray::gpu::RNGState *state) {
 
 static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
                                          const viennacore::Vec3Df &geoNormal,
-                                         const int D) {
+                                         const uint8_t D) {
   using namespace viennacore;
 #ifndef VIENNARAY_TEST
   prd->pos = prd->pos + prd->tMin * prd->dir;
@@ -178,7 +183,7 @@ static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
 }
 
 static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
-                                         const int D) {
+                                         const uint8_t D) {
   using namespace viennacore;
 
   const viennaray::gpu::HitSBTDataDisk *sbtData =
@@ -190,7 +195,7 @@ static __device__ void diffuseReflection(viennaray::gpu::PerRayData *prd,
 static __device__ __forceinline__ void
 conedCosineReflection(viennaray::gpu::PerRayData *prd,
                       const viennacore::Vec3Df &geomNormal,
-                      const float maxConeAngle, const int D) {
+                      const float maxConeAngle, const uint8_t D) {
   using namespace viennacore;
 
   // TODO: Is this needed? Done in the CPU version

@@ -20,8 +20,6 @@ using namespace viennacore;
 
 extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 
-enum { SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT };
-
 extern "C" __global__ void __intersection__() {
   const HitSBTDataLine *sbtData =
       (const HitSBTDataLine *)optixGetSbtDataPointer();
@@ -60,7 +58,6 @@ extern "C" __global__ void __closesthit__() {
   prd->primID = primID;
 
   if (sbtData->base.isBoundary) {
-    prd->numBoundaryHits++;
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData, launchParams.D);
     } else {
@@ -68,7 +65,7 @@ extern "C" __global__ void __closesthit__() {
     }
   } else {
     prd->ISCount = 1;
-    prd->TIndex[0] = primID;
+    prd->primIDs[0] = primID;
 
     // ------------- SURFACE COLLISION --------------- //
     unsigned callIdx =
@@ -98,8 +95,13 @@ extern "C" __global__ void __raygen__() {
   initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, &launchParams, launchParams.D);
-  initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  initializeRayPosition(&prd, launchParams.source, launchParams.D);
+  if (launchParams.source.customDirectionBasis) {
+    initializeRayDirection(&prd, launchParams.cosineExponent,
+                           launchParams.source.directionBasis, launchParams.D);
+  } else {
+    initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  }
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -119,10 +121,10 @@ extern "C" __global__ void __raygen__() {
                0.0f,                                            // rayTime
                OptixVisibilityMask(255),
                OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
-               SURFACE_RAY_TYPE,              // SBT offset
-               RAY_TYPE_COUNT,                // SBT stride
-               SURFACE_RAY_TYPE,              // missSBTIndex
-               u0, u1);
-    prd.tempCount = 0; // Reset PerRayData
+               0,                             // SBT offset
+               1,                             // SBT stride
+               0,                             // missSBTIndex
+               u0, u1);                       // Payload
+    prd.totalCount = 0;                       // Reset PerRayData
   }
 }

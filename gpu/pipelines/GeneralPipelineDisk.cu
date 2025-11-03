@@ -20,19 +20,17 @@ using namespace viennacore;
 
 extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 
-enum { SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT };
-
 extern "C" __global__ void __intersection__() {
   const HitSBTDataDisk *sbtData =
       (const HitSBTDataDisk *)optixGetSbtDataPointer();
   PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
 
   // Get the index of the AABB box that was hit
-  const int primID = optixGetPrimitiveIndex();
+  const unsigned int primID = optixGetPrimitiveIndex();
 
   // Read geometric data from the primitive that is inside that AABB box
   const Vec3Df diskOrigin = sbtData->point[primID];
-  const Vec3Df normal = sbtData->normal[primID];
+  const Vec3Df normal = sbtData->base.normal[primID];
   const float radius = sbtData->radius;
 
   bool valid = true;
@@ -48,8 +46,7 @@ extern "C" __global__ void __intersection__() {
   float ddneg = DotProduct(diskOrigin, normal);
   float t = (ddneg - DotProduct(normal, prd->pos)) / prodOfDirections;
   // Avoid negative t or self intersections
-  valid &= t > 1e-4f; // Maybe lower this further, but 1e-4f works for now
-
+  valid &= t > optixGetRayTmin();
   const Vec3Df intersection = prd->pos + prd->dir * t;
 
   // Check if within disk radius
@@ -59,10 +56,10 @@ extern "C" __global__ void __intersection__() {
 
   if (valid) {
     // Collect all intersections and filter neighbors in CH shader
-    if (!sbtData->base.isBoundary && prd->tempCount < MAX_NEIGHBORS) {
-      prd->tValues[prd->tempCount] = t;
-      prd->primIDs[prd->tempCount] = primID;
-      prd->tempCount++;
+    if (!sbtData->base.isBoundary && prd->totalCount < MAX_NEIGHBORS) {
+      prd->tValues[prd->totalCount] = t;
+      prd->primIDs[prd->totalCount] = primID;
+      prd->totalCount++;
     }
 
     // Has to pass a dummy t value so later intersections are not ignored
@@ -79,7 +76,7 @@ extern "C" __global__ void __closesthit__() {
   prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
   prd->primID = primID;
 
-  const Vec3Df normal = sbtData->normal[primID];
+  const Vec3Df &normal = sbtData->base.normal[primID];
 
   // If closest hit was on backside, let it through once
   if (DotProduct(prd->dir, normal) > 0.0f) {
@@ -94,7 +91,6 @@ extern "C" __global__ void __closesthit__() {
   }
 
   if (sbtData->base.isBoundary) {
-    prd->numBoundaryHits++;
     // This is effectively the miss shader
     if (launchParams.D == 2 &&
         (primID == 2 || primID == 3)) { // bottom or top - ymin or ymax
@@ -112,20 +108,21 @@ extern "C" __global__ void __closesthit__() {
     } else {
       reflectFromBoundary(prd, sbtData, launchParams.D);
     }
+
   } else {
     // ------------- NEIGHBOR FILTERING --------------- //
     // Keep only hits close to tMin
     prd->ISCount = 0;
-    for (int i = 0; i < prd->tempCount; ++i) {
+    for (int i = 0; i < prd->totalCount; ++i) {
       if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
           prd->ISCount < MAX_NEIGHBORS) {
-        prd->TIndex[prd->ISCount++] = prd->primIDs[i];
+        prd->primIDs[prd->ISCount++] = prd->primIDs[i];
       }
     }
 
     // // CPU like neighbor detection
     // prd->ISCount = 0;
-    // for (int i = 0; i < prd->tempCount; ++i) {
+    // for (int i = 0; i < prd->totalCount; ++i) {
     //   float distance = viennacore::Distance(sbtData->point[primID],
     //                                         sbtData->point[prd->primIDs[i]]);
     //   if (distance < 2 * sbtData->radius && prd->ISCount < MAX_NEIGHBORS) {
@@ -161,8 +158,13 @@ extern "C" __global__ void __raygen__() {
   initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, &launchParams, launchParams.D);
-  initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  initializeRayPosition(&prd, launchParams.source, launchParams.D);
+  if (launchParams.source.customDirectionBasis) {
+    initializeRayDirection(&prd, launchParams.cosineExponent,
+                           launchParams.source.directionBasis, launchParams.D);
+  } else {
+    initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+  }
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -182,10 +184,10 @@ extern "C" __global__ void __raygen__() {
                0.0f,                                            // rayTime
                OptixVisibilityMask(255),
                OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
-               SURFACE_RAY_TYPE,              // SBT offset
-               RAY_TYPE_COUNT,                // SBT stride
-               SURFACE_RAY_TYPE,              // missSBTIndex
-               u0, u1);
-    prd.tempCount = 0; // Reset PerRayData
+               0,                             // SBT offset
+               1,                             // SBT stride
+               0,                             // missSBTIndex
+               u0, u1);                       // Payload
+    prd.totalCount = 0;                       // Reset PerRayData
   }
 }

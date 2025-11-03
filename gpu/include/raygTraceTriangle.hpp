@@ -61,6 +61,8 @@ protected:
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer_.dPointer();
+    geometryHitgroupRecord.data.base.normal =
+        (Vec3Df *)triangleGeometry.geometryNormalBuffer.dPointer();
 
     // add geometry hitgroup record
     hitgroupRecords.push_back(geometryHitgroupRecord);

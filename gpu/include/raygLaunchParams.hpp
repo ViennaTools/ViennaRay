@@ -15,32 +15,34 @@ __both__ __forceinline__ unsigned callableIndex(unsigned p, CallableSlot s) {
 
 struct LaunchParams {
   float *resultBuffer;
+
   float rayWeightThreshold = 0.1f;
-  unsigned int seed = 0;
-  unsigned int numElements;
-  unsigned int *dataPerParticle; // to determine result buffer index
-  bool periodicBoundary = false;
-  unsigned int maxBoundaryHits = 100;
-  unsigned int particleIdx = 0;
-  unsigned particleType = 0;
-  float gridDelta = 1.f;
   float tThreshold = 0.5f;
 
-  int D = 3; // Dimension
+  unsigned int seed = 0;
+  bool periodicBoundary = false;
 
-  // std::unordered_map<int, float> sticking;
-  int *materialIds;
-  float *materialSticking;
+  unsigned int numElements;      // to determine result buffer index
+  unsigned int *dataPerParticle; // to determine result buffer index
+
+  unsigned maxBoundaryHits = 100;
+  uint8_t particleIdx = 0;
+  uint8_t particleType = 0;
+  uint8_t D = 3; // Dimension
+
   float sticking = 1.f;
   float cosineExponent = 1.f;
+  int *materialIds;
+  float *materialSticking;
   void *customData;
 
   // source plane params
-  struct {
+  struct SourcePlane {
     viennacore::Vec2Df minPoint;
     viennacore::Vec2Df maxPoint;
     float planeHeight;
     std::array<viennacore::Vec3Df, 3> directionBasis;
+    bool customDirectionBasis = false;
   } source;
 
   OptixTraversableHandle traversable;
