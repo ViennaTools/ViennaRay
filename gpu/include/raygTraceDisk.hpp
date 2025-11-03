@@ -177,13 +177,13 @@ protected:
     optixSbtRecordPackHeader(hitgroupPG, &geometryHitgroupRecord);
     geometryHitgroupRecord.data.point =
         (Vec3Df *)diskGeometry.geometryPointBuffer.dPointer();
-    geometryHitgroupRecord.data.normal =
-        (Vec3Df *)diskGeometry.geometryNormalBuffer.dPointer();
     geometryHitgroupRecord.data.radius = diskMesh.radius;
     geometryHitgroupRecord.data.base.geometryType = 1;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer_.dPointer();
+    geometryHitgroupRecord.data.base.normal =
+        (Vec3Df *)diskGeometry.geometryNormalBuffer.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
@@ -191,7 +191,7 @@ protected:
     optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
     boundaryHitgroupRecord.data.point =
         (Vec3Df *)diskGeometry.boundaryPointBuffer.dPointer();
-    boundaryHitgroupRecord.data.normal =
+    boundaryHitgroupRecord.data.base.normal =
         (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
     boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
     boundaryHitgroupRecord.data.base.geometryType = 1;

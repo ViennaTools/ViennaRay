@@ -13,6 +13,7 @@ using namespace viennacore;
 struct LineMesh {
   std::vector<Vec3Df> nodes;
   std::vector<Vec2D<unsigned>> lines;
+  std::vector<Vec3Df> normals;
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;
@@ -22,6 +23,7 @@ struct LineMesh {
 struct TriangleMesh {
   std::vector<Vec3Df> nodes;
   std::vector<Vec3D<unsigned>> triangles;
+  std::vector<Vec3Df> normals;
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;

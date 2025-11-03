@@ -172,6 +172,8 @@ protected:
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer_.dPointer();
+    geometryHitgroupRecord.data.base.normal =
+        (Vec3Df *)lineGeometry.geometryNormalsBuffer.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
