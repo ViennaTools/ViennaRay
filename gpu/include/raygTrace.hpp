@@ -89,7 +89,7 @@ public:
           .print();
     }
 
-    // resize our cuda result buffer
+    // Resize our cuda result buffer
     resultBuffer.allocInit(launchParams.numElements * numFluxes_, float(0));
     launchParams.resultBuffer = (float *)resultBuffer.dPointer();
 
@@ -104,6 +104,7 @@ public:
       launchParams.seed = gen(rd);
     }
 
+    // Threshold value for neighbor detection in disk-based geometries
     launchParams.tThreshold = 1.1 * gridDelta_; // TODO: find the best value
 
     int numPointsPerDim =
@@ -220,30 +221,25 @@ public:
     }
 #endif
 
-    // std::cout << util::prettyDouble(numRays * particles.size()) << std::endl;
-    // float *temp = new float[launchParams.numElements];
-    // resultBuffer.download(temp, launchParams.numElements);
-    // for (int i = 0; i < launchParams.numElements; i++) {
-    //   std::cout << temp[i] << " ";
-    // }
-    // delete temp;
-
-    // sync - maybe remove in future
-    // cudaDeviceSynchronize();
+    // sync
     for (auto &s : streams) {
       CUDA_CHECK(StreamSynchronize(s));
       CUDA_CHECK(StreamDestroy(s));
     }
-    normalize();
+
+    normalize(); // on device
     results.resize(launchParams.numElements * numFluxes_);
-    // cudaDeviceSynchronize(); // download is sync anyway
     resultBuffer.download(results.data(),
                           launchParams.numElements * numFluxes_);
   }
 
   void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
-    assert(passedCellDataBuffer.sizeInBytes / sizeof(float) / numData ==
-           launchParams.numElements);
+    if (passedCellDataBuffer.sizeInBytes / sizeof(float) / numData !=
+        launchParams.numElements) {
+      Logger::getInstance()
+          .addWarning("Passed cell data does not match number of elements.")
+          .print();
+    }
     cellDataBuffer_ = passedCellDataBuffer;
     numCellData = numData;
   }
@@ -295,10 +291,9 @@ public:
     config_.useRandomSeed = false;
   }
 
-  void
-  setParticleCallableMap(std::tuple<std::unordered_map<std::string, unsigned>,
-                                    std::vector<viennaray::gpu::CallableConfig>>
-                             maps) {
+  void setParticleCallableMap(
+      std::tuple<std::unordered_map<std::string, unsigned>,
+                 std::vector<viennaray::gpu::CallableConfig>> const &maps) {
     particleMap_ = std::get<0>(maps);
     callableMap_ = std::get<1>(maps);
   }
@@ -320,8 +315,6 @@ public:
       smoothFlux(temp, smoothingNeighbors);
     std::memcpy(flux, temp.data(), launchParams.numElements * sizeof(float));
   }
-
-  virtual void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {}
 
   void setUseCellData(unsigned numData) { numCellData = numData; }
 
@@ -391,9 +384,15 @@ public:
     launchParams.customData = (void *)d_params;
   }
 
-protected:
-  virtual void normalize() {}
+  virtual void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {}
 
+protected:
+  // To be implemented by derived classes
+  virtual void normalize() = 0;
+
+  virtual void buildHitGroups() = 0;
+
+private:
   void initRayTracer() {
     context_->addModule(normModuleName);
     normKernelName.append(geometryType_ + "_f");
@@ -614,8 +613,6 @@ protected:
         continuationStack, // continuation stack size
         1));               // nested traversable graph depth
   }
-
-  virtual void buildHitGroups() {}
 
   /// constructs the shader binding table
   void generateSBT() {
