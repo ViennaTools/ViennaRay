@@ -77,14 +77,14 @@ public:
       auto const &v0 = points[elements[i][0]];
       auto const &v1 = points[elements[i][1]];
       auto const &v2 = points[elements[i][2]];
-      auto edge1 = VectorType<NumericType, 3>{v1[0] - v0[0], v1[1] - v0[1],
-                                              v1[2] - v0[2]};
-      auto edge2 = VectorType<NumericType, 3>{v2[0] - v0[0], v2[1] - v0[1],
-                                              v2[2] - v0[2]};
+      auto edge1 =
+          Vec3D<NumericType>{v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]};
+      auto edge2 =
+          Vec3D<NumericType>{v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]};
       auto normal =
-          VectorType<NumericType, 3>{edge1[1] * edge2[2] - edge1[2] * edge2[1],
-                                     edge1[2] * edge2[0] - edge1[0] * edge2[2],
-                                     edge1[0] * edge2[1] - edge1[1] * edge2[0]};
+          Vec3D<NumericType>{edge1[1] * edge2[2] - edge1[2] * edge2[1],
+                             edge1[2] * edge2[0] - edge1[0] * edge2[2],
+                             edge1[0] * edge2[1] - edge1[1] * edge2[0]};
       auto length = std::sqrt(normal[0] * normal[0] + normal[1] * normal[1] +
                               normal[2] * normal[2]);
       if (length > 0) {
@@ -94,7 +94,7 @@ public:
         normals_[i] = normal;
         areas_[i] = 0.5 * length;
       } else {
-        normals_[i] = VectorType<NumericType, 3>{0, 0, 0};
+        normals_[i] = Vec3D<NumericType>{0, 0, 0};
         areas_[i] = 0.;
       }
     }
@@ -178,7 +178,7 @@ private:
   };
   triangle_3u_t *pTriangleBuffer_ = nullptr;
 
-  std::vector<Vec3Df> normals_;
+  std::vector<Vec3D<NumericType>> normals_;
   std::vector<NumericType> areas_;
 };
 
