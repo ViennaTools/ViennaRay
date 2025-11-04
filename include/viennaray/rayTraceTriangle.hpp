@@ -68,7 +68,7 @@ public:
                    std::vector<VectorType<unsigned, 3>> const &triangles,
                    const NumericType gridDelta) {
     this->gridDelta_ = gridDelta;
-    this->geometry_.initGeometry(this->device_, points, triangles);
+    geometry_.initGeometry(this->device_, points, triangles);
   }
 
   /// Set material ID's for each geometry point.

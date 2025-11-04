@@ -374,6 +374,58 @@ void readGridFromFile(const std::string &fileName, NumericType &gridDelta,
   dataFile.close();
 }
 
+template <typename NumericType>
+void readMeshFromFile(const std::string &fileName, NumericType &gridDelta,
+                      std::vector<Vec3D<NumericType>> &nodes,
+                      std::vector<Vec3D<unsigned>> &triangles) {
+  std::ifstream dataFile(fileName);
+  if (!dataFile.is_open()) {
+    Logger::getInstance()
+        .addError("Failed to open mesh file: " + fileName)
+        .print();
+  }
+  std::string id;
+  dataFile >> id;
+  assert(id == "grid_delta");
+  dataFile >> gridDelta;
+
+  // unused
+  std::array<NumericType, 3> minimumExtent;
+  std::array<NumericType, 3> maximumExtent;
+
+  dataFile >> id;
+  assert(id == "min_extent");
+  dataFile >> minimumExtent[0] >> minimumExtent[1] >> minimumExtent[2];
+
+  dataFile >> id;
+  assert(id == "max_extent");
+  dataFile >> maximumExtent[0] >> maximumExtent[1] >> maximumExtent[2];
+
+  dataFile >> id;
+  assert(id == "n_nodes");
+  size_t numPoints;
+  dataFile >> numPoints;
+
+  dataFile >> id;
+  assert(id == "n_triangles");
+  size_t numTriangles;
+  dataFile >> numTriangles;
+
+  nodes.resize(numPoints);
+  triangles.resize(numTriangles);
+  for (size_t i = 0; i < numPoints; ++i) {
+    dataFile >> id;
+    assert(id == "n");
+    dataFile >> nodes[i][0] >> nodes[i][1] >> nodes[i][2];
+  }
+  for (size_t i = 0; i < numTriangles; ++i) {
+    dataFile >> id;
+    assert(id == "t");
+    dataFile >> triangles[i][0] >> triangles[i][1] >> triangles[i][2];
+  }
+  dataFile.close();
+}
+
 template <typename NumericType, int D = 3>
 void writeVTK(const std::string &filename,
               const std::vector<Vec3D<NumericType>> &points,

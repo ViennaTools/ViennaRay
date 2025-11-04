@@ -25,10 +25,10 @@ int main(int argc, char **argv) {
   gpu::Particle<NumericType> particle;
   particle.direction = {0.0f, 0.0f, -1.0f};
   particle.name = "Particle";
-  particle.sticking = 1.f;
+  particle.sticking = 0.1f;
   particle.dataLabels = {"particleFlux"};
-  particle.materialSticking[7] = 1.f;
-  particle.materialSticking[1] = .1f;
+  particle.materialSticking[7] = 0.1f;
+  particle.materialSticking[1] = 1.0f;
 
   std::unordered_map<std::string, unsigned int> pMap = {{"Particle", 0}};
   std::vector<gpu::CallableConfig> cMap = {
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
   tracer.setMaterialIds(materialIds);
   tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
-  tracer.setNumberOfRaysPerPoint(100);
+  tracer.setNumberOfRaysPerPoint(2000);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
@@ -57,6 +57,9 @@ int main(int argc, char **argv) {
 
   std::vector<float> flux(mesh.triangles.size());
   tracer.getFlux(flux.data(), 0, 0);
+
+  rayInternal::writeVTP("triangleGeometryOutput.vtp", mesh.nodes,
+                        mesh.triangles, flux);
 
 #ifdef COUNT_RAYS
   rayCountBuffer.download(&rayCount, 1);

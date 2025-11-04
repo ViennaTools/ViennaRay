@@ -23,7 +23,8 @@ particleCollision(viennaray::gpu::PerRayData *prd) {
 
 __forceinline__ __device__ void
 particleReflection(const void *sbtData, viennaray::gpu::PerRayData *prd) {
-  prd->rayWeight -= prd->rayWeight * launchParams.sticking;
+  int materialId = launchParams.materialIds[prd->primID];
+  prd->rayWeight -= prd->rayWeight * launchParams.materialSticking[materialId];
   auto geoNormal = computeNormal(sbtData, prd->primID);
   diffuseReflection(prd, geoNormal, launchParams.D);
 }

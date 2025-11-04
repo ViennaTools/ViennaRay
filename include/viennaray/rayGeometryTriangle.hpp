@@ -153,8 +153,8 @@ public:
 
   void releaseGeometry() override {
     // Attention:
-    // This function must not be called when the RTCGeometry reference count is
-    // > 1. Doing so leads to leaked memory buffers
+    // This function must not be called when the RTCGeometry reference count
+    // is > 1. Doing so leads to leaked memory buffers
     normals_.clear();
     if (pPointBuffer_ == nullptr || pTriangleBuffer_ == nullptr ||
         this->pRtcGeometry_ == nullptr) {
