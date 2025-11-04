@@ -59,11 +59,12 @@ public:
                   static_cast<long long>(config_.numRaysPerPoint)
             : static_cast<long long>(config_.numRaysFixed);
 
-    // thread local data storage
     int numThreads = 1;
 #ifdef _OPENMP
     numThreads = omp_get_max_threads();
 #endif
+
+    // thread local data storage
     std::vector<TracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *pLocalData_;
@@ -220,20 +221,22 @@ public:
           const auto rayDir =
               Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
-          if (DotProduct(rayDir, geomNormal) > 0) {
-            // If the dot product of the ray direction and the surface normal is
-            // greater than zero, then we hit the back face of the disk.
-            if (hitFromBack) {
-              // if hitFromBack == true, then the ray hits the back of a disk
-              // the second time. In this case we discard the ray.
-              break;
+          if constexpr (geoType == GeometryType::DISK) {
+            if (DotProduct(rayDir, geomNormal) > 0) {
+              // If the dot product of the ray direction and the surface normal
+              // is greater than zero, then we hit the back face of the disk.
+              if (hitFromBack) {
+                // if hitFromBack == true, then the ray hits the back of a disk
+                // the second time. In this case we discard the ray.
+                break;
+              }
+              hitFromBack = true;
+              // Let ray through, i.e., continue.
+              reflect = true;
+              fillRayPosition(rayHit.ray, hitPoint);
+              // keep ray direction as it is
+              continue;
             }
-            hitFromBack = true;
-            // Let ray through, i.e., continue.
-            reflect = true;
-            fillRayPosition(rayHit.ray, hitPoint);
-            // keep ray direction as it is
-            continue;
           }
 
           /* -------- Surface hit -------- */
@@ -288,8 +291,7 @@ public:
                                          pGlobalData_, rngState);
             }
           } else {
-            // Triangle Geometry
-            // single hit
+            // Triangle Geometry - single hit
             particle->surfaceCollision(
                 rayWeight, rayDir, geomNormal, rayHit.hit.primID,
                 geometry_.getMaterialId(rayHit.hit.primID), myLocalData,

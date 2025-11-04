@@ -174,7 +174,7 @@ private:
   point_3f_t *pPointBuffer_ = nullptr;
 
   struct triangle_3u_t {
-    unsigned uu, vv, ww;
+    uint32_t uu, vv, ww;
   };
   triangle_3u_t *pTriangleBuffer_ = nullptr;
 
