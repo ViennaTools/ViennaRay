@@ -1,4 +1,4 @@
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <raySourceGrid.hpp>
 #include <rayUtil.hpp>
 #include <vcTestAsserts.hpp>
@@ -17,7 +17,7 @@ int main() {
                                 points, normals);
 
   auto device = rtcNewDevice("");
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
   auto boundingBox = geometry.getBoundingBox();
   auto traceSettings = rayInternal::getTraceSettings(TraceDirection::POS_Z);

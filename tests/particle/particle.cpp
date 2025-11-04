@@ -1,5 +1,5 @@
 #include <rayParticle.hpp>
-#include <rayTrace.hpp>
+#include <rayTraceDisk.hpp>
 
 #include <vcTestAsserts.hpp>
 
@@ -20,7 +20,7 @@ template <class NumericType, int D> void RunTest() {
     VC_TEST_ASSERT(labels.size() == 1);
     VC_TEST_ASSERT(labels[0] == "test");
 
-    Trace<NumericType, D> tracer;
+    TraceDisk<NumericType, D> tracer;
     tracer.setParticleType(particle);
   }
 
@@ -35,7 +35,7 @@ template <class NumericType, int D> void RunTest() {
     VC_TEST_ASSERT(labels.size() == 1);
     VC_TEST_ASSERT(labels[0] == "test");
 
-    Trace<NumericType, D> tracer;
+    TraceDisk<NumericType, D> tracer;
     tracer.setParticleType(particle);
   }
 }

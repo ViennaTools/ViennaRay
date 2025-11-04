@@ -1,5 +1,5 @@
 #include <rayBoundary.hpp>
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <rayUtil.hpp>
 #include <vcTestAsserts.hpp>
 // void printRay(RTCRayHit &rayHit)
@@ -32,7 +32,7 @@ int main() {
 
   constexpr NumericType discFactor = 0.5 * 1.7320508 * (1 + 1e-5);
   auto discRadius = gridDelta * discFactor;
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(rtcDevice, points, normals, discRadius);
   auto boundingBox = geometry.getBoundingBox();
 

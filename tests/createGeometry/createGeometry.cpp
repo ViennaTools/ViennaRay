@@ -1,4 +1,4 @@
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <vcTestAsserts.hpp>
 
 using namespace viennaray;
@@ -14,7 +14,7 @@ int main() {
                                 points, normals);
 
   auto device = rtcNewDevice("");
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry<3>(device, points, normals, gridDelta);
 
   auto boundingBox = geometry.getBoundingBox();

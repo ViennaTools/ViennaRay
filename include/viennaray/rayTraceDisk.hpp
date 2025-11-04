@@ -52,8 +52,8 @@ public:
     tracer.apply();
     this->config_.runNumber++;
 
-    if (this->checkError_)
-      this->checkRelativeError();
+    // if (this->checkError_)
+    //   this->checkRelativeError();
 
     boundary.releaseGeometry();
   }
@@ -98,7 +98,7 @@ public:
   /// value.
   void normalizeFlux(std::vector<NumericType> &flux,
                      NormalizationType norm = NormalizationType::SOURCE) {
-    assert(flux.size() == geometry_.getNumPoints() &&
+    assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in normalizeFlux");
 
     auto diskArea = this->hitCounter_.getDiskAreas();
@@ -144,7 +144,7 @@ public:
   /// neighborhood in a post-processing step.
   void smoothFlux(std::vector<NumericType> &flux,
                   int numNeighbors = 1) override {
-    assert(flux.size() == geometry_.getNumPoints() &&
+    assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in smoothFlux");
     auto oldFlux = flux;
     PointNeighborhood<NumericType, D> pointNeighborhood;

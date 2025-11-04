@@ -1,5 +1,5 @@
 #include <rayBoundary.hpp>
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <rayTrace.hpp>
 #include <rayUtil.hpp>
 
@@ -22,7 +22,7 @@ int main() {
     std::vector<VectorType<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    Geometry<NumericType, D> geometry;
+    GeometryDisk<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
     BoundaryCondition boundCons[D];
     {
@@ -82,7 +82,7 @@ int main() {
     std::vector<VectorType<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 2, 1}, points, normals);
 
-    Geometry<NumericType, D> geometry;
+    GeometryDisk<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
     BoundaryCondition boundCons[D];
     {
@@ -142,7 +142,7 @@ int main() {
     std::vector<VectorType<NumericType, D>> normals;
     rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
-    Geometry<NumericType, D> geometry;
+    GeometryDisk<NumericType, D> geometry;
     geometry.initGeometry(device, points, normals, gridDelta);
     BoundaryCondition boundCons[D];
     {

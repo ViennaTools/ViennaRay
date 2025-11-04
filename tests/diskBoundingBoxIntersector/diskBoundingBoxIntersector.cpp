@@ -1,5 +1,5 @@
 #include <rayDiskBoundingBoxIntersector.hpp>
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <rayUtil.hpp>
 
 #include <vcVectorType.hpp>
@@ -15,13 +15,13 @@ template <class NumericType> void runTest() {
                                 points, normals);
 
   auto device = rtcNewDevice("");
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
   auto boundingBox = geometry.getBoundingBox();
   DiskBoundingBoxXYIntersector<NumericType> bdDiskIntersector(boundingBox);
 
-  for (size_t i = 0; i < geometry.getNumPoints(); ++i) {
+  for (size_t i = 0; i < geometry.getNumPrimitives(); ++i) {
     auto const &normal = geometry.getNormalRef(i);
     auto const &disk = geometry.getPrimRef(i);
 

@@ -1,4 +1,4 @@
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <raySourceGrid.hpp>
 #include <raySourceRandom.hpp>
 #include <rayUtil.hpp>
@@ -29,7 +29,7 @@ int main() {
                                 points, normals);
 
   auto device = rtcNewDevice("");
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
   unsigned seed = 31;
@@ -44,8 +44,8 @@ int main() {
     auto traceSetting = rayInternal::getTraceSettings(direction);
     std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                               geometry.getNumPoints(), false,
-                                               orthoBasis);
+                                               geometry.getNumPrimitives(),
+                                               false, orthoBasis);
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -66,8 +66,8 @@ int main() {
     auto traceSetting = rayInternal::getTraceSettings(direction);
     std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                               geometry.getNumPoints(), false,
-                                               orthoBasis);
+                                               geometry.getNumPrimitives(),
+                                               false, orthoBasis);
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -88,8 +88,8 @@ int main() {
     auto traceSetting = rayInternal::getTraceSettings(direction);
     std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                               geometry.getNumPoints(), false,
-                                               orthoBasis);
+                                               geometry.getNumPrimitives(),
+                                               false, orthoBasis);
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -110,8 +110,8 @@ int main() {
     auto traceSetting = rayInternal::getTraceSettings(direction);
     std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                               geometry.getNumPoints(), false,
-                                               orthoBasis);
+                                               geometry.getNumPrimitives(),
+                                               false, orthoBasis);
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -132,8 +132,8 @@ int main() {
     auto traceSetting = rayInternal::getTraceSettings(direction);
     std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                               geometry.getNumPoints(), false,
-                                               orthoBasis);
+                                               geometry.getNumPrimitives(),
+                                               false, orthoBasis);
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -154,8 +154,8 @@ int main() {
     auto traceSetting = rayInternal::getTraceSettings(direction);
     std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
     auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                               geometry.getNumPoints(), false,
-                                               orthoBasis);
+                                               geometry.getNumPrimitives(),
+                                               false, orthoBasis);
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {
@@ -178,9 +178,9 @@ int main() {
     viennacore::Vec3D<NumericType> primaryDir{1., 1., -1.};
     viennacore::Normalize(primaryDir);
     auto orthoBasis = rayInternal::getOrthonormalBasis(primaryDir);
-    auto source =
-        SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
-                                     geometry.getNumPoints(), true, orthoBasis);
+    auto source = SourceRandom<NumericType, D>(boundingBox, 2., traceSetting,
+                                               geometry.getNumPrimitives(),
+                                               true, orthoBasis);
     alignas(128) auto rayHit =
         RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (size_t i = 0; i < 10; ++i) {

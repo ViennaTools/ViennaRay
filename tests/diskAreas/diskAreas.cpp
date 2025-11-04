@@ -1,5 +1,5 @@
 #include <rayBoundary.hpp>
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <rayParticle.hpp>
 #include <raySourceRandom.hpp>
 #include <rayTraceKernel.hpp>
@@ -27,7 +27,7 @@ int main() {
   const auto globalData = TracingData<NumericType>();
   HitCounter<NumericType> hitCounter;
 
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   auto diskRadius = gridDelta * rayInternal::DiskFactor<D>;
   geometry.initGeometry(device, points, normals, diskRadius);
 
@@ -42,13 +42,13 @@ int main() {
                                            traceSettings);
   std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
   auto raySource = std::make_unique<SourceRandom<NumericType, D>>(
-      boundingBox, 1., traceSettings, geometry.getNumPoints(), false,
+      boundingBox, 1., traceSettings, geometry.getNumPrimitives(), false,
       orthoBasis);
 
   TestParticle<NumericType> particle;
   auto cp = particle.clone();
   localData.setNumberOfVectorData(cp->getLocalDataLabels().size());
-  auto numPoints = geometry.getNumPoints();
+  auto numPoints = geometry.getNumPrimitives();
   localData.resizeAllVectorData(numPoints, 0.);
 
   DataLog<NumericType> log;
@@ -56,7 +56,7 @@ int main() {
   rayInternal::KernelConfig config;
   config.numRaysPerPoint = 1;
   config.numRaysFixed = 0;
-  rayInternal::TraceKernel<NumericType, D> tracer(
+  rayInternal::TraceKernel<NumericType, D, GeometryType::DISK> tracer(
       device, geometry, boundary, std::move(raySource), cp, config, log,
       hitCounter, info);
   tracer.setTracingData(&localData, &globalData);
@@ -65,7 +65,7 @@ int main() {
 
   auto boundaryDirs = boundary.getDirs();
   auto wholeDiskArea = diskRadius * diskRadius * M_PI;
-  for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
+  for (unsigned int idx = 0; idx < geometry.getNumPrimitives(); ++idx) {
     auto const &disk = geometry.getPrimRef(idx);
     if (std::fabs(disk[boundaryDirs[0]] - boundingBox[0][boundaryDirs[0]]) <
             eps ||

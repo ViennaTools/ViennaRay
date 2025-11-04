@@ -36,6 +36,11 @@ public:
     return *reinterpret_cast<std::array<float, 3> *>(zero.data());
   }
 
+  virtual std::vector<unsigned int> const &
+  getNeighborIndices(const unsigned int idx) const {
+    return emptyNeighborIndices_;
+  }
+
   [[nodiscard]] RTCGeometry const &getRTCGeometry() const {
     return pRtcGeometry_;
   }
@@ -59,6 +64,7 @@ protected:
   std::vector<int> materialIds_;
 
   std::array<float, 4> zero = {0.f, 0.f, 0.f, 0.f};
+  std::vector<unsigned int> emptyNeighborIndices_ = {};
 };
 
 } // namespace viennaray

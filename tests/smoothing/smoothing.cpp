@@ -1,4 +1,4 @@
-#include <rayTrace.hpp>
+#include <rayTraceDisk.hpp>
 #include <vcTestAsserts.hpp>
 
 using namespace viennaray;
@@ -29,7 +29,7 @@ int main() {
 
   std::vector<NumericType> flux = {1, 1, 1, 0, 0, 0};
 
-  Trace<NumericType, D> trace;
+  TraceDisk<NumericType, D> trace;
   trace.setGeometry(points, normals, gridDelta);
 
   trace.smoothFlux(flux, 1);
