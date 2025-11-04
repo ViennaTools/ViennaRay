@@ -53,7 +53,7 @@ public:
 
     rayInternal::TraceKernel<NumericType, D, GeometryType::TRIANGLE> tracer(
         this->device_, geometry_, boundary, this->pSource_, this->pParticle_,
-        this->config_, this->dataLog_, this->hitCounter_, this->RTInfo_);
+        this->config_, this->dataLog_, this->RTInfo_);
     tracer.setTracingData(&this->localData_, this->pGlobalData_);
     tracer.apply();
     this->config_.runNumber++;

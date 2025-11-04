@@ -64,7 +64,6 @@ template <class NumericType> struct DataLog {
 struct TraceInfo {
   size_t numRays = 0;
   size_t totalRaysTraced = 0;
-  size_t totalDiskHits = 0;
   size_t nonGeometryHits = 0;
   size_t geometryHits = 0;
   size_t particleHits = 0;

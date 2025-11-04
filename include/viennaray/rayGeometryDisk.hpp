@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rayBoundary.hpp>
+#include <rayDiskBoundingBoxIntersector.hpp>
 #include <rayGeometry.hpp>
 
 namespace viennaray {
@@ -125,6 +127,14 @@ public:
 
   [[nodiscard]] NumericType getDiscRadius() const { return discRadii_; }
 
+  [[nodiscard]] NumericType getDiskArea(unsigned int primID) const {
+    return diskAreas_[primID];
+  }
+
+  [[nodiscard]] std::vector<NumericType> const &getDiskAreas() const {
+    return diskAreas_;
+  }
+
   Vec3D<NumericType> getPrimNormal(const unsigned int primID) const override {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
     auto const &normal = pNormalVecBuffer_[primID];
@@ -168,6 +178,92 @@ public:
     }
   }
 
+  void computeDiskAreas(Boundary<NumericType, D> const &boundary) {
+    constexpr double eps = 1e-3;
+    auto bdBox = this->getBoundingBox();
+    const auto boundaryConds = boundary.getBoundaryConditions();
+    const auto boundaryDirs = boundary.getDirs();
+    diskAreas_.resize(this->numPrimitives_, 0);
+    DiskBoundingBoxXYIntersector<NumericType> bdDiskIntersector(bdBox);
+
+#pragma omp parallel for
+    for (long idx = 0; idx < this->numPrimitives_; ++idx) {
+      auto const &disk = getPrimRef(idx);
+
+      if constexpr (D == 3) {
+        diskAreas_[idx] = disk[3] * disk[3] * M_PI; // full disk area
+
+        if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::IGNORE &&
+            boundaryConds[boundaryDirs[1]] == BoundaryCondition::IGNORE) {
+          // no boundaries
+          continue;
+        }
+
+        if (boundaryDirs[0] != 2 && boundaryDirs[1] != 2) {
+          // Disk-BBox intersection only works with boundaries in x and y
+          // direction
+          auto normal = getNormalRef(idx);
+          diskAreas_[idx] = bdDiskIntersector.areaInside(disk, normal);
+          continue;
+        }
+
+        // Simple approach
+        if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+                eps ||
+            std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+                eps) {
+          // disk intersects boundary in first direction
+          diskAreas_[idx] /= 2;
+        }
+
+        if (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
+                eps ||
+            std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
+                eps) {
+          // disk intersects boundary in second direction
+          diskAreas_[idx] /= 2;
+        }
+
+      } else { // 2D
+
+        diskAreas_[idx] = 2 * disk[3];
+        auto normal = getNormalRef(idx);
+
+        // test min boundary
+        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
+            (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+             disk[3])) {
+          NumericType insideTest =
+              1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+          if (insideTest > 1e-4) {
+            insideTest =
+                std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) /
+                std::sqrt(insideTest);
+            if (insideTest < disk[3]) {
+              diskAreas_[idx] -= disk[3] - insideTest;
+            }
+          }
+        }
+
+        // test max boundary
+        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
+            (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+             disk[3])) {
+          NumericType insideTest =
+              1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+          if (insideTest > 1e-4) {
+            insideTest =
+                std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) /
+                std::sqrt(insideTest);
+            if (insideTest < disk[3]) {
+              diskAreas_[idx] -= disk[3] - insideTest;
+            }
+          }
+        }
+      }
+    }
+  }
+
 private:
   // RTC_GEOMETRY_TYPE_POINT:
   // The vertex buffer stores each control vertex in the form of a single
@@ -190,6 +286,7 @@ private:
   normal_vec_3f_t *pNormalVecBuffer_ = nullptr;
 
   NumericType discRadii_; // same for all points
+  std::vector<NumericType> diskAreas_;
   PointNeighborhood<NumericType, D> pointNeighborhood_;
 };
 

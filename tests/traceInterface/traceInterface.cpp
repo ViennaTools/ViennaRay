@@ -38,7 +38,8 @@ int main() {
   boundaryConds[0] = BoundaryCondition::REFLECTIVE;
   boundaryConds[1] = BoundaryCondition::REFLECTIVE;
   boundaryConds[2] = BoundaryCondition::REFLECTIVE;
-  auto particle = std::make_unique<TestParticle<NumericType>>();
+  auto particle =
+      std::make_unique<DiffuseParticle<NumericType, D>>(1.0, "hitFlux");
 
   TraceDisk<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);

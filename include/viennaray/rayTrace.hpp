@@ -1,7 +1,6 @@
 #pragma once
 
 #include <rayBoundary.hpp>
-#include <rayHitCounter.hpp>
 #include <raySourceRandom.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
@@ -15,7 +14,12 @@ using namespace viennacore;
 
 template <class NumericType, int D> class Trace {
 public:
-  Trace() : device_(rtcNewDevice("hugepages=1")) { initMemoryFlags(); }
+  Trace() : device_(rtcNewDevice("hugepages=1")) {
+    assert(rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_VERSION) >=
+               30601 &&
+           "Error: The minimum version of Embree is 3.6.1");
+    initMemoryFlags();
+  }
 
   Trace(const Trace &) = delete;
   Trace &operator=(const Trace &) = delete;
@@ -112,38 +116,6 @@ public:
     config_.useRandomSeed = false;
   }
 
-  /// Set whether the flux and hit counts should be recorded. If not needed,
-  /// this should be turned off to increase performance. If set to false, the
-  /// functions getTotalFlux(), getNormalizedFlux(), getHitCounts() and
-  /// getRelativeError() can not be used.
-  void setCalculateFlux(const bool calcFlux) { config_.calcFlux = calcFlux; }
-
-  /// Set whether to check the relative error after a tracing. If the relative
-  /// error at a surface point is larger than 0.05 a warning is printed. The
-  /// value 0.05 is reported in: "A General Monte Carlo N-Particle Transport
-  /// Code, Version 5, Vol. I Overview and Theory, LA - UR - 03 - 1987, Los
-  /// Alamos Nat.Lab., Los Alamos, NM"
-  void setCheckRelativeError(const bool checkError) {
-    checkError_ = checkError;
-  }
-
-  /// Returns the total flux on each disk.
-  [[nodiscard]] std::vector<NumericType> getTotalFlux() const {
-    return hitCounter_.getValues();
-  }
-
-  /// Returns the normalized flux on each disk.
-  [[nodiscard]] std::vector<NumericType>
-  getNormalizedFlux(NormalizationType normalization,
-                    bool averageNeighborhood = false) {
-    auto flux = hitCounter_.getValues();
-    normalizeFlux(flux, normalization);
-    if (averageNeighborhood) {
-      smoothFlux(flux);
-    }
-    return flux;
-  }
-
   /// Helper function to normalize the recorded flux in a post-processing step.
   /// The flux can be normalized to the source flux and the maximum recorded
   /// value.
@@ -155,16 +127,6 @@ public:
   /// neighborhood in a post-processing step.
   virtual void smoothFlux(std::vector<NumericType> &flux,
                           int numNeighbors = 1) = 0;
-
-  /// Returns the total number of hits for each geometry point.
-  [[nodiscard]] std::vector<size_t> getHitCounts() const {
-    return hitCounter_.getCounts();
-  }
-
-  /// Returns the relative error of the flux for each geometry point
-  [[nodiscard]] std::vector<NumericType> getRelativeError() {
-    return hitCounter_.getRelativeError();
-  }
 
   [[nodiscard]] TracingData<NumericType> &getLocalData() { return localData_; }
 
@@ -179,44 +141,6 @@ public:
   [[nodiscard]] DataLog<NumericType> &getDataLog() { return dataLog_; }
 
 private:
-  void checkRelativeError() {
-    auto error = getRelativeError();
-    const int numPoints = error.size();
-    int numThreads = 1;
-#ifdef _OPENMP
-    numThreads = omp_get_max_threads();
-#endif
-    std::vector<bool> passed(numThreads, true);
-
-#pragma omp parallel shared(error, passed)
-    {
-      int threadId = 0;
-#ifdef _OPENMP
-      threadId = omp_get_thread_num();
-#endif
-#pragma omp for
-      for (int i = 0; i < numPoints; i++) {
-        if (error[i] > 0.05) {
-          passed[threadId] = false;
-        }
-      }
-    }
-    bool allPassed = true;
-    for (int i = 0; i < numThreads; i++) {
-      if (!passed[i]) {
-        allPassed = false;
-        break;
-      }
-    }
-    if (!allPassed) {
-      RTInfo_.warning = true;
-      Logger::getInstance()
-          .addWarning(
-              "Large relative error detected. Consider using more rays.")
-          .print();
-    }
-  }
-
   static void initMemoryFlags() {
 #ifdef ARCH_X86
     // for best performance set FTZ and DAZ flags in MXCSR control and status
@@ -245,7 +169,6 @@ protected:
 
   rayInternal::KernelConfig config_;
 
-  HitCounter<NumericType> hitCounter_;
   TracingData<NumericType> localData_;
   TracingData<NumericType> *pGlobalData_ = nullptr;
   TraceInfo RTInfo_;

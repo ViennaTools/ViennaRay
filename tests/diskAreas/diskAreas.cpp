@@ -12,7 +12,6 @@ int main() {
   omp_set_num_threads(1);
   constexpr int D = 3;
   using NumericType = float;
-  using ParticleType = TestParticle<NumericType>;
   NumericType extent = 2;
   NumericType gridDelta = 1.;
   NumericType eps = 1e-6;
@@ -25,7 +24,6 @@ int main() {
 
   auto localData = TracingData<NumericType>();
   const auto globalData = TracingData<NumericType>();
-  HitCounter<NumericType> hitCounter;
 
   GeometryDisk<NumericType, D> geometry;
   auto diskRadius = gridDelta * rayInternal::DiskFactor<D>;
@@ -44,8 +42,9 @@ int main() {
   auto raySource = std::make_unique<SourceRandom<NumericType, D>>(
       boundingBox, 1., traceSettings, geometry.getNumPrimitives(), false,
       orthoBasis);
+  geometry.computeDiskAreas(boundary);
 
-  TestParticle<NumericType> particle;
+  DiffuseParticle<NumericType, D> particle(1.0, "hitFlux");
   auto cp = particle.clone();
   localData.setNumberOfVectorData(cp->getLocalDataLabels().size());
   auto numPoints = geometry.getNumPrimitives();
@@ -57,11 +56,10 @@ int main() {
   config.numRaysPerPoint = 1;
   config.numRaysFixed = 0;
   rayInternal::TraceKernel<NumericType, D, GeometryType::DISK> tracer(
-      device, geometry, boundary, std::move(raySource), cp, config, log,
-      hitCounter, info);
+      device, geometry, boundary, std::move(raySource), cp, config, log, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
-  auto diskAreas = hitCounter.getDiskAreas();
+  auto diskAreas = geometry.getDiskAreas();
 
   auto boundaryDirs = boundary.getDirs();
   auto wholeDiskArea = diskRadius * diskRadius * M_PI;

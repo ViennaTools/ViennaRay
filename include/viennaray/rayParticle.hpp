@@ -123,40 +123,6 @@ protected:
   Particle(Particle &&) = default;
 };
 
-template <typename NumericType>
-class TestParticle : public Particle<TestParticle<NumericType>, NumericType> {
-public:
-  void initNew(RNG &rngState) final {}
-
-  std::pair<NumericType, Vec3D<NumericType>>
-  surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
-                    const Vec3D<NumericType> &geomNormal,
-                    const unsigned int primID, const int materialId,
-                    const TracingData<NumericType> *globalData,
-                    RNG &rngState) final {
-    auto direction = ReflectionSpecular(rayDir, geomNormal);
-
-    return std::pair<NumericType, Vec3D<NumericType>>{.5, direction};
-  }
-
-  void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
-                        const Vec3D<NumericType> &geomNormal,
-                        const unsigned int primID, const int materialId,
-                        TracingData<NumericType> &localData,
-                        const TracingData<NumericType> *globalData,
-                        RNG &rngState) final {
-    localData.getVectorData(0)[primID] += rayWeight;
-  }
-
-  NumericType getSourceDistributionPower() const final { return 1.; }
-
-  [[nodiscard]] std::vector<std::string> getLocalDataLabels() const final {
-    return {"testFlux"};
-  }
-
-  void logData(DataLog<NumericType> &log) final {}
-};
-
 template <typename NumericType, int D>
 class DiffuseParticle
     : public Particle<DiffuseParticle<NumericType, D>, NumericType> {

@@ -25,6 +25,7 @@ public:
 
     auto boundary = Boundary<NumericType, D>(
         this->device_, boundingBox, this->boundaryConditions_, traceSettings);
+    geometry_.computeDiskAreas(boundary);
 
     std::array<Vec3D<NumericType>, 3> orthonormalBasis;
     if (this->usePrimaryDirection_)
@@ -47,13 +48,10 @@ public:
 
     rayInternal::TraceKernel<NumericType, D, GeometryType::DISK> tracer(
         this->device_, geometry_, boundary, this->pSource_, this->pParticle_,
-        this->config_, this->dataLog_, this->hitCounter_, this->RTInfo_);
+        this->config_, this->dataLog_, this->RTInfo_);
     tracer.setTracingData(&this->localData_, this->pGlobalData_);
     tracer.apply();
     this->config_.runNumber++;
-
-    // if (this->checkError_)
-    //   this->checkRelativeError();
 
     boundary.releaseGeometry();
   }
@@ -101,7 +99,6 @@ public:
     assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in normalizeFlux");
 
-    auto diskArea = this->hitCounter_.getDiskAreas();
     const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
 
     switch (norm) {
@@ -109,7 +106,7 @@ public:
       auto maxv = *std::max_element(flux.begin(), flux.end());
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
-        flux[idx] *= (totalDiskArea / diskArea[idx]) / maxv;
+        flux[idx] *= (totalDiskArea / geometry_.getDiskArea(idx)) / maxv;
       }
       break;
     }
@@ -130,7 +127,7 @@ public:
       NumericType normFactor = sourceArea / numTotalRays;
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
-        flux[idx] *= normFactor / diskArea[idx];
+        flux[idx] *= normFactor / geometry_.getDiskArea(idx);
       }
       break;
     }
@@ -185,52 +182,7 @@ public:
     }
   }
 
-  /// Returns the disk area for each geometry point
-  [[nodiscard]] std::vector<NumericType> getDiskAreas() {
-    return this->hitCounter_.getDiskAreas();
-  }
-
-  Geometry<NumericType, D> &getGeometry() { return geometry_; }
-
 private:
-  void checkRelativeError() {
-    auto error = this->getRelativeError();
-    const int numPoints = error.size();
-    int numThreads = 1;
-#ifdef _OPENMP
-    numThreads = omp_get_max_threads();
-#endif
-    std::vector<bool> passed(numThreads, true);
-
-#pragma omp parallel shared(error, passed)
-    {
-      int threadId = 0;
-#ifdef _OPENMP
-      threadId = omp_get_thread_num();
-#endif
-#pragma omp for
-      for (int i = 0; i < numPoints; i++) {
-        if (error[i] > 0.05) {
-          passed[threadId] = false;
-        }
-      }
-    }
-    bool allPassed = true;
-    for (int i = 0; i < numThreads; i++) {
-      if (!passed[i]) {
-        allPassed = false;
-        break;
-      }
-    }
-    if (!allPassed) {
-      this->RTInfo_.warning = true;
-      Logger::getInstance()
-          .addWarning(
-              "Large relative error detected. Consider using more rays.")
-          .print();
-    }
-  }
-
   void checkSettings() {
     if (this->pParticle_ == nullptr) {
       this->RTInfo_.error = true;
