@@ -413,6 +413,93 @@ void writeVTK(const std::string &filename,
   f.close();
 }
 
+template <typename NumericType>
+void writeVTP(const std::string &filename,
+              const std::vector<Vec3D<NumericType>> &points,
+              const std::vector<Vec3D<unsigned>> &triangles,
+              const std::vector<NumericType> &flux) {
+  std::ofstream f(filename.c_str());
+  if (!f.is_open())
+    return;
+
+  const size_t nPoints = points.size();
+  const size_t nPolys = triangles.size();
+
+  f << "<?xml version=\"1.0\"?>\n";
+  f << "<VTKFile type=\"PolyData\" version=\"0.1\" "
+       "byte_order=\"LittleEndian\">\n";
+  f << "  <PolyData>\n";
+  f << "    <Piece NumberOfPoints=\"" << nPoints
+    << "\" NumberOfVerts=\"0\" NumberOfLines=\"0\" NumberOfStrips=\"0\" "
+       "NumberOfPolys=\""
+    << nPolys << "\">\n";
+
+  // Points
+  f << "      <Points>\n";
+  f << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" "
+       "format=\"ascii\">\n";
+  for (size_t i = 0; i < nPoints; ++i) {
+    const auto &p = points[i];
+    f << static_cast<float>(p[0]) << " " << static_cast<float>(p[1]) << " "
+      << static_cast<float>(p[2]) << "\n";
+  }
+  f << "        </DataArray>\n";
+  f << "      </Points>\n";
+
+  // Polys (triangles)
+  f << "      <Polys>\n";
+  // connectivity
+  f << "        <DataArray type=\"Int32\" Name=\"connectivity\" "
+       "format=\"ascii\">\n";
+  for (size_t i = 0; i < nPolys; ++i) {
+    const auto &t = triangles[i];
+    f << static_cast<int>(t[0]) << " " << static_cast<int>(t[1]) << " "
+      << static_cast<int>(t[2]) << "\n";
+  }
+  f << "        </DataArray>\n";
+
+  // offsets
+  f << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+  int offset = 0;
+  for (size_t i = 0; i < nPolys; ++i) {
+    offset += 3;
+    f << offset << "\n";
+  }
+  f << "        </DataArray>\n";
+  f << "      </Polys>\n";
+
+  // Decide whether flux is per-point or per-cell
+  if (flux.size() == nPoints) {
+    f << "      <PointData Scalars=\"flux\">\n";
+    f << "        <DataArray type=\"Float32\" Name=\"flux\" "
+         "format=\"ascii\">\n";
+    for (size_t i = 0; i < nPoints; ++i)
+      f << ((std::abs(flux[i]) < 1e-6) ? 0.0f : static_cast<float>(flux[i]))
+        << "\n";
+    f << "        </DataArray>\n";
+    f << "      </PointData>\n";
+  } else if (flux.size() == nPolys) {
+    f << "      <CellData Scalars=\"flux\">\n";
+    f << "        <DataArray type=\"Float32\" Name=\"flux\" "
+         "format=\"ascii\">\n";
+    for (size_t i = 0; i < nPolys; ++i)
+      f << ((std::abs(flux[i]) < 1e-6) ? 0.0f : static_cast<float>(flux[i]))
+        << "\n";
+    f << "        </DataArray>\n";
+    f << "      </CellData>\n";
+  } else if (!flux.empty()) {
+    // size mismatch: write neither but warn to cerr
+    std::cerr << "writeVTP: flux size does not match points or polys; skipping "
+                 "data\n";
+  }
+
+  f << "    </Piece>\n";
+  f << "  </PolyData>\n";
+  f << "</VTKFile>\n";
+
+  f.close();
+}
+
 /* -------------------------------------------------------------- */
 
 template <typename NumericType, int D>

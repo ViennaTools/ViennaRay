@@ -101,8 +101,19 @@ public:
     }
 
     // Initialize point neighborhood
-    this->pointNeighborhood_.template init<Dim>(
-        points, 2 * discRadii_, this->minCoords_, this->maxCoords_);
+    pointNeighborhood_.template init<Dim>(points, 2 * discRadii_,
+                                          this->minCoords_, this->maxCoords_);
+  }
+
+  [[nodiscard]] std::vector<unsigned int> const &
+  getNeighborIndices(const unsigned int idx) const {
+    assert(pointNeighborhood_.getDistance() > 0.); // check if initialized
+    return pointNeighborhood_.getNeighborIndices(idx);
+  }
+
+  [[nodiscard]] PointNeighborhood<NumericType, D> const &
+  getPointNeighborhood() const {
+    return pointNeighborhood_;
   }
 
   [[nodiscard]] Vec3D<NumericType> getPoint(const unsigned int primID) const {
@@ -179,6 +190,7 @@ private:
   normal_vec_3f_t *pNormalVecBuffer_ = nullptr;
 
   NumericType discRadii_; // same for all points
+  PointNeighborhood<NumericType, D> pointNeighborhood_;
 };
 
 } // namespace viennaray

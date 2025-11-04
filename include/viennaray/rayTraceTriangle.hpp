@@ -9,18 +9,24 @@ namespace viennaray {
 
 using namespace viennacore;
 
-template <class NumericType, int D>
+template <class NumericType, int D = 3>
 class TraceTriangle : public Trace<NumericType, D> {
 public:
-  TraceTriangle() {}
+  TraceTriangle() {
+    if (D == 2) {
+      Logger::getInstance()
+          .addError("TraceTriangle not implemented in 2D.")
+          .print();
+    }
+  }
   ~TraceTriangle() { geometry_.releaseGeometry(); }
 
   /// Run the ray tracer
   void apply() override {
     checkSettings();
     auto boundingBox = geometry_.getBoundingBox();
-    // rayInternal::adjustBoundingBox<NumericType, D>(
-    //     boundingBox, this->sourceDirection_, this->diskRadius_);
+    rayInternal::adjustBoundingBox<NumericType, D>(
+        boundingBox, this->sourceDirection_, this->gridDelta_);
     auto traceSettings = rayInternal::getTraceSettings(this->sourceDirection_);
 
     auto boundary = Boundary<NumericType, D>(
@@ -52,9 +58,6 @@ public:
     tracer.apply();
     this->config_.runNumber++;
 
-    if (this->checkError_)
-      this->checkRelativeError();
-
     boundary.releaseGeometry();
   }
 
@@ -83,132 +86,50 @@ public:
     assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in normalizeFlux");
 
-    //     auto diskArea = this->hitCounter_.getDiskAreas();
-    //     const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
+    switch (norm) {
+    case NormalizationType::MAX: {
+      auto maxv = *std::max_element(flux.begin(), flux.end());
+#pragma omp parallel for
+      for (int idx = 0; idx < flux.size(); ++idx) {
+        flux[idx] /= maxv * geometry_.getPrimArea(idx);
+      }
+      break;
+    }
 
-    //     switch (norm) {
-    //     case NormalizationType::MAX: {
-    //       auto maxv = *std::max_element(flux.begin(), flux.end());
-    // #pragma omp parallel for
-    //       for (int idx = 0; idx < flux.size(); ++idx) {
-    //         flux[idx] *= (totalDiskArea / diskArea[idx]) / maxv;
-    //       }
-    //       break;
-    //     }
+    case NormalizationType::SOURCE: {
+      if (!this->pSource_) {
+        Logger::getInstance()
+            .addWarning(
+                "No source was specified in rayTrace for the normalization.")
+            .print();
+        break;
+      }
+      NumericType sourceArea = this->pSource_->getSourceArea();
+      auto numTotalRays =
+          this->config_.numRaysFixed == 0
+              ? this->pSource_->getNumPoints() * this->config_.numRaysPerPoint
+              : this->config_.numRaysFixed;
+      NumericType normFactor = sourceArea / numTotalRays;
+#pragma omp parallel for
+      for (int idx = 0; idx < flux.size(); ++idx) {
+        flux[idx] *= normFactor / geometry_.getPrimArea(idx);
+      }
+      break;
+    }
 
-    //     case NormalizationType::SOURCE: {
-    //       if (!this->pSource_) {
-    //         Logger::getInstance()
-    //             .addWarning(
-    //                 "No source was specified in rayTrace for the
-    //                 normalization.")
-    //             .print();
-    //         break;
-    //       }
-    //       NumericType sourceArea = this->pSource_->getSourceArea();
-    //       auto numTotalRays = this->config_.numRaysFixed == 0
-    //                               ? this->pSource_->getNumPrimitives() *
-    //                                     this->config_.numRaysPerPoint
-    //                               : this->config_.numRaysFixed;
-    //       NumericType normFactor = sourceArea / numTotalRays;
-    // #pragma omp parallel for
-    //       for (int idx = 0; idx < flux.size(); ++idx) {
-    //         flux[idx] *= normFactor / diskArea[idx];
-    //       }
-    //       break;
-    //     }
-
-    //     default:
-    //       break;
-    //     }
+    default:
+      break;
+    }
   }
 
   /// Helper function to smooth the recorded flux by averaging over the
   /// neighborhood in a post-processing step.
   void smoothFlux(std::vector<NumericType> &flux,
                   int numNeighbors = 1) override {
-    assert(flux.size() == geometry_.getNumPrimitives() &&
-           "Unequal number of points in smoothFlux");
-    //     auto oldFlux = flux;
-    //     PointNeighborhood<NumericType, D> pointNeighborhood;
-    //     if (numNeighbors == 1) {
-    //       // re-use the neighborhood from the geometry
-    //       pointNeighborhood = geometry_.getPointNeighborhood();
-    //     } else {
-    //       // create a new neighborhood with a larger radius
-    //       auto boundingBox = geometry_.getBoundingBox();
-    //       std::vector<Vec3D<NumericType>>
-    //       points(geometry_.getNumPrimitives());
-    // #pragma omp parallel for
-    //       for (int idx = 0; idx < geometry_.getNumPrimitives(); idx++) {
-    //         points[idx] = geometry_.getPoint(idx);
-    //       }
-    //       pointNeighborhood.template init<3>(points, numNeighbors * 2 *
-    //       diskRadius_,
-    //                                          boundingBox[0], boundingBox[1]);
-    //     }
-
-    // #pragma omp parallel for
-    //     for (int idx = 0; idx < geometry_.getNumPrimitives(); idx++) {
-
-    //       NumericType vv = oldFlux[idx];
-
-    //       auto const &neighborhood =
-    //       pointNeighborhood.getNeighborIndices(idx); NumericType sum = 1.;
-    //       auto const normal = geometry_.getPrimNormal(idx);
-
-    //       for (auto const &nbi : neighborhood) {
-    //         auto nnormal = geometry_.getPrimNormal(nbi);
-    //         auto weight = DotProduct(normal, nnormal);
-    //         if (weight > 0.) {
-    //           vv += oldFlux[nbi] * weight;
-    //           sum += weight;
-    //         }
-    //       }
-
-    //       flux[idx] = vv / sum;
-    //     }
+    // no smoothing
   }
 
 private:
-  void checkRelativeError() {
-    auto error = this->getRelativeError();
-    const int numPoints = error.size();
-    int numThreads = 1;
-#ifdef _OPENMP
-    numThreads = omp_get_max_threads();
-#endif
-    std::vector<bool> passed(numThreads, true);
-
-#pragma omp parallel shared(error, passed)
-    {
-      int threadId = 0;
-#ifdef _OPENMP
-      threadId = omp_get_thread_num();
-#endif
-#pragma omp for
-      for (int i = 0; i < numPoints; i++) {
-        if (error[i] > 0.05) {
-          passed[threadId] = false;
-        }
-      }
-    }
-    bool allPassed = true;
-    for (int i = 0; i < numThreads; i++) {
-      if (!passed[i]) {
-        allPassed = false;
-        break;
-      }
-    }
-    if (!allPassed) {
-      this->RTInfo_.warning = true;
-      Logger::getInstance()
-          .addWarning(
-              "Large relative error detected. Consider using more rays.")
-          .print();
-    }
-  }
-
   void checkSettings() {
     if (this->pParticle_ == nullptr) {
       this->RTInfo_.error = true;
@@ -219,12 +140,6 @@ private:
       this->RTInfo_.error = true;
       Logger::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");
-    }
-    if ((D == 2 && this->sourceDirection_ == TraceDirection::POS_Z) ||
-        (D == 2 && this->sourceDirection_ == TraceDirection::NEG_Z)) {
-      this->RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "Invalid source direction in 2D geometry. Aborting.");
     }
   }
 

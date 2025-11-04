@@ -26,17 +26,6 @@ public:
     return {minCoords_, maxCoords_};
   }
 
-  [[nodiscard]] std::vector<unsigned int> const &
-  getNeighborIndices(const unsigned int idx) const {
-    assert(pointNeighborhood_.getDistance() > 0.); // check if initialized
-    return pointNeighborhood_.getNeighborIndices(idx);
-  }
-
-  [[nodiscard]] PointNeighborhood<NumericType, D> const &
-  getPointNeighborhood() const {
-    return pointNeighborhood_;
-  }
-
   [[nodiscard]] size_t getNumPrimitives() const { return numPrimitives_; }
 
   virtual Vec3D<NumericType> getPrimNormal(const unsigned int primID) const = 0;
@@ -70,8 +59,6 @@ protected:
   std::vector<int> materialIds_;
 
   std::array<float, 4> zero = {0.f, 0.f, 0.f, 0.f};
-
-  PointNeighborhood<NumericType, D> pointNeighborhood_;
 };
 
 } // namespace viennaray

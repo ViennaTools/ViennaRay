@@ -66,10 +66,37 @@ public:
     assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcSetNewGeometryBuffer elements");
 
+    normals_.resize(this->numPrimitives_);
+    areas_.resize(this->numPrimitives_);
     for (size_t i = 0; i < this->numPrimitives_; ++i) {
       pTriangleBuffer_[i].uu = elements[i][0];
       pTriangleBuffer_[i].vv = elements[i][1];
       pTriangleBuffer_[i].ww = elements[i][2];
+
+      // precompute normals
+      auto const &v0 = points[elements[i][0]];
+      auto const &v1 = points[elements[i][1]];
+      auto const &v2 = points[elements[i][2]];
+      auto edge1 = VectorType<NumericType, 3>{v1[0] - v0[0], v1[1] - v0[1],
+                                              v1[2] - v0[2]};
+      auto edge2 = VectorType<NumericType, 3>{v2[0] - v0[0], v2[1] - v0[1],
+                                              v2[2] - v0[2]};
+      auto normal =
+          VectorType<NumericType, 3>{edge1[1] * edge2[2] - edge1[2] * edge2[1],
+                                     edge1[2] * edge2[0] - edge1[0] * edge2[2],
+                                     edge1[0] * edge2[1] - edge1[1] * edge2[0]};
+      auto length = std::sqrt(normal[0] * normal[0] + normal[1] * normal[1] +
+                              normal[2] * normal[2]);
+      if (length > 0) {
+        normal[0] /= length;
+        normal[1] /= length;
+        normal[2] /= length;
+        normals_[i] = normal;
+        areas_[i] = 0.5 * length;
+      } else {
+        normals_[i] = VectorType<NumericType, 3>{0, 0, 0};
+        areas_[i] = 0.;
+      }
     }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
@@ -83,11 +110,6 @@ public:
     if (this->materialIds_.empty()) {
       this->materialIds_.resize(this->numPrimitives_, 0);
     }
-
-    // Initialize point neighborhood
-    /// TODO:
-    // this->pointNeighborhood_.template init<Dim>(
-    //     points, 2 * discRadii_, this->minCoords_, this->maxCoords_);
   }
 
   [[nodiscard]] Vec3D<unsigned> getTriangle(const unsigned int primID) const {
@@ -99,15 +121,14 @@ public:
 
   Vec3D<NumericType> getPrimNormal(const unsigned int primID) const override {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
-    if (normals_.empty()) {
-      // calculate normal
-      /// TODO:
-      return Vec3D<NumericType>{0, 0, 0};
-    } else {
-      return Vec3D<NumericType>{static_cast<NumericType>(normals_[primID][0]),
-                                static_cast<NumericType>(normals_[primID][1]),
-                                static_cast<NumericType>(normals_[primID][2])};
-    }
+    return Vec3D<NumericType>{static_cast<NumericType>(normals_[primID][0]),
+                              static_cast<NumericType>(normals_[primID][1]),
+                              static_cast<NumericType>(normals_[primID][2])};
+  }
+
+  NumericType getPrimArea(const unsigned int primID) const {
+    assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
+    return areas_[primID];
   }
 
   // std::array<float, 3> &getPrimRef(unsigned int primID) override {
@@ -134,6 +155,7 @@ public:
     // Attention:
     // This function must not be called when the RTCGeometry reference count is
     // > 1. Doing so leads to leaked memory buffers
+    normals_.clear();
     if (pPointBuffer_ == nullptr || pTriangleBuffer_ == nullptr ||
         this->pRtcGeometry_ == nullptr) {
       return;
@@ -157,6 +179,7 @@ private:
   triangle_3u_t *pTriangleBuffer_ = nullptr;
 
   std::vector<Vec3Df> normals_;
+  std::vector<NumericType> areas_;
 };
 
 } // namespace viennaray
