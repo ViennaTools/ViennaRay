@@ -1,7 +1,6 @@
 #pragma once
 
 #include <rayBoundary.hpp>
-#include <rayGeometry.hpp>
 #include <rayHitCounter.hpp>
 #include <raySourceRandom.hpp>
 #include <rayTraceKernel.hpp>
@@ -16,59 +15,17 @@ using namespace viennacore;
 
 template <class NumericType, int D> class Trace {
 public:
-  Trace() : device_(rtcNewDevice("hugepages=1")) {}
+  Trace() : device_(rtcNewDevice("hugepages=1")) { initMemoryFlags(); }
 
   Trace(const Trace &) = delete;
   Trace &operator=(const Trace &) = delete;
   Trace(Trace &&) = delete;
   Trace &operator=(Trace &&) = delete;
 
-  ~Trace() {
-    geometry_.releaseGeometry();
-    rtcReleaseDevice(device_);
-  }
+  ~Trace() { rtcReleaseDevice(device_); }
 
   /// Run the ray tracer
-  void apply() {
-    checkSettings();
-    initMemoryFlags();
-    auto boundingBox = geometry_.getBoundingBox();
-    rayInternal::adjustBoundingBox<NumericType, D>(
-        boundingBox, sourceDirection_, diskRadius_);
-    auto traceSettings = rayInternal::getTraceSettings(sourceDirection_);
-
-    auto boundary = Boundary<NumericType, D>(
-        device_, boundingBox, boundaryConditions_, traceSettings);
-
-    std::array<Vec3D<NumericType>, 3> orthonormalBasis;
-    if (usePrimaryDirection_)
-      orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
-    if (!useCustomSource)
-      pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
-          boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
-          geometry_.getNumPoints(), usePrimaryDirection_, orthonormalBasis);
-
-    auto localDataLabels = pParticle_->getLocalDataLabels();
-    if (!localDataLabels.empty()) {
-      localData_.setNumberOfVectorData(localDataLabels.size());
-      auto numPoints = geometry_.getNumPoints();
-      for (int i = 0; i < localDataLabels.size(); ++i) {
-        localData_.setVectorData(i, numPoints, 0., localDataLabels[i]);
-      }
-    }
-
-    rayInternal::TraceKernel tracer(device_, geometry_, boundary, pSource_,
-                                    pParticle_, config_, dataLog_, hitCounter_,
-                                    RTInfo_);
-    tracer.setTracingData(&localData_, pGlobalData_);
-    tracer.apply();
-    config_.runNumber++;
-
-    if (checkError_)
-      checkRelativeError();
-
-    boundary.releaseGeometry();
-  }
+  virtual void apply() {}
 
   /// Set the particle type used for ray tracing
   /// The particle is a user defined object that has to interface the
@@ -79,41 +36,6 @@ public:
                 bool> = true>
   void setParticleType(std::unique_ptr<ParticleType> const &particle) {
     pParticle_ = particle->clone();
-  }
-
-  /// Set the ray tracing geometry
-  /// It is possible to set a 2D geometry with 3D points.
-  /// In this case the last dimension is ignored.
-  template <size_t Dim>
-  void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
-                   std::vector<VectorType<NumericType, Dim>> const &normals,
-                   const NumericType gridDelta) {
-    static_assert((D != 3 || Dim != 2) &&
-                  "Setting 2D geometry in 3D trace object");
-
-    gridDelta_ = gridDelta;
-    diskRadius_ = gridDelta * rayInternal::DiskFactor<D>;
-    geometry_.initGeometry(device_, points, normals, diskRadius_);
-  }
-
-  /// Set the ray tracing geometry
-  /// Specify the disk radius manually.
-  template <size_t Dim>
-  void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
-                   std::vector<VectorType<NumericType, Dim>> const &normals,
-                   const NumericType gridDelta, const NumericType diskRadii) {
-    static_assert((D != 3 || Dim != 2) &&
-                  "Setting 2D geometry in 3D trace object");
-
-    gridDelta_ = gridDelta;
-    diskRadius_ = diskRadii;
-    geometry_.initGeometry(device_, points, normals, diskRadius_);
-  }
-
-  /// Set material ID's for each geometry point.
-  /// If not set, all material IDs are default 0.
-  template <typename T> void setMaterialIds(std::vector<T> const &materialIds) {
-    geometry_.setMaterialIds(materialIds);
   }
 
   /// Set the boundary conditions.
@@ -225,93 +147,14 @@ public:
   /// Helper function to normalize the recorded flux in a post-processing step.
   /// The flux can be normalized to the source flux and the maximum recorded
   /// value.
-  void normalizeFlux(std::vector<NumericType> &flux,
-                     NormalizationType norm = NormalizationType::SOURCE) {
-    assert(flux.size() == geometry_.getNumPoints() &&
-           "Unequal number of points in normalizeFlux");
-
-    auto diskArea = hitCounter_.getDiskAreas();
-    const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
-
-    switch (norm) {
-    case NormalizationType::MAX: {
-      auto maxv = *std::max_element(flux.begin(), flux.end());
-#pragma omp parallel for
-      for (int idx = 0; idx < flux.size(); ++idx) {
-        flux[idx] *= (totalDiskArea / diskArea[idx]) / maxv;
-      }
-      break;
-    }
-
-    case NormalizationType::SOURCE: {
-      if (!pSource_) {
-        Logger::getInstance()
-            .addWarning(
-                "No source was specified in rayTrace for the normalization.")
-            .print();
-        break;
-      }
-      NumericType sourceArea = pSource_->getSourceArea();
-      auto numTotalRays =
-          config_.numRaysFixed == 0
-              ? pSource_->getNumPoints() * config_.numRaysPerPoint
-              : config_.numRaysFixed;
-      NumericType normFactor = sourceArea / numTotalRays;
-#pragma omp parallel for
-      for (int idx = 0; idx < flux.size(); ++idx) {
-        flux[idx] *= normFactor / diskArea[idx];
-      }
-      break;
-    }
-
-    default:
-      break;
-    }
-  }
+  virtual void
+  normalizeFlux(std::vector<NumericType> &flux,
+                NormalizationType norm = NormalizationType::SOURCE) = 0;
 
   /// Helper function to smooth the recorded flux by averaging over the
   /// neighborhood in a post-processing step.
-  void smoothFlux(std::vector<NumericType> &flux, int numNeighbors = 1) {
-    assert(flux.size() == geometry_.getNumPoints() &&
-           "Unequal number of points in smoothFlux");
-    auto oldFlux = flux;
-    PointNeighborhood<NumericType, D> pointNeighborhood;
-    if (numNeighbors == 1) {
-      // re-use the neighborhood from the geometry
-      pointNeighborhood = geometry_.getPointNeighborhood();
-    } else {
-      // create a new neighborhood with a larger radius
-      auto boundingBox = geometry_.getBoundingBox();
-      std::vector<Vec3D<NumericType>> points(geometry_.getNumPoints());
-#pragma omp parallel for
-      for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
-        points[idx] = geometry_.getPoint(idx);
-      }
-      pointNeighborhood.template init<3>(points, numNeighbors * 2 * diskRadius_,
-                                         boundingBox[0], boundingBox[1]);
-    }
-
-#pragma omp parallel for
-    for (int idx = 0; idx < geometry_.getNumPoints(); idx++) {
-
-      NumericType vv = oldFlux[idx];
-
-      auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
-      NumericType sum = 1.;
-      auto const normal = geometry_.getPrimNormal(idx);
-
-      for (auto const &nbi : neighborhood) {
-        auto nnormal = geometry_.getPrimNormal(nbi);
-        auto weight = DotProduct(normal, nnormal);
-        if (weight > 0.) {
-          vv += oldFlux[nbi] * weight;
-          sum += weight;
-        }
-      }
-
-      flux[idx] = vv / sum;
-    }
-  }
+  virtual void smoothFlux(std::vector<NumericType> &flux,
+                          int numNeighbors = 1) = 0;
 
   /// Returns the total number of hits for each geometry point.
   [[nodiscard]] std::vector<size_t> getHitCounts() const {
@@ -323,18 +166,11 @@ public:
     return hitCounter_.getRelativeError();
   }
 
-  /// Returns the disk area for each geometry point
-  [[nodiscard]] std::vector<NumericType> getDiskAreas() {
-    return hitCounter_.getDiskAreas();
-  }
-
   [[nodiscard]] TracingData<NumericType> &getLocalData() { return localData_; }
 
   [[nodiscard]] TracingData<NumericType> *getGlobalData() {
     return pGlobalData_;
   }
-
-  Geometry<NumericType, D> &getGeometry() { return geometry_; }
 
   void setGlobalData(TracingData<NumericType> &data) { pGlobalData_ = &data; }
 
@@ -381,32 +217,6 @@ private:
     }
   }
 
-  void checkSettings() {
-    if (pParticle_ == nullptr) {
-      RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "No particle was specified in rayTrace. Aborting.");
-    }
-    if (geometry_.checkGeometryEmpty()) {
-      RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "No geometry was passed to rayTrace. Aborting.");
-    }
-    if ((D == 2 && sourceDirection_ == TraceDirection::POS_Z) ||
-        (D == 2 && sourceDirection_ == TraceDirection::NEG_Z)) {
-      RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "Invalid source direction in 2D geometry. Aborting.");
-    }
-    if (diskRadius_ > gridDelta_) {
-      RTInfo_.warning = true;
-      Logger::getInstance()
-          .addWarning("Disk radius should be smaller than grid delta. Hit "
-                      "count normalization not correct.")
-          .print();
-    }
-  }
-
   static void initMemoryFlags() {
 #ifdef ARCH_X86
     // for best performance set FTZ and DAZ flags in MXCSR control and status
@@ -416,14 +226,12 @@ private:
 #endif
   }
 
-private:
+protected:
   RTCDevice device_;
 
-  Geometry<NumericType, D> geometry_;
   std::shared_ptr<Source<NumericType>> pSource_ = nullptr;
   std::unique_ptr<AbstractParticle<NumericType>> pParticle_ = nullptr;
 
-  NumericType diskRadius_ = 0;
   NumericType gridDelta_ = 0;
 
   BoundaryCondition boundaryConditions_[D] = {};

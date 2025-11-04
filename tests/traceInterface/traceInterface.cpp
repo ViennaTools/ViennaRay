@@ -1,5 +1,5 @@
 #include <rayParticle.hpp>
-#include <rayTrace.hpp>
+#include <rayTraceDisk.hpp>
 #include <vcTestAsserts.hpp>
 
 using namespace viennaray;
@@ -40,7 +40,7 @@ int main() {
   boundaryConds[2] = BoundaryCondition::REFLECTIVE;
   auto particle = std::make_unique<TestParticle<NumericType>>();
 
-  Trace<NumericType, D> rayTracer;
+  TraceDisk<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
