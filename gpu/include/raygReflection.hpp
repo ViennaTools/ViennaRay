@@ -63,97 +63,6 @@ specularReflection(viennaray::gpu::PerRayData *prd,
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
 
-// static __device__ __forceinline__ void
-// specularReflection(viennaray::gpu::PerRayData *prd) {
-//   using namespace viennacore;
-//   const viennaray::gpu::HitSBTDataDisk *sbtData =
-//       (const viennaray::gpu::HitSBTDataDisk *)optixGetSbtDataPointer();
-//   const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
-//   specularReflection(prd, geoNormal);
-// }
-
-// GPU coned specular reflection (fast, branch-light). Expects getNextRand(&rng)
-// in [0,1). Requires: Vec3D<T>, DotProduct, Normalize, Inv, ReflectionSpecular,
-// ReflectionDiffuse.
-// template <typename T, int D, typename RNG>
-// __forceinline__ __device__ Vec3D<T>
-// ReflectionConedCosineGPU(const Vec3D<T> &rayDir, const Vec3D<T> &geomNormal,
-//                          RNG &rng, const T maxConeAngle) {
-//   constexpr T kPi = T(3.14159265358979323846);
-//   constexpr T kTwoPi = T(6.2831853071795864769);
-//   constexpr T kHalfPi = T(1.57079632679489661923);
-
-//   if (maxConeAngle <= T(0))
-//     return ReflectionSpecular<T>(rayDir, geomNormal);
-//   if (maxConeAngle >= kHalfPi)
-//     return ReflectionDiffuse<T, D>(geomNormal, rng);
-
-//   // Specular direction
-//   const auto v = Inv(rayDir);
-//   Vec3D<T> w = (T(2) * DotProduct(geomNormal, v)) * geomNormal - v;
-//   Normalize(w);
-
-//   // Frisvad ONB around w
-//   Vec3D<T> t, b;
-//   if (w[2] < T(-0.999999)) {
-//     t = {T(0), T(-1), T(0)};
-//     b = {T(-1), T(0), T(0)};
-//   } else {
-//     const T a = T(1) / (T(1) + w[2]);
-//     const T bx = -w[0] * w[1] * a;
-//     t = {T(1) - w[0] * w[0] * a, bx, -w[0]};
-//     b = {bx, T(1) - w[1] * w[1] * a, -w[1]};
-//   }
-
-//   // Sample polar angle via accept-reject (keeps your distribution)
-//   T theta;
-//   for (;;) {
-//     const T u = sqrt(static_cast<T>(getNextRand(&rng))); // in (0,1)
-//     const T s = sqrt(fmax(T(0), T(1) - u));              // sqrt(1-u)
-//     theta = maxConeAngle * s;
-//     // RHS = cos(pi/2 * s) * sin(theta)
-//     T sT, cT;
-//     if constexpr (std::is_same<T, float>::value) {
-//       __sincosf(theta, &sT, &cT);
-//     } else {
-//       sincos(theta, &sT, &cT);
-//     }
-//     const T rhs = (std::is_same<T, float>::value)
-//                       ? __cosf(T(1.5707963267948966f) * s) * sT
-//                       : cos(T(1.5707963267948966) * s) * sT;
-//     if (static_cast<T>(getNextRand(&rng)) * theta * u <= rhs)
-//       break;
-//   }
-
-//   // One azimuth sample
-//   const T phi = kTwoPi * static_cast<T>(getNextRand(&rng));
-//   T sP, cP, sT, cT;
-//   if constexpr (std::is_same<T, float>::value) {
-//     __sincosf(theta, &sT, &cT);
-//     __sincosf(phi, &sP, &cP);
-//   } else {
-//     sincos(theta, &sT, &cT);
-//     sincos(phi, &sP, &cP);
-//   }
-
-//   // Combine: d = sinT*(cosP*t + sinP*b) + cosT*w
-//   Vec3D<T> dir{sT * (cP * t[0] + sP * b[0]) + cT * w[0],
-//                sT * (cP * t[1] + sP * b[1]) + cT * w[1],
-//                sT * (cP * t[2] + sP * b[2]) + cT * w[2]};
-
-//   // Ensure correct hemisphere without retry
-//   const T dp = DotProduct(dir, geomNormal);
-//   if (dp <= T(0))
-//     dir = dir - T(2) * dp * geomNormal;
-
-//   if constexpr (D == 2) {
-//     dir[2] = T(0);
-//     Normalize(dir);
-//   }
-//   Normalize(dir);
-//   return dir;
-// }
-
 static __device__ viennacore::Vec3Df
 PickRandomPointOnUnitSphere(viennaray::gpu::RNGState *state) {
   const float4 u = curand_uniform4(state); // (0,1]
@@ -198,14 +107,16 @@ conedCosineReflection(viennaray::gpu::PerRayData *prd,
                       const float maxConeAngle, const uint8_t D) {
   using namespace viennacore;
 
-  // TODO: Is this needed? Done in the CPU version
-  // if (maxConeAngle <= 0.f)
-  //   return specularReflection(prd, geomNormal);
-  // if (maxConeAngle >= M_PI_2f)
-  //   return diffuseReflection(prd, geomNormal, D);
-
   // Calculate specular direction
   specularReflection(prd, geomNormal);
+
+  if (maxConeAngle <= 0.f) {
+    return;
+  }
+  if (maxConeAngle >= M_PI_2f) {
+    diffuseReflection(prd, geomNormal, D);
+    return;
+  }
 
   // Frisvad ONB around specular direction
   const auto &w = prd->dir;
@@ -227,9 +138,7 @@ conedCosineReflection(viennaray::gpu::PerRayData *prd,
     const float s = sqrt(fmax(0.f, 1.f - u));          // sqrt(1-u)
     theta = maxConeAngle * s;
     // RHS = cos(pi/2 * s) * sin(theta)
-    float sT, cT;
-    __sincosf(theta, &sT, &cT);
-    const float rhs = __cosf(M_PI_2f * s) * sT;
+    const float rhs = __cosf(M_PI_2f * s) * __sinf(theta);
     if (getNextRand(&prd->RNGstate) * theta * u <= rhs)
       break;
   }
@@ -245,13 +154,14 @@ conedCosineReflection(viennaray::gpu::PerRayData *prd,
              __fmaf_rn(sT, __fmaf_rn(cP, t[1], sP * b[1]), cT * w[1]),
              __fmaf_rn(sT, __fmaf_rn(cP, t[2], sP * b[2]), cT * w[2])};
 
-  // Ensure correct hemisphere without retry
+  // Ensure correct hemisphere
   const float dp = DotProduct(dir, geomNormal);
   if (dp <= 0.f)
     dir = dir - 2.f * dp * geomNormal;
 
   if (D == 2)
     dir[2] = 0.f;
+
   Normalize(dir);
   prd->dir = dir;
 }

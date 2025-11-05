@@ -54,21 +54,18 @@ template <typename NumericType, int D>
 ReflectionConedCosine(const Vec3D<NumericType> &rayDir,
                       const Vec3D<NumericType> &geomNormal, RNG &rng,
                       const NumericType maxConeAngle) {
-  using T = NumericType;
-  constexpr NumericType kPi = T(3.14159265358979323846);
-  constexpr NumericType kTwoPi = T(6.2831853071795864769);
-  constexpr NumericType kHalfPi = T(1.57079632679489661923);
 
-  std::uniform_real_distribution<NumericType> rand01(0.0, 1.0);
+  std::uniform_real_distribution<double> rand01(0.0, 1.0);
 
   if (maxConeAngle <= NumericType(0))
     return ReflectionSpecular<NumericType>(rayDir, geomNormal);
-  if (maxConeAngle >= kHalfPi)
+  if (maxConeAngle >= M_PI_2)
     return ReflectionDiffuse<NumericType, D>(geomNormal, rng);
 
-  // specular direction (unit)
+  // specular direction (w)
   const auto v = Inv(rayDir);
-  Vec3D<NumericType> w = (T(2) * DotProduct(geomNormal, v)) * geomNormal - v;
+  Vec3D<NumericType> w =
+      (NumericType(2) * DotProduct(geomNormal, v)) * geomNormal - v;
   Normalize(w); // cheap; keeps basis stable
 
   // fast ONB around w (Frisvad)
@@ -86,14 +83,13 @@ ReflectionConedCosine(const Vec3D<NumericType> &rayDir,
   }
 
   // sample polar angle (accept-reject)
-  NumericType theta;
+  double theta;
   for (;;) {
-    const NumericType r1 = std::sqrt(rand01(rng)); // u
-    const NumericType s =
-        std::sqrt(std::max(NumericType(1) - r1, NumericType(0))); // sqrt(1-u)
+    const double u = std::sqrt(rand01(rng));
+    const double s = std::sqrt(std::max(1.0 - u, 0.0)); // sqrt(1-u)
     theta = maxConeAngle * s;
-    const NumericType rhs = std::cos(kHalfPi * s) * std::sin(theta);
-    if (rand01(rng) * theta * r1 <= rhs)
+    const double rhs = std::cos(M_PI_2 * s) * std::sin(theta);
+    if (rand01(rng) * theta * u <= rhs)
       break;
   }
 
@@ -101,21 +97,23 @@ ReflectionConedCosine(const Vec3D<NumericType> &rayDir,
   const NumericType sinT = std::sin(theta);
   const NumericType cosT = std::cos(theta);
 
-  const NumericType phi = kTwoPi * rand01(rng);
+  const double phi = 2.0 * M_PI * rand01(rng);
   NumericType sinP = std::sin(phi), cosP = std::cos(phi);
 
-  // local combination: d = sinT*(cosP*t + sinP*b) + cosT*w
+  // Combine: d = sinT*(cosP*t + sinP*b) + cosT*w
   Vec3D<NumericType> dir{sinT * (cosP * t[0] + sinP * b[0]) + cosT * w[0],
                          sinT * (cosP * t[1] + sinP * b[1]) + cosT * w[1],
                          sinT * (cosP * t[2] + sinP * b[2]) + cosT * w[2]};
 
   // ensure the correct hemisphere
-  if (DotProduct(dir, geomNormal) <= NumericType(0))
-    dir = dir - NumericType(2) * DotProduct(dir, geomNormal) * geomNormal;
+  const NumericType dp = DotProduct(dir, geomNormal);
+  if (dp <= NumericType(0))
+    dir = dir - NumericType(2) * dp * geomNormal;
 
   if constexpr (D == 2) {
     dir[2] = NumericType(0);
   }
+
   // small renorm to counter float drift
   Normalize(dir);
   return dir;
