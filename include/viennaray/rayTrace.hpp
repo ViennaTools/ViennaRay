@@ -165,7 +165,6 @@ protected:
 
   bool usePrimaryDirection_ = false;
   bool useCustomSource = false;
-  bool checkError_ = true;
 
   rayInternal::KernelConfig config_;
 

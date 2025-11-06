@@ -67,6 +67,7 @@ struct TraceInfo {
   size_t nonGeometryHits = 0;
   size_t geometryHits = 0;
   size_t particleHits = 0;
+  size_t boundaryHits = 0;
   double time = 0.0;
   bool warning = false;
   bool error = false;

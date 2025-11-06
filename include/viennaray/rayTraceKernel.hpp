@@ -52,6 +52,7 @@ public:
     size_t nonGeoHits = 0;
     size_t totalTraces = 0;
     size_t particleHits = 0;
+    size_t boundaryHits = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
@@ -84,7 +85,8 @@ public:
     timer.start();
 
 #pragma omp parallel reduction(+ : geoHits, nonGeoHits, totalTraces,           \
-                                   particleHits) shared(threadLocalData)
+                                   particleHits, boundaryHits)                 \
+    shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -206,6 +208,7 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
+            ++boundaryHits;
             boundary_.processHit(rayHit, reflect);
             continue;
           }
@@ -217,10 +220,11 @@ public:
                                     ray.org_y + ray.dir_y * ray.tfar,
                                     ray.org_z + ray.dir_z * ray.tfar};
 
-          /* -------- Hit from back -------- */
           const auto rayDir =
               Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
+
+          // Check for backface hit in case of disks
           if constexpr (geoType == GeometryType::DISK) {
             if (DotProduct(rayDir, geomNormal) > 0) {
               // If the dot product of the ray direction and the surface normal
@@ -244,6 +248,7 @@ public:
           ++geoHits;
 
           if constexpr (geoType == GeometryType::DISK) {
+            // Disk Geometry - multiple hits possible
             std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 #ifdef VIENNARAY_USE_WDIST
             std::vector<rtcNumericType>
@@ -403,6 +408,7 @@ public:
     traceInfo_.nonGeometryHits = nonGeoHits;
     traceInfo_.geometryHits = geoHits;
     traceInfo_.particleHits = particleHits;
+    traceInfo_.boundaryHits = boundaryHits;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     rtcReleaseScene(rtcScene);

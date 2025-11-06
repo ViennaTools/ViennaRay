@@ -98,7 +98,7 @@ public:
     assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcCommitGeometry");
 
-    if (this->materialIds_.empty()) {
+    if (this->materialIds_.size() != this->numPrimitives_) {
       this->materialIds_.resize(this->numPrimitives_, 0);
     }
 
