@@ -1,4 +1,4 @@
-#include <rayTrace.hpp>
+#include <rayTraceDisk.hpp>
 #include <vcTestAsserts.hpp>
 
 using namespace viennaray;
@@ -16,7 +16,7 @@ int main() {
 
   auto device = rtcNewDevice("");
 
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
   BoundaryCondition mBoundaryConds[D] = {};

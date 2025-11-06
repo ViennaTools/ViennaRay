@@ -1,5 +1,5 @@
 #include <rayBoundary.hpp>
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <rayUtil.hpp>
 #include <vcTestAsserts.hpp>
 
@@ -27,7 +27,7 @@ int main() {
     normals.push_back(normal);
   }
 
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
   boundCons[1] = BoundaryCondition::REFLECTIVE;
@@ -140,7 +140,7 @@ int main() {
     normals.push_back(normal);
   }
 
-  Geometry<NumericType, D> geometry2;
+  GeometryDisk<NumericType, D> geometry2;
   geometry2.initGeometry(device, points, normals, gridDelta);
   boundCons[0] = BoundaryCondition::REFLECTIVE;
   {

@@ -1,4 +1,4 @@
-#include <rayGeometry.hpp>
+#include <rayGeometryDisk.hpp>
 #include <rayUtil.hpp>
 #include <vcTestAsserts.hpp>
 
@@ -22,11 +22,11 @@ int main() {
   // assert inner points have 8 neighbors
 
   auto device = rtcNewDevice("");
-  Geometry<NumericType, D> geometry;
+  GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta - eps);
   auto bdBox = geometry.getBoundingBox();
 
-  for (unsigned int idx = 0; idx < geometry.getNumPoints(); ++idx) {
+  for (unsigned int idx = 0; idx < geometry.getNumPrimitives(); ++idx) {
     auto point = geometry.getPoint(idx);
     auto neighbors = geometry.getNeighborIndices(idx);
 

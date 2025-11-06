@@ -3,7 +3,6 @@
 #include <rayBoundary.hpp>
 #include <rayDiskBoundingBoxIntersector.hpp>
 #include <rayGeometry.hpp>
-#include <rayHitCounter.hpp>
 #include <rayParticle.hpp>
 #include <raySource.hpp>
 #include <rayTracingData.hpp>
@@ -19,24 +18,17 @@ namespace rayInternal {
 
 using namespace viennaray;
 
-template <typename NumericType, int D> class TraceKernel {
+template <typename NumericType, int D, GeometryType geoType> class TraceKernel {
 public:
   TraceKernel(RTCDevice &device, Geometry<NumericType, D> &geometry,
               Boundary<NumericType, D> &boundary,
               std::shared_ptr<Source<NumericType>> source,
               std::unique_ptr<AbstractParticle<NumericType>> &particle,
               KernelConfig const &config, DataLog<NumericType> &dataLog,
-              HitCounter<NumericType> &hitCounter, TraceInfo &traceInfo)
+              TraceInfo &traceInfo)
       : device_(device), geometry_(geometry), boundary_(boundary),
         pSource_(source), pParticle_(particle->clone()), config_(config),
-        // numRays(numRaysFixed == 0 ? pSource_->getNumPoints() *
-        // numRaysPerPoint
-        //                            : numRaysFixed),
-        hitCounter_(hitCounter), traceInfo_(traceInfo), dataLog_(dataLog) {
-    assert(rtcGetDeviceProperty(device_, RTC_DEVICE_PROPERTY_VERSION) >=
-               30601 &&
-           "Error: The minimum version of Embree is 3.6.1");
-  }
+        traceInfo_(traceInfo), dataLog_(dataLog) {}
 
   void apply() {
     auto rtcScene = rtcNewScene(device_);
@@ -60,6 +52,7 @@ public:
     size_t nonGeoHits = 0;
     size_t totalTraces = 0;
     size_t particleHits = 0;
+    size_t boundaryHits = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
@@ -67,11 +60,12 @@ public:
                   static_cast<long long>(config_.numRaysPerPoint)
             : static_cast<long long>(config_.numRaysFixed);
 
-    // thread local data storage
     int numThreads = 1;
 #ifdef _OPENMP
     numThreads = omp_get_max_threads();
 #endif
+
+    // thread local data storage
     std::vector<TracingData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *pLocalData_;
@@ -87,22 +81,12 @@ public:
       }
     }
 
-    // hit counters
-    std::vector<HitCounter<NumericType>> threadLocalHitCounter(numThreads);
-    hitCounter_.clear();
-    hitCounter_.resize(geometry_.getNumPoints(), config_.calcFlux);
-    if (config_.calcFlux) {
-      for (auto &hitC : threadLocalHitCounter) {
-        hitC = hitCounter_;
-      }
-    }
-
     Timer timer;
     timer.start();
 
 #pragma omp parallel reduction(+ : geoHits, nonGeoHits, totalTraces,           \
-                                   particleHits)                               \
-    shared(threadLocalData, threadLocalHitCounter)
+                                   particleHits, boundaryHits)                 \
+    shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -123,7 +107,6 @@ public:
       auto particle = pParticle_->clone();
 
       auto &myLocalData = threadLocalData[threadID];
-      auto &myHitCounter = threadLocalHitCounter[threadID];
       auto &myDataLog = threadLocalDataLog[threadID];
 
 #if VIENNARAY_EMBREE_VERSION < 4
@@ -225,6 +208,7 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
+            ++boundaryHits;
             boundary_.processHit(rayHit, reflect);
             continue;
           }
@@ -236,74 +220,87 @@ public:
                                     ray.org_y + ray.dir_y * ray.tfar,
                                     ray.org_z + ray.dir_z * ray.tfar};
 
-          /* -------- Hit from back -------- */
           const auto rayDir =
               Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
-          if (DotProduct(rayDir, geomNormal) > 0) {
-            // If the dot product of the ray direction and the surface normal is
-            // greater than zero, then we hit the back face of the disk.
-            if (hitFromBack) {
-              // if hitFromBack == true, then the ray hits the back of a disk
-              // the second time. In this case we discard the ray.
-              break;
+
+          // Check for backface hit in case of disks
+          if constexpr (geoType == GeometryType::DISK) {
+            if (DotProduct(rayDir, geomNormal) > 0) {
+              // If the dot product of the ray direction and the surface normal
+              // is greater than zero, then we hit the back face of the disk.
+              if (hitFromBack) {
+                // if hitFromBack == true, then the ray hits the back of a disk
+                // the second time. In this case we discard the ray.
+                break;
+              }
+              hitFromBack = true;
+              // Let ray through, i.e., continue.
+              reflect = true;
+              fillRayPosition(rayHit.ray, hitPoint);
+              // keep ray direction as it is
+              continue;
             }
-            hitFromBack = true;
-            // Let ray through, i.e., continue.
-            reflect = true;
-            fillRayPosition(rayHit.ray, hitPoint);
-            // keep ray direction as it is
-            continue;
           }
 
           /* -------- Surface hit -------- */
           assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
           ++geoHits;
-          std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
+          if constexpr (geoType == GeometryType::DISK) {
+            // Disk Geometry - multiple hits possible
+            std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 #ifdef VIENNARAY_USE_WDIST
-          std::vector<rtcNumericType>
-              impactDistances; // distances between point of impact and disk
-                               // origins of hit disks
-          {                    // distance on first disk hit
-            const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
-            const auto &diskOrigin =
-                *reinterpret_cast<Vec3D<rtcNumericType> const *>(&disk);
-            impactDistances.push_back(Distance(hitPoint, diskOrigin) +
-                                      1e-6f); // add eps to avoid division by 0
-          }
-#endif
-          // check for additional intersections
-          for (const auto &id :
-               geometry_.getNeighborIndices(rayHit.hit.primID)) {
-            rtcNumericType distance;
-            if (checkLocalIntersection(ray, id, distance)) {
-              hitDiskIds.push_back(id);
-#ifdef VIENNARAY_USE_WDIST
-              impactDistances.push_back(distance + 1e-6f);
-#endif
+            std::vector<rtcNumericType>
+                impactDistances; // distances between point of impact and disk
+                                 // origins of hit disks
+            {                    // distance on first disk hit
+              const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
+              const auto &diskOrigin =
+                  *reinterpret_cast<Vec3D<rtcNumericType> const *>(&disk);
+              impactDistances.push_back(
+                  Distance(hitPoint, diskOrigin) +
+                  1e-6f); // add eps to avoid division by 0
             }
-          }
-          const size_t numDisksHit = hitDiskIds.size();
+#endif
+            // check for additional intersections
+            for (const auto &id :
+                 geometry_.getNeighborIndices(rayHit.hit.primID)) {
+              rtcNumericType distance;
+              if (checkLocalIntersection(ray, id, distance)) {
+                hitDiskIds.push_back(id);
+#ifdef VIENNARAY_USE_WDIST
+                impactDistances.push_back(distance + 1e-6f);
+#endif
+              }
+            }
+            const size_t numDisksHit = hitDiskIds.size();
 
 #ifdef VIENNARAY_USE_WDIST
-          rtcNumericType invDistanceWeightSum = 0;
-          for (const auto &d : impactDistances)
-            invDistanceWeightSum += 1 / d;
+            rtcNumericType invDistanceWeightSum = 0;
+            for (const auto &d : impactDistances)
+              invDistanceWeightSum += 1 / d;
 #endif
-          // for each disk hit
-          for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
-            const auto matID = geometry_.getMaterialId(hitDiskIds[diskId]);
-            const auto normal = geometry_.getPrimNormal(hitDiskIds[diskId]);
+            // for each disk hit
+            for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
+              const auto matID = geometry_.getMaterialId(hitDiskIds[diskId]);
+              const auto normal = geometry_.getPrimNormal(hitDiskIds[diskId]);
 #ifdef VIENNARAY_USE_WDIST
-            auto distRayWeight = rayWeight / impactDistances[diskId] /
-                                 invDistanceWeightSum * numDisksHit;
+              auto distRayWeight = rayWeight / impactDistances[diskId] /
+                                   invDistanceWeightSum * numDisksHit;
 #else
-            auto distRayWeight = rayWeight;
+              auto distRayWeight = rayWeight;
 #endif
-            particle->surfaceCollision(distRayWeight, rayDir, normal,
-                                       hitDiskIds[diskId], matID, myLocalData,
-                                       pGlobalData_, rngState);
+              particle->surfaceCollision(distRayWeight, rayDir, normal,
+                                         hitDiskIds[diskId], matID, myLocalData,
+                                         pGlobalData_, rngState);
+            }
+          } else {
+            // Triangle Geometry - single hit
+            particle->surfaceCollision(
+                rayWeight, rayDir, geomNormal, rayHit.hit.primID,
+                geometry_.getMaterialId(rayHit.hit.primID), myLocalData,
+                pGlobalData_, rngState);
           }
 
           // get sticking probability and reflection direction
@@ -311,22 +308,9 @@ public:
               rayWeight, rayDir, geomNormal, rayHit.hit.primID,
               geometry_.getMaterialId(rayHit.hit.primID), pGlobalData_,
               rngState);
-          auto valueToDrop = rayWeight * stickingDirection.first;
-
-          if (config_.calcFlux) {
-            for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
-#ifdef VIENNARAY_USE_WDIST
-              auto distRayWeight = valueToDrop / impactDistances[diskId] /
-                                   invDistanceWeightSum * numDisksHit;
-#else
-              auto distRayWeight = valueToDrop;
-#endif
-              myHitCounter.use(hitDiskIds[diskId], distRayWeight);
-            }
-          }
 
           // Update ray weight
-          rayWeight -= valueToDrop;
+          rayWeight -= rayWeight * stickingDirection.first;
           if (rayWeight <= 0) {
             break;
           }
@@ -345,16 +329,12 @@ public:
 
         } while (reflect);
       } // end ray tracing for loop
-
-      auto diskAreas = computeDiskAreas();
-      myHitCounter.setDiskAreas(diskAreas);
     } // end parallel section
 
     timer.finish();
 
-    // merge hit counters and  data logs
+    // merge data logs
     for (int i = 0; i < numThreads; ++i) {
-      hitCounter_.merge(threadLocalHitCounter[i], config_.calcFlux);
       dataLog_.merge(threadLocalDataLog[i]);
     }
     // merge local data
@@ -425,10 +405,10 @@ public:
 
     traceInfo_.numRays = numRays;
     traceInfo_.totalRaysTraced = totalTraces;
-    traceInfo_.totalDiskHits = hitCounter_.getTotalCounts();
     traceInfo_.nonGeometryHits = nonGeoHits;
     traceInfo_.geometryHits = geoHits;
     traceInfo_.particleHits = particleHits;
+    traceInfo_.boundaryHits = boundaryHits;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     rtcReleaseScene(rtcScene);
@@ -466,94 +446,6 @@ private:
     rayWeight = renewWeight;
     // continue ray
     return true;
-  }
-
-  std::vector<NumericType> computeDiskAreas() const {
-    constexpr double eps = 1e-3;
-    auto bdBox = geometry_.getBoundingBox();
-    auto boundaryConds = boundary_.getBoundaryConditions();
-    const auto numOfPrimitives = geometry_.getNumPoints();
-    const auto boundaryDirs = boundary_.getDirs();
-    auto areas = std::vector<NumericType>(numOfPrimitives, 0);
-    DiskBoundingBoxXYIntersector<NumericType> bdDiskIntersector(bdBox);
-
-#pragma omp for
-    for (long idx = 0; idx < numOfPrimitives; ++idx) {
-      auto const &disk = geometry_.getPrimRef(idx);
-
-      if constexpr (D == 3) {
-        areas[idx] = disk[3] * disk[3] * M_PI; // full disk area
-
-        if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::IGNORE &&
-            boundaryConds[boundaryDirs[1]] == BoundaryCondition::IGNORE) {
-          // no boundaries
-          continue;
-        }
-
-        if (boundaryDirs[0] != 2 && boundaryDirs[1] != 2) {
-          // Disk-BBox intersection only works with boundaries in x and y
-          // direction
-          auto normal = geometry_.getNormalRef(idx);
-          areas[idx] = bdDiskIntersector.areaInside(disk, normal);
-          continue;
-        }
-
-        // Simple approach
-        if (std::fabs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
-                eps ||
-            std::fabs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
-                eps) {
-          // disk intersects boundary in first direction
-          areas[idx] /= 2;
-        }
-
-        if (std::fabs(disk[boundaryDirs[1]] - bdBox[0][boundaryDirs[1]]) <
-                eps ||
-            std::fabs(disk[boundaryDirs[1]] - bdBox[1][boundaryDirs[1]]) <
-                eps) {
-          // disk intersects boundary in second direction
-          areas[idx] /= 2;
-        }
-
-      } else { // 2D
-
-        areas[idx] = 2 * disk[3];
-        auto normal = geometry_.getNormalRef(idx);
-
-        // test min boundary
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
-            (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
-             disk[3])) {
-          NumericType insideTest =
-              1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
-          if (insideTest > 1e-4) {
-            insideTest =
-                std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) /
-                std::sqrt(insideTest);
-            if (insideTest < disk[3]) {
-              areas[idx] -= disk[3] - insideTest;
-            }
-          }
-        }
-
-        // test max boundary
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
-            (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
-             disk[3])) {
-          NumericType insideTest =
-              1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
-          if (insideTest > 1e-4) {
-            insideTest =
-                std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) /
-                std::sqrt(insideTest);
-            if (insideTest < disk[3]) {
-              areas[idx] -= disk[3] - insideTest;
-            }
-          }
-        }
-      }
-    }
-    return areas;
   }
 
   bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
@@ -619,7 +511,6 @@ private:
 
   TracingData<NumericType> *pLocalData_ = nullptr;
   TracingData<NumericType> const *pGlobalData_ = nullptr;
-  HitCounter<NumericType> &hitCounter_;
   TraceInfo &traceInfo_;
   DataLog<NumericType> &dataLog_;
 };

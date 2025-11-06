@@ -1,6 +1,8 @@
 #include <omp.h>
 #include <rayParticle.hpp>
-#include <rayTrace.hpp>
+#include <rayTraceDisk.hpp>
+
+#include <vcTimer.hpp>
 
 using namespace viennaray;
 
@@ -37,9 +39,10 @@ int main() {
   // defined, but has to interface the rayParticle<NumericType> class and
   // provide the functions: initNew(...), surfaceCollision(...),
   // surfaceReflection(...).
-  auto particle = std::make_unique<TestParticle<NumericType>>();
+  auto particle =
+      std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");
 
-  Trace<NumericType, D> rayTracer;
+  TraceDisk<NumericType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setParticleType(particle);
@@ -48,12 +51,18 @@ int main() {
   rayTracer.setNumberOfRaysPerPoint(2000);
 
   // Run the ray tracer
+  Timer timer;
+  timer.start();
   rayTracer.apply();
+  timer.finish();
+
+  std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
 
   // Extract the normalized hit counts for each geometry point
-  auto normalizedFlux = rayTracer.getNormalizedFlux(NormalizationType::SOURCE);
-  rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points,
-                                        normalizedFlux);
+  auto &flux = rayTracer.getLocalData().getVectorData("flux");
+  rayTracer.normalizeFlux(flux, NormalizationType::SOURCE);
+
+  rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, flux);
 
   return 0;
 }

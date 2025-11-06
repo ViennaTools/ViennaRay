@@ -1,6 +1,6 @@
 #include <omp.h>
 #include <rayParticle.hpp>
-#include <rayTrace.hpp>
+#include <rayTraceDisk.hpp>
 
 using namespace viennaray;
 
@@ -36,9 +36,10 @@ int main() {
   // defined, but has to interface the rayParticle<NumericType> class and
   // provide the functions: initNew(...), surfaceCollision(...),
   // surfaceReflection(...).
-  auto particle = std::make_unique<TestParticle<NumericType>>();
+  auto particle =
+      std::make_unique<DiffuseParticle<NumericType, D>>(0.5, "flux");
 
-  Trace<NumericType, D> rayTracer;
+  TraceDisk<NumericType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setParticleType(particle);
@@ -51,9 +52,10 @@ int main() {
   rayTracer.apply();
 
   // Extract the normalized hit counts for each geometry point
-  auto normalizedFlux = rayTracer.getNormalizedFlux(NormalizationType::SOURCE);
-  rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points,
-                                        normalizedFlux);
+  auto &flux = rayTracer.getLocalData().getVectorData("flux");
+  rayTracer.normalizeFlux(flux, NormalizationType::SOURCE);
+
+  rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, flux);
 
   return 0;
 }

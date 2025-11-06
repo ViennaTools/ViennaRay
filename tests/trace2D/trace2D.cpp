@@ -1,6 +1,6 @@
 #include <omp.h>
 #include <rayParticle.hpp>
-#include <rayTrace.hpp>
+#include <rayTraceDisk.hpp>
 
 using namespace viennaray;
 
@@ -22,9 +22,10 @@ int main() {
   BoundaryCondition boundaryConds[D];
   boundaryConds[0] = BoundaryCondition::REFLECTIVE;
   boundaryConds[1] = BoundaryCondition::REFLECTIVE;
-  auto particle = std::make_unique<TestParticle<NumericType>>();
+  auto particle =
+      std::make_unique<DiffuseParticle<NumericType, D>>(1.0, "hitFlux");
 
-  Trace<NumericType, D> rayTracer;
+  TraceDisk<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setNumberOfRaysPerPoint(10);
