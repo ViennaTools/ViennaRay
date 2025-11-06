@@ -86,7 +86,7 @@ public:
         normals_[i] = Vec3D<NumericType>{0, 0, 0};
         areas_[i] = 0.;
         Logger::getInstance()
-            .addWarning("Degenerate triangle with zero area detected.")
+            .addDebug("Degenerate triangle with zero area detected.")
             .print();
       }
     }
