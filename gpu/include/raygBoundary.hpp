@@ -10,15 +10,18 @@ extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 
 // this can only get compiled if included in a cuda kernel
 #ifdef __CUDACC__
+
+namespace viennaray::gpu {
+
+using namespace viennacore;
+
 template <typename SBTData>
-__device__ __inline__ void reflectFromBoundary(viennaray::gpu::PerRayData *prd,
-                                               const SBTData *hsd,
-                                               const int D) {
-  using namespace viennacore;
+__device__ __inline__ void
+reflectFromBoundary(PerRayData *prd, const SBTData *hsd, const int D) {
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->numBoundaryHits++;
 
-  if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTDataDisk>::value) {
+  if constexpr (std::is_same<SBTData, HitSBTDataDisk>::value) {
     prd->pos =
         prd->pos + prd->dir * (optixGetRayTmax() - launchParams.tThreshold);
     if (primID == 0 || primID == 1) {
@@ -26,15 +29,12 @@ __device__ __inline__ void reflectFromBoundary(viennaray::gpu::PerRayData *prd,
     } else if ((primID == 2 || primID == 3) && D == 3) {
       prd->dir[1] -= 2 * prd->dir[1]; // y boundary
     }
-  } else if constexpr (std::is_same<
-                           SBTData,
-                           viennaray::gpu::HitSBTDataTriangle>::value) {
+  } else if constexpr (std::is_same<SBTData, HitSBTDataTriangle>::value) {
     prd->pos = prd->pos + prd->dir * optixGetRayTmax();
     unsigned dim = primID / 4;
     prd->dir[dim] -= 2 * prd->dir[dim];
     prd->pos[dim] = hsd->vertex[hsd->index[primID][0]][dim];
-  } else if constexpr (std::is_same<SBTData,
-                                    viennaray::gpu::HitSBTDataLine>::value) {
+  } else if constexpr (std::is_same<SBTData, HitSBTDataLine>::value) {
     prd->pos = prd->pos + prd->dir * (optixGetRayTmax());
     if (primID == 0 || primID == 1) // x boundary
       prd->dir[0] -= 2 * prd->dir[0];
@@ -43,13 +43,12 @@ __device__ __inline__ void reflectFromBoundary(viennaray::gpu::PerRayData *prd,
 
 template <typename SBTData>
 __device__ __inline__ void
-applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
-                      const int D) {
+applyPeriodicBoundary(PerRayData *prd, const SBTData *hsd, const int D) {
   using namespace viennacore;
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->numBoundaryHits++;
 
-  if constexpr (std::is_same<SBTData, viennaray::gpu::HitSBTDataDisk>::value) {
+  if constexpr (std::is_same<SBTData, HitSBTDataDisk>::value) {
     prd->pos =
         prd->pos + prd->dir * (optixGetRayTmax() - launchParams.tThreshold);
     if (primID == 0) { // xmin
@@ -61,14 +60,11 @@ applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
     } else if (D == 3 && primID == 3) { // ymax
       prd->pos[1] = hsd->point[2][1];
     }
-  } else if constexpr (std::is_same<
-                           SBTData,
-                           viennaray::gpu::HitSBTDataTriangle>::value) {
+  } else if constexpr (std::is_same<SBTData, HitSBTDataTriangle>::value) {
     prd->pos = prd->pos + prd->dir * optixGetRayTmax();
     unsigned dim = primID / 4;
     prd->pos[dim] = hsd->vertex[hsd->index[primID ^ 2][0]][dim];
-  } else if constexpr (std::is_same<SBTData,
-                                    viennaray::gpu::HitSBTDataLine>::value) {
+  } else if constexpr (std::is_same<SBTData, HitSBTDataLine>::value) {
     prd->pos = prd->pos + prd->dir * (optixGetRayTmax());
     if (primID == 0) { // xmin
       prd->pos[0] = hsd->nodes[1][0];
@@ -77,4 +73,5 @@ applyPeriodicBoundary(viennaray::gpu::PerRayData *prd, const SBTData *hsd,
     }
   }
 }
+} // namespace viennaray::gpu
 #endif
