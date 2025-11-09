@@ -80,10 +80,12 @@ public:
       auto normal = CrossProduct(v1 - v0, v2 - v0);
       auto length = Norm(normal);
       if (length > 0) {
-        normals_[i] = normal / length;
+        normal = normal / length;
+        normals_[i] =
+            Vec3Df{(float)normal[0], (float)normal[1], (float)normal[2]};
         areas_[i] = 0.5 * length;
       } else {
-        normals_[i] = Vec3D<NumericType>{0, 0, 0};
+        normals_[i] = Vec3Df{0, 0, 0};
         areas_[i] = 0.;
         Logger::getInstance()
             .addDebug("Degenerate triangle with zero area detected.")
@@ -129,11 +131,10 @@ public:
   //   *>(&pPointBuffer_[primID]);
   // }
 
-  // std::array<float, 3> &getNormalRef(unsigned int primID) override {
-  //   assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of
-  //   bounds"); return *reinterpret_cast<std::array<float, 3>
-  //   *>(&pTriangleBuffer_[primID]);
-  // }
+  std::array<float, 3> &getNormalRef(unsigned int primID) override {
+    assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
+    return normals_[primID];
+  }
 
   bool checkGeometryEmpty() const override {
     if (pPointBuffer_ == nullptr || pTriangleBuffer_ == nullptr ||
@@ -170,7 +171,7 @@ private:
   };
   triangle_3u_t *pTriangleBuffer_ = nullptr;
 
-  std::vector<Vec3D<NumericType>> normals_;
+  std::vector<Vec3Df> normals_;
   std::vector<NumericType> areas_;
 };
 

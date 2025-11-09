@@ -17,10 +17,8 @@ typedef curandStatePhilox4_32_10_t RNGState;
 
 #ifdef __CUDACC__
 template <unsigned int N>
-static __device__ __inline__ unsigned int tea(unsigned int val0,
-                                              unsigned int val1) {
-  unsigned int v0 = val0;
-  unsigned int v1 = val1;
+static __device__ __inline__ unsigned int tea(unsigned int v0,
+                                              unsigned int v1) {
   unsigned int s0 = 0;
 
   for (unsigned int n = 0; n < N; n++) {
