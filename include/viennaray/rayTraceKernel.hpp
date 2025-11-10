@@ -52,7 +52,8 @@ public:
     size_t nonGeoHits = 0;
     size_t totalTraces = 0;
     size_t particleHits = 0;
-    size_t boundaryHits = 0;
+    size_t totalBoundaryHits = 0;
+    size_t totalReflections = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
@@ -85,8 +86,8 @@ public:
     timer.start();
 
 #pragma omp parallel reduction(+ : geoHits, nonGeoHits, totalTraces,           \
-                                   particleHits, boundaryHits)                 \
-    shared(threadLocalData)
+                                   particleHits, totalBoundaryHits,            \
+                                   totalReflections) shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -124,6 +125,7 @@ public:
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
         unsigned int numReflections = 0;
+        unsigned int boundaryHits = 0;
 
         {
           particle->initNew(rngState);
@@ -208,7 +210,8 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
-            ++boundaryHits;
+            if (++boundaryHits > 100)
+              break;
             boundary_.processHit(rayHit, reflect);
             continue;
           }
@@ -322,12 +325,21 @@ public:
             // terminate ray if too many reflections
             break;
           }
+          if (numReflections > 1e4) {
+            Logger::getInstance()
+                .addWarning("Terminating ray after 10,000 reflections to avoid "
+                            "infinite loop.")
+                .print();
+            break;
+          }
 
           // Update ray direction and origin
           fillRayPosition(rayHit.ray, hitPoint);
           fillRayDirection(rayHit.ray, stickingDirection.second);
 
         } while (reflect);
+        totalBoundaryHits += boundaryHits;
+        totalReflections += numReflections;
       } // end ray tracing for loop
     } // end parallel section
 
@@ -408,7 +420,8 @@ public:
     traceInfo_.nonGeometryHits = nonGeoHits;
     traceInfo_.geometryHits = geoHits;
     traceInfo_.particleHits = particleHits;
-    traceInfo_.boundaryHits = boundaryHits;
+    traceInfo_.boundaryHits = totalBoundaryHits;
+    traceInfo_.reflections = totalReflections;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     rtcReleaseScene(rtcScene);
