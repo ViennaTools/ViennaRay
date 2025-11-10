@@ -426,8 +426,8 @@ public:
     traceInfo_.reflections = totalReflections;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
-    if (raysTerminated > 1e4) {
-      viennacore::Logger::getInstance()
+    if (raysTerminated > 1e3) {
+      Logger::getInstance()
           .addWarning(
               "A total of " + std::to_string(raysTerminated) +
               " rays were terminated early due to excessive boundary hits or "
