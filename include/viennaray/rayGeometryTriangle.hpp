@@ -79,11 +79,14 @@ public:
       auto const &v2 = points[elements[i][2]];
       auto normal = CrossProduct(v1 - v0, v2 - v0);
       auto length = Norm(normal);
+      normal = normal / length;
       if (length > 0) {
-        normals_[i] = normal / length;
+        normals_[i] =
+            Vec3Df{static_cast<float>(normal[0]), static_cast<float>(normal[1]),
+                   static_cast<float>(normal[2])};
         areas_[i] = 0.5 * length;
       } else {
-        normals_[i] = Vec3D<NumericType>{0, 0, 0};
+        normals_[i] = Vec3Df{0.f, 0.f, 0.f};
         areas_[i] = 0.;
         Logger::getInstance()
             .addDebug("Degenerate triangle with zero area detected.")
