@@ -54,6 +54,7 @@ public:
     size_t particleHits = 0;
     size_t totalBoundaryHits = 0;
     size_t totalReflections = 0;
+    size_t raysTerminated = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
@@ -85,9 +86,9 @@ public:
     Timer timer;
     timer.start();
 
-#pragma omp parallel reduction(+ : geoHits, nonGeoHits, totalTraces,           \
-                                   particleHits, totalBoundaryHits,            \
-                                   totalReflections) shared(threadLocalData)
+#pragma omp parallel reduction(                                                \
+        + : geoHits, nonGeoHits, totalTraces, particleHits, totalBoundaryHits, \
+            totalReflections, raysTerminated) shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -210,8 +211,11 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
-            if (++boundaryHits > 100)
+            if (++boundaryHits > 100) {
+              // terminate ray if too many boundary hits
+              ++raysTerminated;
               break;
+            }
             boundary_.processHit(rayHit, reflect);
             continue;
           }
@@ -326,10 +330,8 @@ public:
             break;
           }
           if (numReflections > 1e4) {
-            Logger::getInstance()
-                .addWarning("Terminating ray after 10,000 reflections to avoid "
-                            "infinite loop.")
-                .print();
+            // terminate ray if too many reflections
+            ++raysTerminated;
             break;
           }
 
@@ -423,6 +425,16 @@ public:
     traceInfo_.boundaryHits = totalBoundaryHits;
     traceInfo_.reflections = totalReflections;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
+
+    if (raysTerminated > 1e4) {
+      viennacore::Logger::getInstance()
+          .addWarning(
+              "A total of " + std::to_string(raysTerminated) +
+              " rays were terminated early due to excessive boundary hits or "
+              "reflections.")
+          .print();
+      traceInfo_.warning = true;
+    }
 
     rtcReleaseScene(rtcScene);
   }
