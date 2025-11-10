@@ -7,8 +7,6 @@ namespace viennaray::gpu {
 
 typedef curandStatePhilox4_32_10_t RNGState;
 
-}
-
 // Other possible RNGState types:
 // typedef curandStateXORWOW_t curtRNGState; // bad
 // typedef curandStateMRG32k3a_t curtRNGState // not tested
@@ -17,10 +15,8 @@ typedef curandStatePhilox4_32_10_t RNGState;
 
 #ifdef __CUDACC__
 template <unsigned int N>
-static __device__ __inline__ unsigned int tea(unsigned int val0,
-                                              unsigned int val1) {
-  unsigned int v0 = val0;
-  unsigned int v1 = val1;
+static __device__ __inline__ unsigned int tea(unsigned int v0,
+                                              unsigned int v1) {
   unsigned int s0 = 0;
 
   for (unsigned int n = 0; n < N; n++) {
@@ -32,14 +28,16 @@ static __device__ __inline__ unsigned int tea(unsigned int val0,
   return v0;
 }
 
-__device__ __inline__ float getNextRand(viennaray::gpu::RNGState *state) {
+__device__ __inline__ float getNextRand(RNGState *state) {
   return (float)(curand_uniform(state));
 }
 
-__device__ __inline__ float getNormalDistRand(viennaray::gpu::RNGState *state) {
+__device__ __inline__ float getNormalDistRand(RNGState *state) {
   float4 u0 = curand_uniform4(state);
   float r = sqrtf(-2.f * logf(u0.x));
   float theta = 2.f * M_PIf * u0.y;
   return r * sinf(theta);
 }
 #endif
+
+} // namespace viennaray::gpu

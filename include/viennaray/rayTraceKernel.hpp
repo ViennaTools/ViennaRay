@@ -52,7 +52,9 @@ public:
     size_t nonGeoHits = 0;
     size_t totalTraces = 0;
     size_t particleHits = 0;
-    size_t boundaryHits = 0;
+    size_t totalBoundaryHits = 0;
+    size_t totalReflections = 0;
+    size_t raysTerminated = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
@@ -84,9 +86,9 @@ public:
     Timer timer;
     timer.start();
 
-#pragma omp parallel reduction(+ : geoHits, nonGeoHits, totalTraces,           \
-                                   particleHits, boundaryHits)                 \
-    shared(threadLocalData)
+#pragma omp parallel reduction(                                                \
+        + : geoHits, nonGeoHits, totalTraces, particleHits, totalBoundaryHits, \
+            totalReflections, raysTerminated) shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -124,6 +126,7 @@ public:
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
         unsigned int numReflections = 0;
+        unsigned int boundaryHits = 0;
 
         {
           particle->initNew(rngState);
@@ -208,7 +211,11 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
-            ++boundaryHits;
+            if (++boundaryHits > 100) {
+              // terminate ray if too many boundary hits
+              ++raysTerminated;
+              break;
+            }
             boundary_.processHit(rayHit, reflect);
             continue;
           }
@@ -322,12 +329,19 @@ public:
             // terminate ray if too many reflections
             break;
           }
+          if (numReflections > 1e4) {
+            // terminate ray if too many reflections
+            ++raysTerminated;
+            break;
+          }
 
           // Update ray direction and origin
           fillRayPosition(rayHit.ray, hitPoint);
           fillRayDirection(rayHit.ray, stickingDirection.second);
 
         } while (reflect);
+        totalBoundaryHits += boundaryHits;
+        totalReflections += numReflections;
       } // end ray tracing for loop
     } // end parallel section
 
@@ -408,8 +422,19 @@ public:
     traceInfo_.nonGeometryHits = nonGeoHits;
     traceInfo_.geometryHits = geoHits;
     traceInfo_.particleHits = particleHits;
-    traceInfo_.boundaryHits = boundaryHits;
+    traceInfo_.boundaryHits = totalBoundaryHits;
+    traceInfo_.reflections = totalReflections;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
+
+    if (raysTerminated > 1e3) {
+      Logger::getInstance()
+          .addWarning(
+              "A total of " + std::to_string(raysTerminated) +
+              " rays were terminated early due to excessive boundary hits or "
+              "reflections.")
+          .print();
+      traceInfo_.warning = true;
+    }
 
     rtcReleaseScene(rtcScene);
   }

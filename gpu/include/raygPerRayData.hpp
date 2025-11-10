@@ -12,12 +12,14 @@
 
 namespace viennaray::gpu {
 
+using namespace viennacore;
+
 // Per-ray data structure associated with each ray. Should be kept small to
 // optimize memory usage and performance.
 struct PerRayData {
   // Position and direction
-  viennacore::Vec3Df pos;
-  viennacore::Vec3Df dir;
+  Vec3Df pos;
+  Vec3Df dir;
 
   // Simulation specific data
   float rayWeight = 1.f;
@@ -39,8 +41,6 @@ struct PerRayData {
   unsigned int primIDs[MAX_NEIGHBORS]; // their primitive IDs
   bool hitFromBack = false;
 };
-
-} // namespace viennaray::gpu
 
 // this can only get compiled if included in a cuda kernel
 #ifdef __CUDACC__
@@ -64,10 +64,12 @@ template <typename T> static __forceinline__ __device__ T *getPRD() {
   return reinterpret_cast<T *>(unpackPointer(u0, u1));
 }
 
-static __device__ void initializeRNGState(viennaray::gpu::PerRayData *prd,
+static __device__ void initializeRNGState(PerRayData *prd,
                                           unsigned int linearLaunchIndex,
                                           unsigned int seed) {
   auto rngSeed = tea<4>(linearLaunchIndex, seed);
   curand_init(rngSeed, 0, 0, &prd->RNGstate);
 }
 #endif
+
+} // namespace viennaray::gpu

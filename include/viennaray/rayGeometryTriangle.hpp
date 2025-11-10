@@ -129,11 +129,10 @@ public:
   //   *>(&pPointBuffer_[primID]);
   // }
 
-  // std::array<float, 3> &getNormalRef(unsigned int primID) override {
-  //   assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of
-  //   bounds"); return *reinterpret_cast<std::array<float, 3>
-  //   *>(&pTriangleBuffer_[primID]);
-  // }
+  std::array<float, 3> &getNormalRef(unsigned int primID) override {
+    assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
+    return normals_[primID];
+  }
 
   bool checkGeometryEmpty() const override {
     if (pPointBuffer_ == nullptr || pTriangleBuffer_ == nullptr ||
@@ -170,7 +169,7 @@ private:
   };
   triangle_3u_t *pTriangleBuffer_ = nullptr;
 
-  std::vector<Vec3D<NumericType>> normals_;
+  std::vector<Vec3Df> normals_;
   std::vector<NumericType> areas_;
 };
 

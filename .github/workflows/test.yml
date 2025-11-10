@@ -43,6 +43,12 @@ jobs:
         with:
           os: ${{ matrix.os }}
 
+      - name: 📋 Install MacOS Dependencies
+        shell: bash
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew install embree tbb
+
       - name: 🦥 Cache Dependencies
         uses: actions/cache@v4
         with:
@@ -50,7 +56,7 @@ jobs:
           path: build
 
       - name: 🏗️ Compile
-        run: cmake -B build -DCPM_SOURCE_CACHE=deps-cache -DVIENNARAY_BUILD_TESTS=ON && cmake --build build --config ${{ matrix.config }}
+        run: cmake -DVIENNARAY_BUILD_TESTS=ON -B build && cmake --build build --config ${{ matrix.config }}
 
       - name: 🧪 Test
-        run: ctest -C ${{ matrix.config }} --test-dir build
+        run: ctest -E "Benchmark|Performance" -C ${{ matrix.config }} --test-dir build

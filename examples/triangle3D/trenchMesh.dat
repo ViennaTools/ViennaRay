@@ -1,6 +1,6 @@
 grid_delta 1
 min_extent -25 -25 -40
-max_extent 25 25 2.22507e-308
+max_extent 25 25 0
 n_nodes 6579
 n_triangles 12800
 n -7 -24 -40

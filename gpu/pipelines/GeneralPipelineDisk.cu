@@ -16,7 +16,6 @@
 #include <vcContext.hpp>
 
 using namespace viennaray::gpu;
-using namespace viennacore;
 
 extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 

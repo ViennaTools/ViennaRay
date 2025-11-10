@@ -1,28 +1,32 @@
 #pragma once
 
+#ifdef __CUDACC__
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
 
 #include <vcVectorType.hpp>
 
-#ifdef __CUDACC__
-__device__ __forceinline__ std::array<viennacore::Vec3Df, 3>
-getOrthonormalBasis(const viennacore::Vec3Df &n) {
+namespace viennaray::gpu {
+
+using namespace viennacore;
+
+__device__ __forceinline__ std::array<Vec3Df, 3>
+getOrthonormalBasis(const Vec3Df &n) {
 
   // Frisvad 2012 (branchless)
   const float sign = copysignf(1.0f, n[2]);
   const float a = -1.0f / (sign + n[2]);
   const float b = n[0] * n[1] * a;
 
-  viennacore::Vec3Df t{1.0f + sign * n[0] * n[0] * a, sign * b, -sign * n[0]};
-  viennacore::Vec3Df b2{b, sign + n[1] * n[1] * a, -n[1]};
+  Vec3Df t{1.0f + sign * n[0] * n[0] * a, sign * b, -sign * n[0]};
+  Vec3Df b2{b, sign + n[1] * n[1] * a, -n[1]};
 
   // (t, b2) are already unit and orthogonal to n; no extra normalize needed.
   return {n, t, b2};
 }
 
-__device__ void initializeRayDirection(viennaray::gpu::PerRayData *prd,
-                                       const float power, const uint16_t D) {
+__device__ void initializeRayDirection(PerRayData *prd, const float power,
+                                       const uint16_t D) {
   // source direction
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   const float tt = powf(u.w, 2.f / (power + 1.f));
@@ -37,18 +41,17 @@ __device__ void initializeRayDirection(viennaray::gpu::PerRayData *prd,
     prd->dir[1] = s * sqrt1mtt;
     prd->dir[2] = -1.f * sqrtf(tt);
   }
-  viennacore::Normalize(prd->dir);
+  Normalize(prd->dir);
 }
 
-__device__ void
-initializeRayDirection(viennaray::gpu::PerRayData *prd, const float power,
-                       const std::array<viennacore::Vec3Df, 3> &basis,
-                       const uint16_t D) {
+__device__ void initializeRayDirection(PerRayData *prd, const float power,
+                                       const std::array<Vec3Df, 3> &basis,
+                                       const uint16_t D) {
   // source direction
   do {
     const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
     const float tt = powf(u.w, 2.f / (power + 1.f));
-    viennacore::Vec3Df rndDirection;
+    Vec3Df rndDirection;
     rndDirection[0] = sqrtf(tt);
     float s, c, sqrt1mtt = sqrtf(1 - tt);
     __sincosf(2.f * M_PIf * u.x, &s, &c);
@@ -66,13 +69,12 @@ initializeRayDirection(viennaray::gpu::PerRayData *prd, const float power,
   if (D == 2)
     prd->dir[2] = 0.f;
 
-  viennacore::Normalize(prd->dir);
+  Normalize(prd->dir);
 }
 
-__device__ void
-initializeRayPosition(viennaray::gpu::PerRayData *prd,
-                      const viennaray::gpu::LaunchParams::SourcePlane &source,
-                      const uint16_t D) {
+__device__ void initializeRayPosition(PerRayData *prd,
+                                      const LaunchParams::SourcePlane &source,
+                                      const uint16_t D) {
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   prd->pos[0] =
       source.minPoint[0] + u.x * (source.maxPoint[0] - source.minPoint[0]);
@@ -88,9 +90,8 @@ initializeRayPosition(viennaray::gpu::PerRayData *prd,
 }
 
 // This is slightly faster because there is only one call to curand_uniform4
-__device__ void
-initializeRayPositionAndDirection(viennaray::gpu::PerRayData *prd,
-                                  viennaray::gpu::LaunchParams *launchParams) {
+__device__ void initializeRayPositionAndDirection(PerRayData *prd,
+                                                  LaunchParams *launchParams) {
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   prd->pos[0] = launchParams->source.minPoint[0] +
                 u.x * (launchParams->source.maxPoint[0] -
@@ -107,6 +108,7 @@ initializeRayPositionAndDirection(viennaray::gpu::PerRayData *prd,
   prd->dir[0] = c * sqrt1mtt;
   prd->dir[1] = s * sqrt1mtt;
   prd->dir[2] = -1.f * sqrtf(tt);
-  viennacore::Normalize(prd->dir);
+  Normalize(prd->dir);
 }
+} // namespace viennaray::gpu
 #endif

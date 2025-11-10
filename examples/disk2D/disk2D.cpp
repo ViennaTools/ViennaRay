@@ -49,7 +49,12 @@ int main() {
   rayTracer.setNumberOfRaysPerPoint(2000);
 
   // Run the ray tracer
+  Timer timer;
+  timer.start();
   rayTracer.apply();
+  timer.finish();
+
+  std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
 
   // Extract the normalized hit counts for each geometry point
   auto &flux = rayTracer.getLocalData().getVectorData("flux");

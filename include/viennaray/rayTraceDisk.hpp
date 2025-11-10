@@ -94,8 +94,9 @@ public:
   /// Helper function to normalize the recorded flux in a post-processing step.
   /// The flux can be normalized to the source flux and the maximum recorded
   /// value.
-  void normalizeFlux(std::vector<NumericType> &flux,
-                     NormalizationType norm = NormalizationType::SOURCE) {
+  void
+  normalizeFlux(std::vector<NumericType> &flux,
+                NormalizationType norm = NormalizationType::SOURCE) override {
     assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in normalizeFlux");
 

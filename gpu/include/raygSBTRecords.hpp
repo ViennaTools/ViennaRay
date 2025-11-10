@@ -5,29 +5,31 @@
 
 namespace viennaray::gpu {
 
+using namespace viennacore;
+
 struct HitSBTDataBase {
   void *cellData;
   bool isBoundary;
   int geometryType;
-  viennacore::Vec3Df *normal; // optional normal buffer
+  Vec3Df *normal; // optional normal buffer
 };
 
 struct HitSBTDataDisk {
   HitSBTDataBase base;
-  viennacore::Vec3Df *point;
+  Vec3Df *point;
   float radius;
 };
 
 struct HitSBTDataTriangle {
   HitSBTDataBase base;
-  viennacore::Vec3Df *vertex;
-  viennacore::Vec3D<unsigned> *index;
+  Vec3Df *vertex;
+  Vec3D<unsigned> *index;
 };
 
 struct HitSBTDataLine {
   HitSBTDataBase base;
-  viennacore::Vec3Df *nodes;
-  viennacore::Vec2D<unsigned> *lines;
+  Vec3Df *nodes;
+  Vec2D<unsigned> *lines;
 };
 
 // SBT record for a raygen program
