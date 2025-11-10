@@ -80,12 +80,10 @@ public:
       auto normal = CrossProduct(v1 - v0, v2 - v0);
       auto length = Norm(normal);
       if (length > 0) {
-        normal = normal / length;
-        normals_[i] =
-            Vec3Df{(float)normal[0], (float)normal[1], (float)normal[2]};
+        normals_[i] = normal / length;
         areas_[i] = 0.5 * length;
       } else {
-        normals_[i] = Vec3Df{0, 0, 0};
+        normals_[i] = Vec3D<NumericType>{0, 0, 0};
         areas_[i] = 0.;
         Logger::getInstance()
             .addDebug("Degenerate triangle with zero area detected.")
