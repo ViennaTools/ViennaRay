@@ -68,7 +68,7 @@ static __forceinline__ __device__ PerRayData *getPRD() {
 static __device__ void initializeRNGState(PerRayData *prd,
                                           unsigned int linearLaunchIndex,
                                           unsigned int seed) {
-  auto rngSeed = tea<4>(linearLaunchIndex, seed);
+  auto rngSeed = tea<3>(linearLaunchIndex, seed);
   curand_init(rngSeed, 0, 0, &prd->RNGstate);
 }
 #endif
