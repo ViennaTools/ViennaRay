@@ -211,7 +211,7 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
-            if (++boundaryHits > 100) {
+            if (++boundaryHits > 1000) {
               // terminate ray if too many boundary hits
               ++raysTerminated;
               break;
@@ -428,12 +428,11 @@ public:
 
     if (raysTerminated > 1e3) {
       Logger::getInstance()
-          .addWarning(
+          .addDebug(
               "A total of " + std::to_string(raysTerminated) +
               " rays were terminated early due to excessive boundary hits or "
               "reflections.")
           .print();
-      traceInfo_.warning = true;
     }
 
     rtcReleaseScene(rtcScene);
