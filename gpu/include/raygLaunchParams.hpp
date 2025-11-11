@@ -70,8 +70,14 @@ getIdxOffset(int dataIdx, const LaunchParams &launchParams) {
 
 __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
                                             PerRayData &prd) {
+  if (prd.rayWeight <= 0.f || prd.energy < 0.f)
+    return false;
+
   if (prd.numReflections > launchParams.maxReflections ||
       prd.numBoundaryHits > launchParams.maxBoundaryHits)
+    return false;
+
+  if (prd.numReflections > 1e4)
     return false;
 
   // If the weight of the ray is above a certain threshold, we always reflect.

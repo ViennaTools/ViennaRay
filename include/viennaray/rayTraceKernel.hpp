@@ -460,9 +460,9 @@ private:
     // We want to set the weight of (the reflection of) the ray to the value of
     // renewWeight. In order to stay unbiased we kill the reflection with a
     // probability of (1 - rayWeight / renewWeight).
-    auto rnd = static_cast<double>(rng() / RNG::max());
+    std::uniform_real_distribution<> dist;
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rnd < killProbability) {
+    if (dist(rng) < killProbability) {
       // kill the ray
       return false;
     }
