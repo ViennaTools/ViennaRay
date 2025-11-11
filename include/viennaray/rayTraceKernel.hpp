@@ -321,10 +321,6 @@ public:
           if (rayWeight <= 0) {
             break;
           }
-          reflect = rejectionControl(rayWeight, initialRayWeight, rngState);
-          if (!reflect) {
-            break;
-          }
           if (++numReflections > config_.maxReflections) {
             // terminate ray if too many reflections
             break;
@@ -332,6 +328,10 @@ public:
           if (numReflections > 1e4) {
             // terminate ray if too many reflections
             ++raysTerminated;
+            break;
+          }
+          reflect = rejectionControl(rayWeight, initialRayWeight, rngState);
+          if (!reflect) {
             break;
           }
 

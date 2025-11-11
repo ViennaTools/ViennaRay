@@ -24,7 +24,7 @@ extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 extern "C" __global__ void __closesthit__() {
   const HitSBTDataTriangle *sbtData =
       (const HitSBTDataTriangle *)optixGetSbtDataPointer();
-  PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
+  PerRayData *prd = getPRD();
 
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->tMin = optixGetRayTmax();
@@ -55,7 +55,7 @@ extern "C" __global__ void __closesthit__() {
   }
 }
 
-extern "C" __global__ void __miss__() { getPRD<PerRayData>()->rayWeight = 0.f; }
+extern "C" __global__ void __miss__() { getPRD()->rayWeight = 0.f; }
 
 extern "C" __global__ void __raygen__() {
   const uint3 idx = optixGetLaunchIndex();
