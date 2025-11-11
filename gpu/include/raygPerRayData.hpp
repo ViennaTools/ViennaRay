@@ -31,6 +31,7 @@ struct PerRayData {
 
   // Hit data
   unsigned int numBoundaryHits = 0;
+  unsigned int numReflections = 0;
   unsigned int primID = 0; // primID of closest hit
   float tMin = 1e20f;      // distance to closest hit
 
@@ -58,16 +59,16 @@ static __forceinline__ __device__ void packPointer(void *ptr, uint32_t &i0,
   i1 = uptr & 0x00000000ffffffff;
 }
 
-template <typename T> static __forceinline__ __device__ T *getPRD() {
+static __forceinline__ __device__ PerRayData *getPRD() {
   const uint32_t u0 = optixGetPayload_0();
   const uint32_t u1 = optixGetPayload_1();
-  return reinterpret_cast<T *>(unpackPointer(u0, u1));
+  return reinterpret_cast<PerRayData *>(unpackPointer(u0, u1));
 }
 
 static __device__ void initializeRNGState(PerRayData *prd,
                                           unsigned int linearLaunchIndex,
                                           unsigned int seed) {
-  auto rngSeed = tea<4>(linearLaunchIndex, seed);
+  auto rngSeed = tea<3>(linearLaunchIndex, seed);
   curand_init(rngSeed, 0, 0, &prd->RNGstate);
 }
 #endif

@@ -22,7 +22,7 @@ extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 extern "C" __global__ void __intersection__() {
   const HitSBTDataDisk *sbtData =
       (const HitSBTDataDisk *)optixGetSbtDataPointer();
-  PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
+  PerRayData *prd = getPRD();
 
   // Get the index of the AABB box that was hit
   const unsigned int primID = optixGetPrimitiveIndex();
@@ -69,7 +69,7 @@ extern "C" __global__ void __intersection__() {
 extern "C" __global__ void __closesthit__() {
   const HitSBTDataDisk *sbtData =
       (const HitSBTDataDisk *)optixGetSbtDataPointer();
-  PerRayData *prd = (PerRayData *)getPRD<PerRayData>();
+  PerRayData *prd = getPRD();
 
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
@@ -143,7 +143,7 @@ extern "C" __global__ void __closesthit__() {
   }
 }
 
-extern "C" __global__ void __miss__() { getPRD<PerRayData>()->rayWeight = 0.f; }
+extern "C" __global__ void __miss__() { getPRD()->rayWeight = 0.f; }
 
 extern "C" __global__ void __raygen__() {
   const uint3 idx = optixGetLaunchIndex();
@@ -188,5 +188,6 @@ extern "C" __global__ void __raygen__() {
                0,                             // missSBTIndex
                u0, u1);                       // Payload
     prd.totalCount = 0;                       // Reset PerRayData
+    prd.numReflections++;
   }
 }

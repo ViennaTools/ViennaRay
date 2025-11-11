@@ -211,7 +211,7 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
-            if (++boundaryHits > 1000) {
+            if (++boundaryHits > config_.maxBoundaryHits) {
               // terminate ray if too many boundary hits
               ++raysTerminated;
               break;
@@ -321,10 +321,6 @@ public:
           if (rayWeight <= 0) {
             break;
           }
-          reflect = rejectionControl(rayWeight, initialRayWeight, rngState);
-          if (!reflect) {
-            break;
-          }
           if (++numReflections > config_.maxReflections) {
             // terminate ray if too many reflections
             break;
@@ -332,6 +328,10 @@ public:
           if (numReflections > 1e4) {
             // terminate ray if too many reflections
             ++raysTerminated;
+            break;
+          }
+          reflect = rejectionControl(rayWeight, initialRayWeight, rngState);
+          if (!reflect) {
             break;
           }
 
@@ -460,9 +460,9 @@ private:
     // We want to set the weight of (the reflection of) the ray to the value of
     // renewWeight. In order to stay unbiased we kill the reflection with a
     // probability of (1 - rayWeight / renewWeight).
-    auto rnd = static_cast<double>(rng() / RNG::max());
+    std::uniform_real_distribution<> dist;
     auto killProbability = 1.0 - rayWeight / renewWeight;
-    if (rnd < killProbability) {
+    if (dist(rng) < killProbability) {
       // kill the ray
       return false;
     }

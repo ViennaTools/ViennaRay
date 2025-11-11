@@ -28,7 +28,7 @@ __device__ __inline__ Vec3Df computeNormal(const void *sbtData,
     const Vec3Df &A = sbt->vertex[index[0]];
     const Vec3Df &B = sbt->vertex[index[1]];
     const Vec3Df &C = sbt->vertex[index[2]];
-    return Normalize<float, 3>(CrossProduct<float>(B - A, C - A));
+    return Normalize(CrossProduct(B - A, C - A));
   } break;
   case 1: {
     // Disks
