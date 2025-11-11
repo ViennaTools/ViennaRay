@@ -25,6 +25,7 @@ struct LaunchParams {
   unsigned int numElements;      // to determine result buffer index
   unsigned int *dataPerParticle; // to determine result buffer index
 
+  unsigned maxReflections = std::numeric_limits<unsigned>::max();
   unsigned maxBoundaryHits = 1000;
   uint8_t particleIdx = 0;
   uint8_t particleType = 0;
@@ -71,7 +72,7 @@ __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
                                             const PerRayData &prd) {
   return prd.rayWeight > launchParams.rayWeightThreshold &&
          prd.numBoundaryHits < launchParams.maxBoundaryHits &&
-         prd.energy >= 0.f;
+         prd.energy >= 0.f && prd.numReflections < launchParams.maxReflections;
 }
 #endif
 

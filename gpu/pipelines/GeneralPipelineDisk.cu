@@ -188,5 +188,6 @@ extern "C" __global__ void __raygen__() {
                0,                             // missSBTIndex
                u0, u1);                       // Payload
     prd.totalCount = 0;                       // Reset PerRayData
+    prd.numReflections++;
   }
 }

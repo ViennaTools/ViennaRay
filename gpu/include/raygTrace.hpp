@@ -107,6 +107,9 @@ public:
     // Threshold value for neighbor detection in disk-based geometries
     launchParams.tThreshold = 1.1 * gridDelta_; // TODO: find the best value
 
+    launchParams.maxReflections = config_.maxReflections;
+    launchParams.maxBoundaryHits = config_.maxBoundaryHits;
+
     int numPointsPerDim =
         static_cast<int>(std::sqrt(static_cast<T>(launchParams.numElements)));
 

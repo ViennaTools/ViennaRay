@@ -31,6 +31,7 @@ struct PerRayData {
 
   // Hit data
   unsigned int numBoundaryHits = 0;
+  unsigned int numReflections = 0;
   unsigned int primID = 0; // primID of closest hit
   float tMin = 1e20f;      // distance to closest hit
 

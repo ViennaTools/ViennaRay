@@ -211,7 +211,7 @@ public:
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
-            if (++boundaryHits > 1000) {
+            if (++boundaryHits > config_.maxBoundaryHits) {
               // terminate ray if too many boundary hits
               ++raysTerminated;
               break;

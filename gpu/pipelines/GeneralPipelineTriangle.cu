@@ -99,7 +99,7 @@ extern "C" __global__ void __raygen__() {
                1,                             // SBT stride
                0,                             // missSBTIndex
                u0, u1);                       // Payload
-
+    prd.numReflections++;
 #ifdef COUNT_RAYS
     int *counter = reinterpret_cast<int *>(launchParams.customData);
     atomicAdd(counter, 1);
