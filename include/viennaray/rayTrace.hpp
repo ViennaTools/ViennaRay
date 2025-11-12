@@ -90,6 +90,10 @@ public:
     config_.maxReflections = maxReflections;
   }
 
+  void setMaxBoundaryHits(const unsigned maxBoundaryHits) {
+    config_.maxBoundaryHits = maxBoundaryHits;
+  }
+
   /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const TraceDirection direction) {
     sourceDirection_ = direction;

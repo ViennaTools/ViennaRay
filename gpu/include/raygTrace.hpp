@@ -287,6 +287,14 @@ public:
     config_.numRaysFixed = pNumRays;
   }
 
+  void setMaxReflections(const unsigned pMaxReflections) {
+    config_.maxReflections = pMaxReflections;
+  }
+
+  void setMaxBoundaryHits(const unsigned pMaxBoundaryHits) {
+    config_.maxBoundaryHits = pMaxBoundaryHits;
+  }
+
   void setUseRandomSeeds(const bool set) { config_.useRandomSeed = set; }
 
   void setRngSeed(const unsigned seed) {
