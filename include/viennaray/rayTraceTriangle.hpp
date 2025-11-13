@@ -9,16 +9,10 @@ namespace viennaray {
 
 using namespace viennacore;
 
-template <class NumericType, int D = 3>
+template <class NumericType, int D>
 class TraceTriangle : public Trace<NumericType, D> {
 public:
-  TraceTriangle() {
-    if (D == 2) {
-      Logger::getInstance()
-          .addError("TraceTriangle not implemented in 2D.")
-          .print();
-    }
-  }
+  TraceTriangle() {}
   ~TraceTriangle() { geometry_.releaseGeometry(); }
 
   /// Run the ray tracer
@@ -62,13 +56,23 @@ public:
   }
 
   /// Set the ray tracing geometry
-  /// It is possible to set a 2D geometry with 3D points.
-  /// In this case the last dimension is ignored.
   void setGeometry(std::vector<VectorType<NumericType, 3>> const &points,
                    std::vector<VectorType<unsigned, 3>> const &triangles,
                    const NumericType gridDelta) {
+    assert(D == 3 && "Setting triangle geometry is only supported in 3D.");
     this->gridDelta_ = gridDelta;
     geometry_.initGeometry(this->device_, points, triangles);
+  }
+
+  void setGeometry(std::vector<VectorType<NumericType, 3>> const &points,
+                   std::vector<VectorType<unsigned, 2>> const &lines,
+                   const NumericType gridDelta) {
+    assert(D == 2 && "Setting line geometry is only supported in 2D.");
+    this->gridDelta_ = gridDelta;
+    auto pointsTriangles =
+        rayInternal::convertLinesToTriangles(points, lines, gridDelta);
+    geometry_.initGeometry(this->device_, pointsTriangles.first,
+                           pointsTriangles.second);
   }
 
   /// Set material ID's for each geometry point.

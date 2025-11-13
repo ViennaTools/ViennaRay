@@ -18,8 +18,6 @@ public:
   ~TraceLine() { lineGeometry.freeBuffers(); }
 
   void setGeometry(const LineMesh &passedMesh) {
-    minBox = passedMesh.minimumExtent;
-    maxBox = passedMesh.maximumExtent;
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
     lineMesh = passedMesh;
     launchParams.D = D;
@@ -28,9 +26,6 @@ public:
 
   void smoothFlux(std::vector<float> &flux, int numNeighbors) override {
     // not implemented for line geometry
-    Logger::getInstance()
-        .addDebug("Flux smoothing not implemented for line geometry.")
-        .print();
   }
 
 protected:
@@ -45,10 +40,9 @@ protected:
     std::vector<float> areas(launchParams.numElements, 0.f);
 #pragma omp for
     for (int idx = 0; idx < launchParams.numElements; ++idx) {
-      Vec3Df p0 = lineMesh.nodes[lineMesh.lines[idx][0]];
-      Vec3Df p1 = lineMesh.nodes[lineMesh.lines[idx][1]];
-      Vec3Df lineDir = p1 - p0;
-      areas[idx] = 2 * Norm(lineDir / 2.f);
+      Vec3Df const &p0 = lineMesh.nodes[lineMesh.lines[idx][0]];
+      Vec3Df const &p1 = lineMesh.nodes[lineMesh.lines[idx][1]];
+      areas[idx] = Norm(p1 - p0);
     }
 
     this->areaBuffer_.allocUpload(areas);
@@ -60,6 +54,7 @@ protected:
         &sourceArea, &this->numRays, &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
                          kernel_args, *context_);
+    this->areaBuffer_.free();
   }
 
   void buildHitGroups() override {
@@ -100,10 +95,6 @@ protected:
 private:
   LineMesh lineMesh;
   LineGeometry<float, D> lineGeometry;
-
-  PointNeighborhood<float, D> pointNeighborhood_;
-  Vec3Df minBox;
-  Vec3Df maxBox;
 
   using Trace<T, D>::context_;
   using Trace<T, D>::geometryType_;

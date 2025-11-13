@@ -84,7 +84,14 @@ public:
         normals_[i] =
             Vec3Df{static_cast<float>(normal[0]), static_cast<float>(normal[1]),
                    static_cast<float>(normal[2])};
-        areas_[i] = 0.5 * length;
+        if constexpr (D == 2) {
+          if (i % 2 == 0)
+            areas_[i] = 0.5 * Norm(v1 - v0);
+          else
+            areas_[i] = 0.5 * Norm(v2 - v0);
+        } else {
+          areas_[i] = 0.5 * length;
+        }
       } else {
         normals_[i] = Vec3Df{0.f, 0.f, 0.f};
         areas_[i] = 0.;

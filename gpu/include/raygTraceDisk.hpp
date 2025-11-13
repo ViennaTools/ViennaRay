@@ -168,6 +168,7 @@ protected:
         &sourceArea, &this->numRays, &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
                          kernel_args, *context_);
+    this->areaBuffer_.free();
   }
 
   void buildHitGroups() override {

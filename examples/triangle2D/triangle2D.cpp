@@ -16,26 +16,31 @@ int main() {
   std::vector<Vec3D<NumericType>> points;
   std::vector<Vec2D<unsigned>> lines;
   NumericType gridDelta;
-  rayInternal::readMeshFromFile<NumericType, D>("trenchMesh.dat", gridDelta, points, lines);
+  rayInternal::readMeshFromFile<NumericType, D>("lineMesh.dat", gridDelta,
+                                                points, lines);
 
-//   TraceTriangle<NumericType, D> tracer;
-//   tracer.setGeometry(points, lines, gridDelta);
+  TraceTriangle<NumericType, D> tracer;
+  tracer.setGeometry(points, lines, gridDelta);
+  tracer.setSourceDirection(TraceDirection::POS_Y);
 
-//   auto particle =
-//       std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");
-//   tracer.setParticleType(particle);
-//   tracer.setNumberOfRaysPerPoint(2000);
+  auto particle =
+      std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");
+  tracer.setParticleType(particle);
+  tracer.setNumberOfRaysPerPoint(2000);
 
-//   Timer timer;
-//   timer.start();
-//   tracer.apply();
-//   timer.finish();
+  Timer timer;
+  timer.start();
+  tracer.apply();
+  timer.finish();
 
-//   std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
+  std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
 
-//   auto &localData = tracer.getLocalData();
-//   tracer.normalizeFlux(localData.getVectorData(0), NormalizationType::SOURCE);
+  auto &localData = tracer.getLocalData();
+  tracer.normalizeFlux(localData.getVectorData(0), NormalizationType::SOURCE);
 
-//   rayInternal::writeVTP("triangleGeometryOutput.vtp", points, triangles,
-//                         localData.getVectorData(0));
+  auto pointsTriangles =
+      rayInternal::convertLinesToTriangles(points, lines, gridDelta);
+  rayInternal::writeVTP<NumericType, 3>(
+      "lineGeometryOutput.vtp", pointsTriangles.first, pointsTriangles.second,
+      localData.getVectorData(0));
 }

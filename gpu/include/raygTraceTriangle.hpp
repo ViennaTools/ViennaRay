@@ -7,7 +7,7 @@ namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <class T, int D> class TraceTriangle : public Trace<T, D> {
+template <class T, int D = 3> class TraceTriangle : public Trace<T, D> {
 public:
   TraceTriangle(std::shared_ptr<DeviceContext> &passedContext)
       : Trace<T, D>(passedContext, "Triangle") {}
