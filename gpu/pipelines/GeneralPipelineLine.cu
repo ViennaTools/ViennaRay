@@ -28,18 +28,23 @@ extern "C" __global__ void __intersection__() {
   const int primID = optixGetPrimitiveIndex();
 
   // Read geometric data from the primitive that is inside that AABB box
-  const Vec2D<unsigned> idx = (sbtData->lines)[primID];
-  const Vec3Df p0 = sbtData->nodes[idx[0]];
-  const Vec3Df p1 = sbtData->nodes[idx[1]];
+  const Vec2D<unsigned> &idx = (sbtData->lines)[primID];
+  const Vec3Df &p0 = sbtData->nodes[idx[0]];
+  const Vec3Df &p1 = sbtData->nodes[idx[1]];
 
   Vec3Df lineDir = p1 - p0;
-  Vec3Df d = CrossProduct(prd->dir, lineDir);
+  float d = 1.f / (prd->dir[0] * lineDir[1] - prd->dir[1] * lineDir[0]);
 
   bool valid = true;
 
-  float t = CrossProduct((p0 - prd->pos), lineDir)[2] / d[2];
+  const Vec3Df p0ToRayOrigin = p0 - prd->pos;
+  float t = d * (p0ToRayOrigin[0] * lineDir[1] - p0ToRayOrigin[1] * lineDir[0]);
+  // float t = CrossProduct((p0 - prd->pos), lineDir)[2] * d;
   valid &= t > 1e-5f;
-  float s = CrossProduct((p0 - prd->pos), prd->dir)[2] / d[2];
+
+  float s =
+      d * (p0ToRayOrigin[0] * prd->dir[1] - p0ToRayOrigin[1] * prd->dir[0]);
+  // float s = CrossProduct((p0 - prd->pos), prd->dir)[2] * d;
   valid &= s > 1e-5f && s < 1.0f - 1e-5f;
 
   if (valid) {
@@ -55,8 +60,6 @@ extern "C" __global__ void __closesthit__() {
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->tMin = optixGetRayTmax();
   prd->primID = primID;
-
-  printf("Closest hit on line primitive %d\n", primID);
 
   if (sbtData->base.isBoundary) {
     if (launchParams.periodicBoundary) {

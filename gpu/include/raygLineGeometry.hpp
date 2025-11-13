@@ -56,8 +56,8 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     std::vector<OptixAabb> aabb(mesh.lines.size());
 
     for (size_t i = 0; i < mesh.lines.size(); ++i) {
-      Vec3Df p0 = mesh.nodes[mesh.lines[i][0]];
-      Vec3Df p1 = mesh.nodes[mesh.lines[i][1]];
+      const auto &p0 = mesh.nodes[mesh.lines[i][0]];
+      const auto &p1 = mesh.nodes[mesh.lines[i][1]];
       aabb[i] = {std::min(p0[0], p1[0]), std::min(p0[1], p1[1]),
                  std::min(p0[2], p1[2]), std::max(p0[0], p1[0]),
                  std::max(p0[1], p1[1]), std::max(p0[2], p1[2])};
@@ -98,8 +98,8 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     // AABB build input for boundary lines
     std::vector<OptixAabb> aabbBoundary(boundaryMesh.lines.size());
     for (size_t i = 0; i < boundaryMesh.lines.size(); ++i) {
-      Vec3Df p0 = boundaryMesh.nodes[boundaryMesh.lines[i][0]];
-      Vec3Df p1 = boundaryMesh.nodes[boundaryMesh.lines[i][1]];
+      auto const &p0 = boundaryMesh.nodes[boundaryMesh.lines[i][0]];
+      auto const &p1 = boundaryMesh.nodes[boundaryMesh.lines[i][1]];
       aabbBoundary[i] = {std::min(p0[0], p1[0]), std::min(p0[1], p1[1]),
                          std::min(p0[2], p1[2]), std::max(p0[0], p1[0]),
                          std::max(p0[1], p1[1]), std::max(p0[2], p1[2])};
@@ -181,15 +181,18 @@ template <typename NumericType, int D = 3> struct LineGeometry {
   static LineMesh makeBoundary(const LineMesh &passedMesh) {
     LineMesh boundaryMesh;
 
-    Vec3Df bbMin = passedMesh.minimumExtent;
+    const Vec3Df &bbMin = passedMesh.minimumExtent;
     Vec3Df bbMax = passedMesh.maximumExtent;
-    // adjust bounding box to include source plane and be below trench geometry
+    // adjust bounding box to include source plane
     bbMax[1] += 2 * passedMesh.gridDelta;
-    bbMin[1] -= 2 * passedMesh.gridDelta;
-    bbMin[2] = -passedMesh.gridDelta;
-    bbMax[2] = passedMesh.gridDelta;
 
     // one vertex in each corner of the bounding box
+    // y
+    // ^
+    // | 2--------3
+    // | |        |
+    // | |        |
+    // | 0--------1 --> x
     boundaryMesh.nodes.push_back({bbMin[0], bbMin[1], 0.f}); // 0
     boundaryMesh.nodes.push_back({bbMax[0], bbMin[1], 0.f}); // 1
     boundaryMesh.nodes.push_back({bbMin[0], bbMax[1], 0.f}); // 2
@@ -199,10 +202,6 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     boundaryMesh.lines.push_back({2, 0});
     // xmax - right 1
     boundaryMesh.lines.push_back({1, 3});
-    // ymin - bottom 2
-    boundaryMesh.lines.push_back({0, 1});
-    // ymax - top 3
-    boundaryMesh.lines.push_back({2, 3});
 
     return boundaryMesh;
   }

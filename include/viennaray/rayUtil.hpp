@@ -412,7 +412,8 @@ void readMeshFromFile(const std::string &fileName, NumericType &gridDelta,
   for (size_t i = 0; i < numElements; ++i) {
     dataFile >> id;
     assert(id == "e");
-    dataFile >> elements[i][0] >> elements[i][1] >> elements[i][2];
+    for (int j = 0; j < D; ++j)
+      dataFile >> elements[i][j];
   }
   dataFile.close();
 }

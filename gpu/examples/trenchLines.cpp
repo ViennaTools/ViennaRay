@@ -27,26 +27,26 @@ int main() {
   gpu::computeBoundingBox(mesh);
 
   for (size_t i = 0; i < mesh.lines.size(); ++i) {
-    Vec3Df p0 = mesh.nodes[mesh.lines[i][0]];
-    Vec3Df p1 = mesh.nodes[mesh.lines[i][1]];
+    Vec3Df const &p0 = mesh.nodes[mesh.lines[i][0]];
+    Vec3Df const &p1 = mesh.nodes[mesh.lines[i][1]];
     Vec3Df lineDir = p1 - p0;
-    Vec3Df normal = Vec3Df{lineDir[1], -lineDir[0], 0.0f};
+    Vec3Df normal = Vec3Df{-lineDir[1], lineDir[0], 0.0f};
     viennacore::Normalize(normal);
     mesh.normals.push_back(normal);
   }
 
-  // std::vector<int> materialIds(mesh.lines.size(), 7);
-  // for (int i = mesh.lines.size() / 2; i < mesh.lines.size(); ++i) {
-  //   materialIds[i] = 1;
-  // }
+  std::vector<int> materialIds(mesh.lines.size(), 7);
+  for (int i = mesh.lines.size() / 2; i < mesh.lines.size(); ++i) {
+    materialIds[i] = 1;
+  }
 
   gpu::Particle<NumericType> particle;
   particle.direction = {0.0f, 0.0f, -1.0f};
   particle.name = "Particle";
   particle.sticking = 1.f;
   particle.dataLabels = {"particleFlux"};
-  // particle.materialSticking[7] = 1.f;
-  // particle.materialSticking[1] = .1f;
+  particle.materialSticking[7] = 1.f;
+  particle.materialSticking[1] = .1f;
 
   std::unordered_map<std::string, unsigned int> pMap = {{"Particle", 0}};
   std::vector<gpu::CallableConfig> cMap = {
@@ -56,7 +56,7 @@ int main() {
 
   gpu::TraceLine<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
-  // tracer.setMaterialIds(materialIds);
+  tracer.setMaterialIds(materialIds);
   tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
   tracer.setNumberOfRaysPerPoint(1000);
@@ -67,10 +67,6 @@ int main() {
 
   std::vector<float> flux(mesh.lines.size());
   tracer.getFlux(flux.data(), 0, 0, 1);
-
-  for (size_t i = 0; i < flux.size(); ++i) {
-    std::cout << "Line " << i << " flux: " << flux[i] << "\n";
-  }
 
   rayInternal::writeVTP<float, D>("lineGeometryOutput.vtp", mesh.nodes,
                                   mesh.lines, flux);
