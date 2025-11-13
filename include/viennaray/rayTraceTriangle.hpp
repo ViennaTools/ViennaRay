@@ -59,7 +59,6 @@ public:
   void setGeometry(std::vector<VectorType<NumericType, 3>> const &points,
                    std::vector<VectorType<unsigned, 3>> const &triangles,
                    const NumericType gridDelta) {
-    assert(D == 3 && "Setting triangle geometry is only supported in 3D.");
     this->gridDelta_ = gridDelta;
     geometry_.initGeometry(this->device_, points, triangles);
   }

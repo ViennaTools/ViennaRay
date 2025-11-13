@@ -327,22 +327,24 @@ template <typename T>
 }
 
 template <class NumericType>
-std::pair<std::vector<Vec3Df>, std::vector<Vec3D<unsigned>>>
+std::pair<std::vector<Vec3D<NumericType>>, std::vector<Vec3D<unsigned>>>
 convertLinesToTriangles(const std::vector<Vec3D<NumericType>> &points,
                         const std::vector<Vec2D<unsigned>> &lines,
                         const NumericType lineWidth) {
-  std::vector<Vec3Df> triPoints;
+  std::vector<Vec3D<NumericType>> triPoints;
   std::vector<Vec3D<unsigned>> triangles;
   triPoints.reserve(points.size() * 2);
   triangles.reserve(lines.size() * 2);
 
   for (size_t i = 0; i < points.size(); ++i) {
-    triPoints.push_back(Vec3Df{static_cast<float>(points[i][0]),
-                               static_cast<float>(points[i][1]),
-                               static_cast<float>(lineWidth / 2.f)});
-    triPoints.push_back(Vec3Df{static_cast<float>(points[i][0]),
-                               static_cast<float>(points[i][1]),
-                               static_cast<float>(-lineWidth / 2.f)});
+    triPoints.push_back(
+        Vec3D<NumericType>{static_cast<NumericType>(points[i][0]),
+                           static_cast<NumericType>(points[i][1]),
+                           static_cast<NumericType>(lineWidth / 2.)});
+    triPoints.push_back(
+        Vec3D<NumericType>{static_cast<NumericType>(points[i][0]),
+                           static_cast<NumericType>(points[i][1]),
+                           static_cast<NumericType>(-lineWidth / 2.)});
   }
 
   for (size_t i = 0; i < lines.size(); ++i) {
