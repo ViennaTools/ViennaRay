@@ -16,7 +16,8 @@ int main() {
   std::vector<Vec3D<NumericType>> points;
   std::vector<Vec3D<unsigned>> triangles;
   NumericType gridDelta;
-  rayInternal::readMeshFromFile("trenchMesh.dat", gridDelta, points, triangles);
+  rayInternal::readMeshFromFile<NumericType, D>("trenchMesh.dat", gridDelta,
+                                                points, triangles);
 
   TraceTriangle<NumericType, D> tracer;
   tracer.setGeometry(points, triangles, gridDelta);
@@ -36,6 +37,6 @@ int main() {
   auto &localData = tracer.getLocalData();
   tracer.normalizeFlux(localData.getVectorData(0), NormalizationType::SOURCE);
 
-  rayInternal::writeVTP("triangleGeometryOutput.vtp", points, triangles,
-                        localData.getVectorData(0));
+  rayInternal::writeVTP<NumericType, D>("triangleGeometryOutput.vtp", points,
+                                        triangles, localData.getVectorData(0));
 }

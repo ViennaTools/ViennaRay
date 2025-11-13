@@ -13,4 +13,6 @@ configure_file(${CMAKE_SOURCE_DIR}/examples/disk3D/trenchGrid3D.dat
 add_dependencies(ViennaRay-GPU_Examples ${target_name})
 
 add_gpu_executable(GPU_trenchLines target_name trenchLines.cpp)
+configure_file(${CMAKE_SOURCE_DIR}/examples/triangle2D/lineMesh.dat
+               ${CMAKE_CURRENT_BINARY_DIR}/lineMesh.dat COPYONLY)
 add_dependencies(ViennaRay-GPU_Examples ${target_name})

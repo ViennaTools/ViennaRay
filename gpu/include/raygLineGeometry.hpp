@@ -29,20 +29,12 @@ template <typename NumericType, int D = 3> struct LineGeometry {
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
     assert(mesh.gridDelta > 0.f && "Grid delta must be positive.");
+    assert(D == 2 && "Only 2D line geometry is supported.");
 
-    if constexpr (D == 2) {
-      launchParams.source.minPoint[0] = mesh.minimumExtent[0];
-      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
-      launchParams.source.planeHeight =
-          mesh.maximumExtent[1] + 2 * mesh.gridDelta;
-    } else {
-      launchParams.source.minPoint[0] = mesh.minimumExtent[0];
-      launchParams.source.minPoint[1] = mesh.minimumExtent[1];
-      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
-      launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
-      launchParams.source.planeHeight =
-          mesh.maximumExtent[2] + 2 * mesh.gridDelta;
-    }
+    launchParams.source.minPoint[0] = mesh.minimumExtent[0];
+    launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
+    launchParams.source.planeHeight =
+        mesh.maximumExtent[1] + 2 * mesh.gridDelta;
     launchParams.numElements = mesh.lines.size();
 
     // 2 inputs: one for the geometry, one for the boundary
@@ -192,15 +184,10 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     Vec3Df bbMin = passedMesh.minimumExtent;
     Vec3Df bbMax = passedMesh.maximumExtent;
     // adjust bounding box to include source plane and be below trench geometry
-    if constexpr (D == 2) {
-      bbMax[1] += 2 * passedMesh.gridDelta;
-      bbMin[1] -= 2 * passedMesh.gridDelta;
-      bbMin[2] = -passedMesh.gridDelta;
-      bbMax[2] = passedMesh.gridDelta;
-    } else {
-      bbMax[2] += 2 * passedMesh.gridDelta;
-      bbMin[2] -= 2 * passedMesh.gridDelta;
-    }
+    bbMax[1] += 2 * passedMesh.gridDelta;
+    bbMin[1] -= 2 * passedMesh.gridDelta;
+    bbMin[2] = -passedMesh.gridDelta;
+    bbMax[2] = passedMesh.gridDelta;
 
     // one vertex in each corner of the bounding box
     boundaryMesh.nodes.push_back({bbMin[0], bbMin[1], 0.f}); // 0

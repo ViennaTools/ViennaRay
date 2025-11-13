@@ -56,6 +56,8 @@ extern "C" __global__ void __closesthit__() {
   prd->tMin = optixGetRayTmax();
   prd->primID = primID;
 
+  printf("Closest hit on line primitive %d\n", primID);
+
   if (sbtData->base.isBoundary) {
     if (launchParams.periodicBoundary) {
       applyPeriodicBoundary(prd, sbtData, launchParams.D);

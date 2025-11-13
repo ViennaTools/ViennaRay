@@ -16,7 +16,16 @@ int main(int argc, char **argv) {
   auto context = DeviceContext::createContext("../../lib/ptx", 0);
   // relative to build directory
 
-  const auto mesh = gpu::readMeshFromFile("trenchMesh.dat");
+  std::vector<Vec3D<float>> points;
+  std::vector<Vec3D<unsigned>> triangles;
+  float gridDelta;
+  rayInternal::readMeshFromFile<float, D>("trenchMesh.dat", gridDelta, points,
+                                          triangles);
+  gpu::TriangleMesh mesh;
+  mesh.nodes = std::move(points);
+  mesh.triangles = std::move(triangles);
+  mesh.gridDelta = static_cast<float>(gridDelta);
+  gpu::computeBoundingBox(mesh);
   std::vector<int> materialIds(mesh.triangles.size(), 7);
   for (int i = mesh.triangles.size() / 2; i < mesh.triangles.size(); ++i) {
     materialIds[i] = 1;
@@ -58,8 +67,8 @@ int main(int argc, char **argv) {
   std::vector<float> flux(mesh.triangles.size());
   tracer.getFlux(flux.data(), 0, 0);
 
-  rayInternal::writeVTP("triangleGeometryOutput.vtp", mesh.nodes,
-                        mesh.triangles, flux);
+  rayInternal::writeVTP<float, D>("triangleGeometryOutput.vtp", mesh.nodes,
+                                  mesh.triangles, flux);
 
 #ifdef COUNT_RAYS
   rayCountBuffer.download(&rayCount, 1);
