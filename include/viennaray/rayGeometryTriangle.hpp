@@ -31,8 +31,10 @@ public:
     assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
            "RTC Error: rtcSetNewGeometryBuffer points");
 
-    this->minCoords_ = mesh.minimumExtent;
-    this->maxCoords_ = mesh.maximumExtent;
+    for (int i = 0; i < D; i++) {
+      this->minCoords_[i] = static_cast<NumericType>(mesh.minimumExtent[i]);
+      this->maxCoords_[i] = static_cast<NumericType>(mesh.maximumExtent[i]);
+    }
 
     for (size_t i = 0; i < mesh.nodes.size(); ++i) {
       pPointBuffer_[i].xx = mesh.nodes[i][0];
