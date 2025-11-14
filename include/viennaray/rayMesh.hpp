@@ -157,10 +157,6 @@ TriangleMesh convertLinesToTriangles(const LineMesh &lineMesh) {
     Vec3D<unsigned> tri1{p0, p1, static_cast<unsigned>(p0 + 1)};
     auto normal = CrossProduct(mesh.nodes[tri1[1]] - mesh.nodes[tri1[0]],
                                mesh.nodes[tri1[2]] - mesh.nodes[tri1[0]]);
-
-    if (Norm2(normal) < 1e-6f)
-      continue;
-
     mesh.triangles.push_back(tri1);
     Normalize(normal);
     mesh.normals.push_back(normal);
