@@ -19,8 +19,9 @@ int main() {
   rayInternal::readMeshFromFile<NumericType, D>("trenchMesh.dat", gridDelta,
                                                 points, triangles);
 
+  TriangleMesh mesh(points, triangles, gridDelta);
   TraceTriangle<NumericType, D> tracer;
-  tracer.setGeometry(points, triangles, gridDelta);
+  tracer.setGeometry(mesh);
 
   auto particle =
       std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");

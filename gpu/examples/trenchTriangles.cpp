@@ -21,18 +21,13 @@ int main(int argc, char **argv) {
   float gridDelta;
   rayInternal::readMeshFromFile<float, D>("trenchMesh.dat", gridDelta, points,
                                           triangles);
-  gpu::TriangleMesh mesh;
-  mesh.nodes = std::move(points);
-  mesh.triangles = std::move(triangles);
-  mesh.gridDelta = static_cast<float>(gridDelta);
-  gpu::computeBoundingBox(mesh);
+  TriangleMesh mesh(points, triangles, gridDelta);
   std::vector<int> materialIds(mesh.triangles.size(), 7);
   for (int i = mesh.triangles.size() / 2; i < mesh.triangles.size(); ++i) {
     materialIds[i] = 1;
   }
 
   gpu::Particle<NumericType> particle;
-  particle.direction = {0.0f, 0.0f, -1.0f};
   particle.name = "Particle";
   particle.sticking = 0.1f;
   particle.dataLabels = {"particleFlux"};
@@ -67,7 +62,7 @@ int main(int argc, char **argv) {
   std::vector<float> flux(mesh.triangles.size());
   tracer.getFlux(flux.data(), 0, 0);
 
-  rayInternal::writeVTP<float, D>("triangleGeometryOutput.vtp", mesh.nodes,
+  rayInternal::writeVTP<float, D>("trenchTriangles_triMesh.vtp", mesh.nodes,
                                   mesh.triangles, flux);
 
 #ifdef COUNT_RAYS

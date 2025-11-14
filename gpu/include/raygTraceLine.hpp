@@ -21,7 +21,7 @@ public:
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
     lineMesh = passedMesh;
     launchParams.D = D;
-    lineGeometry.buildAccel(*context_, passedMesh, launchParams);
+    lineGeometry.buildAccel(*context_, lineMesh, launchParams);
   }
 
   void smoothFlux(std::vector<float> &flux, int numNeighbors) override {

@@ -3,8 +3,8 @@
 #include <vcContext.hpp>
 #include <vcCudaBuffer.hpp>
 
+#include "rayMesh.hpp"
 #include "raygLaunchParams.hpp"
-#include "raygMesh.hpp"
 
 namespace viennaray::gpu {
 
@@ -24,16 +24,26 @@ struct TriangleGeometry {
   CudaBuffer asBuffer;
 
   /// build acceleration structure from triangle mesh
+  template <int D>
   void buildAccel(DeviceContext &context, const TriangleMesh &mesh,
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
-    launchParams.source.minPoint[0] = mesh.minimumExtent[0];
-    launchParams.source.minPoint[1] = mesh.minimumExtent[1];
-    launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
-    launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
-    launchParams.source.planeHeight = mesh.maximumExtent[2] + mesh.gridDelta;
+    if constexpr (D == 2) {
+      launchParams.source.minPoint[0] = mesh.minimumExtent[0];
+      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
+      launchParams.source.minPoint[1] = 0.f;
+      launchParams.source.maxPoint[1] = 0.f;
+      launchParams.source.planeHeight = mesh.maximumExtent[1] + mesh.gridDelta;
+    } else {
+      launchParams.source.minPoint[1] = mesh.minimumExtent[1];
+      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
+      launchParams.source.minPoint[0] = mesh.minimumExtent[0];
+      launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
+      launchParams.source.planeHeight = mesh.maximumExtent[2] + mesh.gridDelta;
+    }
     launchParams.numElements = mesh.triangles.size();
+    launchParams.D = D;
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> triangleInput{};
@@ -77,7 +87,7 @@ struct TriangleGeometry {
     triangleInput[0].triangleArray.sbtIndexOffsetStrideInBytes = 0;
 
     // ------------------------- boundary input -------------------------
-    auto boundaryMesh = makeBoundary(mesh);
+    auto boundaryMesh = makeBoundary<D>(mesh);
     // upload the model to the device: the builder
     boundaryVertexBuffer.allocUpload(boundaryMesh.nodes);
     boundaryIndexBuffer.allocUpload(boundaryMesh.triangles);
@@ -165,42 +175,88 @@ struct TriangleGeometry {
     launchParams.traversable = asHandle;
   }
 
+  template <int D>
   static TriangleMesh makeBoundary(const TriangleMesh &passedMesh) {
     TriangleMesh boundaryMesh;
 
-    Vec3Df bbMin = passedMesh.minimumExtent;
-    Vec3Df bbMax = passedMesh.maximumExtent;
-    // adjust bounding box to include source plane
-    bbMax[2] += passedMesh.gridDelta;
-    boundaryMesh.gridDelta = passedMesh.gridDelta;
+    if constexpr (D == 3) {
+      Vec3Df bbMin = passedMesh.minimumExtent;
+      Vec3Df bbMax = passedMesh.maximumExtent;
+      // adjust bounding box to include source plane
+      bbMax[2] += passedMesh.gridDelta;
+      boundaryMesh.gridDelta = passedMesh.gridDelta;
 
-    boundaryMesh.nodes.reserve(8);
-    boundaryMesh.triangles.reserve(8);
+      boundaryMesh.nodes.reserve(8);
+      boundaryMesh.triangles.reserve(8);
 
-    // bottom
-    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMin[1], bbMin[2]});
-    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMin[1], bbMin[2]});
-    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMax[1], bbMin[2]});
-    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMax[1], bbMin[2]});
-    // top
-    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMin[1], bbMax[2]});
-    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMin[1], bbMax[2]});
-    boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMax[1], bbMax[2]});
-    boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMax[1], bbMax[2]});
+      // bottom
+      boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMin[1], bbMin[2]});
+      boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMin[1], bbMin[2]});
+      boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMax[1], bbMin[2]});
+      boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMax[1], bbMin[2]});
+      // top
+      boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMin[1], bbMax[2]});
+      boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMin[1], bbMax[2]});
+      boundaryMesh.nodes.push_back(Vec3Df{bbMax[0], bbMax[1], bbMax[2]});
+      boundaryMesh.nodes.push_back(Vec3Df{bbMin[0], bbMax[1], bbMax[2]});
 
-    // x min max
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 3, 7}); // 0
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 7, 4}); // 1
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 2, 1}); // 2
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 1, 5}); // 3
-    // y min max
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 4, 5}); // 4
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 5, 1}); // 5
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 7, 3}); // 6
-    boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 3, 2}); // 7
+      // x min max
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 3, 7}); // 0
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 7, 4}); // 1
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 2, 1}); // 2
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 1, 5}); // 3
+      // y min max
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 4, 5}); // 4
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{0, 5, 1}); // 5
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 7, 3}); // 6
+      boundaryMesh.triangles.push_back(Vec3D<unsigned>{6, 3, 2}); // 7
 
-    boundaryMesh.minimumExtent = bbMin;
-    boundaryMesh.maximumExtent = bbMax;
+      boundaryMesh.minimumExtent = bbMin;
+      boundaryMesh.maximumExtent = bbMax;
+    } else if constexpr (D == 2) {
+
+      const Vec3Df &bbMin = passedMesh.minimumExtent;
+      Vec3Df bbMax = passedMesh.maximumExtent;
+      // adjust bounding box to include source plane
+      bbMax[1] += 2 * passedMesh.gridDelta;
+      boundaryMesh.gridDelta = passedMesh.gridDelta;
+      boundaryMesh.nodes.reserve(8);
+      boundaryMesh.triangles.reserve(4);
+
+      boundaryMesh.nodes.push_back(
+          {bbMin[0], bbMin[1], 0.5f * boundaryMesh.gridDelta}); // 0
+      boundaryMesh.nodes.push_back(
+          {bbMin[0], bbMin[1], -0.5f * boundaryMesh.gridDelta}); // 1
+
+      // right bottom
+      boundaryMesh.nodes.push_back(
+          {bbMax[0], bbMin[1], 0.5f * boundaryMesh.gridDelta}); // 2
+      boundaryMesh.nodes.push_back(
+          {bbMax[0], bbMin[1], -0.5f * boundaryMesh.gridDelta}); // 3
+
+      // left top
+      boundaryMesh.nodes.push_back(
+          {bbMin[0], bbMax[1], 0.5f * boundaryMesh.gridDelta}); // 4
+      boundaryMesh.nodes.push_back(
+          {bbMin[0], bbMax[1], -0.5f * boundaryMesh.gridDelta}); // 5
+
+      // right top
+      boundaryMesh.nodes.push_back(
+          {bbMax[0], bbMax[1], 0.5f * boundaryMesh.gridDelta}); // 6
+      boundaryMesh.nodes.push_back(
+          {bbMax[0], bbMax[1], -0.5f * boundaryMesh.gridDelta}); // 7
+
+      // xmin - left 0
+      boundaryMesh.triangles.push_back({0, 1, 5});
+      boundaryMesh.triangles.push_back({4, 0, 5});
+
+      // xmax - right 1
+      boundaryMesh.triangles.push_back({3, 2, 6});
+      boundaryMesh.triangles.push_back({7, 3, 6});
+
+      boundaryMesh.minimumExtent = bbMin;
+      boundaryMesh.maximumExtent = bbMax;
+    }
 
     return boundaryMesh;
   }

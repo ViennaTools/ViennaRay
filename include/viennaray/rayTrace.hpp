@@ -163,7 +163,8 @@ protected:
   NumericType gridDelta_ = 0;
 
   BoundaryCondition boundaryConditions_[D] = {};
-  TraceDirection sourceDirection_ = TraceDirection::POS_Z;
+  TraceDirection sourceDirection_ =
+      D == 2 ? TraceDirection::POS_Y : TraceDirection::POS_Z;
   Vec3D<NumericType> primaryDirection_{NumericType(0), NumericType(0),
                                        NumericType(0)};
 

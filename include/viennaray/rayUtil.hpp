@@ -326,46 +326,6 @@ template <typename T>
   return B;
 }
 
-template <class NumericType>
-std::pair<std::vector<Vec3D<NumericType>>, std::vector<Vec3D<unsigned>>>
-convertLinesToTriangles(const std::vector<Vec3D<NumericType>> &points,
-                        const std::vector<Vec2D<unsigned>> &lines,
-                        const NumericType lineWidth) {
-  std::vector<Vec3D<NumericType>> triPoints;
-  std::vector<Vec3D<unsigned>> triangles;
-  triPoints.reserve(points.size() * 2);
-  triangles.reserve(lines.size() * 2);
-
-  for (size_t i = 0; i < points.size(); ++i) {
-    triPoints.push_back(
-        Vec3D<NumericType>{static_cast<NumericType>(points[i][0]),
-                           static_cast<NumericType>(points[i][1]),
-                           static_cast<NumericType>(lineWidth / 2.)});
-    triPoints.push_back(
-        Vec3D<NumericType>{static_cast<NumericType>(points[i][0]),
-                           static_cast<NumericType>(points[i][1]),
-                           static_cast<NumericType>(-lineWidth / 2.)});
-  }
-
-  for (size_t i = 0; i < lines.size(); ++i) {
-    const unsigned p0 = lines[i][0] * 2;
-    const unsigned p1 = lines[i][1] * 2;
-
-    // first triangle
-    Vec3D<unsigned> tri1{p0, p1, static_cast<unsigned>(p0 + 1)};
-    if (Norm2(CrossProduct(triPoints[tri1[1]] - triPoints[tri1[0]],
-                           triPoints[tri1[2]] - triPoints[tri1[0]])) < 1e-6f)
-      continue;
-    triangles.push_back(tri1);
-    // second triangle
-    triangles.push_back(Vec3D<unsigned>{static_cast<unsigned>(p0 + 1), p1,
-                                        static_cast<unsigned>(p1 + 1)});
-  }
-  triangles.shrink_to_fit();
-
-  return {triPoints, triangles};
-}
-
 /* -------- Create or read simple geometries for testing -------- */
 template <typename NumericType>
 void createPlaneGrid(const NumericType gridDelta, const NumericType extent,

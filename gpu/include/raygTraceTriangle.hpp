@@ -7,18 +7,35 @@ namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <class T, int D = 3> class TraceTriangle : public Trace<T, D> {
+template <class T, int D> class TraceTriangle : public Trace<T, D> {
 public:
   TraceTriangle(std::shared_ptr<DeviceContext> &passedContext)
-      : Trace<T, D>(passedContext, "Triangle") {}
+      : Trace<T, D>(passedContext, "Triangle") {
+    if constexpr (D == 2) {
+      this->normKernelName.append("_2D");
+    }
+  }
 
-  TraceTriangle(unsigned deviceID = 0) : Trace<T, D>("Triangle", deviceID) {}
+  TraceTriangle(unsigned deviceID = 0) : Trace<T, D>("Triangle", deviceID) {
+    if constexpr (D == 2) {
+      this->normKernelName.append("_2D");
+    }
+  }
 
   ~TraceTriangle() { triangleGeometry.freeBuffers(); }
 
   void setGeometry(const TriangleMesh &passedMesh) {
     assert(context_);
-    triangleGeometry.buildAccel(*context_, passedMesh, launchParams);
+    assert(passedMesh.triangles.size() > 0 &&
+           "Triangle mesh has no triangles.");
+    assert(passedMesh.nodes.size() > 0 && "Triangle mesh has no vertices.");
+
+    this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
+    triangleGeometry.buildAccel<D>(*context_, passedMesh, launchParams);
+
+    if constexpr (D == 2) {
+      triangleMesh = passedMesh;
+    }
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {}

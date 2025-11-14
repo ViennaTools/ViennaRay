@@ -1,5 +1,6 @@
 #pragma once
 
+#include <rayMesh.hpp>
 #include <rayPointNeighborhood.hpp>
 #include <rayUtil.hpp>
 

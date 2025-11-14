@@ -19,14 +19,14 @@ int main() {
   rayInternal::readMeshFromFile<NumericType, D>("lineMesh.dat", gridDelta,
                                                 points, lines);
 
+  LineMesh lineMesh(points, lines, gridDelta);
   TraceTriangle<NumericType, D> tracer;
-  tracer.setGeometry(points, lines, gridDelta);
-  tracer.setSourceDirection(TraceDirection::POS_Y);
+  tracer.setGeometry(lineMesh);
 
   auto particle =
       std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");
   tracer.setParticleType(particle);
-  tracer.setNumberOfRaysPerPoint(2000);
+  tracer.setNumberOfRaysPerPoint(5000);
 
   Timer timer;
   timer.start();
@@ -38,9 +38,8 @@ int main() {
   auto &localData = tracer.getLocalData();
   tracer.normalizeFlux(localData.getVectorData(0), NormalizationType::SOURCE);
 
-  auto pointsTriangles =
-      rayInternal::convertLinesToTriangles(points, lines, gridDelta);
-  rayInternal::writeVTP<NumericType, 3>(
-      "lineGeometryOutput.vtp", pointsTriangles.first, pointsTriangles.second,
-      localData.getVectorData(0));
+  auto triMesh = convertLinesToTriangles(lineMesh);
+  rayInternal::writeVTP<NumericType, 3>("lineGeometryOutput.vtp", triMesh.nodes,
+                                        triMesh.triangles,
+                                        localData.getVectorData(0));
 }

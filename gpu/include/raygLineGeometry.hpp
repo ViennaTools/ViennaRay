@@ -3,9 +3,9 @@
 #include <vcContext.hpp>
 #include <vcCudaBuffer.hpp>
 
+#include "rayMesh.hpp"
 #include "rayUtil.hpp"
 #include "raygLaunchParams.hpp"
-#include "raygMesh.hpp"
 
 namespace viennaray::gpu {
 
@@ -25,7 +25,7 @@ template <typename NumericType, int D = 3> struct LineGeometry {
   CudaBuffer asBuffer;
 
   /// build acceleration structure from triangle mesh
-  void buildAccel(DeviceContext &context, LineMesh &mesh,
+  void buildAccel(DeviceContext &context, const LineMesh &mesh,
                   LaunchParams &launchParams) {
     assert(context.deviceID != -1 && "Context not initialized.");
     assert(mesh.gridDelta > 0.f && "Grid delta must be positive.");
@@ -36,19 +36,6 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     launchParams.source.planeHeight =
         mesh.maximumExtent[1] + 2 * mesh.gridDelta;
     launchParams.numElements = mesh.lines.size();
-
-    // remove zero length lines
-    std::vector<Vec2D<unsigned>> validLines;
-    validLines.reserve(mesh.lines.size());
-    for (size_t i = 0; i < mesh.lines.size(); ++i) {
-      const auto &p0 = mesh.nodes[mesh.lines[i][0]];
-      const auto &p1 = mesh.nodes[mesh.lines[i][1]];
-      if (Norm(p1 - p0) > 1e-6f) {
-        validLines.push_back(mesh.lines[i]);
-      }
-    }
-    validLines.shrink_to_fit();
-    mesh.lines = std::move(validLines);
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> lineInput{};
