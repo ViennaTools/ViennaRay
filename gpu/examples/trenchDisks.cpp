@@ -20,12 +20,7 @@ int main() {
   std::vector<VectorType<NumericType, D>> normals;
   rayInternal::readGridFromFile("trenchGrid3D.dat", gridDelta, points, normals);
 
-  gpu::DiskMesh mesh;
-  mesh.nodes = points;
-  mesh.normals = normals;
-  mesh.gridDelta = static_cast<float>(gridDelta);
-  computeBoundingBox(mesh);
-
+  DiskMesh mesh(points, normals, gridDelta);
   std::vector<int> materialIds(mesh.nodes.size(), 7);
   for (int i = mesh.nodes.size() / 2; i < mesh.nodes.size(); ++i) {
     materialIds[i] = 1;

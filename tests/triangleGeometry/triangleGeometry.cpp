@@ -11,7 +11,8 @@ int main() {
   std::vector<Vec3D<NumericType>> points;
   std::vector<Vec3D<unsigned>> triangles;
   NumericType gridDelta;
-  rayInternal::readMeshFromFile<NumericType, D>("trenchMesh.dat", gridDelta, points, triangles);
+  rayInternal::readMeshFromFile<NumericType, D>("trenchMesh.dat", gridDelta,
+                                                points, triangles);
   std::vector<int> materialIds(triangles.size(), 7);
 
   auto device = rtcNewDevice("");

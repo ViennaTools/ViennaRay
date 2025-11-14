@@ -114,6 +114,13 @@ struct TriangleMesh {
 };
 
 struct DiskMesh {
+  DiskMesh() {}
+  DiskMesh(const std::vector<Vec3Df> &pts, const std::vector<Vec3Df> &nms,
+           float delta)
+      : nodes(pts), normals(nms), gridDelta(delta) {
+    computeBoundingBox(*this);
+  }
+
   std::vector<Vec3Df> nodes;
   std::vector<Vec3Df> normals;
 

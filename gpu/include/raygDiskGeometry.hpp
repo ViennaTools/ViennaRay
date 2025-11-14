@@ -3,9 +3,9 @@
 #include <vcContext.hpp>
 #include <vcCudaBuffer.hpp>
 
+#include "rayMesh.hpp"
 #include "rayUtil.hpp"
 #include "raygLaunchParams.hpp"
-#include "raygMesh.hpp"
 
 namespace viennaray::gpu {
 

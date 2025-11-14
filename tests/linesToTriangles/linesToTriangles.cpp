@@ -1,3 +1,4 @@
+#include <rayMesh.hpp>
 #include <rayUtil.hpp>
 #include <vcTestAsserts.hpp>
 
@@ -13,13 +14,9 @@ int main() {
   float gridDelta;
   rayInternal::readMeshFromFile<float, D>("lineMesh.dat", gridDelta, points,
                                           lines);
-
-  auto pointsTriangles =
-      rayInternal::convertLinesToTriangles(points, lines, gridDelta);
-  //   std::vector<NumericType> flux(pointsTriangles.second.size(), 1.0f);
-  //   rayInternal::writeVTP<NumericType, 3>("linesToTriangles.vtp",
-  //                                         pointsTriangles.first,
-  //                                         pointsTriangles.second, flux);
-
-  VC_TEST_ASSERT(pointsTriangles.first.size() == points.size() * 2);
+  LineMesh lineMesh(points, lines, gridDelta);
+  auto triMesh = convertLinesToTriangles(lineMesh);
+  std::vector<NumericType> flux(triMesh.triangles.size(), 1.0f);
+  rayInternal::writeVTP<NumericType, 3>("linesToTriangles.vtp", triMesh.nodes,
+                                        triMesh.triangles, flux);
 }
