@@ -54,6 +54,7 @@ int main() {
 
   tracer.apply();
 
+  tracer.normalizeResults();
   auto flux = tracer.getFlux(0, 0);
   rayInternal::writeVTP<float, D>("trenchLines_lineFlux.vtp", mesh.nodes,
                                   mesh.lines, flux);
@@ -78,6 +79,7 @@ int main() {
   triangleTracer.prepareParticlePrograms();
 
   triangleTracer.apply();
+  triangleTracer.normalizeResults();
 
   flux = triangleTracer.getFlux(0, 0);
   rayInternal::writeVTP<float, 3>("trenchLines_triFlux.vtp", triMesh.nodes,

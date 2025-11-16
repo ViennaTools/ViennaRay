@@ -51,6 +51,7 @@ int main() {
 
   tracer.apply();
 
+  tracer.normalizeResults();
   auto flux = tracer.getFlux(0, 0, 1);
 
   rayInternal::writeVTK<float, D>("trenchResult.vtk", points, flux);

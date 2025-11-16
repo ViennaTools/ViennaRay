@@ -19,7 +19,7 @@ public:
 
   ~TraceDisk() { diskGeometry.freeBuffers(); }
 
-  void setGeometry(const DiskMesh &passedMesh) {
+  void setGeometry(const DiskMesh &passedMesh, float sourceOffset = 0.f) {
     assert(context_ && "Context not initialized.");
     diskMesh = passedMesh;
     if (diskMesh.gridDelta <= 0.f) {
@@ -43,7 +43,7 @@ public:
                                         diskMesh.minimumExtent,
                                         diskMesh.maximumExtent);
     diskGeometry.buildAccel(*context_, diskMesh, launchParams,
-                            this->ignoreBoundary);
+                            this->ignoreBoundary, sourceOffset);
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {

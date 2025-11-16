@@ -59,6 +59,7 @@ int main(int argc, char **argv) {
 
   tracer.apply();
 
+  tracer.normalizeResults();
   auto flux = tracer.getFlux(0, 0);
   rayInternal::writeVTP<float, D>("trenchTriangles_triMesh.vtp", mesh.nodes,
                                   mesh.triangles, flux);

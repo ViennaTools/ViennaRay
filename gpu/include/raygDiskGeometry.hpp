@@ -27,19 +27,22 @@ template <int D> struct DiskGeometry {
 
   /// build acceleration structure from triangle mesh
   void buildAccel(DeviceContext &context, const DiskMesh &mesh,
-                  LaunchParams &launchParams, const bool ignoreBoundary) {
+                  LaunchParams &launchParams, const bool ignoreBoundary,
+                  float sourceOffset) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
     if constexpr (D == 2) {
       launchParams.source.minPoint[0] = mesh.minimumExtent[0];
       launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
-      launchParams.source.planeHeight = mesh.maximumExtent[1] + 2 * mesh.radius;
+      launchParams.source.planeHeight =
+          mesh.maximumExtent[1] + 2 * mesh.radius + sourceOffset;
     } else {
       launchParams.source.minPoint[0] = mesh.minimumExtent[0];
       launchParams.source.minPoint[1] = mesh.minimumExtent[1];
       launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
       launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
-      launchParams.source.planeHeight = mesh.maximumExtent[2] + 2 * mesh.radius;
+      launchParams.source.planeHeight =
+          mesh.maximumExtent[2] + 2 * mesh.radius + sourceOffset;
     }
     launchParams.numElements = mesh.nodes.size();
 
