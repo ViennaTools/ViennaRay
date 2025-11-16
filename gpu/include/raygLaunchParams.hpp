@@ -77,9 +77,6 @@ __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
       prd.numBoundaryHits > launchParams.maxBoundaryHits)
     return false;
 
-  if (prd.numReflections > 1e4)
-    return false;
-
   // If the weight of the ray is above a certain threshold, we always reflect.
   // If the weight of the ray is below the threshold, we randomly decide to
   // either kill the ray or increase its weight (in an unbiased way).
