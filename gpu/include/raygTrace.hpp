@@ -333,6 +333,8 @@ public:
     launchParams.periodicBoundary = periodic;
   }
 
+  void setIgnoreBoundary(const bool ignore) { ignoreBoundary = ignore; }
+
   void freeBuffers() {
     resultBuffer.free();
     hitgroupRecordBuffer.free();
@@ -347,7 +349,6 @@ public:
     for (auto &buffer : materialStickingBuffer_) {
       buffer.free();
     }
-    areaBuffer_.free();
   }
 
   unsigned int prepareParticlePrograms() {
@@ -675,8 +676,6 @@ protected:
 
   float gridDelta_ = 0.0f;
 
-  CudaBuffer areaBuffer_;
-
   // particles
   unsigned int numFluxes_ = 0;
   std::vector<Particle<T>> particles_;
@@ -714,6 +713,7 @@ protected:
   std::vector<float> results;
 
   rayInternal::KernelConfig config_;
+  bool ignoreBoundary = false;
 
   size_t numRays;
   unsigned numCellData = 0;

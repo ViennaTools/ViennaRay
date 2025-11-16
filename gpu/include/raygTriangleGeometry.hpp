@@ -26,7 +26,8 @@ struct TriangleGeometry {
   /// build acceleration structure from triangle mesh
   template <int D>
   void buildAccel(DeviceContext &context, const TriangleMesh &mesh,
-                  LaunchParams &launchParams) {
+                  LaunchParams &launchParams, const bool ignoreBoundary,
+                  const float sourceOffset = 0.f) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
     if constexpr (D == 2) {
@@ -34,13 +35,15 @@ struct TriangleGeometry {
       launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
       launchParams.source.minPoint[1] = 0.f;
       launchParams.source.maxPoint[1] = 0.f;
-      launchParams.source.planeHeight = mesh.maximumExtent[1] + mesh.gridDelta;
+      launchParams.source.planeHeight =
+          mesh.maximumExtent[1] + mesh.gridDelta + sourceOffset;
     } else {
-      launchParams.source.minPoint[1] = mesh.minimumExtent[1];
-      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
       launchParams.source.minPoint[0] = mesh.minimumExtent[0];
+      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
+      launchParams.source.minPoint[1] = mesh.minimumExtent[1];
       launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
-      launchParams.source.planeHeight = mesh.maximumExtent[2] + mesh.gridDelta;
+      launchParams.source.planeHeight =
+          mesh.maximumExtent[2] + mesh.gridDelta + sourceOffset;
     }
     launchParams.numElements = mesh.triangles.size();
     launchParams.D = D;
@@ -87,40 +90,46 @@ struct TriangleGeometry {
     triangleInput[0].triangleArray.sbtIndexOffsetStrideInBytes = 0;
 
     // ------------------------- boundary input -------------------------
-    auto boundaryMesh = makeBoundary<D>(mesh);
-    // upload the model to the device: the builder
-    boundaryVertexBuffer.allocUpload(boundaryMesh.nodes);
-    boundaryIndexBuffer.allocUpload(boundaryMesh.triangles);
+    unsigned int numBuildInputs = 1;
+    if (ignoreBoundary) {
+      numBuildInputs = 2;
+      auto boundaryMesh = makeBoundary<D>(mesh);
+      // upload the model to the device: the builder
+      boundaryVertexBuffer.allocUpload(boundaryMesh.nodes);
+      boundaryIndexBuffer.allocUpload(boundaryMesh.triangles);
 
-    // triangle inputs
-    triangleInput[1] = {};
-    triangleInput[1].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+      // triangle inputs
+      triangleInput[1] = {};
+      triangleInput[1].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
 
-    // create local variables, because we need a *pointer* to the
-    // device pointers
-    CUdeviceptr d_boundVertices = boundaryVertexBuffer.dPointer();
-    CUdeviceptr d_boundIndices = boundaryIndexBuffer.dPointer();
+      // create local variables, because we need a *pointer* to the
+      // device pointers
+      CUdeviceptr d_boundVertices = boundaryVertexBuffer.dPointer();
+      CUdeviceptr d_boundIndices = boundaryIndexBuffer.dPointer();
 
-    triangleInput[1].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-    triangleInput[1].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
-    triangleInput[1].triangleArray.numVertices = (int)boundaryMesh.nodes.size();
-    triangleInput[1].triangleArray.vertexBuffers = &d_boundVertices;
+      triangleInput[1].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
+      triangleInput[1].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
+      triangleInput[1].triangleArray.numVertices =
+          (int)boundaryMesh.nodes.size();
+      triangleInput[1].triangleArray.vertexBuffers = &d_boundVertices;
 
-    triangleInput[1].triangleArray.indexFormat =
-        OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-    triangleInput[1].triangleArray.indexStrideInBytes = sizeof(Vec3D<unsigned>);
-    triangleInput[1].triangleArray.numIndexTriplets =
-        (int)boundaryMesh.triangles.size();
-    triangleInput[1].triangleArray.indexBuffer = d_boundIndices;
+      triangleInput[1].triangleArray.indexFormat =
+          OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+      triangleInput[1].triangleArray.indexStrideInBytes =
+          sizeof(Vec3D<unsigned>);
+      triangleInput[1].triangleArray.numIndexTriplets =
+          (int)boundaryMesh.triangles.size();
+      triangleInput[1].triangleArray.indexBuffer = d_boundIndices;
 
-    // one SBT entry, and no per-primitive materials:
-    triangleInputFlags[1] = 0;
-    triangleInput[1].triangleArray.flags = &triangleInputFlags[1];
-    triangleInput[1].triangleArray.numSbtRecords = 1;
-    triangleInput[1].triangleArray.sbtIndexOffsetBuffer = 0;
-    triangleInput[1].triangleArray.sbtIndexOffsetSizeInBytes = 0;
-    triangleInput[1].triangleArray.sbtIndexOffsetStrideInBytes = 0;
-    // ------------------------------------------------------
+      // one SBT entry, and no per-primitive materials:
+      triangleInputFlags[1] = 0;
+      triangleInput[1].triangleArray.flags = &triangleInputFlags[1];
+      triangleInput[1].triangleArray.numSbtRecords = 1;
+      triangleInput[1].triangleArray.sbtIndexOffsetBuffer = 0;
+      triangleInput[1].triangleArray.sbtIndexOffsetSizeInBytes = 0;
+      triangleInput[1].triangleArray.sbtIndexOffsetStrideInBytes = 0;
+      // ------------------------------------------------------
+    }
 
     OptixTraversableHandle asHandle{0};
 
@@ -133,8 +142,7 @@ struct TriangleGeometry {
 
     OptixAccelBufferSizes blasBufferSizes;
     optixAccelComputeMemoryUsage(context.optix, &accelOptions,
-                                 triangleInput.data(),
-                                 2, // num_build_inputs
+                                 triangleInput.data(), numBuildInputs,
                                  &blasBufferSizes);
 
     // prepare compaction
@@ -152,10 +160,10 @@ struct TriangleGeometry {
     CudaBuffer outputBuffer;
     outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-    optixAccelBuild(context.optix, 0, &accelOptions, triangleInput.data(), 2,
-                    tempBuffer.dPointer(), tempBuffer.sizeInBytes,
-                    outputBuffer.dPointer(), outputBuffer.sizeInBytes,
-                    &asHandle, &emitDesc, 1);
+    optixAccelBuild(context.optix, 0, &accelOptions, triangleInput.data(),
+                    numBuildInputs, tempBuffer.dPointer(),
+                    tempBuffer.sizeInBytes, outputBuffer.dPointer(),
+                    outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1);
     cudaDeviceSynchronize();
 
     // perform compaction

@@ -87,7 +87,6 @@ struct KernelConfig {
   unsigned rngSeed = 0;
 
   bool useRandomSeed = true;
-  bool calcFlux = true;
   bool printProgress = false;
 
   unsigned runNumber = 1;

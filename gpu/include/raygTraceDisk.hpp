@@ -160,15 +160,17 @@ protected:
         }
       }
     }
-    this->areaBuffer_.allocUpload(areas);
-    CUdeviceptr d_areas = this->areaBuffer_.dPointer();
+
+    CudaBuffer areaBuffer;
+    areaBuffer.allocUpload(areas);
+    CUdeviceptr d_areas = areaBuffer.dPointer();
 
     void *kernel_args[] = {
         &d_data,     &d_areas,       &launchParams.numElements,
         &sourceArea, &this->numRays, &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
                          kernel_args, *context_);
-    this->areaBuffer_.free();
+    areaBuffer.free();
   }
 
   void buildHitGroups() override {

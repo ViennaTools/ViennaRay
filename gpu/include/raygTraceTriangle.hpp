@@ -24,14 +24,16 @@ public:
 
   ~TraceTriangle() { triangleGeometry.freeBuffers(); }
 
-  void setGeometry(const TriangleMesh &passedMesh) {
+  void setGeometry(const TriangleMesh &passedMesh,
+                   const float sourceOffset = 0.f) {
     assert(context_);
     assert(passedMesh.triangles.size() > 0 &&
            "Triangle mesh has no triangles.");
     assert(passedMesh.nodes.size() > 0 && "Triangle mesh has no vertices.");
 
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
-    triangleGeometry.buildAccel<D>(*context_, passedMesh, launchParams);
+    triangleGeometry.buildAccel<D>(*context_, passedMesh, launchParams,
+                                   this->ignoreBoundary, sourceOffset);
 
     if constexpr (D == 2) {
       triangleMesh = passedMesh;
@@ -85,23 +87,25 @@ protected:
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    HitgroupRecordTriangle boundaryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
-    boundaryHitgroupRecord.data.vertex =
-        (Vec3Df *)triangleGeometry.boundaryVertexBuffer.dPointer();
-    boundaryHitgroupRecord.data.index =
-        (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
-    boundaryHitgroupRecord.data.base.geometryType = 0;
-    boundaryHitgroupRecord.data.base.isBoundary = true;
+    if (!this->ignoreBoundary) {
+      HitgroupRecordTriangle boundaryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      boundaryHitgroupRecord.data.vertex =
+          (Vec3Df *)triangleGeometry.boundaryVertexBuffer.dPointer();
+      boundaryHitgroupRecord.data.index =
+          (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
+      boundaryHitgroupRecord.data.base.geometryType = 0;
+      boundaryHitgroupRecord.data.base.isBoundary = true;
 
-    // add boundary hitgroup record
-    hitgroupRecords.push_back(boundaryHitgroupRecord);
+      // add boundary hitgroup record
+      hitgroupRecords.push_back(boundaryHitgroupRecord);
+    }
 
     // upload hitgroup records
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
     sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordTriangle);
-    sbt.hitgroupRecordCount = 2;
+    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
   }
 
   TriangleMesh triangleMesh;

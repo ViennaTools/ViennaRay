@@ -29,7 +29,7 @@ static __device__ __inline__ unsigned int tea(unsigned int v0,
 }
 
 __device__ __inline__ float getNextRand(RNGState *state) {
-  return (float)(curand_uniform(state));
+  return curand_uniform(state);
 }
 
 __device__ __inline__ float getNormalDistRand(RNGState *state) {
