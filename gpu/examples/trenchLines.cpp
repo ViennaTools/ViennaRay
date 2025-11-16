@@ -54,8 +54,7 @@ int main() {
 
   tracer.apply();
 
-  std::vector<float> flux(mesh.lines.size());
-  tracer.getFlux(flux.data(), 0, 0, 1);
+  auto flux = tracer.getFlux(0, 0);
   rayInternal::writeVTP<float, D>("trenchLines_lineFlux.vtp", mesh.nodes,
                                   mesh.lines, flux);
 
@@ -80,9 +79,7 @@ int main() {
 
   triangleTracer.apply();
 
-  flux.resize(triMesh.triangles.size());
-  triangleTracer.getFlux(flux.data(), 0, 0);
-
+  flux = triangleTracer.getFlux(0, 0);
   rayInternal::writeVTP<float, 3>("trenchLines_triFlux.vtp", triMesh.nodes,
                                   triMesh.triangles, flux);
 

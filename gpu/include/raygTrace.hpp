@@ -308,9 +308,8 @@ public:
 
   size_t getNumberOfRays() const { return numRays; }
 
-  void getFlux(float *flux, int particleIdx, int dataIdx,
-               int smoothingNeighbors = 0) {
-
+  std::vector<float> getFlux(int particleIdx, int dataIdx,
+                             int smoothingNeighbors = 0) {
     if (!resultsDownloaded) {
       results.resize(launchParams.numElements * numFluxes_);
       resultBuffer.download(results.data(),
@@ -318,18 +317,18 @@ public:
       resultsDownloaded = true;
     }
 
+    std::vector<float> flux(launchParams.numElements);
     unsigned int offset = 0;
     for (size_t i = 0; i < particles_.size(); i++) {
       if (particleIdx > i)
         offset += particles_[i].dataLabels.size();
     }
     offset = (offset + dataIdx) * launchParams.numElements;
-    std::vector<float> temp(launchParams.numElements);
-    std::memcpy(temp.data(), results.data() + offset,
+    std::memcpy(flux.data(), results.data() + offset,
                 launchParams.numElements * sizeof(float));
     if (smoothingNeighbors > 0)
-      smoothFlux(temp, smoothingNeighbors);
-    std::memcpy(flux, temp.data(), launchParams.numElements * sizeof(float));
+      smoothFlux(flux, smoothingNeighbors);
+    return flux;
   }
 
   void setUseCellData(unsigned numData) { numCellData = numData; }

@@ -51,8 +51,7 @@ int main() {
 
   tracer.apply();
 
-  std::vector<float> flux(mesh.nodes.size());
-  tracer.getFlux(flux.data(), 0, 0, 1);
+  auto flux = tracer.getFlux(0, 0, 1);
 
   rayInternal::writeVTK<float, D>("trenchResult.vtk", points, flux);
 
