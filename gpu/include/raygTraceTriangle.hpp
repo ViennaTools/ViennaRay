@@ -42,8 +42,7 @@ public:
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {}
 
-protected:
-  void normalize() override {
+  void normalizeResults() override {
     float sourceArea = 0.f;
     if constexpr (D == 2) {
       sourceArea =
@@ -66,6 +65,7 @@ protected:
                          kernel_args, *context_);
   }
 
+protected:
   void buildHitGroups() override {
     // geometry hitgroup
     std::vector<HitgroupRecordTriangle> hitgroupRecords;

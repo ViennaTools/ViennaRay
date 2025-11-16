@@ -230,10 +230,7 @@ public:
       CUDA_CHECK(StreamDestroy(s));
     }
 
-    normalize(); // on device
-    results.resize(launchParams.numElements * numFluxes_);
-    resultBuffer.download(results.data(),
-                          launchParams.numElements * numFluxes_);
+    resultsDownloaded = false;
   }
 
   void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
@@ -313,6 +310,14 @@ public:
 
   void getFlux(float *flux, int particleIdx, int dataIdx,
                int smoothingNeighbors = 0) {
+
+    if (!resultsDownloaded) {
+      results.resize(launchParams.numElements * numFluxes_);
+      resultBuffer.download(results.data(),
+                            launchParams.numElements * numFluxes_);
+      resultsDownloaded = true;
+    }
+
     unsigned int offset = 0;
     for (size_t i = 0; i < particles_.size(); i++) {
       if (particleIdx > i)
@@ -396,12 +401,21 @@ public:
     launchParams.customData = (void *)d_params;
   }
 
+  void downloadResults() {
+    if (!resultsDownloaded) {
+      results.resize(launchParams.numElements * numFluxes_);
+      resultBuffer.download(results.data(),
+                            launchParams.numElements * numFluxes_);
+      resultsDownloaded = true;
+    }
+  }
+
   virtual void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {}
 
-protected:
   // To be implemented by derived classes
-  virtual void normalize() = 0;
+  virtual void normalizeResults() = 0;
 
+protected:
   virtual void buildHitGroups() = 0;
 
 private:
@@ -714,6 +728,7 @@ protected:
 
   rayInternal::KernelConfig config_;
   bool ignoreBoundary = false;
+  bool resultsDownloaded = false;
 
   size_t numRays;
   unsigned numCellData = 0;

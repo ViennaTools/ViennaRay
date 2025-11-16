@@ -48,21 +48,28 @@ public:
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
     auto oldFlux = flux;
-    PointNeighborhood<float, D> pointNeighborhood;
+    PointNeighborhood<float, D>
+        *pointNeighborhood; // use pointer to avoid copies
     if (smoothingNeighbors == 1) {
       // re-use the neighborhood from setGeometry
-      pointNeighborhood = pointNeighborhood_;
-    } else { // TODO: this will rebuild the neighborhood for every call
-      // to getFlux (number of rates)
-      // create a new neighborhood with a larger radius
-      pointNeighborhood.template init<3>(
+      pointNeighborhood = &pointNeighborhood_;
+    } else if (pointNeighborhoodCache_.getNumPoints() ==
+                   launchParams.numElements &&
+               std::abs(pointNeighborhoodCache_.getDistance() -
+                        smoothingNeighbors * 2 * diskMesh.radius) < 1e-6f) {
+      // re-use cached neighborhood
+      pointNeighborhood = &pointNeighborhoodCache_;
+    } else {
+      // create a new neighborhood with a larger radius and cache it
+      pointNeighborhoodCache_.template init<3>(
           diskMesh.nodes, smoothingNeighbors * 2 * diskMesh.radius,
           diskMesh.minimumExtent, diskMesh.maximumExtent);
+      pointNeighborhood = &pointNeighborhoodCache_;
     }
 #pragma omp parallel for
     for (int idx = 0; idx < launchParams.numElements; idx++) {
       float vv = oldFlux[idx];
-      auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
+      auto const &neighborhood = pointNeighborhood->getNeighborIndices(idx);
       float sum = 1.f;
       auto const normal = diskMesh.normals[idx];
       for (auto const &nbi : neighborhood) {
@@ -77,8 +84,7 @@ public:
     }
   }
 
-protected:
-  void normalize() override {
+  void normalizeResults() override {
     float sourceArea = 0.f;
     if constexpr (D == 2) {
       sourceArea =
@@ -174,6 +180,7 @@ protected:
     areaBuffer.free();
   }
 
+protected:
   void buildHitGroups() override {
     // geometry hitgroup
     std::vector<HitgroupRecordDisk> hitgroupRecords;
@@ -214,6 +221,7 @@ protected:
   DiskGeometry<D> diskGeometry;
 
   PointNeighborhood<float, D> pointNeighborhood_;
+  PointNeighborhood<float, D> pointNeighborhoodCache_;
   Vec3Df minBox;
   Vec3Df maxBox;
 

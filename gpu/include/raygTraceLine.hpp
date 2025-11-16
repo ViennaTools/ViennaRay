@@ -29,8 +29,7 @@ public:
     // not implemented for line geometry
   }
 
-protected:
-  void normalize() override {
+  void normalizeResults() override {
     assert(resultBuffer.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
 
@@ -59,6 +58,7 @@ protected:
     areaBuffer.free();
   }
 
+protected:
   void buildHitGroups() override {
     std::vector<HitgroupRecordLine> hitgroupRecords;
 
