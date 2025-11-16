@@ -17,11 +17,12 @@ public:
 
   ~TraceLine() { lineGeometry.freeBuffers(); }
 
-  void setGeometry(const LineMesh &passedMesh) {
+  void setGeometry(const LineMesh &passedMesh, const float sourceOffset = 0.f) {
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
     lineMesh = passedMesh;
     launchParams.D = D;
-    lineGeometry.buildAccel(*context_, lineMesh, launchParams);
+    lineGeometry.buildAccel(*context_, lineMesh, launchParams,
+                            this->ignoreBoundary, sourceOffset);
   }
 
   void smoothFlux(std::vector<float> &flux, int numNeighbors) override {
@@ -77,28 +78,29 @@ protected:
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    HitgroupRecordLine boundaryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
-    boundaryHitgroupRecord.data.nodes =
-        (Vec3Df *)lineGeometry.boundaryNodesBuffer.dPointer();
-    boundaryHitgroupRecord.data.lines =
-        (Vec2D<unsigned> *)lineGeometry.boundaryLinesBuffer.dPointer();
-    boundaryHitgroupRecord.data.base.geometryType = 2;
-    boundaryHitgroupRecord.data.base.isBoundary = true;
-    hitgroupRecords.push_back(boundaryHitgroupRecord);
+    if (!this->ignoreBoundary) {
+      HitgroupRecordLine boundaryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      boundaryHitgroupRecord.data.nodes =
+          (Vec3Df *)lineGeometry.boundaryNodesBuffer.dPointer();
+      boundaryHitgroupRecord.data.lines =
+          (Vec2D<unsigned> *)lineGeometry.boundaryLinesBuffer.dPointer();
+      boundaryHitgroupRecord.data.base.geometryType = 2;
+      boundaryHitgroupRecord.data.base.isBoundary = true;
+      hitgroupRecords.push_back(boundaryHitgroupRecord);
+    }
 
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
     sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordLine);
-    sbt.hitgroupRecordCount = 2;
+    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
   }
 
 private:
   LineMesh lineMesh;
-  LineGeometry<float, D> lineGeometry;
+  LineGeometry lineGeometry;
 
   using Trace<T, D>::context_;
-  using Trace<T, D>::geometryType_;
 
   using Trace<T, D>::launchParams;
   using Trace<T, D>::resultBuffer;

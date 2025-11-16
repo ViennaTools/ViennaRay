@@ -27,7 +27,7 @@ template <int D> struct DiskGeometry {
 
   /// build acceleration structure from triangle mesh
   void buildAccel(DeviceContext &context, const DiskMesh &mesh,
-                  LaunchParams &launchParams) {
+                  LaunchParams &launchParams, const bool ignoreBoundary) {
     assert(context.deviceID != -1 && "Context not initialized.");
 
     if constexpr (D == 2) {
@@ -147,6 +147,7 @@ template <int D> struct DiskGeometry {
     diskInput[1].customPrimitiveArray.sbtIndexOffsetStrideInBytes = 0;
     // ------------------------------------------------------
 
+    unsigned int numBuildInputs = ignoreBoundary ? 1 : 2;
     OptixTraversableHandle asHandle{0};
 
     // BLAS setup
@@ -158,8 +159,7 @@ template <int D> struct DiskGeometry {
 
     OptixAccelBufferSizes blasBufferSizes;
     optixAccelComputeMemoryUsage(context.optix, &accelOptions, diskInput.data(),
-                                 2, // num_build_inputs
-                                 &blasBufferSizes);
+                                 numBuildInputs, &blasBufferSizes);
 
     // prepare compaction
     CudaBuffer compactedSizeBuffer;
@@ -176,10 +176,10 @@ template <int D> struct DiskGeometry {
     CudaBuffer outputBuffer;
     outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-    optixAccelBuild(context.optix, 0, &accelOptions, diskInput.data(), 2,
-                    tempBuffer.dPointer(), tempBuffer.sizeInBytes,
-                    outputBuffer.dPointer(), outputBuffer.sizeInBytes,
-                    &asHandle, &emitDesc, 1);
+    optixAccelBuild(context.optix, 0, &accelOptions, diskInput.data(),
+                    numBuildInputs, tempBuffer.dPointer(),
+                    tempBuffer.sizeInBytes, outputBuffer.dPointer(),
+                    outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1);
     cudaDeviceSynchronize();
 
     // perform compaction

@@ -11,7 +11,7 @@ namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <typename NumericType, int D = 3> struct LineGeometry {
+struct LineGeometry {
   // geometry
   CudaBuffer geometryNodesBuffer;
   CudaBuffer geometryLinesBuffer;
@@ -26,15 +26,15 @@ template <typename NumericType, int D = 3> struct LineGeometry {
 
   /// build acceleration structure from triangle mesh
   void buildAccel(DeviceContext &context, const LineMesh &mesh,
-                  LaunchParams &launchParams) {
+                  LaunchParams &launchParams, const bool ignoreBoundary,
+                  const float sourceOffset = 0.f) {
     assert(context.deviceID != -1 && "Context not initialized.");
     assert(mesh.gridDelta > 0.f && "Grid delta must be positive.");
-    assert(D == 2 && "Only 2D line geometry is supported.");
 
     launchParams.source.minPoint[0] = mesh.minimumExtent[0];
     launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
     launchParams.source.planeHeight =
-        mesh.maximumExtent[1] + 2 * mesh.gridDelta;
+        mesh.maximumExtent[1] + mesh.gridDelta + sourceOffset;
     launchParams.numElements = mesh.lines.size();
 
     // 2 inputs: one for the geometry, one for the boundary
@@ -84,16 +84,14 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     lineInput[0].customPrimitiveArray.sbtIndexOffsetSizeInBytes = 0;
     lineInput[0].customPrimitiveArray.sbtIndexOffsetStrideInBytes = 0;
 
+    unsigned int numBuildInputs = ignoreBoundary ? 1 : 2;
+
     // ------------------------- boundary input -------------------------
     auto boundaryMesh = makeBoundary(mesh);
+
     // upload the model to the device: the builder
     boundaryNodesBuffer.allocUpload(boundaryMesh.nodes);
     boundaryLinesBuffer.allocUpload(boundaryMesh.lines);
-
-    // create local variables, because we need a *pointer* to the
-    // device pointers
-    CUdeviceptr d_boundNodes = boundaryNodesBuffer.dPointer();
-    CUdeviceptr d_boundLines = boundaryLinesBuffer.dPointer();
 
     // AABB build input for boundary lines
     std::vector<OptixAabb> aabbBoundary(boundaryMesh.lines.size());
@@ -137,8 +135,7 @@ template <typename NumericType, int D = 3> struct LineGeometry {
 
     OptixAccelBufferSizes blasBufferSizes;
     optixAccelComputeMemoryUsage(context.optix, &accelOptions, lineInput.data(),
-                                 2, // num_build_inputs
-                                 &blasBufferSizes);
+                                 numBuildInputs, &blasBufferSizes);
 
     // prepare compaction
     CudaBuffer compactedSizeBuffer;
@@ -155,10 +152,10 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     CudaBuffer outputBuffer;
     outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-    optixAccelBuild(context.optix, 0, &accelOptions, lineInput.data(), 2,
-                    tempBuffer.dPointer(), tempBuffer.sizeInBytes,
-                    outputBuffer.dPointer(), outputBuffer.sizeInBytes,
-                    &asHandle, &emitDesc, 1);
+    optixAccelBuild(context.optix, 0, &accelOptions, lineInput.data(),
+                    numBuildInputs, tempBuffer.dPointer(),
+                    tempBuffer.sizeInBytes, outputBuffer.dPointer(),
+                    outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1);
     cudaDeviceSynchronize();
 
     // perform compaction
@@ -184,7 +181,7 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     const Vec3Df &bbMin = passedMesh.minimumExtent;
     Vec3Df bbMax = passedMesh.maximumExtent;
     // adjust bounding box to include source plane
-    bbMax[1] += 2 * passedMesh.gridDelta;
+    bbMax[1] += passedMesh.gridDelta;
 
     // one vertex in each corner of the bounding box
     // y

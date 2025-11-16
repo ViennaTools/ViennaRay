@@ -89,47 +89,43 @@ struct TriangleGeometry {
     triangleInput[0].triangleArray.sbtIndexOffsetSizeInBytes = 0;
     triangleInput[0].triangleArray.sbtIndexOffsetStrideInBytes = 0;
 
+    unsigned int numBuildInputs = ignoreBoundary ? 1 : 2;
+
     // ------------------------- boundary input -------------------------
-    unsigned int numBuildInputs = 1;
-    if (ignoreBoundary) {
-      numBuildInputs = 2;
-      auto boundaryMesh = makeBoundary<D>(mesh);
-      // upload the model to the device: the builder
-      boundaryVertexBuffer.allocUpload(boundaryMesh.nodes);
-      boundaryIndexBuffer.allocUpload(boundaryMesh.triangles);
+    auto boundaryMesh = makeBoundary<D>(mesh, sourceOffset);
+    // upload the model to the device: the builder
+    boundaryVertexBuffer.allocUpload(boundaryMesh.nodes);
+    boundaryIndexBuffer.allocUpload(boundaryMesh.triangles);
 
-      // triangle inputs
-      triangleInput[1] = {};
-      triangleInput[1].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+    // triangle inputs
+    triangleInput[1] = {};
+    triangleInput[1].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
 
-      // create local variables, because we need a *pointer* to the
-      // device pointers
-      CUdeviceptr d_boundVertices = boundaryVertexBuffer.dPointer();
-      CUdeviceptr d_boundIndices = boundaryIndexBuffer.dPointer();
+    // create local variables, because we need a *pointer* to the
+    // device pointers
+    CUdeviceptr d_boundVertices = boundaryVertexBuffer.dPointer();
+    CUdeviceptr d_boundIndices = boundaryIndexBuffer.dPointer();
 
-      triangleInput[1].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-      triangleInput[1].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
-      triangleInput[1].triangleArray.numVertices =
-          (int)boundaryMesh.nodes.size();
-      triangleInput[1].triangleArray.vertexBuffers = &d_boundVertices;
+    triangleInput[1].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
+    triangleInput[1].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
+    triangleInput[1].triangleArray.numVertices = (int)boundaryMesh.nodes.size();
+    triangleInput[1].triangleArray.vertexBuffers = &d_boundVertices;
 
-      triangleInput[1].triangleArray.indexFormat =
-          OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-      triangleInput[1].triangleArray.indexStrideInBytes =
-          sizeof(Vec3D<unsigned>);
-      triangleInput[1].triangleArray.numIndexTriplets =
-          (int)boundaryMesh.triangles.size();
-      triangleInput[1].triangleArray.indexBuffer = d_boundIndices;
+    triangleInput[1].triangleArray.indexFormat =
+        OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+    triangleInput[1].triangleArray.indexStrideInBytes = sizeof(Vec3D<unsigned>);
+    triangleInput[1].triangleArray.numIndexTriplets =
+        (int)boundaryMesh.triangles.size();
+    triangleInput[1].triangleArray.indexBuffer = d_boundIndices;
 
-      // one SBT entry, and no per-primitive materials:
-      triangleInputFlags[1] = 0;
-      triangleInput[1].triangleArray.flags = &triangleInputFlags[1];
-      triangleInput[1].triangleArray.numSbtRecords = 1;
-      triangleInput[1].triangleArray.sbtIndexOffsetBuffer = 0;
-      triangleInput[1].triangleArray.sbtIndexOffsetSizeInBytes = 0;
-      triangleInput[1].triangleArray.sbtIndexOffsetStrideInBytes = 0;
-      // ------------------------------------------------------
-    }
+    // one SBT entry, and no per-primitive materials:
+    triangleInputFlags[1] = 0;
+    triangleInput[1].triangleArray.flags = &triangleInputFlags[1];
+    triangleInput[1].triangleArray.numSbtRecords = 1;
+    triangleInput[1].triangleArray.sbtIndexOffsetBuffer = 0;
+    triangleInput[1].triangleArray.sbtIndexOffsetSizeInBytes = 0;
+    triangleInput[1].triangleArray.sbtIndexOffsetStrideInBytes = 0;
+    // ------------------------------------------------------
 
     OptixTraversableHandle asHandle{0};
 
@@ -184,14 +180,15 @@ struct TriangleGeometry {
   }
 
   template <int D>
-  static TriangleMesh makeBoundary(const TriangleMesh &passedMesh) {
+  static TriangleMesh makeBoundary(const TriangleMesh &passedMesh,
+                                   float sourceOffset) {
     TriangleMesh boundaryMesh;
 
     if constexpr (D == 3) {
       Vec3Df bbMin = passedMesh.minimumExtent;
       Vec3Df bbMax = passedMesh.maximumExtent;
       // adjust bounding box to include source plane
-      bbMax[2] += passedMesh.gridDelta;
+      bbMax[2] += passedMesh.gridDelta + sourceOffset;
       boundaryMesh.gridDelta = passedMesh.gridDelta;
 
       boundaryMesh.nodes.reserve(8);
@@ -226,7 +223,7 @@ struct TriangleGeometry {
       const Vec3Df &bbMin = passedMesh.minimumExtent;
       Vec3Df bbMax = passedMesh.maximumExtent;
       // adjust bounding box to include source plane
-      bbMax[1] += 2 * passedMesh.gridDelta;
+      bbMax[1] += passedMesh.gridDelta + sourceOffset;
       boundaryMesh.gridDelta = passedMesh.gridDelta;
       boundaryMesh.nodes.reserve(8);
       boundaryMesh.triangles.reserve(4);

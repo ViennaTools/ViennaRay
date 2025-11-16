@@ -42,7 +42,8 @@ public:
     pointNeighborhood_.template init<3>(diskMesh.nodes, 2 * diskMesh.radius,
                                         diskMesh.minimumExtent,
                                         diskMesh.maximumExtent);
-    diskGeometry.buildAccel(*context_, diskMesh, launchParams);
+    diskGeometry.buildAccel(*context_, diskMesh, launchParams,
+                            this->ignoreBoundary);
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
@@ -190,21 +191,23 @@ protected:
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    HitgroupRecordDisk boundaryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
-    boundaryHitgroupRecord.data.point =
-        (Vec3Df *)diskGeometry.boundaryPointBuffer.dPointer();
-    boundaryHitgroupRecord.data.base.normal =
-        (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
-    boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
-    boundaryHitgroupRecord.data.base.geometryType = 1;
-    boundaryHitgroupRecord.data.base.isBoundary = true;
-    hitgroupRecords.push_back(boundaryHitgroupRecord);
+    if (!this->ignoreBoundary) {
+      HitgroupRecordDisk boundaryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      boundaryHitgroupRecord.data.point =
+          (Vec3Df *)diskGeometry.boundaryPointBuffer.dPointer();
+      boundaryHitgroupRecord.data.base.normal =
+          (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
+      boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
+      boundaryHitgroupRecord.data.base.geometryType = 1;
+      boundaryHitgroupRecord.data.base.isBoundary = true;
+      hitgroupRecords.push_back(boundaryHitgroupRecord);
+    }
 
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
     sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordDisk);
-    sbt.hitgroupRecordCount = 2;
+    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
   }
 
   DiskMesh diskMesh;

@@ -108,6 +108,7 @@ protected:
     sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
   }
 
+private:
   TriangleMesh triangleMesh;
   TriangleGeometry triangleGeometry;
 
