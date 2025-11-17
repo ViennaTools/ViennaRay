@@ -14,6 +14,91 @@ public:
   GeometryDisk() : Geometry<NumericType, D>(GeometryType::DISK) {}
 
   template <size_t Dim>
+  void initGeometry(RTCDevice &device, const DiskMesh &diskMesh) {
+    // overwriting the geometry without releasing it beforehand causes the old
+    // buffer to leak
+    releaseGeometry();
+    this->pRtcGeometry_ =
+        rtcNewGeometry(device, RTC_GEOMETRY_TYPE_ORIENTED_DISC_POINT);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
+           "RTC Error: rtcNewGeometry");
+    this->numPrimitives_ = diskMesh.nodes.size();
+
+    // The buffer data is managed internally (embree) and automatically freed
+    // when the geometry is destroyed.
+    pPointBuffer_ = (point_4f_t *)rtcSetNewGeometryBuffer(
+        this->pRtcGeometry_, RTC_BUFFER_TYPE_VERTEX,
+        0, // slot
+        RTC_FORMAT_FLOAT4, sizeof(point_4f_t), this->numPrimitives_);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
+           "RTC Error: rtcSetNewGeometryBuffer points");
+
+    for (int i = 0; i < D; i++) {
+      this->minCoords_[i] = static_cast<NumericType>(diskMesh.minimumExtent[i]);
+      this->maxCoords_[i] = static_cast<NumericType>(diskMesh.maximumExtent[i]);
+    }
+    discRadii_ = diskMesh.radius;
+    const bool useRadii = diskMesh.radii.size() == diskMesh.nodes.size();
+
+    const auto &points = diskMesh.nodes;
+    for (size_t i = 0; i < this->numPrimitives_; ++i) {
+      pPointBuffer_[i].xx = points[i][0];
+      pPointBuffer_[i].yy = points[i][1];
+      float radius = useRadii ? diskMesh.radii[i] : discRadii_;
+      pPointBuffer_[i].radius = radius;
+      if constexpr (D == 2) {
+        pPointBuffer_[i].zz = 0.f;
+      } else {
+        pPointBuffer_[i].zz = points[i][2];
+      }
+    }
+
+    pNormalVecBuffer_ = (normal_vec_3f_t *)rtcSetNewGeometryBuffer(
+        this->pRtcGeometry_, RTC_BUFFER_TYPE_NORMAL,
+        0, // slot
+        RTC_FORMAT_FLOAT3, sizeof(normal_vec_3f_t), this->numPrimitives_);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
+           "RTC Error: rtcSetNewGeometryBuffer normals");
+
+    const auto &normals = diskMesh.normals;
+    assert(normals.size() == this->numPrimitives_);
+    for (size_t i = 0; i < this->numPrimitives_; ++i) {
+      pNormalVecBuffer_[i].xx = normals[i][0];
+      pNormalVecBuffer_[i].yy = normals[i][1];
+      if constexpr (D == 2) {
+        pNormalVecBuffer_[i].zz = 0.f;
+      } else {
+        pNormalVecBuffer_[i].zz = normals[i][2];
+      }
+    }
+
+#ifdef VIENNARAY_USE_RAY_MASKING
+    rtcSetGeometryMask(this->pRtcGeometry_, -1);
+#endif
+
+    rtcCommitGeometry(this->pRtcGeometry_);
+    assert(rtcGetDeviceError(device) == RTC_ERROR_NONE &&
+           "RTC Error: rtcCommitGeometry");
+
+    if (this->materialIds_.size() != this->numPrimitives_) {
+      this->materialIds_.resize(this->numPrimitives_, 0);
+    }
+
+    // Initialize point neighborhood
+    std::vector<VectorType<NumericType, Dim>> pointsN;
+    pointsN.resize(this->numPrimitives_);
+    for (size_t i = 0; i < this->numPrimitives_; ++i) {
+      pointsN[0] = static_cast<NumericType>(diskMesh.nodes[i][0]);
+      pointsN[1] = static_cast<NumericType>(diskMesh.nodes[i][1]);
+      if constexpr (Dim == 3) {
+        pointsN[i][2] = static_cast<NumericType>(diskMesh.nodes[i][2]);
+      }
+    }
+    pointNeighborhood_.template init<Dim>(pointsN, 2 * discRadii_,
+                                          this->minCoords_, this->maxCoords_);
+  }
+
+  template <size_t Dim>
   void initGeometry(RTCDevice &device,
                     std::vector<VectorType<NumericType, Dim>> const &points,
                     std::vector<VectorType<NumericType, Dim>> const &normals,

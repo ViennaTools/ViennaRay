@@ -48,7 +48,7 @@ struct LineMesh {
     normals.clear();
     normals.resize(lines.size());
 #pragma omp parallel for
-    for (size_t i = 0; i < lines.size(); ++i) {
+    for (int i = 0; i < lines.size(); ++i) {
       Vec3Df const &p0 = nodes[lines[i][0]];
       Vec3Df const &p1 = nodes[lines[i][1]];
       Vec3Df lineDir = p1 - p0;
@@ -102,7 +102,7 @@ struct TriangleMesh {
     normals.clear();
     normals.resize(triangles.size());
 #pragma omp parallel for
-    for (size_t i = 0; i < triangles.size(); ++i) {
+    for (int i = 0; i < triangles.size(); ++i) {
       Vec3Df const &p0 = nodes[triangles[i][0]];
       Vec3Df const &p1 = nodes[triangles[i][1]];
       Vec3Df const &p2 = nodes[triangles[i][2]];
@@ -123,6 +123,7 @@ struct DiskMesh {
 
   std::vector<Vec3Df> nodes;
   std::vector<Vec3Df> normals;
+  std::vector<float> radii;
 
   Vec3Df minimumExtent;
   Vec3Df maximumExtent;
@@ -135,15 +136,15 @@ TriangleMesh convertLinesToTriangles(const LineMesh &lineMesh) {
   mesh.gridDelta = lineMesh.gridDelta;
   mesh.minimumExtent = lineMesh.minimumExtent;
   mesh.maximumExtent = lineMesh.maximumExtent;
-  const auto lineWidth = lineMesh.gridDelta;
-  mesh.minimumExtent[2] -= lineWidth / 2.f;
-  mesh.maximumExtent[2] += lineWidth / 2.f;
+  const auto lineWidth2 = lineMesh.gridDelta * 0.5f;
+  mesh.minimumExtent[2] -= lineWidth2;
+  mesh.maximumExtent[2] += lineWidth2;
 
   auto const &points = lineMesh.nodes;
   mesh.nodes.reserve(points.size() * 2);
   for (size_t i = 0; i < points.size(); ++i) {
-    mesh.nodes.push_back(Vec3Df{points[i][0], points[i][1], lineWidth / 2.f});
-    mesh.nodes.push_back(Vec3Df{points[i][0], points[i][1], -lineWidth / 2.f});
+    mesh.nodes.push_back(Vec3Df{points[i][0], points[i][1], lineWidth2});
+    mesh.nodes.push_back(Vec3Df{points[i][0], points[i][1], -lineWidth2});
   }
 
   auto const &lines = lineMesh.lines;
@@ -155,23 +156,21 @@ TriangleMesh convertLinesToTriangles(const LineMesh &lineMesh) {
 
     // first triangle
     Vec3D<unsigned> tri1{p0, p1, static_cast<unsigned>(p0 + 1)};
+    mesh.triangles.push_back(tri1);
     auto normal = CrossProduct(mesh.nodes[tri1[1]] - mesh.nodes[tri1[0]],
                                mesh.nodes[tri1[2]] - mesh.nodes[tri1[0]]);
-    mesh.triangles.push_back(tri1);
     Normalize(normal);
     mesh.normals.push_back(normal);
 
     // second triangle
     Vec3D<unsigned> tri2{static_cast<unsigned>(p0 + 1), p1,
                          static_cast<unsigned>(p1 + 1)};
+    mesh.triangles.push_back(tri2);
     normal = CrossProduct(mesh.nodes[tri2[1]] - mesh.nodes[tri2[0]],
                           mesh.nodes[tri2[2]] - mesh.nodes[tri2[0]]);
-    mesh.triangles.push_back(tri2);
     Normalize(normal);
     mesh.normals.push_back(normal);
   }
-  mesh.triangles.shrink_to_fit();
-  mesh.normals.shrink_to_fit();
 
   return mesh;
 }

@@ -45,6 +45,7 @@ template <int D> struct DiskGeometry {
           mesh.maximumExtent[2] + 2 * mesh.radius + sourceOffset;
     }
     launchParams.numElements = mesh.nodes.size();
+    const bool useRadii = mesh.radii.size() == mesh.nodes.size();
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> diskInput{};
@@ -55,11 +56,6 @@ template <int D> struct DiskGeometry {
     geometryPointBuffer.allocUpload(mesh.nodes);
     geometryNormalBuffer.allocUpload(mesh.normals);
 
-    // create local variables, because we need a *pointer* to the
-    // device pointers
-    CUdeviceptr d_geoPoints = geometryPointBuffer.dPointer();
-    CUdeviceptr d_geoNormals = geometryNormalBuffer.dPointer();
-
     // AABB build input
     std::vector<OptixAabb> aabb(mesh.nodes.size());
 
@@ -68,10 +64,10 @@ template <int D> struct DiskGeometry {
       Vec3Df N = mesh.normals[i];
       Normalize(N);
 
-      Vec3Df extent = {mesh.radius * sqrtf(1.0f - N[0] * N[0]),
-                       mesh.radius * sqrtf(1.0f - N[1] * N[1]),
-                       mesh.radius * sqrtf(1.0f - N[2] * N[2])};
-
+      float radius = useRadii ? mesh.radii[i] : mesh.radius;
+      Vec3Df extent = {radius * sqrtf(1.0f - N[0] * N[0]),
+                       radius * sqrtf(1.0f - N[1] * N[1]),
+                       radius * sqrtf(1.0f - N[2] * N[2])};
       // // This might not be needed
       // float eps = 1e-4f;
       // extent[0] += fabsf(N[0]) * eps;
