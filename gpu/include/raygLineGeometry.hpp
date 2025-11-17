@@ -3,15 +3,15 @@
 #include <vcContext.hpp>
 #include <vcCudaBuffer.hpp>
 
+#include "rayMesh.hpp"
 #include "rayUtil.hpp"
 #include "raygLaunchParams.hpp"
-#include "raygMesh.hpp"
 
 namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <typename NumericType, int D = 3> struct LineGeometry {
+struct LineGeometry {
   // geometry
   CudaBuffer geometryNodesBuffer;
   CudaBuffer geometryLinesBuffer;
@@ -26,23 +26,15 @@ template <typename NumericType, int D = 3> struct LineGeometry {
 
   /// build acceleration structure from triangle mesh
   void buildAccel(DeviceContext &context, const LineMesh &mesh,
-                  LaunchParams &launchParams) {
+                  LaunchParams &launchParams, const bool ignoreBoundary,
+                  const float sourceOffset = 0.f) {
     assert(context.deviceID != -1 && "Context not initialized.");
     assert(mesh.gridDelta > 0.f && "Grid delta must be positive.");
 
-    if constexpr (D == 2) {
-      launchParams.source.minPoint[0] = mesh.minimumExtent[0];
-      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
-      launchParams.source.planeHeight =
-          mesh.maximumExtent[1] + 2 * mesh.gridDelta;
-    } else {
-      launchParams.source.minPoint[0] = mesh.minimumExtent[0];
-      launchParams.source.minPoint[1] = mesh.minimumExtent[1];
-      launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
-      launchParams.source.maxPoint[1] = mesh.maximumExtent[1];
-      launchParams.source.planeHeight =
-          mesh.maximumExtent[2] + 2 * mesh.gridDelta;
-    }
+    launchParams.source.minPoint[0] = mesh.minimumExtent[0];
+    launchParams.source.maxPoint[0] = mesh.maximumExtent[0];
+    launchParams.source.planeHeight =
+        mesh.maximumExtent[1] + mesh.gridDelta + sourceOffset;
     launchParams.numElements = mesh.lines.size();
 
     // 2 inputs: one for the geometry, one for the boundary
@@ -64,8 +56,8 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     std::vector<OptixAabb> aabb(mesh.lines.size());
 
     for (size_t i = 0; i < mesh.lines.size(); ++i) {
-      Vec3Df p0 = mesh.nodes[mesh.lines[i][0]];
-      Vec3Df p1 = mesh.nodes[mesh.lines[i][1]];
+      const auto &p0 = mesh.nodes[mesh.lines[i][0]];
+      const auto &p1 = mesh.nodes[mesh.lines[i][1]];
       aabb[i] = {std::min(p0[0], p1[0]), std::min(p0[1], p1[1]),
                  std::min(p0[2], p1[2]), std::max(p0[0], p1[0]),
                  std::max(p0[1], p1[1]), std::max(p0[2], p1[2])};
@@ -92,22 +84,20 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     lineInput[0].customPrimitiveArray.sbtIndexOffsetSizeInBytes = 0;
     lineInput[0].customPrimitiveArray.sbtIndexOffsetStrideInBytes = 0;
 
+    unsigned int numBuildInputs = ignoreBoundary ? 1 : 2;
+
     // ------------------------- boundary input -------------------------
     auto boundaryMesh = makeBoundary(mesh);
+
     // upload the model to the device: the builder
     boundaryNodesBuffer.allocUpload(boundaryMesh.nodes);
     boundaryLinesBuffer.allocUpload(boundaryMesh.lines);
 
-    // create local variables, because we need a *pointer* to the
-    // device pointers
-    CUdeviceptr d_boundNodes = boundaryNodesBuffer.dPointer();
-    CUdeviceptr d_boundLines = boundaryLinesBuffer.dPointer();
-
     // AABB build input for boundary lines
     std::vector<OptixAabb> aabbBoundary(boundaryMesh.lines.size());
     for (size_t i = 0; i < boundaryMesh.lines.size(); ++i) {
-      Vec3Df p0 = boundaryMesh.nodes[boundaryMesh.lines[i][0]];
-      Vec3Df p1 = boundaryMesh.nodes[boundaryMesh.lines[i][1]];
+      auto const &p0 = boundaryMesh.nodes[boundaryMesh.lines[i][0]];
+      auto const &p1 = boundaryMesh.nodes[boundaryMesh.lines[i][1]];
       aabbBoundary[i] = {std::min(p0[0], p1[0]), std::min(p0[1], p1[1]),
                          std::min(p0[2], p1[2]), std::max(p0[0], p1[0]),
                          std::max(p0[1], p1[1]), std::max(p0[2], p1[2])};
@@ -145,8 +135,7 @@ template <typename NumericType, int D = 3> struct LineGeometry {
 
     OptixAccelBufferSizes blasBufferSizes;
     optixAccelComputeMemoryUsage(context.optix, &accelOptions, lineInput.data(),
-                                 2, // num_build_inputs
-                                 &blasBufferSizes);
+                                 numBuildInputs, &blasBufferSizes);
 
     // prepare compaction
     CudaBuffer compactedSizeBuffer;
@@ -163,10 +152,10 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     CudaBuffer outputBuffer;
     outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-    optixAccelBuild(context.optix, 0, &accelOptions, lineInput.data(), 2,
-                    tempBuffer.dPointer(), tempBuffer.sizeInBytes,
-                    outputBuffer.dPointer(), outputBuffer.sizeInBytes,
-                    &asHandle, &emitDesc, 1);
+    optixAccelBuild(context.optix, 0, &accelOptions, lineInput.data(),
+                    numBuildInputs, tempBuffer.dPointer(),
+                    tempBuffer.sizeInBytes, outputBuffer.dPointer(),
+                    outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1);
     cudaDeviceSynchronize();
 
     // perform compaction
@@ -189,20 +178,18 @@ template <typename NumericType, int D = 3> struct LineGeometry {
   static LineMesh makeBoundary(const LineMesh &passedMesh) {
     LineMesh boundaryMesh;
 
-    Vec3Df bbMin = passedMesh.minimumExtent;
+    const Vec3Df &bbMin = passedMesh.minimumExtent;
     Vec3Df bbMax = passedMesh.maximumExtent;
-    // adjust bounding box to include source plane and be below trench geometry
-    if constexpr (D == 2) {
-      bbMax[1] += 2 * passedMesh.gridDelta;
-      bbMin[1] -= 2 * passedMesh.gridDelta;
-      bbMin[2] = -passedMesh.gridDelta;
-      bbMax[2] = passedMesh.gridDelta;
-    } else {
-      bbMax[2] += 2 * passedMesh.gridDelta;
-      bbMin[2] -= 2 * passedMesh.gridDelta;
-    }
+    // adjust bounding box to include source plane
+    bbMax[1] += passedMesh.gridDelta;
 
     // one vertex in each corner of the bounding box
+    // y
+    // ^
+    // | 2--------3
+    // | |        |
+    // | |        |
+    // | 0--------1 --> x
     boundaryMesh.nodes.push_back({bbMin[0], bbMin[1], 0.f}); // 0
     boundaryMesh.nodes.push_back({bbMax[0], bbMin[1], 0.f}); // 1
     boundaryMesh.nodes.push_back({bbMin[0], bbMax[1], 0.f}); // 2
@@ -212,10 +199,6 @@ template <typename NumericType, int D = 3> struct LineGeometry {
     boundaryMesh.lines.push_back({2, 0});
     // xmax - right 1
     boundaryMesh.lines.push_back({1, 3});
-    // ymin - bottom 2
-    boundaryMesh.lines.push_back({0, 1});
-    // ymax - top 3
-    boundaryMesh.lines.push_back({2, 3});
 
     return boundaryMesh;
   }

@@ -325,11 +325,6 @@ public:
             // terminate ray if too many reflections
             break;
           }
-          if (numReflections > 1e4) {
-            // terminate ray if too many reflections
-            ++raysTerminated;
-            break;
-          }
           reflect = rejectionControl(rayWeight, initialRayWeight, rngState);
           if (!reflect) {
             break;

@@ -9,16 +9,10 @@ namespace viennaray {
 
 using namespace viennacore;
 
-template <class NumericType, int D = 3>
+template <class NumericType, int D>
 class TraceTriangle : public Trace<NumericType, D> {
 public:
-  TraceTriangle() {
-    if (D == 2) {
-      Logger::getInstance()
-          .addError("TraceTriangle not implemented in 2D.")
-          .print();
-    }
-  }
+  TraceTriangle() {}
   ~TraceTriangle() { geometry_.releaseGeometry(); }
 
   /// Run the ray tracer
@@ -33,14 +27,21 @@ public:
         this->device_, boundingBox, this->boundaryConditions_, traceSettings);
 
     std::array<Vec3D<NumericType>, 3> orthonormalBasis;
-    if (this->usePrimaryDirection_)
+    if (this->usePrimaryDirection_) {
+      Logger::getInstance()
+          .addDebug("ViennaRay: Using custom primary direction")
+          .print();
       orthonormalBasis =
           rayInternal::getOrthonormalBasis(this->primaryDirection_);
-    if (!this->useCustomSource)
+    }
+    if (!this->useCustomSource) {
       this->pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
           boundingBox, this->pParticle_->getSourceDistributionPower(),
           traceSettings, geometry_.getNumPrimitives(),
           this->usePrimaryDirection_, orthonormalBasis);
+    } else {
+      Logger::getInstance().addDebug("ViennaRay: Using custom source").print();
+    }
 
     auto localDataLabels = this->pParticle_->getLocalDataLabels();
     if (!localDataLabels.empty()) {
@@ -62,13 +63,23 @@ public:
   }
 
   /// Set the ray tracing geometry
-  /// It is possible to set a 2D geometry with 3D points.
-  /// In this case the last dimension is ignored.
   void setGeometry(std::vector<VectorType<NumericType, 3>> const &points,
                    std::vector<VectorType<unsigned, 3>> const &triangles,
                    const NumericType gridDelta) {
     this->gridDelta_ = gridDelta;
     geometry_.initGeometry(this->device_, points, triangles);
+  }
+
+  void setGeometry(const TriangleMesh &mesh) {
+    this->gridDelta_ = mesh.gridDelta;
+    geometry_.initGeometry(this->device_, mesh);
+  }
+
+  void setGeometry(const LineMesh &mesh) {
+    assert(D == 2 && "Setting line geometry is only supported in 2D.");
+    this->gridDelta_ = mesh.gridDelta;
+    auto triMesh = convertLinesToTriangles(mesh);
+    geometry_.initGeometry(this->device_, triMesh);
   }
 
   /// Set material ID's for each geometry point.

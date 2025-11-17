@@ -230,10 +230,7 @@ public:
       CUDA_CHECK(StreamDestroy(s));
     }
 
-    normalize(); // on device
-    results.resize(launchParams.numElements * numFluxes_);
-    resultBuffer.download(results.data(),
-                          launchParams.numElements * numFluxes_);
+    resultsDownloaded = false;
   }
 
   void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
@@ -311,20 +308,27 @@ public:
 
   size_t getNumberOfRays() const { return numRays; }
 
-  void getFlux(float *flux, int particleIdx, int dataIdx,
-               int smoothingNeighbors = 0) {
+  std::vector<float> getFlux(int particleIdx, int dataIdx,
+                             int smoothingNeighbors = 0) {
+    if (!resultsDownloaded) {
+      results.resize(launchParams.numElements * numFluxes_);
+      resultBuffer.download(results.data(),
+                            launchParams.numElements * numFluxes_);
+      resultsDownloaded = true;
+    }
+
+    std::vector<float> flux(launchParams.numElements);
     unsigned int offset = 0;
     for (size_t i = 0; i < particles_.size(); i++) {
       if (particleIdx > i)
         offset += particles_[i].dataLabels.size();
     }
     offset = (offset + dataIdx) * launchParams.numElements;
-    std::vector<float> temp(launchParams.numElements);
-    std::memcpy(temp.data(), results.data() + offset,
+    std::memcpy(flux.data(), results.data() + offset,
                 launchParams.numElements * sizeof(float));
     if (smoothingNeighbors > 0)
-      smoothFlux(temp, smoothingNeighbors);
-    std::memcpy(flux, temp.data(), launchParams.numElements * sizeof(float));
+      smoothFlux(flux, smoothingNeighbors);
+    return flux;
   }
 
   void setUseCellData(unsigned numData) { numCellData = numData; }
@@ -332,6 +336,8 @@ public:
   void setPeriodicBoundary(const bool periodic) {
     launchParams.periodicBoundary = periodic;
   }
+
+  void setIgnoreBoundary(const bool ignore) { ignoreBoundary = ignore; }
 
   void freeBuffers() {
     resultBuffer.free();
@@ -347,7 +353,6 @@ public:
     for (auto &buffer : materialStickingBuffer_) {
       buffer.free();
     }
-    areaBuffer_.free();
   }
 
   unsigned int prepareParticlePrograms() {
@@ -395,12 +400,21 @@ public:
     launchParams.customData = (void *)d_params;
   }
 
+  void downloadResults() {
+    if (!resultsDownloaded) {
+      results.resize(launchParams.numElements * numFluxes_);
+      resultBuffer.download(results.data(),
+                            launchParams.numElements * numFluxes_);
+      resultsDownloaded = true;
+    }
+  }
+
   virtual void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {}
 
-protected:
   // To be implemented by derived classes
-  virtual void normalize() = 0;
+  virtual void normalizeResults() = 0;
 
+protected:
   virtual void buildHitGroups() = 0;
 
 private:
@@ -675,8 +689,6 @@ protected:
 
   float gridDelta_ = 0.0f;
 
-  CudaBuffer areaBuffer_;
-
   // particles
   unsigned int numFluxes_ = 0;
   std::vector<Particle<T>> particles_;
@@ -714,6 +726,8 @@ protected:
   std::vector<float> results;
 
   rayInternal::KernelConfig config_;
+  bool ignoreBoundary = false;
+  bool resultsDownloaded = false;
 
   size_t numRays;
   unsigned numCellData = 0;

@@ -10,21 +10,39 @@ using namespace viennacore;
 template <class T, int D> class TraceTriangle : public Trace<T, D> {
 public:
   TraceTriangle(std::shared_ptr<DeviceContext> &passedContext)
-      : Trace<T, D>(passedContext, "Triangle") {}
+      : Trace<T, D>(passedContext, "Triangle") {
+    if constexpr (D == 2) {
+      this->normKernelName.append("_2D");
+    }
+  }
 
-  TraceTriangle(unsigned deviceID = 0) : Trace<T, D>("Triangle", deviceID) {}
+  TraceTriangle(unsigned deviceID = 0) : Trace<T, D>("Triangle", deviceID) {
+    if constexpr (D == 2) {
+      this->normKernelName.append("_2D");
+    }
+  }
 
   ~TraceTriangle() { triangleGeometry.freeBuffers(); }
 
-  void setGeometry(const TriangleMesh &passedMesh) {
+  void setGeometry(const TriangleMesh &passedMesh,
+                   const float sourceOffset = 0.f) {
     assert(context_);
-    triangleGeometry.buildAccel(*context_, passedMesh, launchParams);
+    assert(passedMesh.triangles.size() > 0 &&
+           "Triangle mesh has no triangles.");
+    assert(passedMesh.nodes.size() > 0 && "Triangle mesh has no vertices.");
+
+    this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
+    triangleGeometry.buildAccel<D>(*context_, passedMesh, launchParams,
+                                   this->ignoreBoundary, sourceOffset);
+
+    if constexpr (D == 2) {
+      triangleMesh = passedMesh;
+    }
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {}
 
-protected:
-  void normalize() override {
+  void normalizeResults() override {
     float sourceArea = 0.f;
     if constexpr (D == 2) {
       sourceArea =
@@ -47,6 +65,7 @@ protected:
                          kernel_args, *context_);
   }
 
+protected:
   void buildHitGroups() override {
     // geometry hitgroup
     std::vector<HitgroupRecordTriangle> hitgroupRecords;
@@ -68,25 +87,28 @@ protected:
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    HitgroupRecordTriangle boundaryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
-    boundaryHitgroupRecord.data.vertex =
-        (Vec3Df *)triangleGeometry.boundaryVertexBuffer.dPointer();
-    boundaryHitgroupRecord.data.index =
-        (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
-    boundaryHitgroupRecord.data.base.geometryType = 0;
-    boundaryHitgroupRecord.data.base.isBoundary = true;
+    if (!this->ignoreBoundary) {
+      HitgroupRecordTriangle boundaryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      boundaryHitgroupRecord.data.vertex =
+          (Vec3Df *)triangleGeometry.boundaryVertexBuffer.dPointer();
+      boundaryHitgroupRecord.data.index =
+          (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
+      boundaryHitgroupRecord.data.base.geometryType = 0;
+      boundaryHitgroupRecord.data.base.isBoundary = true;
 
-    // add boundary hitgroup record
-    hitgroupRecords.push_back(boundaryHitgroupRecord);
+      // add boundary hitgroup record
+      hitgroupRecords.push_back(boundaryHitgroupRecord);
+    }
 
     // upload hitgroup records
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
     sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordTriangle);
-    sbt.hitgroupRecordCount = 2;
+    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
   }
 
+private:
   TriangleMesh triangleMesh;
   TriangleGeometry triangleGeometry;
 

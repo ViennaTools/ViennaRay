@@ -85,6 +85,12 @@ public:
     geometry_.initGeometry(this->device_, points, normals, diskRadius_);
   }
 
+  void setGeometry(const DiskMesh &diskMesh) {
+    this->gridDelta_ = static_cast<NumericType>(diskMesh.gridDelta);
+    diskRadius_ = diskMesh.gridDelta * rayInternal::DiskFactor<D>;
+    geometry_.template initGeometry<D>(this->device_, diskMesh);
+  }
+
   /// Set material ID's for each geometry point.
   /// If not set, all material IDs are default 0.
   template <typename T> void setMaterialIds(std::vector<T> const &materialIds) {

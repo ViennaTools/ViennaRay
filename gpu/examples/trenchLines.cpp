@@ -1,4 +1,5 @@
 #include <raygTraceLine.hpp>
+#include <raygTraceTriangle.hpp>
 
 #include <omp.h>
 
@@ -7,7 +8,7 @@ using namespace viennaray;
 int main() {
 
   omp_set_num_threads(16);
-  constexpr int D = 3;
+  constexpr int D = 2;
   using NumericType = float;
   Logger::setLogLevel(LogLevel::DEBUG);
 
@@ -15,21 +16,21 @@ int main() {
   // relative to build directory
 
   // Read stored geometry grid
-  NumericType gridDelta;
-  std::vector<VectorType<NumericType, D>> points;
+  std::vector<Vec3D<float>> points;
+  std::vector<Vec2D<unsigned>> lines;
+  float gridDelta;
+  rayInternal::readMeshFromFile<float, D>("lineMesh.dat", gridDelta, points,
+                                          lines);
 
-  gpu::LineMesh mesh;
-  mesh.nodes = points;
-  mesh.gridDelta = static_cast<float>(gridDelta);
-  computeBoundingBox(mesh);
+  // ------------ Trace Line Geometry ----------------
+  LineMesh mesh(points, lines, gridDelta);
 
-  std::vector<int> materialIds(mesh.lines.size(), 7);
-  for (int i = mesh.lines.size() / 2; i < mesh.lines.size(); ++i) {
-    materialIds[i] = 1;
-  }
+  std::vector<int> materialIds(mesh.lines.size(), 1);
+  // for (int i = mesh.lines.size() / 2; i < mesh.lines.size(); ++i) {
+  //   materialIds[i] = 1;
+  // }
 
   gpu::Particle<NumericType> particle;
-  particle.direction = {0.0f, 0.0f, -1.0f};
   particle.name = "Particle";
   particle.sticking = 1.f;
   particle.dataLabels = {"particleFlux"};
@@ -47,14 +48,42 @@ int main() {
   tracer.setMaterialIds(materialIds);
   tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
-  tracer.setNumberOfRaysPerPoint(1000);
+  tracer.setNumberOfRaysPerPoint(5000);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
   tracer.apply();
 
-  std::vector<float> flux(mesh.lines.size());
-  tracer.getFlux(flux.data(), 0, 0, 1);
+  tracer.normalizeResults();
+  auto flux = tracer.getFlux(0, 0);
+  rayInternal::writeVTP<float, D>("trenchLines_lineFlux.vtp", mesh.nodes,
+                                  mesh.lines, flux);
+
+  // ------------ Trace Triangle Geometry ----------------
+  std::cout << "Converting line mesh to triangle mesh..." << std::endl;
+  auto triMesh = convertLinesToTriangles(mesh);
+
+  materialIds.resize(triMesh.triangles.size(), 1);
+  // for (int i = triMesh.triangles.size() / 2; i < triMesh.triangles.size();
+  //      ++i) {
+  //   materialIds[i] = 1;
+  // }
+
+  gpu::TraceTriangle<NumericType, D> triangleTracer(context);
+  triangleTracer.setGeometry(triMesh);
+  triangleTracer.setMaterialIds(materialIds);
+  triangleTracer.setCallables("CallableWrapper", context->modulePath);
+  triangleTracer.setParticleCallableMap({pMap, cMap});
+  triangleTracer.setNumberOfRaysPerPoint(5000);
+  triangleTracer.insertNextParticle(particle);
+  triangleTracer.prepareParticlePrograms();
+
+  triangleTracer.apply();
+  triangleTracer.normalizeResults();
+
+  flux = triangleTracer.getFlux(0, 0);
+  rayInternal::writeVTP<float, 3>("trenchLines_triFlux.vtp", triMesh.nodes,
+                                  triMesh.triangles, flux);
 
   return 0;
 }

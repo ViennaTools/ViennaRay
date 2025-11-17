@@ -19,7 +19,7 @@ public:
 
   ~TraceDisk() { diskGeometry.freeBuffers(); }
 
-  void setGeometry(const DiskMesh &passedMesh) {
+  void setGeometry(const DiskMesh &passedMesh, float sourceOffset = 0.f) {
     assert(context_ && "Context not initialized.");
     diskMesh = passedMesh;
     if (diskMesh.gridDelta <= 0.f) {
@@ -42,26 +42,34 @@ public:
     pointNeighborhood_.template init<3>(diskMesh.nodes, 2 * diskMesh.radius,
                                         diskMesh.minimumExtent,
                                         diskMesh.maximumExtent);
-    diskGeometry.buildAccel(*context_, diskMesh, launchParams);
+    diskGeometry.buildAccel(*context_, diskMesh, launchParams,
+                            this->ignoreBoundary, sourceOffset);
   }
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
     auto oldFlux = flux;
-    PointNeighborhood<float, D> pointNeighborhood;
+    PointNeighborhood<float, D>
+        *pointNeighborhood; // use pointer to avoid copies
     if (smoothingNeighbors == 1) {
       // re-use the neighborhood from setGeometry
-      pointNeighborhood = pointNeighborhood_;
-    } else { // TODO: this will rebuild the neighborhood for every call
-      // to getFlux (number of rates)
-      // create a new neighborhood with a larger radius
-      pointNeighborhood.template init<3>(
+      pointNeighborhood = &pointNeighborhood_;
+    } else if (pointNeighborhoodCache_.getNumPoints() ==
+                   launchParams.numElements &&
+               std::abs(pointNeighborhoodCache_.getDistance() -
+                        smoothingNeighbors * 2 * diskMesh.radius) < 1e-6f) {
+      // re-use cached neighborhood
+      pointNeighborhood = &pointNeighborhoodCache_;
+    } else {
+      // create a new neighborhood with a larger radius and cache it
+      pointNeighborhoodCache_.template init<3>(
           diskMesh.nodes, smoothingNeighbors * 2 * diskMesh.radius,
           diskMesh.minimumExtent, diskMesh.maximumExtent);
+      pointNeighborhood = &pointNeighborhoodCache_;
     }
 #pragma omp parallel for
     for (int idx = 0; idx < launchParams.numElements; idx++) {
       float vv = oldFlux[idx];
-      auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
+      auto const &neighborhood = pointNeighborhood->getNeighborIndices(idx);
       float sum = 1.f;
       auto const normal = diskMesh.normals[idx];
       for (auto const &nbi : neighborhood) {
@@ -76,8 +84,7 @@ public:
     }
   }
 
-protected:
-  void normalize() override {
+  void normalizeResults() override {
     float sourceArea = 0.f;
     if constexpr (D == 2) {
       sourceArea =
@@ -160,16 +167,20 @@ protected:
         }
       }
     }
-    this->areaBuffer_.allocUpload(areas);
-    CUdeviceptr d_areas = this->areaBuffer_.dPointer();
+
+    CudaBuffer areaBuffer;
+    areaBuffer.allocUpload(areas);
+    CUdeviceptr d_areas = areaBuffer.dPointer();
 
     void *kernel_args[] = {
         &d_data,     &d_areas,       &launchParams.numElements,
         &sourceArea, &this->numRays, &this->numFluxes_};
     LaunchKernel::launch(this->normModuleName, this->normKernelName,
                          kernel_args, *context_);
+    areaBuffer.free();
   }
 
+protected:
   void buildHitGroups() override {
     // geometry hitgroup
     std::vector<HitgroupRecordDisk> hitgroupRecords;
@@ -187,27 +198,30 @@ protected:
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    HitgroupRecordDisk boundaryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
-    boundaryHitgroupRecord.data.point =
-        (Vec3Df *)diskGeometry.boundaryPointBuffer.dPointer();
-    boundaryHitgroupRecord.data.base.normal =
-        (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
-    boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
-    boundaryHitgroupRecord.data.base.geometryType = 1;
-    boundaryHitgroupRecord.data.base.isBoundary = true;
-    hitgroupRecords.push_back(boundaryHitgroupRecord);
+    if (!this->ignoreBoundary) {
+      HitgroupRecordDisk boundaryHitgroupRecord = {};
+      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      boundaryHitgroupRecord.data.point =
+          (Vec3Df *)diskGeometry.boundaryPointBuffer.dPointer();
+      boundaryHitgroupRecord.data.base.normal =
+          (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
+      boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
+      boundaryHitgroupRecord.data.base.geometryType = 1;
+      boundaryHitgroupRecord.data.base.isBoundary = true;
+      hitgroupRecords.push_back(boundaryHitgroupRecord);
+    }
 
     hitgroupRecordBuffer.allocUpload(hitgroupRecords);
     sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
     sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordDisk);
-    sbt.hitgroupRecordCount = 2;
+    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
   }
 
   DiskMesh diskMesh;
   DiskGeometry<D> diskGeometry;
 
   PointNeighborhood<float, D> pointNeighborhood_;
+  PointNeighborhood<float, D> pointNeighborhoodCache_;
   Vec3Df minBox;
   Vec3Df maxBox;
 

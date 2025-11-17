@@ -16,14 +16,18 @@ int main(int argc, char **argv) {
   auto context = DeviceContext::createContext("../../lib/ptx", 0);
   // relative to build directory
 
-  const auto mesh = gpu::readMeshFromFile("trenchMesh.dat");
+  std::vector<Vec3D<float>> points;
+  std::vector<Vec3D<unsigned>> triangles;
+  float gridDelta;
+  rayInternal::readMeshFromFile<float, D>("trenchMesh.dat", gridDelta, points,
+                                          triangles);
+  TriangleMesh mesh(points, triangles, gridDelta);
   std::vector<int> materialIds(mesh.triangles.size(), 7);
   for (int i = mesh.triangles.size() / 2; i < mesh.triangles.size(); ++i) {
     materialIds[i] = 1;
   }
 
   gpu::Particle<NumericType> particle;
-  particle.direction = {0.0f, 0.0f, -1.0f};
   particle.name = "Particle";
   particle.sticking = 0.1f;
   particle.dataLabels = {"particleFlux"};
@@ -55,11 +59,10 @@ int main(int argc, char **argv) {
 
   tracer.apply();
 
-  std::vector<float> flux(mesh.triangles.size());
-  tracer.getFlux(flux.data(), 0, 0);
-
-  rayInternal::writeVTP("triangleGeometryOutput.vtp", mesh.nodes,
-                        mesh.triangles, flux);
+  tracer.normalizeResults();
+  auto flux = tracer.getFlux(0, 0);
+  rayInternal::writeVTP<float, D>("trenchTriangles_triMesh.vtp", mesh.nodes,
+                                  mesh.triangles, flux);
 
 #ifdef COUNT_RAYS
   rayCountBuffer.download(&rayCount, 1);

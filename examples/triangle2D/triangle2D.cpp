@@ -9,24 +9,24 @@ using namespace viennaray;
 
 int main() {
   omp_set_num_threads(16);
-  constexpr int D = 3;
+  constexpr int D = 2;
   using NumericType = float;
   Logger::setLogLevel(LogLevel::DEBUG);
 
   std::vector<Vec3D<NumericType>> points;
-  std::vector<Vec3D<unsigned>> triangles;
+  std::vector<Vec2D<unsigned>> lines;
   NumericType gridDelta;
-  rayInternal::readMeshFromFile<NumericType, D>("trenchMesh.dat", gridDelta,
-                                                points, triangles);
+  rayInternal::readMeshFromFile<NumericType, D>("lineMesh.dat", gridDelta,
+                                                points, lines);
 
-  TriangleMesh mesh(points, triangles, gridDelta);
+  LineMesh lineMesh(points, lines, gridDelta);
   TraceTriangle<NumericType, D> tracer;
-  tracer.setGeometry(mesh);
+  tracer.setGeometry(lineMesh);
 
   auto particle =
       std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");
   tracer.setParticleType(particle);
-  tracer.setNumberOfRaysPerPoint(2000);
+  tracer.setNumberOfRaysPerPoint(5000);
 
   Timer timer;
   timer.start();
@@ -38,6 +38,8 @@ int main() {
   auto &localData = tracer.getLocalData();
   tracer.normalizeFlux(localData.getVectorData(0), NormalizationType::SOURCE);
 
-  rayInternal::writeVTP<NumericType, D>("triangleGeometryOutput.vtp", points,
-                                        triangles, localData.getVectorData(0));
+  auto triMesh = convertLinesToTriangles(lineMesh);
+  rayInternal::writeVTP<NumericType, 3>("lineGeometryOutput.vtp", triMesh.nodes,
+                                        triMesh.triangles,
+                                        localData.getVectorData(0));
 }
