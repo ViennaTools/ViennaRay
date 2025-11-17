@@ -88,8 +88,8 @@ public:
     std::vector<VectorType<NumericType, Dim>> pointsN;
     pointsN.resize(this->numPrimitives_);
     for (size_t i = 0; i < this->numPrimitives_; ++i) {
-      pointsN[0] = static_cast<NumericType>(diskMesh.nodes[i][0]);
-      pointsN[1] = static_cast<NumericType>(diskMesh.nodes[i][1]);
+      pointsN[i][0] = static_cast<NumericType>(diskMesh.nodes[i][0]);
+      pointsN[i][1] = static_cast<NumericType>(diskMesh.nodes[i][1]);
       if constexpr (Dim == 3) {
         pointsN[i][2] = static_cast<NumericType>(diskMesh.nodes[i][2]);
       }

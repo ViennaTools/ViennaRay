@@ -88,7 +88,7 @@ public:
   void setGeometry(const DiskMesh &diskMesh) {
     this->gridDelta_ = static_cast<NumericType>(diskMesh.gridDelta);
     diskRadius_ = diskMesh.gridDelta * rayInternal::DiskFactor<D>;
-    geometry_.initGeometry(this->device_, diskMesh);
+    geometry_.template initGeometry<D>(this->device_, diskMesh);
   }
 
   /// Set material ID's for each geometry point.
