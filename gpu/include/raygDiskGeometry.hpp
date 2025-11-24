@@ -164,7 +164,7 @@ template <int D> struct DiskGeometry {
     CudaBuffer compactedSizeBuffer;
     compactedSizeBuffer.alloc(sizeof(uint64_t));
 
-    OptixAccelEmitDesc emitDesc;
+    OptixAccelEmitDesc emitDesc = {};
     emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
     emitDesc.result = compactedSizeBuffer.dPointer();
 
@@ -194,6 +194,8 @@ template <int D> struct DiskGeometry {
     outputBuffer.free(); // << the UNcompacted, temporary output buffer
     tempBuffer.free();
     compactedSizeBuffer.free();
+    d_aabbBuffer.free();
+    d_aabbBoundaryBuffer.free();
 
     launchParams.traversable = asHandle;
   }

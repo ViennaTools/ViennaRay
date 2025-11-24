@@ -8,7 +8,6 @@
 #include <raygCallableConfig.hpp>
 #include <raygLaunchParams.hpp>
 #include <raygPerRayData.hpp>
-#include <raygRNG.hpp>
 #include <raygReflection.hpp>
 #include <raygSBTRecords.hpp>
 #include <raygSource.hpp>

@@ -145,7 +145,7 @@ struct TriangleGeometry {
     CudaBuffer compactedSizeBuffer;
     compactedSizeBuffer.alloc(sizeof(uint64_t));
 
-    OptixAccelEmitDesc emitDesc;
+    OptixAccelEmitDesc emitDesc = {};
     emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
     emitDesc.result = compactedSizeBuffer.dPointer();
 
@@ -269,6 +269,7 @@ struct TriangleGeometry {
   void freeBuffers() {
     geometryIndexBuffer.free();
     geometryVertexBuffer.free();
+    geometryNormalBuffer.free();
     boundaryIndexBuffer.free();
     boundaryVertexBuffer.free();
     asBuffer.free();

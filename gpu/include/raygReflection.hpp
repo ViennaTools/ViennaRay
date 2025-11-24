@@ -6,9 +6,9 @@
 #include <curand.h>
 
 #include "raygPerRayData.hpp"
-#include "raygRNG.hpp"
 #include "raygSBTRecords.hpp"
 
+#include <vcRNG.hpp>
 #include <vcVectorType.hpp>
 
 namespace viennaray::gpu {
@@ -64,7 +64,7 @@ specularReflection(PerRayData *prd, const Vec3Df &geoNormal) {
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
 
-static __device__ Vec3Df PickRandomPointOnUnitSphere(RNGState *state) {
+static __device__ Vec3Df PickRandomPointOnUnitSphere(CudaRNG *state) {
   const float4 u = curand_uniform4(state); // (0,1]
   const float z = 1.0f - 2.0f * u.x;       // uniform in [-1,1]
   const float r2 = fmaxf(0.0f, 1.0f - z * z);
