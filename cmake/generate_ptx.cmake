@@ -50,6 +50,7 @@ function(generate_kernel generated_files)
   cuda_include_directories(${ViennaCore_SOURCE_DIR}/include/viennacore)
   cuda_include_directories(${VIENNARAY_GPU_INCLUDE})
   cuda_include_directories(${OptiX_INCLUDE_DIR})
+  add_compile_definitions(VIENNACORE_COMPILE_GPU)
 
   cuda_compile_ptx(generated_ptx_files ${cu_source_files} ${cmake_options} ${options})
 

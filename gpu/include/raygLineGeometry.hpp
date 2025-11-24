@@ -64,9 +64,9 @@ struct LineGeometry {
     }
 
     // Send AABB boxes to GPU
-    CudaBuffer d_aabbBuffer;
-    d_aabbBuffer.allocUpload(aabb);
-    CUdeviceptr d_aabb = d_aabbBuffer.dPointer();
+    CudaBuffer aabbBuffer;
+    aabbBuffer.allocUpload(aabb);
+    CUdeviceptr d_aabb = aabbBuffer.dPointer();
 
     // line inputs
     lineInput[0] = {};
@@ -141,7 +141,7 @@ struct LineGeometry {
     CudaBuffer compactedSizeBuffer;
     compactedSizeBuffer.alloc(sizeof(uint64_t));
 
-    OptixAccelEmitDesc emitDesc;
+    OptixAccelEmitDesc emitDesc = {};
     emitDesc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
     emitDesc.result = compactedSizeBuffer.dPointer();
 
@@ -171,6 +171,8 @@ struct LineGeometry {
     outputBuffer.free(); // << the UNcompacted, temporary output buffer
     tempBuffer.free();
     compactedSizeBuffer.free();
+    aabbBuffer.free();
+    d_aabbBoundaryBuffer.free();
 
     launchParams.traversable = asHandle;
   }
@@ -206,6 +208,7 @@ struct LineGeometry {
   void freeBuffers() {
     geometryNodesBuffer.free();
     geometryLinesBuffer.free();
+    geometryNormalsBuffer.free();
     boundaryNodesBuffer.free();
     boundaryLinesBuffer.free();
     asBuffer.free();

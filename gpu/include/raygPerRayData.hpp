@@ -2,8 +2,7 @@
 
 #include <optix.h>
 
-#include "raygRNG.hpp"
-
+#include <vcRNG.hpp>
 #include <vcVectorType.hpp>
 
 #include <stdint.h>
@@ -27,7 +26,7 @@ struct PerRayData {
   float load = 0.f;
 
   // RNG
-  RNGState RNGstate;
+  CudaRNG RNGstate;
 
   // Hit data
   unsigned int numBoundaryHits = 0;

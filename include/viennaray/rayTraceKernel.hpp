@@ -222,10 +222,9 @@ public:
 
           // Calculate point of impact
           const auto &ray = rayHit.ray;
-          const auto hitPoint =
-              Vec3D<rtcNumericType>{ray.org_x + ray.dir_x * ray.tfar,
-                                    ray.org_y + ray.dir_y * ray.tfar,
-                                    ray.org_z + ray.dir_z * ray.tfar};
+          const auto hitPoint = Vec3Df{ray.org_x + ray.dir_x * ray.tfar,
+                                       ray.org_y + ray.dir_y * ray.tfar,
+                                       ray.org_z + ray.dir_z * ray.tfar};
 
           const auto rayDir =
               Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
@@ -239,6 +238,7 @@ public:
               if (hitFromBack) {
                 // if hitFromBack == true, then the ray hits the back of a disk
                 // the second time. In this case we discard the ray.
+                ++raysTerminated;
                 break;
               }
               hitFromBack = true;
@@ -263,8 +263,7 @@ public:
                                  // origins of hit disks
             {                    // distance on first disk hit
               const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
-              const auto &diskOrigin =
-                  *reinterpret_cast<Vec3D<rtcNumericType> const *>(&disk);
+              const auto &diskOrigin = *reinterpret_cast<Vec3Df const *>(&disk);
               impactDistances.push_back(
                   Distance(hitPoint, diskOrigin) +
                   1e-6f); // add eps to avoid division by 0
@@ -323,6 +322,7 @@ public:
           }
           if (++numReflections > config_.maxReflections) {
             // terminate ray if too many reflections
+            ++raysTerminated;
             break;
           }
           reflect = rejectionControl(rayWeight, initialRayWeight, rngState);

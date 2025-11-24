@@ -267,14 +267,15 @@ template <typename NumericType>
 [[nodiscard]] static Vec3D<NumericType>
 pickRandomPointOnUnitSphere(RNG &rngState) {
   static thread_local std::uniform_real_distribution<NumericType> uniDist(
-      NumericType(0), NumericType(1));
-  NumericType x, y, z, x2py2;
+      NumericType(-1), NumericType(1));
+  NumericType x, y, z;
+  double x2py2;
   do {
-    x = 2 * uniDist(rngState) - 1.;
-    y = 2 * uniDist(rngState) - 1.;
+    x = uniDist(rngState);
+    y = uniDist(rngState);
     x2py2 = x * x + y * y;
   } while (x2py2 >= 1.);
-  NumericType tmp = 2 * std::sqrt(1. - x2py2);
+  double tmp = 2. * std::sqrt(1. - x2py2);
   x *= tmp;
   y *= tmp;
   z = 1. - 2 * x2py2;
@@ -297,9 +298,7 @@ template <typename T>
     return B;
   }
   const T invLen = T(1) / std::sqrt(len2);
-  u[0] *= invLen;
-  u[1] *= invLen;
-  u[2] *= invLen;
+  u = u * invLen;
   B[0] = u;
 
   // 2) choose a helper vector not collinear with u
@@ -313,14 +312,12 @@ template <typename T>
     h = Vec3D<T>{T(0), -u[2], u[1]};
   }
 
-  // 3) v = normalized(h)
-  auto v = h;
-  Normalize(v);
-  B[1] = v;
+  // 3) normalize h
+  Normalize(h);
+  B[1] = h;
 
   // 4) w = u × v  (already unit-length up to tiny FP error)
-  auto w = CrossProduct(u, v);
-  B[2] = w;
+  B[2] = CrossProduct(u, h);
 
   return B;
 }

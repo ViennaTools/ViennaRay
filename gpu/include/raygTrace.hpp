@@ -241,6 +241,10 @@ public:
           .print();
     }
     cellDataBuffer_ = passedCellDataBuffer;
+#ifndef NDEBUG
+    // In debug mode, we set the buffer as reference to avoid accidental frees
+    cellDataBuffer_.isRef = true;
+#endif
     numCellData = numData;
   }
 
