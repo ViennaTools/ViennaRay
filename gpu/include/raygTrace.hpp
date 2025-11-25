@@ -48,7 +48,10 @@ public:
     initRayTracer();
   }
 
-  ~Trace() { freeBuffers(); }
+  ~Trace() {
+    freeBuffers();
+    destroyMembers();
+  }
 
   void setCallables(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
@@ -357,6 +360,39 @@ public:
     for (auto &buffer : materialStickingBuffer_) {
       buffer.free();
     }
+  }
+
+  void destroyMembers() {
+    if (pipeline_) {
+      optixPipelineDestroy(pipeline_);
+      pipeline_ = nullptr;
+    }
+    if (module_) {
+      optixModuleDestroy(module_);
+      module_ = nullptr;
+    }
+    if (moduleCallable_) {
+      optixModuleDestroy(moduleCallable_);
+      moduleCallable_ = nullptr;
+    }
+    if (raygenPG) {
+      optixProgramGroupDestroy(raygenPG);
+      raygenPG = nullptr;
+    }
+    if (missPG) {
+      optixProgramGroupDestroy(missPG);
+      missPG = nullptr;
+    }
+    if (hitgroupPG) {
+      optixProgramGroupDestroy(hitgroupPG);
+      hitgroupPG = nullptr;
+    }
+    for (auto &pg : directCallablePGs) {
+      if (pg) {
+        optixProgramGroupDestroy(pg);
+      }
+    }
+    directCallablePGs.clear();
   }
 
   unsigned int prepareParticlePrograms() {
@@ -711,11 +747,11 @@ protected:
   OptixModuleCompileOptions moduleCompileOptions_ = {};
 
   // program groups, and the SBT built around
-  OptixProgramGroup raygenPG;
+  OptixProgramGroup raygenPG{};
   CudaBuffer raygenRecordBuffer;
-  OptixProgramGroup missPG;
+  OptixProgramGroup missPG{};
   CudaBuffer missRecordBuffer;
-  OptixProgramGroup hitgroupPG;
+  OptixProgramGroup hitgroupPG{};
   CudaBuffer hitgroupRecordBuffer;
   std::vector<OptixProgramGroup> directCallablePGs;
   CudaBuffer directCallableRecordBuffer;

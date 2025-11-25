@@ -69,7 +69,5 @@ int main(int argc, char **argv) {
   std::cout << "Trace count: " << rayCount << std::endl;
 #endif
 
-  tracer.freeBuffers();
-
   context->destroy();
 }
