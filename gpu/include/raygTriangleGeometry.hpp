@@ -263,6 +263,11 @@ struct TriangleGeometry {
       boundaryMesh.maximumExtent = bbMax;
     }
 
+#ifndef NDEBUG
+    rayInternal::writeVTP(boundaryMesh, "triangleMesh_boundary.vtp",
+                          std::vector<float>());
+#endif
+
     return boundaryMesh;
   }
 

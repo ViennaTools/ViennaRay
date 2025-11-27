@@ -4,6 +4,8 @@
 #include <vcRNG.hpp>
 #include <vcVectorType.hpp>
 
+#include <rayMesh.hpp>
+
 #if VIENNARAY_EMBREE_VERSION < 4
 #include <embree3/rtcore.h>
 #else
@@ -556,6 +558,11 @@ void writeVTP(const std::string &filename,
   f << "</VTKFile>\n";
 
   f.close();
+}
+
+void writeVTP(TriangleMesh const &mesh, const std::string &filename,
+              const std::vector<float> &flux) {
+  writeVTP<float, 3>(filename, mesh.nodes, mesh.triangles, flux);
 }
 
 /* -------------------------------------------------------------- */

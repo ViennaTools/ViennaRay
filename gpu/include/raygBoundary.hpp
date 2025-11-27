@@ -35,7 +35,7 @@ reflectFromBoundary(PerRayData *prd, const SBTData *hsd, const int D) {
     prd->dir[dim] -= 2 * prd->dir[dim];
     prd->pos[dim] = hsd->vertex[hsd->index[primID][0]][dim];
   } else if constexpr (std::is_same<SBTData, HitSBTDataLine>::value) {
-    prd->pos = prd->pos + prd->dir * (optixGetRayTmax());
+    prd->pos = prd->pos + prd->dir * optixGetRayTmax();
     if (primID == 0 || primID == 1) // x boundary
       prd->dir[0] -= 2 * prd->dir[0];
   }

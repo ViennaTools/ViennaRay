@@ -53,6 +53,10 @@ public:
     destroyMembers();
   }
 
+  void setPipelineFileName(const std::string &fileName) {
+    pipelineFileName = fileName;
+  }
+
   void setCallables(std::string fileName, const std::filesystem::path &path) {
     // check if filename ends in .optixir
     if (fileName.find(".optixir") == std::string::npos) {
@@ -494,7 +498,7 @@ private:
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
-    std::string pipelineFile = "GeneralPipeline" + geometryType_ + ".optixir";
+    std::string pipelineFile = pipelineFileName + geometryType_ + ".optixir";
     std::filesystem::path pipelinePath = context_->modulePath / pipelineFile;
     if (!std::filesystem::exists(pipelinePath)) {
       Logger::getInstance()
@@ -518,6 +522,10 @@ private:
     char logCallable[2048];
     size_t sizeof_log_callable = sizeof(logCallable);
 
+    if (callableFile_.empty()) {
+      Logger::getInstance().addWarning("No callable file set.").print();
+      return;
+    }
     auto callableInput = getInputData(callableFile_.c_str(), inputSize);
     if (!callableInput) {
       Logger::getInstance()
@@ -597,8 +605,9 @@ private:
   void createDirectCallablePrograms() {
     if (callableMap_.empty()) {
       Logger::getInstance()
-          .addError("No particleType->callable mapping provided.")
+          .addWarning("No particleType->callable mapping provided.")
           .print();
+      return;
     }
     unsigned maxParticleTypeId = 0;
     for (const auto &p : particleMap_) {
@@ -701,18 +710,20 @@ private:
     buildHitGroups();
 
     // callable programs
-    std::vector<CallableRecord> callableRecords(directCallablePGs.size());
-    for (size_t j = 0; j < directCallablePGs.size(); ++j) {
-      CallableRecord callableRecord = {};
-      optixSbtRecordPackHeader(directCallablePGs[j], &callableRecord);
-      callableRecords[j] = callableRecord;
-    }
-    directCallableRecordBuffer.allocUpload(callableRecords);
+    if (!directCallablePGs.empty()) {
+      std::vector<CallableRecord> callableRecords(directCallablePGs.size());
+      for (size_t j = 0; j < directCallablePGs.size(); ++j) {
+        CallableRecord callableRecord = {};
+        optixSbtRecordPackHeader(directCallablePGs[j], &callableRecord);
+        callableRecords[j] = callableRecord;
+      }
+      directCallableRecordBuffer.allocUpload(callableRecords);
 
-    sbt.callablesRecordBase = directCallableRecordBuffer.dPointer();
-    sbt.callablesRecordStrideInBytes = sizeof(CallableRecord);
-    sbt.callablesRecordCount =
-        static_cast<unsigned int>(directCallablePGs.size());
+      sbt.callablesRecordBase = directCallableRecordBuffer.dPointer();
+      sbt.callablesRecordStrideInBytes = sizeof(CallableRecord);
+      sbt.callablesRecordCount =
+          static_cast<unsigned int>(directCallablePGs.size());
+    }
   }
 
 protected:
@@ -775,6 +786,7 @@ protected:
 
   const std::string normModuleName = "normKernels.ptx";
   std::string normKernelName = "normalize_surface_";
+  std::string pipelineFileName = "GeneralPipeline";
 };
 
 } // namespace viennaray::gpu
