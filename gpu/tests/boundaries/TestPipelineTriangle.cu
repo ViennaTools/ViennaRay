@@ -78,7 +78,27 @@ extern "C" __global__ void __raygen__() {
       return;
     }
   } else {
-    return;
+    if (linearLaunchIndex == 0) {
+      prd.pos[0] = 0.5f;
+      prd.pos[1] = 0.5f;
+      prd.pos[2] = 1.1f;
+
+      prd.dir[0] = 0.f;
+      prd.dir[1] = -1.f;
+      prd.dir[2] = -.5f;
+      Normalize(prd.dir);
+    } else if (linearLaunchIndex == 1) {
+      prd.pos[0] = 0.5f;
+      prd.pos[1] = 0.5f;
+      prd.pos[2] = 1.5f;
+
+      prd.dir[0] = 0.f;
+      prd.dir[1] = 0.6f;
+      prd.dir[2] = -.5f;
+      Normalize(prd.dir);
+    } else {
+      return;
+    }
   }
 
   // the values we store the PRD pointer in:
