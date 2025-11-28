@@ -1,7 +1,6 @@
 #pragma once
 
-#include <optix_types.h>
-#include <vcVectorType.hpp>
+#include <string>
 
 namespace viennaray::gpu {
 

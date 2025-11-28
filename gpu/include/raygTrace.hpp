@@ -29,13 +29,13 @@ using namespace viennacore;
 
 template <class T, int D> class Trace {
 public:
-  Trace(std::shared_ptr<DeviceContext> &passedContext,
+  Trace(std::shared_ptr<DeviceContext> const &passedContext,
         std::string &&geometryType)
       : context_(passedContext), geometryType_(std::move(geometryType)) {
     initRayTracer();
   }
 
-  Trace(std::string &&geometryType, unsigned deviceID = 0)
+  Trace(std::string &&geometryType, const int deviceID = 0)
       : geometryType_(std::move(geometryType)) {
     context_ = DeviceContext::getContextFromRegistry(deviceID);
     if (!context_) {
@@ -48,7 +48,7 @@ public:
     initRayTracer();
   }
 
-  ~Trace() {
+  virtual ~Trace() {
     freeBuffers();
     destroyMembers();
   }
@@ -240,7 +240,8 @@ public:
     resultsDownloaded = false;
   }
 
-  void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
+  void setElementData(const CudaBuffer &passedCellDataBuffer,
+                      const unsigned numData) {
     if (passedCellDataBuffer.sizeInBytes / sizeof(float) / numData !=
         launchParams.numElements) {
       Logger::getInstance()
@@ -463,6 +464,7 @@ protected:
 
 private:
   void initRayTracer() {
+    launchParams.D = D;
     context_->addModule(normModuleName);
     normKernelName.append(geometryType_ + "_f");
     // launchParamsBuffer.alloc(sizeof(launchParams));
@@ -647,8 +649,8 @@ private:
     programGroups.push_back(missPG);
     programGroups.push_back(hitgroupPG);
 
-    for (size_t j = 0; j < directCallablePGs.size(); j++) {
-      programGroups.push_back(directCallablePGs[j]);
+    for (auto const &directCallablePG : directCallablePGs) {
+      programGroups.push_back(directCallablePG);
     }
 
     char log[2048];
@@ -780,7 +782,7 @@ protected:
   bool ignoreBoundary = false;
   bool resultsDownloaded = false;
 
-  size_t numRays;
+  size_t numRays = 0;
   unsigned numCellData = 0;
   const std::string globalParamsName = "launchParams";
 

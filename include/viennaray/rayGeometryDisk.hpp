@@ -134,9 +134,9 @@ public:
     }
 
     for (size_t i = 0; i < this->numPrimitives_; ++i) {
-      pPointBuffer_[i].xx = (float)points[i][0];
-      pPointBuffer_[i].yy = (float)points[i][1];
-      pPointBuffer_[i].radius = (float)discRadii_;
+      pPointBuffer_[i].xx = static_cast<float>(points[i][0]);
+      pPointBuffer_[i].yy = static_cast<float>(points[i][1]);
+      pPointBuffer_[i].radius = static_cast<float>(discRadii_);
       if (points[i][0] < this->minCoords_[0])
         this->minCoords_[0] = points[i][0];
       if (points[i][1] < this->minCoords_[1])

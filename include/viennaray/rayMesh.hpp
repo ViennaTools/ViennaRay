@@ -3,7 +3,6 @@
 #include <vcVectorType.hpp>
 
 #include <cassert>
-#include <fstream>
 #include <vector>
 
 namespace viennaray {
@@ -26,7 +25,7 @@ template <class MeshType> void computeBoundingBox(MeshType &mesh) {
 }
 
 struct LineMesh {
-  LineMesh() {}
+  LineMesh() = default;
   LineMesh(const std::vector<Vec3Df> &pts,
            const std::vector<Vec2D<unsigned>> &lns, float delta)
       : nodes(pts), lines(lns), gridDelta(delta) {
@@ -39,12 +38,12 @@ struct LineMesh {
   std::vector<Vec2D<unsigned>> lines;
   std::vector<Vec3Df> normals;
 
-  Vec3Df minimumExtent;
-  Vec3Df maximumExtent;
+  Vec3Df minimumExtent{};
+  Vec3Df maximumExtent{};
   float gridDelta = 0.f;
 
   void calculateNormals() {
-    assert(lines.size() > 0 && "No lines in mesh.");
+    assert(!lines.empty() && "No lines in mesh.");
     normals.clear();
     normals.resize(lines.size());
 #pragma omp parallel for
@@ -52,7 +51,7 @@ struct LineMesh {
       Vec3Df const &p0 = nodes[lines[i][0]];
       Vec3Df const &p1 = nodes[lines[i][1]];
       Vec3Df lineDir = p1 - p0;
-      Vec3Df normal = Vec3Df{-lineDir[1], lineDir[0], 0.0f};
+      auto normal = Vec3Df{-lineDir[1], lineDir[0], 0.0f};
       Normalize(normal);
       normals[i] = normal;
     }
@@ -81,7 +80,7 @@ struct LineMesh {
 };
 
 struct TriangleMesh {
-  TriangleMesh() {}
+  TriangleMesh() = default;
   TriangleMesh(std::vector<Vec3Df> const &pts,
                std::vector<Vec3D<unsigned>> const &tris, float delta)
       : nodes(pts), triangles(tris), gridDelta(delta) {
@@ -93,12 +92,12 @@ struct TriangleMesh {
   std::vector<Vec3D<unsigned>> triangles;
   std::vector<Vec3Df> normals;
 
-  Vec3Df minimumExtent;
-  Vec3Df maximumExtent;
+  Vec3Df minimumExtent{};
+  Vec3Df maximumExtent{};
   float gridDelta = 0.f;
 
   void calculateNormals() {
-    assert(triangles.size() > 0 && "No triangles in mesh.");
+    assert(!triangles.empty() && "No triangles in mesh.");
     normals.clear();
     normals.resize(triangles.size());
 #pragma omp parallel for
@@ -114,7 +113,7 @@ struct TriangleMesh {
 };
 
 struct DiskMesh {
-  DiskMesh() {}
+  DiskMesh() = default;
   DiskMesh(const std::vector<Vec3Df> &pts, const std::vector<Vec3Df> &nms,
            float delta)
       : nodes(pts), normals(nms), gridDelta(delta) {
@@ -125,13 +124,13 @@ struct DiskMesh {
   std::vector<Vec3Df> normals;
   std::vector<float> radii;
 
-  Vec3Df minimumExtent;
-  Vec3Df maximumExtent;
+  Vec3Df minimumExtent{};
+  Vec3Df maximumExtent{};
   float radius = 0.f;
   float gridDelta = 0.f;
 };
 
-TriangleMesh convertLinesToTriangles(const LineMesh &lineMesh) {
+inline TriangleMesh convertLinesToTriangles(const LineMesh &lineMesh) {
   TriangleMesh mesh;
   mesh.gridDelta = lineMesh.gridDelta;
   mesh.minimumExtent = lineMesh.minimumExtent;
@@ -142,17 +141,17 @@ TriangleMesh convertLinesToTriangles(const LineMesh &lineMesh) {
 
   auto const &points = lineMesh.nodes;
   mesh.nodes.reserve(points.size() * 2);
-  for (size_t i = 0; i < points.size(); ++i) {
-    mesh.nodes.push_back(Vec3Df{points[i][0], points[i][1], lineWidth2});
-    mesh.nodes.push_back(Vec3Df{points[i][0], points[i][1], -lineWidth2});
+  for (auto const &point : points) {
+    mesh.nodes.push_back(Vec3Df{point[0], point[1], lineWidth2});
+    mesh.nodes.push_back(Vec3Df{point[0], point[1], -lineWidth2});
   }
 
   auto const &lines = lineMesh.lines;
   mesh.triangles.reserve(lines.size() * 2);
   mesh.normals.reserve(lines.size() * 2);
-  for (size_t i = 0; i < lines.size(); ++i) {
-    const unsigned p0 = lines[i][0] * 2;
-    const unsigned p1 = lines[i][1] * 2;
+  for (auto const &line : lines) {
+    const unsigned p0 = line[0] * 2;
+    const unsigned p1 = line[1] * 2;
 
     // first triangle
     Vec3D<unsigned> tri1{p0, p1, static_cast<unsigned>(p0 + 1)};

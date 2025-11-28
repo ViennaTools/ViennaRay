@@ -14,7 +14,6 @@ enum class TracingDataMergeEnum : unsigned {
 };
 
 template <typename NumericType> class TracingData {
-private:
   using scalarDataType = NumericType;
   using vectorDataType = std::vector<NumericType>;
   using mergeType = std::vector<TracingDataMergeEnum>;

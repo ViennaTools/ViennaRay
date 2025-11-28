@@ -25,7 +25,7 @@ struct LineGeometry {
   CudaBuffer asBuffer;
 
   /// build acceleration structure from triangle mesh
-  void buildAccel(DeviceContext &context, const LineMesh &mesh,
+  void buildAccel(const DeviceContext &context, const LineMesh &mesh,
                   LaunchParams &launchParams, const bool ignoreBoundary,
                   const float sourceOffset = 0.f) {
     assert(context.deviceID != -1 && "Context not initialized.");
@@ -39,18 +39,12 @@ struct LineGeometry {
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> lineInput{};
-    std::array<uint32_t, 2> lineInputFlags{};
 
     // ------------------- geometry input -------------------
     // upload the model to the device: the builder
     geometryNodesBuffer.allocUpload(mesh.nodes);
     geometryLinesBuffer.allocUpload(mesh.lines);
     geometryNormalsBuffer.allocUpload(mesh.normals);
-
-    // create local variables, because we need a *pointer* to the
-    // device pointers
-    CUdeviceptr d_geoNodes = geometryNodesBuffer.dPointer();
-    CUdeviceptr d_geoLines = geometryLinesBuffer.dPointer();
 
     // AABB build input
     std::vector<OptixAabb> aabb(mesh.lines.size());

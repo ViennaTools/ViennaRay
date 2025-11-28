@@ -2,25 +2,23 @@
 
 #include "raygLineGeometry.hpp"
 #include "raygTrace.hpp"
-#include <rayBoundary.hpp>
 
 namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <class T, int D> class TraceLine : public Trace<T, D> {
+template <class T, int D> class TraceLine final : public Trace<T, D> {
 public:
-  TraceLine(std::shared_ptr<DeviceContext> passedContext)
+  explicit TraceLine(std::shared_ptr<DeviceContext> passedContext)
       : Trace<T, D>(passedContext, "Line") {}
 
-  TraceLine(unsigned deviceID = 0) : Trace<T, D>("Line", deviceID) {}
+  explicit TraceLine(int deviceID = 0) : Trace<T, D>("Line", deviceID) {}
 
-  ~TraceLine() { lineGeometry.freeBuffers(); }
+  ~TraceLine() override { lineGeometry.freeBuffers(); }
 
   void setGeometry(const LineMesh &passedMesh, const float sourceOffset = 0.f) {
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
     lineMesh = passedMesh;
-    launchParams.D = D;
     lineGeometry.buildAccel(*context_, lineMesh, launchParams,
                             this->ignoreBoundary, sourceOffset);
   }

@@ -38,7 +38,9 @@ function(generate_pipeline target_name generated_files)
     list(APPEND generated_files_local ${generated_ptx_files})
   endif()
 
-  set(${generated_files} ${generated_files_local} PARENT_SCOPE)
+  set(${generated_files}
+      ${generated_files_local}
+      PARENT_SCOPE)
 endfunction()
 
 function(generate_kernel generated_files)

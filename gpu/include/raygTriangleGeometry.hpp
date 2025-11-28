@@ -46,7 +46,6 @@ struct TriangleGeometry {
           mesh.maximumExtent[2] + mesh.gridDelta + sourceOffset;
     }
     launchParams.numElements = mesh.triangles.size();
-    launchParams.D = D;
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> triangleInput{};
@@ -66,19 +65,18 @@ struct TriangleGeometry {
     // device pointers
     CUdeviceptr d_geoVertices = geometryVertexBuffer.dPointer();
     CUdeviceptr d_geoIndices = geometryIndexBuffer.dPointer();
-    CUdeviceptr d_geoNormals = geometryNormalBuffer.dPointer();
 
     triangleInput[0].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
     triangleInput[0].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
     triangleInput[0].triangleArray.numVertices =
-        (unsigned int)mesh.nodes.size();
+        static_cast<unsigned int>(mesh.nodes.size());
     triangleInput[0].triangleArray.vertexBuffers = &d_geoVertices;
 
     triangleInput[0].triangleArray.indexFormat =
         OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
     triangleInput[0].triangleArray.indexStrideInBytes = sizeof(Vec3D<unsigned>);
     triangleInput[0].triangleArray.numIndexTriplets =
-        (unsigned int)mesh.triangles.size();
+        static_cast<unsigned int>(mesh.triangles.size());
     triangleInput[0].triangleArray.indexBuffer = d_geoIndices;
 
     // one SBT entry, and no per-primitive materials:
@@ -108,14 +106,15 @@ struct TriangleGeometry {
 
     triangleInput[1].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
     triangleInput[1].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
-    triangleInput[1].triangleArray.numVertices = (int)boundaryMesh.nodes.size();
+    triangleInput[1].triangleArray.numVertices =
+        static_cast<unsigned int>(boundaryMesh.nodes.size());
     triangleInput[1].triangleArray.vertexBuffers = &d_boundVertices;
 
     triangleInput[1].triangleArray.indexFormat =
         OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
     triangleInput[1].triangleArray.indexStrideInBytes = sizeof(Vec3D<unsigned>);
     triangleInput[1].triangleArray.numIndexTriplets =
-        (int)boundaryMesh.triangles.size();
+        static_cast<unsigned int>(boundaryMesh.triangles.size());
     triangleInput[1].triangleArray.indexBuffer = d_boundIndices;
 
     // one SBT entry, and no per-primitive materials:

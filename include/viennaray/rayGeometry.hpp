@@ -12,6 +12,7 @@ using namespace viennacore;
 
 template <typename NumericType, int D> class Geometry {
 public:
+  virtual ~Geometry() = default;
   Geometry(GeometryType type) : geoType_(type) {}
 
   template <typename MatIdType>

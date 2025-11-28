@@ -1,7 +1,6 @@
 #pragma once
 
 #include <rayBoundary.hpp>
-#include <rayDiskBoundingBoxIntersector.hpp>
 #include <rayGeometry.hpp>
 #include <rayParticle.hpp>
 #include <raySource.hpp>
@@ -421,7 +420,7 @@ public:
     traceInfo_.reflections = totalReflections;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
-    if (raysTerminated > 1e3) {
+    if (raysTerminated > 1000) {
       Logger::getInstance()
           .addDebug(
               "A total of " + std::to_string(raysTerminated) +

@@ -49,7 +49,6 @@ template <int D> struct DiskGeometry {
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> diskInput{};
-    std::array<uint32_t, 2> diskInputFlags{};
 
     // ------------------- geometry input -------------------
     // upload the model to the device: the builder
@@ -104,11 +103,6 @@ template <int D> struct DiskGeometry {
     // upload the model to the device: the builder
     boundaryPointBuffer.allocUpload(boundaryMesh.nodes);
     boundaryNormalBuffer.allocUpload(boundaryMesh.normals);
-
-    // create local variables, because we need a *pointer* to the
-    // device pointers
-    CUdeviceptr d_boundPoints = boundaryPointBuffer.dPointer();
-    CUdeviceptr d_boundNormals = boundaryNormalBuffer.dPointer();
 
     // AABB build input for boundary disks
     std::vector<OptixAabb> aabbBoundary(boundaryMesh.nodes.size());
@@ -217,12 +211,12 @@ template <int D> struct DiskGeometry {
     }
 
     // Find maximum extent in each dimension
-    Vec3Df extent = bbMax - bbMin;
+    const Vec3Df extent = bbMax - bbMin;
     float maxExtent = std::max(std::max(extent[0], extent[1]), extent[2]);
 
     // has to be the same as in raygTrace.hpp (hitGroupRecords)
     if constexpr (D == 2) {
-      boundaryMesh.radius = 0.5 * maxExtent;
+      boundaryMesh.radius = 0.5f * maxExtent;
     } else {
       boundaryMesh.radius = maxExtent * rayInternal::DiskFactor<D>;
     }

@@ -10,10 +10,10 @@ namespace viennaray {
 using namespace viennacore;
 
 template <class NumericType, int D>
-class TraceDisk : public Trace<NumericType, D> {
+class TraceDisk final : public Trace<NumericType, D> {
 public:
-  TraceDisk() {}
-  ~TraceDisk() { geometry_.releaseGeometry(); }
+  TraceDisk() = default;
+  ~TraceDisk() override { geometry_.releaseGeometry(); }
 
   /// Run the ray tracer
   void apply() override {
@@ -51,7 +51,7 @@ public:
         this->config_, this->dataLog_, this->RTInfo_);
     tracer.setTracingData(&this->localData_, this->pGlobalData_);
     tracer.apply();
-    this->config_.runNumber++;
+    ++this->config_.runNumber;
 
     boundary.releaseGeometry();
   }

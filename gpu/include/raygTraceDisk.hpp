@@ -3,21 +3,20 @@
 #include "raygDiskGeometry.hpp"
 #include "raygTrace.hpp"
 
-#include <rayBoundary.hpp>
 #include <rayDiskBoundingBoxIntersector.hpp>
 
 namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <class T, int D> class TraceDisk : public Trace<T, D> {
+template <class T, int D> class TraceDisk final : public Trace<T, D> {
 public:
-  TraceDisk(std::shared_ptr<DeviceContext> &passedContext)
+  explicit TraceDisk(std::shared_ptr<DeviceContext> &passedContext)
       : Trace<T, D>(passedContext, "Disk") {}
 
-  TraceDisk(unsigned deviceID = 0) : Trace<T, D>("Disk", deviceID) {}
+  explicit TraceDisk(unsigned deviceID = 0) : Trace<T, D>("Disk", deviceID) {}
 
-  ~TraceDisk() { diskGeometry.freeBuffers(); }
+  ~TraceDisk() override { diskGeometry.freeBuffers(); }
 
   void setGeometry(const DiskMesh &passedMesh, float sourceOffset = 0.f) {
     assert(context_ && "Context not initialized.");
@@ -38,7 +37,6 @@ public:
       maxBox[2] = diskMesh.gridDelta;
     }
     this->gridDelta_ = static_cast<float>(diskMesh.gridDelta);
-    launchParams.D = D;
     pointNeighborhood_.template init<3>(diskMesh.nodes, 2 * diskMesh.radius,
                                         diskMesh.minimumExtent,
                                         diskMesh.maximumExtent);
@@ -48,6 +46,7 @@ public:
 
   void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
     auto oldFlux = flux;
+    const T requiredDistance = smoothingNeighbors * 2.0 * diskMesh.radius;
     PointNeighborhood<float, D>
         *pointNeighborhood; // use pointer to avoid copies
     if (smoothingNeighbors == 1) {
@@ -56,16 +55,17 @@ public:
     } else if (pointNeighborhoodCache_.getNumPoints() ==
                    launchParams.numElements &&
                std::abs(pointNeighborhoodCache_.getDistance() -
-                        smoothingNeighbors * 2 * diskMesh.radius) < 1e-6f) {
+                        requiredDistance) < 1e-6) {
       // re-use cached neighborhood
       pointNeighborhood = &pointNeighborhoodCache_;
     } else {
       // create a new neighborhood with a larger radius and cache it
-      pointNeighborhoodCache_.template init<3>(
-          diskMesh.nodes, smoothingNeighbors * 2 * diskMesh.radius,
-          diskMesh.minimumExtent, diskMesh.maximumExtent);
+      pointNeighborhoodCache_.template init<3>(diskMesh.nodes, requiredDistance,
+                                               diskMesh.minimumExtent,
+                                               diskMesh.maximumExtent);
       pointNeighborhood = &pointNeighborhoodCache_;
     }
+
 #pragma omp parallel for
     for (int idx = 0; idx < launchParams.numElements; idx++) {
       float vv = oldFlux[idx];
@@ -85,6 +85,8 @@ public:
   }
 
   void normalizeResults() override {
+    assert(resultBuffer.sizeInBytes != 0 &&
+           "Normalization: Result buffer not initialized.");
     float sourceArea = 0.f;
     if constexpr (D == 2) {
       sourceArea =
@@ -94,74 +96,68 @@ public:
           (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]) *
           (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
     }
-    assert(resultBuffer.sizeInBytes != 0 &&
-           "Normalization: Result buffer not initialized.");
-    CUdeviceptr d_data = resultBuffer.dPointer();
-    CUdeviceptr d_points = diskGeometry.geometryPointBuffer.dPointer();
-    CUdeviceptr d_normals = diskGeometry.geometryNormalBuffer.dPointer();
 
     // calculate areas on host and send to device for now
-    Vec2D<Vec3Df> bdBox = {minBox, maxBox};
+    const Vec2D<Vec3Df> bdBox = {minBox, maxBox};
     std::vector<float> areas(launchParams.numElements);
-    DiskBoundingBoxXYIntersector<float> bdDiskIntersector(bdBox);
+    DiskBoundingBoxXYIntersector<float> xy_intersector(bdBox);
 
-    // 0 = REFLECTIVE, 1 = PERIODIC, 2 = IGNORE
-    std::array<BoundaryCondition, 2> boundaryConds = {
-        BoundaryCondition::REFLECTIVE, BoundaryCondition::REFLECTIVE};
-    const std::array<int, 2> boundaryDirs = {0, 1};
-    constexpr float eps = 1e-4f;
-#pragma omp for
+    const auto radius = diskMesh.radius;
+    constexpr std::array<int, 2> boundaryDirs = {0, 1};
+#pragma omp parallel for
     for (long idx = 0; idx < launchParams.numElements; ++idx) {
-      std::array<float, 4> disk{0.f, 0.f, 0.f, diskMesh.radius};
-      Vec3Df coord = diskMesh.nodes[idx];
-      Vec3Df normal = diskMesh.normals[idx];
-      disk[0] = coord[0];
-      disk[1] = coord[1];
-      disk[2] = coord[2];
+      const Vec3Df &coord = diskMesh.nodes[idx];
+      const Vec3Df &normal = diskMesh.normals[idx];
 
       if constexpr (D == 3) {
-        areas[idx] = disk[3] * disk[3] * M_PIf; // full disk area
-        if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::IGNORE &&
-            boundaryConds[boundaryDirs[1]] == BoundaryCondition::IGNORE) {
+        areas[idx] = radius * radius * M_PIf; // full disk area
+        if (this->ignoreBoundary) {
+          // no boundaries
+          continue;
+        }
+        std::array<float, 4> disk{0.f, 0.f, 0.f, radius};
+        disk[0] = coord[0];
+        disk[1] = coord[1];
+        disk[2] = coord[2];
+
+        // Disk-BBox intersection only works with boundaries in x and y
+        // direction
+        areas[idx] = xy_intersector.areaInside(disk, normal);
+      } else {
+        constexpr float eps = 1e-4f;
+        // 2D
+        areas[idx] = 2.f * radius; // full disk area
+        if (this->ignoreBoundary) {
           // no boundaries
           continue;
         }
 
-        if (boundaryDirs[0] != 2 && boundaryDirs[1] != 2) {
-          // Disk-BBox intersection only works with boundaries in x and y
-          // direction
-          areas[idx] = bdDiskIntersector.areaInside(disk, normal);
-          continue;
-        }
-      } else { // 2D
-        areas[idx] = 2 * disk[3];
-
         // test min boundary
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
-            (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
-             disk[3])) {
-          T insideTest = 1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+        if (std::abs(coord[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
+            radius) {
+          float insideTest =
+              1.f - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
           if (insideTest > eps) {
             insideTest =
-                std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) /
+                std::abs(coord[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) /
                 std::sqrt(insideTest);
-            if (insideTest < disk[3]) {
-              areas[idx] -= disk[3] - insideTest;
+            if (insideTest < radius) {
+              areas[idx] -= radius - insideTest;
             }
           }
         }
 
         // test max boundary
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
-            (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
-             disk[3])) {
-          T insideTest = 1 - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
+        if (std::abs(coord[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
+            radius) {
+          float insideTest =
+              1.f - normal[boundaryDirs[0]] * normal[boundaryDirs[0]];
           if (insideTest > eps) {
             insideTest =
-                std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) /
+                std::abs(coord[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) /
                 std::sqrt(insideTest);
-            if (insideTest < disk[3]) {
-              areas[idx] -= disk[3] - insideTest;
+            if (insideTest < radius) {
+              areas[idx] -= radius - insideTest;
             }
           }
         }
@@ -171,6 +167,7 @@ public:
     CudaBuffer areaBuffer;
     areaBuffer.allocUpload(areas);
     CUdeviceptr d_areas = areaBuffer.dPointer();
+    CUdeviceptr d_data = resultBuffer.dPointer();
 
     void *kernel_args[] = {
         &d_data,     &d_areas,       &launchParams.numElements,
@@ -222,8 +219,8 @@ protected:
 
   PointNeighborhood<float, D> pointNeighborhood_;
   PointNeighborhood<float, D> pointNeighborhoodCache_;
-  Vec3Df minBox;
-  Vec3Df maxBox;
+  Vec3Df minBox{};
+  Vec3Df maxBox{};
 
   using Trace<T, D>::context_;
   using Trace<T, D>::geometryType_;
