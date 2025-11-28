@@ -7,29 +7,29 @@ namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <class T, int D> class TraceTriangle : public Trace<T, D> {
+template <class T, int D> class TraceTriangle final : public Trace<T, D> {
 public:
-  TraceTriangle(std::shared_ptr<DeviceContext> &passedContext)
+  explicit TraceTriangle(std::shared_ptr<DeviceContext> &passedContext)
       : Trace<T, D>(passedContext, "Triangle") {
     if constexpr (D == 2) {
       this->normKernelName.append("_2D");
     }
   }
 
-  TraceTriangle(unsigned deviceID = 0) : Trace<T, D>("Triangle", deviceID) {
+  explicit TraceTriangle(unsigned deviceID = 0)
+      : Trace<T, D>("Triangle", deviceID) {
     if constexpr (D == 2) {
       this->normKernelName.append("_2D");
     }
   }
 
-  ~TraceTriangle() { triangleGeometry.freeBuffers(); }
+  ~TraceTriangle() override { triangleGeometry.freeBuffers(); }
 
   void setGeometry(const TriangleMesh &passedMesh,
                    const float sourceOffset = 0.f) {
     assert(context_);
-    assert(passedMesh.triangles.size() > 0 &&
-           "Triangle mesh has no triangles.");
-    assert(passedMesh.nodes.size() > 0 && "Triangle mesh has no vertices.");
+    assert(!passedMesh.triangles.empty() && "Triangle mesh has no triangles.");
+    assert(!passedMesh.nodes.empty() && "Triangle mesh has no vertices.");
 
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
     triangleGeometry.buildAccel<D>(*context_, passedMesh, launchParams,

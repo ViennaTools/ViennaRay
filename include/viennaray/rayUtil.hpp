@@ -4,6 +4,8 @@
 #include <vcRNG.hpp>
 #include <vcVectorType.hpp>
 
+#include <rayMesh.hpp>
+
 #if VIENNARAY_EMBREE_VERSION < 4
 #include <embree3/rtcore.h>
 #else
@@ -15,7 +17,6 @@
 #include <immintrin.h>
 #endif
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -558,6 +559,11 @@ void writeVTP(const std::string &filename,
   f.close();
 }
 
+inline void writeVTP(TriangleMesh const &mesh, const std::string &filename,
+                     const std::vector<float> &flux) {
+  writeVTP<float, 3>(filename, mesh.nodes, mesh.triangles, flux);
+}
+
 /* -------------------------------------------------------------- */
 
 template <typename NumericType, int D>
@@ -574,7 +580,7 @@ createSourceGrid(const std::array<Vec3D<NumericType>, 2> &pBdBox,
   auto firstDir = pTraceSettings[1];
   auto secondDir = pTraceSettings[2];
   auto minMax = pTraceSettings[3];
-  assert((!(D == 2) || rayDir != 2) && "Source direction z in 2D geometry");
+  assert((D != 2 || rayDir != 2) && "Source direction z in 2D geometry");
 
   auto len1 = pBdBox[1][firstDir] - pBdBox[0][firstDir];
   auto len2 = pBdBox[1][secondDir] - pBdBox[0][secondDir];

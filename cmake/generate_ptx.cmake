@@ -5,11 +5,11 @@ function(generate_pipeline target_name generated_files)
   cuda_get_sources_and_options(cu_optix_source_files cmake_options options ${ARGN})
 
   # Add the path to the OptiX headers to our include paths.
-  include_directories(${OptiX_INCLUDE_DIR})
+  cuda_include_directories(${OptiX_INCLUDE_DIR})
 
   # Include ViennaRay headers which are used in pipelines
-  include_directories(${VIENNARAY_GPU_INCLUDE_DIR})
-  include_directories(${ViennaCore_SOURCE_DIR}/include/viennacore) # needed for Context
+  cuda_include_directories(${VIENNARAY_GPU_INCLUDE})
+  cuda_include_directories(${ViennaCore_SOURCE_DIR}/include/viennacore)
   add_compile_definitions(VIENNACORE_COMPILE_GPU)
 
   # Generate OptiX IR files if enabled
@@ -38,7 +38,9 @@ function(generate_pipeline target_name generated_files)
     list(APPEND generated_files_local ${generated_ptx_files})
   endif()
 
-  list(APPEND ${generated_files} ${generated_files_local})
+  set(${generated_files}
+      ${generated_files_local}
+      PARENT_SCOPE)
 endfunction()
 
 function(generate_kernel generated_files)

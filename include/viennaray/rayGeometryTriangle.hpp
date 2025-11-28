@@ -6,7 +6,7 @@ namespace viennaray {
 
 using namespace viennacore;
 
-template <typename NumericType, int D = 3>
+template <typename NumericType, int D>
 class GeometryTriangle : public Geometry<NumericType, D> {
 public:
   GeometryTriangle() : Geometry<NumericType, D>(GeometryType::TRIANGLE) {}

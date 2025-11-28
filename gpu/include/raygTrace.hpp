@@ -29,13 +29,13 @@ using namespace viennacore;
 
 template <class T, int D> class Trace {
 public:
-  Trace(std::shared_ptr<DeviceContext> &passedContext,
+  Trace(std::shared_ptr<DeviceContext> const &passedContext,
         std::string &&geometryType)
       : context_(passedContext), geometryType_(std::move(geometryType)) {
     initRayTracer();
   }
 
-  Trace(std::string &&geometryType, unsigned deviceID = 0)
+  Trace(std::string &&geometryType, const int deviceID = 0)
       : geometryType_(std::move(geometryType)) {
     context_ = DeviceContext::getContextFromRegistry(deviceID);
     if (!context_) {
@@ -48,9 +48,13 @@ public:
     initRayTracer();
   }
 
-  ~Trace() {
+  virtual ~Trace() {
     freeBuffers();
     destroyMembers();
+  }
+
+  void setPipelineFileName(const std::string &fileName) {
+    pipelineFileName = fileName;
   }
 
   void setCallables(std::string fileName, const std::filesystem::path &path) {
@@ -236,7 +240,8 @@ public:
     resultsDownloaded = false;
   }
 
-  void setElementData(CudaBuffer &passedCellDataBuffer, unsigned numData) {
+  void setElementData(const CudaBuffer &passedCellDataBuffer,
+                      const unsigned numData) {
     if (passedCellDataBuffer.sizeInBytes / sizeof(float) / numData !=
         launchParams.numElements) {
       Logger::getInstance()
@@ -459,6 +464,7 @@ protected:
 
 private:
   void initRayTracer() {
+    launchParams.D = D;
     context_->addModule(normModuleName);
     normKernelName.append(geometryType_ + "_f");
     // launchParamsBuffer.alloc(sizeof(launchParams));
@@ -494,7 +500,7 @@ private:
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
-    std::string pipelineFile = "GeneralPipeline" + geometryType_ + ".optixir";
+    std::string pipelineFile = pipelineFileName + geometryType_ + ".optixir";
     std::filesystem::path pipelinePath = context_->modulePath / pipelineFile;
     if (!std::filesystem::exists(pipelinePath)) {
       Logger::getInstance()
@@ -518,6 +524,10 @@ private:
     char logCallable[2048];
     size_t sizeof_log_callable = sizeof(logCallable);
 
+    if (callableFile_.empty()) {
+      Logger::getInstance().addWarning("No callable file set.").print();
+      return;
+    }
     auto callableInput = getInputData(callableFile_.c_str(), inputSize);
     if (!callableInput) {
       Logger::getInstance()
@@ -597,8 +607,9 @@ private:
   void createDirectCallablePrograms() {
     if (callableMap_.empty()) {
       Logger::getInstance()
-          .addError("No particleType->callable mapping provided.")
+          .addWarning("No particleType->callable mapping provided.")
           .print();
+      return;
     }
     unsigned maxParticleTypeId = 0;
     for (const auto &p : particleMap_) {
@@ -638,8 +649,8 @@ private:
     programGroups.push_back(missPG);
     programGroups.push_back(hitgroupPG);
 
-    for (size_t j = 0; j < directCallablePGs.size(); j++) {
-      programGroups.push_back(directCallablePGs[j]);
+    for (auto const &directCallablePG : directCallablePGs) {
+      programGroups.push_back(directCallablePG);
     }
 
     char log[2048];
@@ -701,18 +712,20 @@ private:
     buildHitGroups();
 
     // callable programs
-    std::vector<CallableRecord> callableRecords(directCallablePGs.size());
-    for (size_t j = 0; j < directCallablePGs.size(); ++j) {
-      CallableRecord callableRecord = {};
-      optixSbtRecordPackHeader(directCallablePGs[j], &callableRecord);
-      callableRecords[j] = callableRecord;
-    }
-    directCallableRecordBuffer.allocUpload(callableRecords);
+    if (!directCallablePGs.empty()) {
+      std::vector<CallableRecord> callableRecords(directCallablePGs.size());
+      for (size_t j = 0; j < directCallablePGs.size(); ++j) {
+        CallableRecord callableRecord = {};
+        optixSbtRecordPackHeader(directCallablePGs[j], &callableRecord);
+        callableRecords[j] = callableRecord;
+      }
+      directCallableRecordBuffer.allocUpload(callableRecords);
 
-    sbt.callablesRecordBase = directCallableRecordBuffer.dPointer();
-    sbt.callablesRecordStrideInBytes = sizeof(CallableRecord);
-    sbt.callablesRecordCount =
-        static_cast<unsigned int>(directCallablePGs.size());
+      sbt.callablesRecordBase = directCallableRecordBuffer.dPointer();
+      sbt.callablesRecordStrideInBytes = sizeof(CallableRecord);
+      sbt.callablesRecordCount =
+          static_cast<unsigned int>(directCallablePGs.size());
+    }
   }
 
 protected:
@@ -769,12 +782,13 @@ protected:
   bool ignoreBoundary = false;
   bool resultsDownloaded = false;
 
-  size_t numRays;
+  size_t numRays = 0;
   unsigned numCellData = 0;
   const std::string globalParamsName = "launchParams";
 
   const std::string normModuleName = "normKernels.ptx";
   std::string normKernelName = "normalize_surface_";
+  std::string pipelineFileName = "GeneralPipeline";
 };
 
 } // namespace viennaray::gpu

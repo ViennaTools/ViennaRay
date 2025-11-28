@@ -25,8 +25,8 @@ getOrthonormalBasis(const Vec3Df &n) {
   return {n, t, b2};
 }
 
-__device__ void initializeRayDirection(PerRayData *prd, const float power,
-                                       const uint16_t D) {
+__device__ __forceinline__ void
+initializeRayDirection(PerRayData *prd, const float power, const uint16_t D) {
   // source direction
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   const float tt = powf(u.w, 2.f / (power + 1.f));
@@ -44,9 +44,9 @@ __device__ void initializeRayDirection(PerRayData *prd, const float power,
   Normalize(prd->dir);
 }
 
-__device__ void initializeRayDirection(PerRayData *prd, const float power,
-                                       const std::array<Vec3Df, 3> &basis,
-                                       const uint16_t D) {
+__device__ __forceinline__ void
+initializeRayDirection(PerRayData *prd, const float power,
+                       const std::array<Vec3Df, 3> &basis, const uint16_t D) {
   // source direction
   do {
     const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
@@ -72,9 +72,9 @@ __device__ void initializeRayDirection(PerRayData *prd, const float power,
   Normalize(prd->dir);
 }
 
-__device__ void initializeRayPosition(PerRayData *prd,
-                                      const LaunchParams::SourcePlane &source,
-                                      const uint16_t D) {
+__device__ __forceinline__ void
+initializeRayPosition(PerRayData *prd, const LaunchParams::SourcePlane &source,
+                      const uint16_t D) {
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   prd->pos[0] =
       source.minPoint[0] + u.x * (source.maxPoint[0] - source.minPoint[0]);
@@ -90,8 +90,9 @@ __device__ void initializeRayPosition(PerRayData *prd,
 }
 
 // This is slightly faster because there is only one call to curand_uniform4
-__device__ void initializeRayPositionAndDirection(PerRayData *prd,
-                                                  LaunchParams *launchParams) {
+__device__ __forceinline__ void
+initializeRayPositionAndDirection(PerRayData *prd,
+                                  const LaunchParams *launchParams) {
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
   prd->pos[0] = launchParams->source.minPoint[0] +
                 u.x * (launchParams->source.maxPoint[0] -
@@ -104,7 +105,7 @@ __device__ void initializeRayPositionAndDirection(PerRayData *prd,
   const float tt = powf(u.w, 2.f / (launchParams->cosineExponent + 1.f));
   float s, c;
   __sincosf(2.f * M_PIf * u.z, &s, &c);
-  float sqrt1mtt = sqrtf(1 - tt);
+  const float sqrt1mtt = sqrtf(1 - tt);
   prd->dir[0] = c * sqrt1mtt;
   prd->dir[1] = s * sqrt1mtt;
   prd->dir[2] = -1.f * sqrtf(tt);

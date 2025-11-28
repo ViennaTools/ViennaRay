@@ -10,10 +10,10 @@ namespace viennaray {
 using namespace viennacore;
 
 template <class NumericType, int D>
-class TraceTriangle : public Trace<NumericType, D> {
+class TraceTriangle final : public Trace<NumericType, D> {
 public:
-  TraceTriangle() {}
-  ~TraceTriangle() { geometry_.releaseGeometry(); }
+  TraceTriangle() = default;
+  ~TraceTriangle() override { geometry_.releaseGeometry(); }
 
   /// Run the ray tracer
   void apply() override {
@@ -57,7 +57,7 @@ public:
         this->config_, this->dataLog_, this->RTInfo_);
     tracer.setTracingData(&this->localData_, this->pGlobalData_);
     tracer.apply();
-    this->config_.runNumber++;
+    ++this->config_.runNumber;
 
     boundary.releaseGeometry();
   }
@@ -135,9 +135,8 @@ public:
 
   /// Helper function to smooth the recorded flux by averaging over the
   /// neighborhood in a post-processing step.
-  void smoothFlux(std::vector<NumericType> &flux,
-                  int numNeighbors = 1) override {
-    // no smoothing
+  void smoothFlux(std::vector<NumericType> &flux, int numNeighbors) override {
+    // no smoothing on elements
   }
 
 private:

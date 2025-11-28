@@ -26,7 +26,7 @@ public:
   Trace(Trace &&) = delete;
   Trace &operator=(Trace &&) = delete;
 
-  ~Trace() { rtcReleaseDevice(device_); }
+  virtual ~Trace() { rtcReleaseDevice(device_); }
 
   /// Run the ray tracer
   virtual void apply() {}
