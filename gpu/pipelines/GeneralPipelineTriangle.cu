@@ -104,7 +104,7 @@ extern "C" __global__ void __raygen__() {
       hint |= (1 << 0);
     }
     if (optixHitObjectIsHit()) {
-      const HitSBTDataDisk *hitData = reinterpret_cast<const HitSBTDataDisk *>(
+      const HitSBTDataTriangle *hitData = reinterpret_cast<const HitSBTDataTriangle *>(
           optixHitObjectGetSbtDataPointer());
       hint |= hitData->base.isBoundary << 1;
     }
