@@ -84,20 +84,32 @@ extern "C" __global__ void __raygen__() {
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
+  unsigned int hintBitLength = 2;
 
   while (continueRay(launchParams, prd)) {
-    optixTrace(launchParams.traversable, // traversable GAS
-               make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
-               make_float3(prd.dir[0], prd.dir[1], prd.dir[2]), // direction
-               1e-4f,                                           // tmin
-               1e20f,                                           // tmax
-               0.0f,                                            // rayTime
-               OptixVisibilityMask(255),
-               OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
-               0,                             // SBT offset
-               1,                             // SBT stride
-               0,                             // missSBTIndex
-               u0, u1);                       // Payload
+    optixTraverse(launchParams.traversable, // traversable GAS
+                  make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
+                  make_float3(prd.dir[0], prd.dir[1], prd.dir[2]), // direction
+                  1e-4f,                                           // tmin
+                  1e20f,                                           // tmax
+                  0.0f,                                            // rayTime
+                  OptixVisibilityMask(255),
+                  OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
+                  0,                             // SBT offset
+                  1,                             // SBT stride
+                  0,                             // missSBTIndex
+                  u0, u1);                       // Payload
+    unsigned int hint = 0;
+    if (prd.rayWeight < launchParams.rayWeightThreshold || prd.energy < 0.f) {
+      hint |= (1 << 0);
+    }
+    if (optixHitObjectIsHit()) {
+      const HitSBTDataDisk *hitData = reinterpret_cast<const HitSBTDataDisk *>(
+          optixHitObjectGetSbtDataPointer());
+      hint |= hitData->base.isBoundary << 1;
+    }
+    optixReorder(hint, hintBitLength);
+    optixInvoke(u0, u1);
     prd.numReflections++;
 #ifdef COUNT_RAYS
     int *counter = reinterpret_cast<int *>(launchParams.customData);
