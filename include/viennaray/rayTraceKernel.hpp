@@ -371,9 +371,7 @@ public:
         }
 
         default: {
-          Logger::getInstance()
-              .addWarning("Invalid merge type in local vector data.")
-              .print();
+          VIENNACORE_LOG_WARNING("Invalid merge type in local vector data.");
           break;
         }
         }
@@ -402,9 +400,7 @@ public:
         }
 
         default: {
-          Logger::getInstance()
-              .addWarning("Invalid merge type in local scalar data.")
-              .print();
+          VIENNACORE_LOG_WARNING("Invalid merge type in local scalar data.");
           break;
         }
         }
@@ -421,12 +417,10 @@ public:
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     if (raysTerminated > 1000) {
-      Logger::getInstance()
-          .addDebug(
-              "A total of " + std::to_string(raysTerminated) +
-              " rays were terminated early due to excessive boundary hits or "
-              "reflections.")
-          .print();
+      VIENNACORE_LOG_DEBUG(
+          "A total of " + std::to_string(raysTerminated) +
+          " rays were terminated early due to excessive boundary hits or "
+          "reflections.");
     }
 
     rtcReleaseScene(rtcScene);

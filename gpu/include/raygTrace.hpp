@@ -39,11 +39,9 @@ public:
       : geometryType_(std::move(geometryType)) {
     context_ = DeviceContext::getContextFromRegistry(deviceID);
     if (!context_) {
-      Logger::getInstance()
-          .addError("No context found for device ID " +
-                    std::to_string(deviceID) +
-                    ". Create and register a context first.")
-          .print();
+      VIENNACORE_LOG_ERROR("No context found for device ID " +
+                           std::to_string(deviceID) +
+                           ". Create and register a context first.");
     }
     initRayTracer();
   }
@@ -72,9 +70,7 @@ public:
     callableFile_ = path / finalName;
 
     if (!std::filesystem::exists(callableFile_)) {
-      Logger::getInstance()
-          .addError("Callable file " + finalName + " not found.")
-          .print();
+      VIENNACORE_LOG_ERROR("Callable file " + finalName + " not found.");
     }
   }
 
@@ -84,16 +80,14 @@ public:
 
   void apply() {
     if (particles_.empty()) {
-      Logger::getInstance()
-          .addError("No particles inserted. Use insertNextParticle first.")
-          .print();
+      VIENNACORE_LOG_ERROR(
+          "No particles inserted. Use insertNextParticle first.");
     }
 
     if (cellDataBuffer_.sizeInBytes / sizeof(float) !=
         numCellData * launchParams.numElements) {
-      Logger::getInstance()
-          .addError("Cell data buffer size does not match the expected size.")
-          .print();
+      VIENNACORE_LOG_ERROR(
+          "Cell data buffer size does not match the expected size.");
     }
 
     // Resize our cuda result buffer
@@ -127,26 +121,21 @@ public:
 
     numRays = numPointsPerDim * numPointsPerDim * config_.numRaysPerPoint;
     if (numRays > (1 << 29)) {
-      Logger::getInstance()
-          .addWarning("Too many rays for single launch: " +
-                      util::prettyDouble(numRays))
-          .print();
+      VIENNACORE_LOG_WARNING("Too many rays for single launch: " +
+                             util::prettyDouble(numRays));
       config_.numRaysPerPoint = (1 << 29) / (numPointsPerDim * numPointsPerDim);
       numRays = numPointsPerDim * numPointsPerDim * config_.numRaysPerPoint;
     }
-    Logger::getInstance()
-        .addDebug("Number of rays: " + util::prettyDouble(numRays))
-        .print();
+    VIENNACORE_LOG_DEBUG("Number of rays: " + util::prettyDouble(numRays));
 
     // set up material specific sticking probabilities
     materialStickingBuffer_.resize(particles_.size());
     for (size_t i = 0; i < particles_.size(); i++) {
       if (!particles_[i].materialSticking.empty()) {
         if (uniqueMaterialIds_.empty() || materialIdsBuffer_.sizeInBytes == 0) {
-          Logger::getInstance()
-              .addError("Material IDs not set, when using material dependent "
-                        "sticking.")
-              .print();
+          VIENNACORE_LOG_ERROR(
+              "Material IDs not set, when using material dependent "
+              "sticking.");
         }
         std::vector<float> materialSticking(uniqueMaterialIds_.size());
         unsigned currentId = 0;
@@ -169,17 +158,13 @@ public:
     launchParamsBuffers.resize(particles_.size());
 
     if (particleMap_.empty()) {
-      Logger::getInstance()
-          .addError("No particle name->particleType mapping provided.")
-          .print();
+      VIENNACORE_LOG_ERROR("No particle name->particleType mapping provided.");
     }
 
     for (size_t i = 0; i < particles_.size(); i++) {
       auto it = particleMap_.find(particles_[i].name);
       if (it == particleMap_.end()) {
-        Logger::getInstance()
-            .addError("Unknown particle name: " + particles_[i].name)
-            .print();
+        VIENNACORE_LOG_ERROR("Unknown particle name: " + particles_[i].name);
       }
       launchParams.particleType = it->second;
       launchParams.particleIdx = static_cast<unsigned>(i);
@@ -244,9 +229,8 @@ public:
                       const unsigned numData) {
     if (passedCellDataBuffer.sizeInBytes / sizeof(float) / numData !=
         launchParams.numElements) {
-      Logger::getInstance()
-          .addWarning("Passed cell data does not match number of elements.")
-          .print();
+      VIENNACORE_LOG_WARNING(
+          "Passed cell data does not match number of elements.");
     }
     cellDataBuffer_ = passedCellDataBuffer;
 #ifndef NDEBUG
@@ -402,7 +386,7 @@ public:
 
   unsigned int prepareParticlePrograms() {
     if (particles_.empty()) {
-      Logger::getInstance().addWarning("No particles defined.").print();
+      VIENNACORE_LOG_WARNING("No particles defined.");
       return 0;
     }
 
@@ -422,9 +406,8 @@ public:
     dataPerParticleBuffer_.allocUpload(dataPerParticle);
     launchParams.dataPerParticle =
         (unsigned int *)dataPerParticleBuffer_.dPointer();
-    Logger::getInstance()
-        .addDebug("Number of flux arrays: " + std::to_string(numFluxes_))
-        .print();
+    VIENNACORE_LOG_DEBUG("Number of flux arrays: " +
+                         std::to_string(numFluxes_));
 
     return numFluxes_;
   }
@@ -503,16 +486,14 @@ private:
     std::string pipelineFile = pipelineFileName + geometryType_ + ".optixir";
     std::filesystem::path pipelinePath = context_->modulePath / pipelineFile;
     if (!std::filesystem::exists(pipelinePath)) {
-      Logger::getInstance()
-          .addError("Pipeline file " + pipelinePath.string() + " not found.")
-          .print();
+      VIENNACORE_LOG_ERROR("Pipeline file " + pipelinePath.string() +
+                           " not found.");
     }
 
     auto pipelineInput = getInputData(pipelinePath.c_str(), inputSize);
     if (!pipelineInput) {
-      Logger::getInstance()
-          .addError("Pipeline file " + pipelinePath.string() + " not found.")
-          .print();
+      VIENNACORE_LOG_ERROR("Pipeline file " + pipelinePath.string() +
+                           " not found.");
     }
 
     OPTIX_CHECK(optixModuleCreate(context_->optix, &moduleCompileOptions_,
@@ -525,14 +506,13 @@ private:
     size_t sizeof_log_callable = sizeof(logCallable);
 
     if (callableFile_.empty()) {
-      Logger::getInstance().addWarning("No callable file set.").print();
+      VIENNACORE_LOG_WARNING("No callable file set.");
       return;
     }
     auto callableInput = getInputData(callableFile_.c_str(), inputSize);
     if (!callableInput) {
-      Logger::getInstance()
-          .addError("Callable file " + callableFile_.string() + " not found.")
-          .print();
+      VIENNACORE_LOG_ERROR("Callable file " + callableFile_.string() +
+                           " not found.");
     }
 
     OPTIX_CHECK(optixModuleCreate(context_->optix, &moduleCompileOptions_,
@@ -606,9 +586,7 @@ private:
   /// does all setup for the direct callables
   void createDirectCallablePrograms() {
     if (callableMap_.empty()) {
-      Logger::getInstance()
-          .addWarning("No particleType->callable mapping provided.")
-          .print();
+      VIENNACORE_LOG_WARNING("No particleType->callable mapping provided.");
       return;
     }
     unsigned maxParticleTypeId = 0;

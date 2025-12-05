@@ -66,10 +66,10 @@ specularReflection(PerRayData *prd, const Vec3Df &geoNormal) {
 
 static __device__ Vec3Df PickRandomPointOnUnitSphere(CudaRNG *state) {
   const float4 u = curand_uniform4(state); // (0,1]
-  const float z = 1.0f - 2.0f * u.x;       // uniform in [-1,1]
-  const float r2 = fmaxf(0.0f, 1.0f - z * z);
+  const float z = 1.f - 2.f * u.x;         // uniform in [-1,1]
+  const float r2 = max(0.f, 1.f - z * z);
   const float r = sqrtf(r2);
-  const float phi = 2.0f * M_PIf * u.y;
+  const float phi = 2.f * M_PIf * u.y;
   float s, c;
   __sincosf(phi, &s, &c); // branch-free sin+cos
   return Vec3Df{r * c, r * s, z};
