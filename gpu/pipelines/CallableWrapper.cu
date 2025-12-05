@@ -33,6 +33,11 @@ __direct_callable__particleReflection(const void *sbtData,
   particleReflection(sbtData, prd);
 }
 
+extern "C" __device__ void __direct_callable__particleReflectionConstSticking(
+    const void *sbtData, viennaray::gpu::PerRayData *prd) {
+  particleReflectionConstSticking(sbtData, prd);
+}
+
 extern "C" __device__ void
 __direct_callable__particleInit(const void *sbtData,
                                 viennaray::gpu::PerRayData *prd) {

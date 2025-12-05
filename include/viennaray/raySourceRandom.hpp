@@ -18,7 +18,7 @@ public:
       : bdBox_(boundingBox), rayDir_(pTraceSettings[0]),
         firstDir_(pTraceSettings[1]), secondDir_(pTraceSettings[2]),
         minMax_(pTraceSettings[3]), posNeg_(pTraceSettings[4]),
-        ee_(static_cast<NumericType>(2) / (cosinePower + 1)),
+        ee_(static_cast<NumericType>(1) / (cosinePower + 1)),
         numPoints_(numPoints_), customDirection_(customDirection),
         orthonormalBasis_(orthonormalBasis) {}
 
@@ -73,15 +73,16 @@ private:
     auto r1 = uniDist(rngState);
     auto r2 = uniDist(rngState);
 
-    const NumericType tt = pow(r2, ee_);
-    direction[rayDir_] = posNeg_ * sqrtf(tt);
-    direction[firstDir_] = cosf(M_PI * 2.f * r1) * sqrtf(1 - tt);
+    const NumericType cosTheta = std::pow(r2, ee_);
+    const NumericType sinTheta = std::sqrt(1. - cosTheta * cosTheta);
+    direction[rayDir_] = posNeg_ * cosTheta;
+    direction[firstDir_] = std::cos(M_PI * 2. * r1) * sinTheta;
 
     if constexpr (D == 2) {
-      direction[secondDir_] = 0;
+      direction[secondDir_] = 0.;
       Normalize(direction);
     } else {
-      direction[secondDir_] = sinf(M_PI * 2.f * r1) * sqrtf(1 - tt);
+      direction[secondDir_] = std::sin(M_PI * 2. * r1) * sinTheta;
     }
 
     return direction;
@@ -96,10 +97,11 @@ private:
       auto r1 = uniDist(rngState);
       auto r2 = uniDist(rngState);
 
-      const NumericType tt = pow(r2, ee_);
-      rndDirection[0] = sqrtf(tt);
-      rndDirection[1] = cosf(M_PI * 2.f * r1) * sqrtf(1 - tt);
-      rndDirection[2] = sinf(M_PI * 2.f * r1) * sqrtf(1 - tt);
+      const NumericType cosTheta = std::pow(r2, ee_);
+      const NumericType sinTheta = std::sqrt(1. - cosTheta * cosTheta);
+      rndDirection[0] = cosTheta;
+      rndDirection[1] = std::cos(M_PI * 2. * r1) * sinTheta;
+      rndDirection[2] = std::sin(M_PI * 2. * r1) * sinTheta;
 
       direction[0] = orthonormalBasis_[0][0] * rndDirection[0] +
                      orthonormalBasis_[1][0] * rndDirection[1] +
