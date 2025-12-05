@@ -76,9 +76,7 @@ public:
   void setScalarData(int num, NumericType value,
                      std::string label = "scalarData") {
     if (num >= vectorData_.size())
-      viennacore::Logger::getInstance()
-          .addError("Setting scalar data in TracingData out of range.")
-          .print();
+      VIENNACORE_LOG_ERROR("Setting scalar data in TracingData out of range.");
     scalarData_[num] = value;
     scalarDataLabels_[num] = std::move(label);
   }
@@ -86,9 +84,7 @@ public:
   void setVectorData(int num, std::vector<NumericType> &vector,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      viennacore::Logger::getInstance()
-          .addError("Setting vector data in TracingData out of range.")
-          .print();
+      VIENNACORE_LOG_ERROR("Setting vector data in TracingData out of range.");
     vectorData_[num] = vector;
     vectorDataLabels_[num] = std::move(label);
   }
@@ -96,9 +92,7 @@ public:
   void setVectorData(int num, std::vector<NumericType> &&vector,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      viennacore::Logger::getInstance()
-          .addError("Setting vector data in TracingData out of range.")
-          .print();
+      VIENNACORE_LOG_ERROR("Setting vector data in TracingData out of range.");
     vectorData_[num] = std::move(vector);
     vectorDataLabels_[num] = std::move(label);
   }
@@ -106,9 +100,7 @@ public:
   void setVectorData(int num, size_t size, NumericType value,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      viennacore::Logger::getInstance()
-          .addError("Setting vector data in TracingData out of range.")
-          .print();
+      VIENNACORE_LOG_ERROR("Setting vector data in TracingData out of range.");
     vectorData_[num].resize(size, value);
     vectorDataLabels_[num] = std::move(label);
   }
@@ -116,9 +108,7 @@ public:
   void setVectorData(int num, NumericType value,
                      std::string label = "vectorData") {
     if (num >= vectorData_.size())
-      viennacore::Logger::getInstance()
-          .addError("Setting vector data in TracingData out of range.")
-          .print();
+      VIENNACORE_LOG_ERROR("Setting vector data in TracingData out of range.");
     vectorData_[num].fill(vectorData_[num].begin(), vectorData_[num].end(),
                           value);
     vectorDataLabels_[num] = std::move(label);
@@ -187,17 +177,15 @@ public:
 
   [[nodiscard]] std::string getVectorDataLabel(int i) const {
     if (i >= vectorDataLabels_.size())
-      viennacore::Logger::getInstance()
-          .addError("Getting vector data label in TracingData out of range.")
-          .print();
+      VIENNACORE_LOG_ERROR(
+          "Getting vector data label in TracingData out of range.");
     return vectorDataLabels_[i];
   }
 
   [[nodiscard]] std::string getScalarDataLabel(int i) const {
     if (i >= scalarDataLabels_.size())
-      viennacore::Logger::getInstance()
-          .addError("Getting scalar data label in TracingData out of range.")
-          .print();
+      VIENNACORE_LOG_ERROR(
+          "Getting scalar data label in TracingData out of range.");
     return scalarDataLabels_[i];
   }
 
@@ -207,9 +195,7 @@ public:
         return i;
       }
     }
-    viennacore::Logger::getInstance()
-        .addError("Can not find vector data label in TracingData.")
-        .print();
+    VIENNACORE_LOG_ERROR("Can not find vector data label in TracingData.");
     return -1;
   }
 
@@ -219,9 +205,7 @@ public:
         return i;
       }
     }
-    viennacore::Logger::getInstance()
-        .addError("Can not find scalar data label in TracingData.")
-        .print();
+    VIENNACORE_LOG_ERROR("Can not find scalar data label in TracingData.");
     return -1;
   }
 

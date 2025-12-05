@@ -120,10 +120,8 @@ public:
 
     case NormalizationType::SOURCE: {
       if (!this->pSource_) {
-        Logger::getInstance()
-            .addWarning(
-                "No source was specified in rayTrace for the normalization.")
-            .print();
+        VIENNACORE_LOG_WARNING(
+            "No source was specified in rayTrace for the normalization.");
         break;
       }
       NumericType sourceArea = this->pSource_->getSourceArea();
@@ -193,26 +191,23 @@ private:
   void checkSettings() {
     if (this->pParticle_ == nullptr) {
       this->RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "No particle was specified in rayTrace. Aborting.");
+      VIENNACORE_LOG_ERROR("No particle was specified in rayTrace. Aborting.");
     }
     if (geometry_.checkGeometryEmpty()) {
       this->RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "No geometry was passed to rayTrace. Aborting.");
+      VIENNACORE_LOG_ERROR("No geometry was passed to rayTrace. Aborting.");
     }
     if ((D == 2 && this->sourceDirection_ == TraceDirection::POS_Z) ||
         (D == 2 && this->sourceDirection_ == TraceDirection::NEG_Z)) {
       this->RTInfo_.error = true;
-      Logger::getInstance().addError(
+      VIENNACORE_LOG_ERROR(
           "Invalid source direction in 2D geometry. Aborting.");
     }
     if (diskRadius_ > this->gridDelta_) {
       this->RTInfo_.warning = true;
-      Logger::getInstance()
-          .addWarning("Disk radius should be smaller than grid delta. Hit "
-                      "count normalization not correct.")
-          .print();
+      VIENNACORE_LOG_WARNING(
+          "Disk radius should be smaller than grid delta. Hit "
+          "count normalization not correct.");
     }
   }
 

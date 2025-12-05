@@ -28,9 +28,7 @@ public:
 
     std::array<Vec3D<NumericType>, 3> orthonormalBasis;
     if (this->usePrimaryDirection_) {
-      Logger::getInstance()
-          .addDebug("ViennaRay: Using custom primary direction")
-          .print();
+      VIENNACORE_LOG_DEBUG("ViennaRay: Using custom primary direction");
       orthonormalBasis =
           rayInternal::getOrthonormalBasis(this->primaryDirection_);
     }
@@ -40,7 +38,7 @@ public:
           traceSettings, geometry_.getNumPrimitives(),
           this->usePrimaryDirection_, orthonormalBasis);
     } else {
-      Logger::getInstance().addDebug("ViennaRay: Using custom source").print();
+      VIENNACORE_LOG_DEBUG("ViennaRay: Using custom source");
     }
 
     auto localDataLabels = this->pParticle_->getLocalDataLabels();
@@ -109,10 +107,8 @@ public:
 
     case NormalizationType::SOURCE: {
       if (!this->pSource_) {
-        Logger::getInstance()
-            .addWarning(
-                "No source was specified in rayTrace for the normalization.")
-            .print();
+        VIENNACORE_LOG_WARNING(
+            "No source was specified in rayTrace for the normalization.");
         break;
       }
       NumericType sourceArea = this->pSource_->getSourceArea();
@@ -143,13 +139,11 @@ private:
   void checkSettings() {
     if (this->pParticle_ == nullptr) {
       this->RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "No particle was specified in rayTrace. Aborting.");
+      VIENNACORE_LOG_ERROR("No particle was specified in rayTrace. Aborting.");
     }
     if (geometry_.checkGeometryEmpty()) {
       this->RTInfo_.error = true;
-      Logger::getInstance().addError(
-          "No geometry was passed to rayTrace. Aborting.");
+      VIENNACORE_LOG_ERROR("No geometry was passed to rayTrace. Aborting.");
     }
   }
 

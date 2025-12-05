@@ -111,9 +111,7 @@ void adjustBoundingBox(std::array<Vec3D<NumericType>, 2> &bdBox,
 
     if (direction == TraceDirection::POS_Z ||
         direction == TraceDirection::NEG_Z) {
-      Logger::getInstance()
-          .addError("Ray source is set in z-direction for 2D geometry")
-          .print();
+      VIENNACORE_LOG_ERROR("Ray source is set in z-direction for 2D geometry");
     }
   }
 
@@ -293,9 +291,8 @@ template <typename T>
   Vec3D<T> u = vec;
   const T len2 = Norm2(u);
   if (len2 == T(0)) {
-    Logger::getInstance()
-        .addError("Cannot build orthonormal basis for zero-length vector")
-        .print();
+    VIENNACORE_LOG_ERROR(
+        "Cannot build orthonormal basis for zero-length vector");
     return B;
   }
   const T invLen = T(1) / std::sqrt(len2);
@@ -380,9 +377,7 @@ void readMeshFromFile(const std::string &fileName, NumericType &gridDelta,
                       std::vector<VectorType<unsigned, D>> &elements) {
   std::ifstream dataFile(fileName);
   if (!dataFile.is_open()) {
-    Logger::getInstance()
-        .addError("Failed to open mesh file: " + fileName)
-        .print();
+    VIENNACORE_LOG_ERROR("Failed to open mesh file: " + fileName);
   }
   std::string id;
   dataFile >> id;

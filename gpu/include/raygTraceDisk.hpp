@@ -22,9 +22,7 @@ public:
     assert(context_ && "Context not initialized.");
     diskMesh = passedMesh;
     if (diskMesh.gridDelta <= 0.f) {
-      Logger::getInstance()
-          .addError("DiskMesh gridDelta must be positive and non-zero.")
-          .print();
+      VIENNACORE_LOG_ERROR("DiskMesh gridDelta must be positive and non-zero.");
     }
     if (diskMesh.radius <= 0.f) {
       diskMesh.radius = rayInternal::DiskFactor<3> * diskMesh.gridDelta;

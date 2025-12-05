@@ -171,9 +171,7 @@ public:
       } else {
         normals_[i] = Vec3Df{0.f, 0.f, 0.f};
         areas_[i] = 0.;
-        Logger::getInstance()
-            .addDebug("Degenerate triangle with zero area detected.")
-            .print();
+        VIENNACORE_LOG_DEBUG("Degenerate triangle with zero area detected.");
       }
     }
 
