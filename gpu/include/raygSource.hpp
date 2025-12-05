@@ -29,19 +29,21 @@ __device__ __forceinline__ void
 initializeRayDirection(PerRayData *prd, const float power, const uint16_t D) {
   // source direction
   const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
-  const float tt = powf(u.w, 2.f / (power + 1.f));
-  float s, c;
-  __sincosf(2.f * M_PIf * u.x, &s, &c);
-  float sqrt1mtt = sqrtf(1 - tt);
-  prd->dir[0] = c * sqrt1mtt;
+  const float cosTheta = powf(u.w, 1.f / (power + 1.f));
+  const float sinTheta = sqrtf(max(0.f, 1.f - cosTheta * cosTheta));
+  float sinPhi, cosPhi;
+  __sincosf(2.f * M_PIf * u.x, &sinPhi, &cosPhi);
+
+  prd->dir[0] = cosPhi * sinTheta;
   if (D == 2) {
-    prd->dir[1] = -1.f * sqrtf(tt);
+    prd->dir[1] = -cosTheta;
     prd->dir[2] = 0.f;
+    Normalize(prd->dir);
   } else {
-    prd->dir[1] = s * sqrt1mtt;
-    prd->dir[2] = -1.f * sqrtf(tt);
+    prd->dir[1] = sinPhi * sinTheta;
+    prd->dir[2] = -cosTheta;
+    // already normalized
   }
-  Normalize(prd->dir);
 }
 
 __device__ __forceinline__ void
@@ -50,20 +52,16 @@ initializeRayDirection(PerRayData *prd, const float power,
   // source direction
   do {
     const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
-    const float tt = powf(u.w, 2.f / (power + 1.f));
-    Vec3Df rndDirection;
-    rndDirection[0] = sqrtf(tt);
-    float s, c, sqrt1mtt = sqrtf(1 - tt);
-    __sincosf(2.f * M_PIf * u.x, &s, &c);
-    rndDirection[1] = c * sqrt1mtt;
-    rndDirection[2] = s * sqrt1mtt;
+    const float cosTheta = powf(u.w, 1.f / (power + 1.f));
+    const float sinTheta = sqrtf(max(0.f, 1.f - cosTheta * cosTheta));
+    float sinPhi, cosPhi;
+    __sincosf(2.f * M_PIf * u.x, &sinPhi, &cosPhi);
 
-    prd->dir[0] = basis[0][0] * rndDirection[0] +
-                  basis[1][0] * rndDirection[1] + basis[2][0] * rndDirection[2];
-    prd->dir[1] = basis[0][1] * rndDirection[0] +
-                  basis[1][1] * rndDirection[1] + basis[2][1] * rndDirection[2];
-    prd->dir[2] = basis[0][2] * rndDirection[0] +
-                  basis[1][2] * rndDirection[1] + basis[2][2] * rndDirection[2];
+    float rx = cosTheta;
+    float ry = cosPhi * sinTheta;
+    float rz = sinPhi * sinTheta;
+
+    prd->dir = basis[0] * rx + basis[1] * ry + basis[2] * rz;
   } while (prd->dir[2] >= 0.f);
 
   if (D == 2)
@@ -102,14 +100,13 @@ initializeRayPositionAndDirection(PerRayData *prd,
                        launchParams->source.minPoint[1]);
   prd->pos[2] = launchParams->source.planeHeight;
 
-  const float tt = powf(u.w, 2.f / (launchParams->cosineExponent + 1.f));
+  const float tt = powf(u.w, 1.f / (launchParams->cosineExponent + 1.f));
   float s, c;
   __sincosf(2.f * M_PIf * u.z, &s, &c);
-  const float sqrt1mtt = sqrtf(1 - tt);
+  const float sqrt1mtt = sqrtf(1.f - tt * tt);
   prd->dir[0] = c * sqrt1mtt;
   prd->dir[1] = s * sqrt1mtt;
-  prd->dir[2] = -1.f * sqrtf(tt);
-  Normalize(prd->dir);
+  prd->dir[2] = -tt;
 }
 } // namespace viennaray::gpu
 #endif
