@@ -91,8 +91,8 @@ public:
     }
 
     // Resize our cuda result buffer
-    resultBuffer.allocInit(launchParams.numElements * numFluxes_, float(0));
-    launchParams.resultBuffer = (float *)resultBuffer.dPointer();
+    resultBuffer.allocInit(launchParams.numElements * numFluxes_, T(0));
+    launchParams.resultBuffer = (T *)resultBuffer.dPointer();
 
     if (materialIdsBuffer_.sizeInBytes != 0) {
       launchParams.materialIds = (int *)materialIdsBuffer_.dPointer();
@@ -304,8 +304,8 @@ public:
 
   size_t getNumberOfRays() const { return numRays; }
 
-  std::vector<float> getFlux(int particleIdx, int dataIdx,
-                             int smoothingNeighbors = 0) {
+  std::vector<T> getFlux(int particleIdx, int dataIdx,
+                         int smoothingNeighbors = 0) {
     if (!resultsDownloaded) {
       results.resize(launchParams.numElements * numFluxes_);
       resultBuffer.download(results.data(),
@@ -749,12 +749,12 @@ protected:
   OptixShaderBindingTable sbt = {};
 
   // launch parameters, on the host, constant for all particles
-  LaunchParams launchParams;
+  LaunchParams<T> launchParams;
   std::vector<CudaBuffer> launchParamsBuffers;
 
   // results Buffer
   CudaBuffer resultBuffer;
-  std::vector<float> results;
+  std::vector<T> results;
 
   rayInternal::KernelConfig config_;
   bool ignoreBoundary = false;
