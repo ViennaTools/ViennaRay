@@ -410,10 +410,10 @@ void readMeshFromFile(const std::string &fileName, NumericType &gridDelta,
   dataFile.close();
 }
 
-template <typename NumericType, int D = 3>
+template <typename NumericType, int D = 3, typename FluxType = NumericType>
 void writeVTK(const std::string &filename,
               const std::vector<Vec3D<NumericType>> &points,
-              const std::vector<NumericType> &flux) {
+              const std::vector<FluxType> &flux) {
   std::ofstream f(filename.c_str());
 
   f << "# vtk DataFile Version 2.0" << std::endl;
@@ -452,7 +452,7 @@ template <typename NumericType, int D = 3>
 void writeVTP(const std::string &filename,
               const std::vector<Vec3D<NumericType>> &points,
               const std::vector<VectorType<unsigned, D>> &elements,
-              const std::vector<NumericType> &flux) {
+              const std::vector<double> &flux) {
   std::ofstream f(filename.c_str());
   if (!f.is_open())
     return;
@@ -555,7 +555,7 @@ void writeVTP(const std::string &filename,
 }
 
 inline void writeVTP(TriangleMesh const &mesh, const std::string &filename,
-                     const std::vector<float> &flux) {
+                     const std::vector<double> &flux) {
   writeVTP<float, 3>(filename, mesh.nodes, mesh.triangles, flux);
 }
 

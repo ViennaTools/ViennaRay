@@ -13,8 +13,8 @@ __both__ __forceinline__ unsigned callableIndex(unsigned p, CallableSlot s) {
          static_cast<unsigned>(s);
 }
 
-template <typename T> struct LaunchParams {
-  T *resultBuffer;
+struct LaunchParams {
+  double *resultBuffer;
 
   float rayWeightThreshold = 0.1f;
   float tThreshold = 0.5f;

@@ -42,7 +42,7 @@ public:
                             this->ignoreBoundary, sourceOffset);
   }
 
-  void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {
+  void smoothFlux(std::vector<double> &flux, int smoothingNeighbors) override {
     auto oldFlux = flux;
     const T requiredDistance = smoothingNeighbors * 2.0 * diskMesh.radius;
     PointNeighborhood<float, D>
@@ -66,9 +66,9 @@ public:
 
 #pragma omp parallel for
     for (int idx = 0; idx < launchParams.numElements; idx++) {
-      float vv = oldFlux[idx];
+      double vv = oldFlux[idx];
       auto const &neighborhood = pointNeighborhood->getNeighborIndices(idx);
-      float sum = 1.f;
+      double sum = 1.0;
       auto const normal = diskMesh.normals[idx];
       for (auto const &nbi : neighborhood) {
         auto nnormal = diskMesh.normals[nbi];
@@ -85,7 +85,7 @@ public:
   void normalizeResults() override {
     assert(resultBuffer.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
-    float sourceArea = 0.f;
+    double sourceArea = 0.0;
     if constexpr (D == 2) {
       sourceArea =
           (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]);

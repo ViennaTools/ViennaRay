@@ -6,7 +6,7 @@
 #include <raygLaunchParams.hpp>
 #include <raygReflection.hpp>
 
-extern "C" __constant__ viennaray::gpu::LaunchParams<T> launchParams;
+extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 
 //
 // --- Generic particle
@@ -18,7 +18,7 @@ particleCollision(viennaray::gpu::PerRayData *prd) {
     atomicAdd(&launchParams
                    .resultBuffer[viennaray::gpu::getIdxOffset(0, launchParams) +
                                  prd->primIDs[i]],
-              prd->rayWeight);
+              static_cast<double>(prd->rayWeight));
   }
 }
 
