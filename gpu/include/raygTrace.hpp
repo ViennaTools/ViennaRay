@@ -91,8 +91,9 @@ public:
     }
 
     // Resize our cuda result buffer
-    resultBuffer.allocInit(launchParams.numElements * numFluxes_, float(0));
-    launchParams.resultBuffer = (float *)resultBuffer.dPointer();
+    resultBuffer.allocInit(launchParams.numElements * numFluxes_,
+                           ResultType(0));
+    launchParams.resultBuffer = (ResultType *)resultBuffer.dPointer();
 
     if (materialIdsBuffer_.sizeInBytes != 0) {
       launchParams.materialIds = (int *)materialIdsBuffer_.dPointer();
@@ -111,8 +112,8 @@ public:
     launchParams.maxReflections = config_.maxReflections;
     launchParams.maxBoundaryHits = config_.maxBoundaryHits;
 
-    int numPointsPerDim =
-        static_cast<int>(std::sqrt(static_cast<T>(launchParams.numElements)));
+    int numPointsPerDim = static_cast<int>(
+        std::sqrt(static_cast<double>(launchParams.numElements)));
 
     if (config_.numRaysFixed > 0) {
       numPointsPerDim = 1;
@@ -186,8 +187,7 @@ public:
         launchParams.source.customDirectionBasis = true;
       }
 
-      launchParamsBuffers[i].alloc(sizeof(launchParams));
-      launchParamsBuffers[i].upload(&launchParams, 1);
+      launchParamsBuffers[i].allocUploadSingle(launchParams);
 
       CUDA_CHECK(StreamCreate(&streams[i]));
     }
@@ -304,8 +304,8 @@ public:
 
   size_t getNumberOfRays() const { return numRays; }
 
-  std::vector<float> getFlux(int particleIdx, int dataIdx,
-                             int smoothingNeighbors = 0) {
+  std::vector<ResultType> getFlux(int particleIdx, int dataIdx,
+                                  int smoothingNeighbors = 0) {
     if (!resultsDownloaded) {
       results.resize(launchParams.numElements * numFluxes_);
       resultBuffer.download(results.data(),
@@ -313,7 +313,7 @@ public:
       resultsDownloaded = true;
     }
 
-    std::vector<float> flux(launchParams.numElements);
+    std::vector<ResultType> flux(launchParams.numElements);
     unsigned int offset = 0;
     for (size_t i = 0; i < particles_.size(); i++) {
       if (particleIdx > i)
@@ -321,7 +321,7 @@ public:
     }
     offset = (offset + dataIdx) * launchParams.numElements;
     std::memcpy(flux.data(), results.data() + offset,
-                launchParams.numElements * sizeof(float));
+                launchParams.numElements * sizeof(ResultType));
     if (smoothingNeighbors > 0)
       smoothFlux(flux, smoothingNeighbors);
     return flux;
@@ -437,7 +437,8 @@ public:
     }
   }
 
-  virtual void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) {}
+  virtual void smoothFlux(std::vector<ResultType> &flux,
+                          int smoothingNeighbors) {}
 
   // To be implemented by derived classes
   virtual void normalizeResults() = 0;
@@ -449,7 +450,7 @@ private:
   void initRayTracer() {
     launchParams.D = D;
     context_->addModule(normModuleName);
-    normKernelName.append(geometryType_ + "_f");
+    normKernelName.append(geometryType_);
     // launchParamsBuffer.alloc(sizeof(launchParams));
     // normKernelName.push_back(NumericType);
   }
@@ -746,7 +747,7 @@ protected:
   CudaBuffer hitgroupRecordBuffer;
   std::vector<OptixProgramGroup> directCallablePGs;
   CudaBuffer directCallableRecordBuffer;
-  OptixShaderBindingTable sbt = {};
+  OptixShaderBindingTable sbt{};
 
   // launch parameters, on the host, constant for all particles
   LaunchParams launchParams;
@@ -754,7 +755,7 @@ protected:
 
   // results Buffer
   CudaBuffer resultBuffer;
-  std::vector<float> results;
+  std::vector<ResultType> results;
 
   rayInternal::KernelConfig config_;
   bool ignoreBoundary = false;

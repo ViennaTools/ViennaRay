@@ -11,6 +11,9 @@ function(generate_pipeline target_name generated_files)
   cuda_include_directories(${VIENNARAY_GPU_INCLUDE})
   cuda_include_directories(${ViennaCore_SOURCE_DIR}/include/viennacore)
   add_compile_definitions(VIENNACORE_COMPILE_GPU)
+  if(VIENNARAY_GPU_DOUBLE_PRECISION)
+    add_compile_definitions(VIENNARAY_GPU_DOUBLE_PRECISION)
+  endif()
 
   # Generate OptiX IR files if enabled
   if(VIENNARAY_GENERATE_OPTIXIR)
@@ -53,6 +56,9 @@ function(generate_kernel generated_files)
   cuda_include_directories(${VIENNARAY_GPU_INCLUDE})
   cuda_include_directories(${OptiX_INCLUDE_DIR})
   add_compile_definitions(VIENNACORE_COMPILE_GPU)
+  if(VIENNARAY_GPU_DOUBLE_PRECISION)
+    add_compile_definitions(VIENNARAY_GPU_DOUBLE_PRECISION)
+  endif()
 
   cuda_compile_ptx(generated_ptx_files ${cu_source_files} ${cmake_options} ${options})
 
@@ -98,6 +104,9 @@ function(add_gpu_executable target_name_base target_name_var)
   cuda_include_directories(${VIENNARAY_GPU_INCLUDE})
   cuda_include_directories(${ViennaCore_SOURCE_DIR}/include/viennacore)
   add_compile_definitions(VIENNACORE_COMPILE_GPU)
+  if(VIENNARAY_GPU_DOUBLE_PRECISION)
+    add_compile_definitions(VIENNARAY_GPU_DOUBLE_PRECISION)
+  endif()
 
   # Create CUDA kernels
   cuda_wrap_srcs(

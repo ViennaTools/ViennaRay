@@ -40,10 +40,11 @@ public:
     }
   }
 
-  void smoothFlux(std::vector<float> &flux, int smoothingNeighbors) override {}
+  void smoothFlux(std::vector<ResultType> &flux,
+                  int smoothingNeighbors) override {}
 
   void normalizeResults() override {
-    float sourceArea = 0.f;
+    double sourceArea = 0.0;
     if constexpr (D == 2) {
       sourceArea =
           (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]);

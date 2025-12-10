@@ -264,7 +264,7 @@ struct TriangleGeometry {
 
 #ifndef NDEBUG
     rayInternal::writeVTP(boundaryMesh, "triangleMesh_boundary.vtp",
-                          std::vector<float>());
+                          std::vector<double>());
 #endif
 
     return boundaryMesh;

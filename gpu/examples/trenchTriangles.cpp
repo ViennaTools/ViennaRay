@@ -1,5 +1,6 @@
 #include <raygTraceTriangle.hpp>
 
+#include <cuda_runtime.h>
 #include <omp.h>
 
 // #define COUNT_RAYS
@@ -29,7 +30,7 @@ int main(int argc, char **argv) {
 
   gpu::Particle<NumericType> particle;
   particle.name = "Particle";
-  particle.sticking = 0.1f;
+  particle.sticking = 1.f;
   particle.dataLabels = {"particleFlux"};
   particle.materialSticking[7] = 0.1f;
   particle.materialSticking[1] = 1.0f;
@@ -38,14 +39,14 @@ int main(int argc, char **argv) {
   std::vector<gpu::CallableConfig> cMap = {
       {0, gpu::CallableSlot::COLLISION, "__direct_callable__particleCollision"},
       {0, gpu::CallableSlot::REFLECTION,
-       "__direct_callable__particleReflection"}};
+       "__direct_callable__particleReflectionConstSticking"}};
 
   gpu::TraceTriangle<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
   tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
-  tracer.setNumberOfRaysPerPoint(2000);
+  tracer.setNumberOfRaysPerPoint(5000);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
@@ -58,16 +59,14 @@ int main(int argc, char **argv) {
 #endif
 
   tracer.apply();
-
   tracer.normalizeResults();
   auto flux = tracer.getFlux(0, 0);
-  rayInternal::writeVTP<float, D>("trenchTriangles_triMesh.vtp", mesh.nodes,
-                                  mesh.triangles, flux);
+
+  rayInternal::writeVTP<float, D, gpu::ResultType>(
+      "trenchTriangles_triMesh.vtp", mesh.nodes, mesh.triangles, flux);
 
 #ifdef COUNT_RAYS
   rayCountBuffer.download(&rayCount, 1);
   std::cout << "Trace count: " << rayCount << std::endl;
 #endif
-
-  context->destroy();
 }

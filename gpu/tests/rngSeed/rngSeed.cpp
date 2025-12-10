@@ -22,7 +22,7 @@ int main() {
       {0, gpu::CallableSlot::REFLECTION,
        "__direct_callable__particleReflectionConstSticking"}};
 
-  std::vector<NumericType> flux1, flux2;
+  std::vector<gpu::ResultType> flux1, flux2;
 
   {
     NumericType extent = 5;

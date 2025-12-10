@@ -13,6 +13,7 @@ option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_GPU "Enable GPU support" OFF)
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
+option(VIENNARAY_GPU_DOUBLE_PRECISION "Use double precision on GPU" ON)
 
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
@@ -67,6 +68,11 @@ if(VIENNARAY_USE_WDIST)
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
 endif()
 
+if(VIENNARAY_GPU_DOUBLE_PRECISION)
+  message(STATUS "[ViennaRay] Using double precision on GPU")
+  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_GPU_DOUBLE_PRECISION)
+endif()
+
 if(VIENNARAY_PRINT_PROGRESS)
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_PRINT_PROGRESS)
 endif()
@@ -92,7 +98,7 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 1.7.3
+  VERSION 1.7.4
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 
