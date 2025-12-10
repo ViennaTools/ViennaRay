@@ -12,7 +12,7 @@ typedef float Real;
 extern "C" __global__ void normalize_surface_Triangle(
     Real *data, const viennacore::Vec3Df *vertex,
     const viennacore::Vec3D<unsigned> *index, const unsigned int numTriangles,
-    const Real sourceArea, const size_t numRays, const int numData) {
+    const double sourceArea, const size_t numRays, const int numData) {
   using namespace viennacore;
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int stride = blockDim.x * gridDim.x;
@@ -33,7 +33,7 @@ extern "C" __global__ void normalize_surface_Triangle(
 extern "C" __global__ void normalize_surface_Triangle_2D(
     Real *data, const viennacore::Vec3Df *vertex,
     const viennacore::Vec3D<unsigned> *index, const unsigned int numTriangles,
-    const Real sourceArea, const size_t numRays, const int numData) {
+    const double sourceArea, const size_t numRays, const int numData) {
   using namespace viennacore;
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int stride = blockDim.x * gridDim.x;
@@ -58,7 +58,7 @@ extern "C" __global__ void normalize_surface_Triangle_2D(
 // Areas precomputed on the CPU
 extern "C" __global__ void normalize_surface_Disk(Real *data, float *areas,
                                                   const unsigned int numDisks,
-                                                  const Real sourceArea,
+                                                  const double sourceArea,
                                                   const size_t numRays,
                                                   const int numData) {
   unsigned int tidx = blockIdx.x * blockDim.x + threadIdx.x;

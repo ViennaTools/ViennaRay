@@ -187,8 +187,7 @@ public:
         launchParams.source.customDirectionBasis = true;
       }
 
-      launchParamsBuffers[i].alloc(sizeof(launchParams));
-      launchParamsBuffers[i].upload(&launchParams, 1);
+      launchParamsBuffers[i].allocUploadSingle(launchParams);
 
       CUDA_CHECK(StreamCreate(&streams[i]));
     }

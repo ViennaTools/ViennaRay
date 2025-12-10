@@ -44,7 +44,7 @@ public:
                   int smoothingNeighbors) override {}
 
   void normalizeResults() override {
-    ResultType sourceArea = 0.0;
+    double sourceArea = 0.0;
     if constexpr (D == 2) {
       sourceArea =
           (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]);

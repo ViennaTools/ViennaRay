@@ -31,7 +31,7 @@ public:
     assert(resultBuffer.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
 
-    ResultType sourceArea =
+    double sourceArea =
         launchParams.source.maxPoint[0] - launchParams.source.minPoint[0];
 
     // calculate areas on host and send to device for now
