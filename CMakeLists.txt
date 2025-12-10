@@ -13,6 +13,7 @@ option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 
 option(VIENNARAY_USE_GPU "Enable GPU support" OFF)
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
+option(VIENNARAY_GPU_DOUBLE_PRECISION "Use double precision on GPU" ON)
 
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
@@ -65,6 +66,11 @@ set_target_properties(
 if(VIENNARAY_USE_WDIST)
   message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
+endif()
+
+if(VIENNARAY_GPU_DOUBLE_PRECISION)
+  message(STATUS "[ViennaRay] Using double precision on GPU")
+  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_GPU_DOUBLE_PRECISION)
 endif()
 
 if(VIENNARAY_PRINT_PROGRESS)

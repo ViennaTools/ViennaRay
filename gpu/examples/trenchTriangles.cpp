@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   tracer.setMaterialIds(materialIds);
   tracer.setCallables("CallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
-  tracer.setNumberOfRaysPerPoint(2000);
+  tracer.setNumberOfRaysPerPoint(5000);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
@@ -58,9 +58,9 @@ int main(int argc, char **argv) {
 #endif
 
   tracer.apply();
-
   tracer.normalizeResults();
   auto flux = tracer.getFlux(0, 0);
+
   rayInternal::writeVTP<float, D>("trenchTriangles_triMesh.vtp", mesh.nodes,
                                   mesh.triangles, flux);
 
@@ -68,6 +68,4 @@ int main(int argc, char **argv) {
   rayCountBuffer.download(&rayCount, 1);
   std::cout << "Trace count: " << rayCount << std::endl;
 #endif
-
-  context->destroy();
 }

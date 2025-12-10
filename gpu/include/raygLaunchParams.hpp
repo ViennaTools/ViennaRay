@@ -8,13 +8,19 @@
 
 namespace viennaray::gpu {
 
+#ifdef VIENNARAY_GPU_DOUBLE_PRECISION
+using ResultType = double;
+#else
+using ResultType = float;
+#endif
+
 __both__ __forceinline__ unsigned callableIndex(unsigned p, CallableSlot s) {
   return p * static_cast<unsigned>(CallableSlot::COUNT) +
          static_cast<unsigned>(s);
 }
 
 struct LaunchParams {
-  double *resultBuffer;
+  ResultType *resultBuffer;
 
   float rayWeightThreshold = 0.1f;
   float tThreshold = 0.5f;

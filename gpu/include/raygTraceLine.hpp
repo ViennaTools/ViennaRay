@@ -23,7 +23,7 @@ public:
                             this->ignoreBoundary, sourceOffset);
   }
 
-  void smoothFlux(std::vector<double> &flux, int numNeighbors) override {
+  void smoothFlux(std::vector<ResultType> &flux, int numNeighbors) override {
     // not implemented for line geometry
   }
 
@@ -31,7 +31,7 @@ public:
     assert(resultBuffer.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
 
-    double sourceArea =
+    ResultType sourceArea =
         launchParams.source.maxPoint[0] - launchParams.source.minPoint[0];
 
     // calculate areas on host and send to device for now

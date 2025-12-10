@@ -448,11 +448,11 @@ void writeVTK(const std::string &filename,
   f.close();
 }
 
-template <typename NumericType, int D = 3>
+template <typename NumericType, int D = 3, typename ResultType = NumericType>
 void writeVTP(const std::string &filename,
               const std::vector<Vec3D<NumericType>> &points,
               const std::vector<VectorType<unsigned, D>> &elements,
-              const std::vector<double> &flux) {
+              const std::vector<ResultType> &flux) {
   std::ofstream f(filename.c_str());
   if (!f.is_open())
     return;

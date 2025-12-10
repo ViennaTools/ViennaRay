@@ -91,8 +91,9 @@ public:
     }
 
     // Resize our cuda result buffer
-    resultBuffer.allocInit(launchParams.numElements * numFluxes_, double(0));
-    launchParams.resultBuffer = (double *)resultBuffer.dPointer();
+    resultBuffer.allocInit(launchParams.numElements * numFluxes_,
+                           ResultType(0));
+    launchParams.resultBuffer = (ResultType *)resultBuffer.dPointer();
 
     if (materialIdsBuffer_.sizeInBytes != 0) {
       launchParams.materialIds = (int *)materialIdsBuffer_.dPointer();
@@ -304,8 +305,8 @@ public:
 
   size_t getNumberOfRays() const { return numRays; }
 
-  std::vector<double> getFlux(int particleIdx, int dataIdx,
-                              int smoothingNeighbors = 0) {
+  std::vector<ResultType> getFlux(int particleIdx, int dataIdx,
+                                  int smoothingNeighbors = 0) {
     if (!resultsDownloaded) {
       results.resize(launchParams.numElements * numFluxes_);
       resultBuffer.download(results.data(),
@@ -313,7 +314,7 @@ public:
       resultsDownloaded = true;
     }
 
-    std::vector<double> flux(launchParams.numElements);
+    std::vector<ResultType> flux(launchParams.numElements);
     unsigned int offset = 0;
     for (size_t i = 0; i < particles_.size(); i++) {
       if (particleIdx > i)
@@ -321,7 +322,7 @@ public:
     }
     offset = (offset + dataIdx) * launchParams.numElements;
     std::memcpy(flux.data(), results.data() + offset,
-                launchParams.numElements * sizeof(double));
+                launchParams.numElements * sizeof(ResultType));
     if (smoothingNeighbors > 0)
       smoothFlux(flux, smoothingNeighbors);
     return flux;
@@ -437,7 +438,8 @@ public:
     }
   }
 
-  virtual void smoothFlux(std::vector<double> &flux, int smoothingNeighbors) {}
+  virtual void smoothFlux(std::vector<ResultType> &flux,
+                          int smoothingNeighbors) {}
 
   // To be implemented by derived classes
   virtual void normalizeResults() = 0;
@@ -449,7 +451,7 @@ private:
   void initRayTracer() {
     launchParams.D = D;
     context_->addModule(normModuleName);
-    normKernelName.append(geometryType_ + "_f");
+    normKernelName.append(geometryType_);
     // launchParamsBuffer.alloc(sizeof(launchParams));
     // normKernelName.push_back(NumericType);
   }
@@ -754,7 +756,7 @@ protected:
 
   // results Buffer
   CudaBuffer resultBuffer;
-  std::vector<double> results;
+  std::vector<ResultType> results;
 
   rayInternal::KernelConfig config_;
   bool ignoreBoundary = false;
