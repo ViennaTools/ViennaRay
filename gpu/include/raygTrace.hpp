@@ -417,9 +417,17 @@ public:
 
   [[nodiscard]] CudaBuffer &getResultBuffer() { return resultBuffer_; }
 
-  [[nodiscard]] std::vector<ResultType> &getResults() {
+  [[nodiscard]] std::vector<std::vector<ResultType>> getResults() {
     downloadResults();
-    return results_;
+    std::vector<std::vector<ResultType>> resultArrays;
+    resultArrays.resize(numFluxes_);
+    for (unsigned int i = 0; i < numFluxes_; ++i) {
+      resultArrays[i].resize(launchParams_.numElements);
+      std::memcpy(resultArrays[i].data(),
+                  results_.data() + i * launchParams_.numElements,
+                  launchParams_.numElements * sizeof(ResultType));
+    }
+    return resultArrays;
   }
 
   [[nodiscard]] std::vector<Particle<T>> &getParticles() { return particles_; }
