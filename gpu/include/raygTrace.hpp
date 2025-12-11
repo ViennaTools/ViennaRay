@@ -417,6 +417,11 @@ public:
 
   [[nodiscard]] CudaBuffer &getResultBuffer() { return resultBuffer_; }
 
+  [[nodiscard]] std::vector<ResultType> &getResults() {
+    downloadResults();
+    return results_;
+  }
+
   [[nodiscard]] std::vector<Particle<T>> &getParticles() { return particles_; }
 
   [[nodiscard]] unsigned int getNumberOfRates() const { return numFluxes_; }
