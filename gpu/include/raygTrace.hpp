@@ -451,8 +451,6 @@ private:
     launchParams.D = D;
     context_->addModule(normModuleName);
     normKernelName.append(geometryType_);
-    // launchParamsBuffer.alloc(sizeof(launchParams));
-    // normKernelName.push_back(NumericType);
   }
 
   /// Creates the modules that contain all the programs we are going to use.
@@ -481,9 +479,6 @@ private:
     pipelineLinkOptions_.maxTraceDepth = 1;
 
     size_t inputSize = 0;
-
-    char log[2048];
-    size_t sizeof_log = sizeof(log);
     std::string pipelineFile = pipelineFileName + geometryType_ + ".optixir";
     std::filesystem::path pipelinePath = context_->modulePath / pipelineFile;
     if (!std::filesystem::exists(pipelinePath)) {
@@ -497,14 +492,23 @@ private:
                            " not found.");
     }
 
+    char log[2048];
+    size_t sizeof_log = sizeof(log);
+#ifdef VIENNACORE_CUDA_LOG_DEBUG
+    auto resPipeline = optixModuleCreate(
+        context_->optix, &moduleCompileOptions_, &pipelineCompileOptions_,
+        pipelineInput, inputSize, log, &sizeof_log, &module_);
+    if (sizeof_log > 1) {
+      size_t len = std::min(sizeof_log, sizeof(log) - 1);
+      log[len] = '\0';
+      std::cerr << "Pipeline module log:\n" << log << std::endl;
+    }
+    OPTIX_CHECK_RESULT(resPipeline);
+#else
     OPTIX_CHECK(optixModuleCreate(context_->optix, &moduleCompileOptions_,
                                   &pipelineCompileOptions_, pipelineInput,
                                   inputSize, log, &sizeof_log, &module_));
-    // if (sizeof_log > 1)
-    //   PRINT(log);
-
-    char logCallable[2048];
-    size_t sizeof_log_callable = sizeof(logCallable);
+#endif
 
     if (callableFile_.empty()) {
       VIENNACORE_LOG_WARNING("No callable file set.");
@@ -516,13 +520,25 @@ private:
                            " not found.");
     }
 
+    char logCallable[8192];
+    size_t sizeof_log_callable = sizeof(logCallable);
+#ifdef VIENNACORE_CUDA_LOG_DEBUG
+    auto resCallable =
+        optixModuleCreate(context_->optix, &moduleCompileOptions_,
+                          &pipelineCompileOptions_, callableInput, inputSize,
+                          logCallable, &sizeof_log_callable, &moduleCallable_);
+    if (sizeof_log_callable > 1) {
+      size_t len = std::min(sizeof_log_callable, sizeof(logCallable) - 1);
+      logCallable[len] = '\0';
+      std::cerr << "Callable module log:\n" << logCallable << std::endl;
+    }
+    OPTIX_CHECK_RESULT(resCallable);
+#else
     OPTIX_CHECK(optixModuleCreate(context_->optix, &moduleCompileOptions_,
                                   &pipelineCompileOptions_, callableInput,
                                   inputSize, logCallable, &sizeof_log_callable,
                                   &moduleCallable_));
-    // if (sizeof_log_callable > 1) {
-    //   std::cout << "Callable module log: " << logCallable << std::endl;
-    // }
+#endif
   }
 
   /// does all setup for the raygen program
@@ -537,10 +553,19 @@ private:
     // OptixProgramGroup raypg;
     char log[2048];
     size_t sizeof_log = sizeof(log);
+#ifdef VIENNACORE_CUDA_LOG_DEBUG
+    auto resRaygen = optixProgramGroupCreate(
+        context_->optix, &pgDesc, 1, &pgOptions, log, &sizeof_log, &raygenPG);
+    if (sizeof_log > 1) {
+      size_t len = std::min(sizeof_log, sizeof(log) - 1);
+      log[len] = '\0';
+      std::cerr << "Raygen program group log:\n" << log << std::endl;
+    }
+    OPTIX_CHECK_RESULT(resRaygen);
+#else
     OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &pgDesc, 1, &pgOptions,
                                         log, &sizeof_log, &raygenPG));
-    // if (sizeof_log > 1)
-    //   PRINT(log);
+#endif
   }
 
   /// does all setup for the miss program
@@ -552,13 +577,22 @@ private:
     pgDesc.miss.module = module_;
     pgDesc.miss.entryFunctionName = entryFunctionName.c_str();
 
-    // OptixProgramGroup raypg;
+    // OptixProgramGroup misspg;
     char log[2048];
     size_t sizeof_log = sizeof(log);
+#ifdef VIENNACORE_CUDA_LOG_DEBUG
+    auto resMiss = optixProgramGroupCreate(
+        context_->optix, &pgDesc, 1, &pgOptions, log, &sizeof_log, &missPG);
+    if (sizeof_log > 1) {
+      size_t len = std::min(sizeof_log, sizeof(log) - 1);
+      log[len] = '\0';
+      std::cerr << "Miss program group log:\n" << log << std::endl;
+    }
+    OPTIX_CHECK_RESULT(resMiss);
+#else
     OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &pgDesc, 1, &pgOptions,
                                         log, &sizeof_log, &missPG));
-    // if (sizeof_log > 1)
-    //   PRINT(log);
+#endif
   }
 
   /// does all setup for the hitgroup program
@@ -578,10 +612,19 @@ private:
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
+#ifdef VIENNACORE_CUDA_LOG_DEBUG
+    auto resHitgroup = optixProgramGroupCreate(
+        context_->optix, &pgDesc, 1, &pgOptions, log, &sizeof_log, &hitgroupPG);
+    if (sizeof_log > 1) {
+      size_t len = std::min(sizeof_log, sizeof(log) - 1);
+      log[len] = '\0';
+      std::cerr << "Hitgroup program group log:\n" << log << std::endl;
+    }
+    OPTIX_CHECK_RESULT(resHitgroup);
+#else
     OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &pgDesc, 1, &pgOptions,
                                         log, &sizeof_log, &hitgroupPG));
-    // if (sizeof_log > 1)
-    //   PRINT(log);
+#endif
   }
 
   /// does all setup for the direct callables
@@ -613,11 +656,21 @@ private:
 
       char log[2048];
       size_t sizeof_log = sizeof(log);
+#ifdef VIENNACORE_CUDA_LOG_DEBUG
+      auto resDC =
+          optixProgramGroupCreate(context_->optix, &dcDesc, 1, &dcOptions, log,
+                                  &sizeof_log, &directCallablePGs[i]);
+      if (sizeof_log > 1) {
+        size_t len = std::min(sizeof_log, sizeof(log) - 1);
+        log[len] = '\0';
+        std::cerr << "Direct callable program group log:\n" << log << std::endl;
+      }
+      OPTIX_CHECK_RESULT(resDC);
+#else
       OPTIX_CHECK(optixProgramGroupCreate(context_->optix, &dcDesc, 1,
                                           &dcOptions, log, &sizeof_log,
                                           &directCallablePGs[i]));
-      // if (sizeof_log > 1)
-      //   PRINT(log);
+#endif
     }
   }
 
@@ -634,14 +687,23 @@ private:
 
     char log[2048];
     size_t sizeof_log = sizeof(log);
+#ifdef VIENNACORE_CUDA_LOG_DEBUG
+    auto resPipeline = optixPipelineCreate(
+        context_->optix, &pipelineCompileOptions_, &pipelineLinkOptions_,
+        programGroups.data(), static_cast<int>(programGroups.size()), log,
+        &sizeof_log, &pipeline_);
+    if (sizeof_log > 1) {
+      size_t len = std::min(sizeof_log, sizeof(log) - 1);
+      log[len] = '\0';
+      std::cerr << "Pipeline creation log:\n" << log << std::endl;
+    }
+    OPTIX_CHECK_RESULT(resPipeline);
+#else
     OPTIX_CHECK(optixPipelineCreate(context_->optix, &pipelineCompileOptions_,
                                     &pipelineLinkOptions_, programGroups.data(),
                                     static_cast<int>(programGroups.size()), log,
                                     &sizeof_log, &pipeline_));
-    // #ifndef NDEBUG
-    //       if (sizeof_log > 1)
-    //         PRINT(log);
-    // #endif
+#endif
 
     OptixStackSizes stackSizes = {};
     for (auto &pg : programGroups) {
