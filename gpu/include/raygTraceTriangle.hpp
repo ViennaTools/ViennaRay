@@ -12,18 +12,18 @@ public:
   explicit TraceTriangle(std::shared_ptr<DeviceContext> &passedContext)
       : Trace<T, D>(passedContext, "Triangle") {
     if constexpr (D == 2) {
-      this->normKernelName.append("_2D");
+      this->normKernelName_.append("_2D");
     }
   }
 
   explicit TraceTriangle(unsigned deviceID = 0)
       : Trace<T, D>("Triangle", deviceID) {
     if constexpr (D == 2) {
-      this->normKernelName.append("_2D");
+      this->normKernelName_.append("_2D");
     }
   }
 
-  ~TraceTriangle() override { triangleGeometry.freeBuffers(); }
+  ~TraceTriangle() override { triangleGeometry_.freeBuffers(); }
 
   void setGeometry(const TriangleMesh &passedMesh,
                    const float sourceOffset = 0.f) {
@@ -32,37 +32,35 @@ public:
     assert(!passedMesh.nodes.empty() && "Triangle mesh has no vertices.");
 
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
-    triangleGeometry.buildAccel<D>(*context_, passedMesh, launchParams,
-                                   this->ignoreBoundary, sourceOffset);
+    triangleGeometry_.buildAccel<D>(*context_, passedMesh, launchParams_,
+                                    ignoreBoundary_, sourceOffset);
 
     if constexpr (D == 2) {
-      triangleMesh = passedMesh;
+      triangleMesh_ = passedMesh;
     }
   }
-
-  void smoothFlux(std::vector<ResultType> &flux,
-                  int smoothingNeighbors) override {}
 
   void normalizeResults() override {
     double sourceArea = 0.0;
     if constexpr (D == 2) {
       sourceArea =
-          (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]);
+          (launchParams_.source.maxPoint[0] - launchParams_.source.minPoint[0]);
     } else {
       sourceArea =
-          (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]) *
-          (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
+          (launchParams_.source.maxPoint[0] -
+           launchParams_.source.minPoint[0]) *
+          (launchParams_.source.maxPoint[1] - launchParams_.source.minPoint[1]);
     }
-    assert(resultBuffer.sizeInBytes != 0 &&
+    assert(this->resultBuffer_.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
-    CUdeviceptr d_data = resultBuffer.dPointer();
-    CUdeviceptr d_vertex = triangleGeometry.geometryVertexBuffer.dPointer();
-    CUdeviceptr d_index = triangleGeometry.geometryIndexBuffer.dPointer();
+    CUdeviceptr d_data = this->resultBuffer_.dPointer();
+    CUdeviceptr d_vertex = triangleGeometry_.geometryVertexBuffer.dPointer();
+    CUdeviceptr d_index = triangleGeometry_.geometryIndexBuffer.dPointer();
     void *kernel_args[] = {&d_data,          &d_vertex,
-                           &d_index,         &launchParams.numElements,
-                           &sourceArea,      &this->numRays,
+                           &d_index,         &launchParams_.numElements,
+                           &sourceArea,      &this->numRays_,
                            &this->numFluxes_};
-    LaunchKernel::launch(this->normModuleName, this->normKernelName,
+    LaunchKernel::launch(this->normModuleName_, this->normKernelName_,
                          kernel_args, *context_);
   }
 
@@ -72,29 +70,29 @@ protected:
     std::vector<HitgroupRecordTriangle> hitgroupRecords;
 
     HitgroupRecordTriangle geometryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &geometryHitgroupRecord);
+    optixSbtRecordPackHeader(this->hitgroupPG_, &geometryHitgroupRecord);
     geometryHitgroupRecord.data.vertex =
-        (Vec3Df *)triangleGeometry.geometryVertexBuffer.dPointer();
+        (Vec3Df *)triangleGeometry_.geometryVertexBuffer.dPointer();
     geometryHitgroupRecord.data.index =
-        (Vec3D<unsigned> *)triangleGeometry.geometryIndexBuffer.dPointer();
+        (Vec3D<unsigned> *)triangleGeometry_.geometryIndexBuffer.dPointer();
     geometryHitgroupRecord.data.base.geometryType = 0;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer_.dPointer();
     geometryHitgroupRecord.data.base.normal =
-        (Vec3Df *)triangleGeometry.geometryNormalBuffer.dPointer();
+        (Vec3Df *)triangleGeometry_.geometryNormalBuffer.dPointer();
 
     // add geometry hitgroup record
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    if (!this->ignoreBoundary) {
+    if (!ignoreBoundary_) {
       HitgroupRecordTriangle boundaryHitgroupRecord = {};
-      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      optixSbtRecordPackHeader(this->hitgroupPG_, &boundaryHitgroupRecord);
       boundaryHitgroupRecord.data.vertex =
-          (Vec3Df *)triangleGeometry.boundaryVertexBuffer.dPointer();
+          (Vec3Df *)triangleGeometry_.boundaryVertexBuffer.dPointer();
       boundaryHitgroupRecord.data.index =
-          (Vec3D<unsigned> *)triangleGeometry.boundaryIndexBuffer.dPointer();
+          (Vec3D<unsigned> *)triangleGeometry_.boundaryIndexBuffer.dPointer();
       boundaryHitgroupRecord.data.base.geometryType = 0;
       boundaryHitgroupRecord.data.base.isBoundary = true;
 
@@ -103,30 +101,21 @@ protected:
     }
 
     // upload hitgroup records
-    hitgroupRecordBuffer.allocUpload(hitgroupRecords);
-    sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
-    sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordTriangle);
-    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
+    this->hitgroupRecordBuffer_.allocUpload(hitgroupRecords);
+    this->shaderBindingTable_.hitgroupRecordBase =
+        this->hitgroupRecordBuffer_.dPointer();
+    this->shaderBindingTable_.hitgroupRecordStrideInBytes =
+        sizeof(HitgroupRecordTriangle);
+    this->shaderBindingTable_.hitgroupRecordCount = ignoreBoundary_ ? 1 : 2;
   }
 
 private:
-  TriangleMesh triangleMesh;
-  TriangleGeometry triangleGeometry;
+  TriangleMesh triangleMesh_;
+  TriangleGeometry triangleGeometry_;
 
   using Trace<T, D>::context_;
-
-  using Trace<T, D>::launchParams;
-  using Trace<T, D>::resultBuffer;
-
-  using Trace<T, D>::raygenPG;
-  using Trace<T, D>::raygenRecordBuffer;
-  using Trace<T, D>::missPG;
-  using Trace<T, D>::missRecordBuffer;
-  using Trace<T, D>::hitgroupPG;
-  using Trace<T, D>::hitgroupRecordBuffer;
-  using Trace<T, D>::directCallablePGs;
-  using Trace<T, D>::directCallableRecordBuffer;
-  using Trace<T, D>::sbt;
+  using Trace<T, D>::launchParams_;
+  using Trace<T, D>::ignoreBoundary_;
 };
 
 } // namespace viennaray::gpu

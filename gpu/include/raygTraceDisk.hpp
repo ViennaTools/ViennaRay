@@ -16,63 +16,63 @@ public:
 
   explicit TraceDisk(unsigned deviceID = 0) : Trace<T, D>("Disk", deviceID) {}
 
-  ~TraceDisk() override { diskGeometry.freeBuffers(); }
+  ~TraceDisk() override { diskGeometry_.freeBuffers(); }
 
   void setGeometry(const DiskMesh &passedMesh, float sourceOffset = 0.f) {
     assert(context_ && "Context not initialized.");
-    diskMesh = passedMesh;
-    if (diskMesh.gridDelta <= 0.f) {
+    diskMesh_ = passedMesh;
+    if (diskMesh_.gridDelta <= 0.f) {
       VIENNACORE_LOG_ERROR("DiskMesh gridDelta must be positive and non-zero.");
     }
-    if (diskMesh.radius <= 0.f) {
-      diskMesh.radius = rayInternal::DiskFactor<3> * diskMesh.gridDelta;
+    if (diskMesh_.radius <= 0.f) {
+      diskMesh_.radius = rayInternal::DiskFactor<3> * diskMesh_.gridDelta;
     }
 
-    minBox = diskMesh.minimumExtent;
-    maxBox = diskMesh.maximumExtent;
+    minBox = diskMesh_.minimumExtent;
+    maxBox = diskMesh_.maximumExtent;
     if constexpr (D == 2) {
-      minBox[2] = -diskMesh.gridDelta;
-      maxBox[2] = diskMesh.gridDelta;
+      minBox[2] = -diskMesh_.gridDelta;
+      maxBox[2] = diskMesh_.gridDelta;
     }
-    this->gridDelta_ = static_cast<float>(diskMesh.gridDelta);
-    pointNeighborhood_.template init<3>(diskMesh.nodes, 2 * diskMesh.radius,
-                                        diskMesh.minimumExtent,
-                                        diskMesh.maximumExtent);
-    diskGeometry.buildAccel(*context_, diskMesh, launchParams,
-                            this->ignoreBoundary, sourceOffset);
+    this->gridDelta_ = static_cast<float>(diskMesh_.gridDelta);
+    pointNeighborhood_.template init<3>(diskMesh_.nodes, 2 * diskMesh_.radius,
+                                        diskMesh_.minimumExtent,
+                                        diskMesh_.maximumExtent);
+    diskGeometry_.buildAccel<D>(*context_, diskMesh_, launchParams_,
+                                ignoreBoundary_, sourceOffset);
   }
 
   void smoothFlux(std::vector<ResultType> &flux,
                   int smoothingNeighbors) override {
     auto oldFlux = flux;
-    const T requiredDistance = smoothingNeighbors * 2.0 * diskMesh.radius;
+    const T requiredDistance = smoothingNeighbors * 2.0 * diskMesh_.radius;
     PointNeighborhood<float, D>
         *pointNeighborhood; // use pointer to avoid copies
     if (smoothingNeighbors == 1) {
       // re-use the neighborhood from setGeometry
       pointNeighborhood = &pointNeighborhood_;
     } else if (pointNeighborhoodCache_.getNumPoints() ==
-                   launchParams.numElements &&
+                   launchParams_.numElements &&
                std::abs(pointNeighborhoodCache_.getDistance() -
                         requiredDistance) < 1e-6) {
       // re-use cached neighborhood
       pointNeighborhood = &pointNeighborhoodCache_;
     } else {
       // create a new neighborhood with a larger radius and cache it
-      pointNeighborhoodCache_.template init<3>(diskMesh.nodes, requiredDistance,
-                                               diskMesh.minimumExtent,
-                                               diskMesh.maximumExtent);
+      pointNeighborhoodCache_.template init<3>(
+          diskMesh_.nodes, requiredDistance, diskMesh_.minimumExtent,
+          diskMesh_.maximumExtent);
       pointNeighborhood = &pointNeighborhoodCache_;
     }
 
 #pragma omp parallel for
-    for (int idx = 0; idx < launchParams.numElements; idx++) {
+    for (int idx = 0; idx < launchParams_.numElements; idx++) {
       ResultType vv = oldFlux[idx];
       auto const &neighborhood = pointNeighborhood->getNeighborIndices(idx);
       ResultType sum = 1.0;
-      auto const normal = diskMesh.normals[idx];
+      auto const normal = diskMesh_.normals[idx];
       for (auto const &nbi : neighborhood) {
-        auto nnormal = diskMesh.normals[nbi];
+        auto nnormal = diskMesh_.normals[nbi];
         auto weight = DotProduct(normal, nnormal);
         if (weight > 0.) {
           vv += oldFlux[nbi] * weight;
@@ -84,33 +84,35 @@ public:
   }
 
   void normalizeResults() override {
-    assert(resultBuffer.sizeInBytes != 0 &&
+    assert(this->resultBuffer_.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
     double sourceArea = 0.0;
     if constexpr (D == 2) {
       sourceArea =
-          (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]);
+          (launchParams_.source.maxPoint[0] - launchParams_.source.minPoint[0]);
     } else {
       sourceArea =
-          (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]) *
-          (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
+          (launchParams_.source.maxPoint[0] -
+           launchParams_.source.minPoint[0]) *
+          (launchParams_.source.maxPoint[1] - launchParams_.source.minPoint[1]);
     }
 
     // calculate areas on host and send to device for now
     const Vec2D<Vec3Df> bdBox = {minBox, maxBox};
-    std::vector<float> areas(launchParams.numElements);
+    std::vector<float> areas(launchParams_.numElements);
     DiskBoundingBoxXYIntersector<float> xy_intersector(bdBox);
 
-    const auto radius = diskMesh.radius;
+    const auto radius = diskMesh_.radius;
+    const bool ignoreBoundary = this->ignoreBoundary_;
     constexpr std::array<int, 2> boundaryDirs = {0, 1};
 #pragma omp parallel for
-    for (long idx = 0; idx < launchParams.numElements; ++idx) {
-      const Vec3Df &coord = diskMesh.nodes[idx];
-      const Vec3Df &normal = diskMesh.normals[idx];
+    for (long idx = 0; idx < launchParams_.numElements; ++idx) {
+      const Vec3Df &coord = diskMesh_.nodes[idx];
+      const Vec3Df &normal = diskMesh_.normals[idx];
 
       if constexpr (D == 3) {
         areas[idx] = radius * radius * M_PIf; // full disk area
-        if (this->ignoreBoundary) {
+        if (ignoreBoundary) {
           // no boundaries
           continue;
         }
@@ -123,10 +125,10 @@ public:
         // direction
         areas[idx] = xy_intersector.areaInside(disk, normal);
       } else {
-        constexpr float eps = 1e-4f;
         // 2D
+        constexpr float eps = 1e-4f;
         areas[idx] = 2.f * radius; // full disk area
-        if (this->ignoreBoundary) {
+        if (ignoreBoundary) {
           // no boundaries
           continue;
         }
@@ -166,12 +168,12 @@ public:
     CudaBuffer areaBuffer;
     areaBuffer.allocUpload(areas);
     CUdeviceptr d_areas = areaBuffer.dPointer();
-    CUdeviceptr d_data = resultBuffer.dPointer();
+    CUdeviceptr d_data = this->resultBuffer_.dPointer();
 
     void *kernel_args[] = {
-        &d_data,     &d_areas,       &launchParams.numElements,
-        &sourceArea, &this->numRays, &this->numFluxes_};
-    LaunchKernel::launch(this->normModuleName, this->normKernelName,
+        &d_data,     &d_areas,        &launchParams_.numElements,
+        &sourceArea, &this->numRays_, &this->numFluxes_};
+    LaunchKernel::launch(this->normModuleName_, this->normKernelName_,
                          kernel_args, *context_);
     areaBuffer.free();
   }
@@ -181,40 +183,43 @@ protected:
     // geometry hitgroup
     std::vector<HitgroupRecordDisk> hitgroupRecords;
     HitgroupRecordDisk geometryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &geometryHitgroupRecord);
+    optixSbtRecordPackHeader(this->hitgroupPG_, &geometryHitgroupRecord);
     geometryHitgroupRecord.data.point =
-        (Vec3Df *)diskGeometry.geometryPointBuffer.dPointer();
-    geometryHitgroupRecord.data.radius = diskMesh.radius;
+        (Vec3Df *)diskGeometry_.geometryPointBuffer.dPointer();
+    geometryHitgroupRecord.data.radius = diskMesh_.radius;
     geometryHitgroupRecord.data.base.geometryType = 1;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer_.dPointer();
     geometryHitgroupRecord.data.base.normal =
-        (Vec3Df *)diskGeometry.geometryNormalBuffer.dPointer();
+        (Vec3Df *)diskGeometry_.geometryNormalBuffer.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    if (!this->ignoreBoundary) {
+    if (!ignoreBoundary_) {
       HitgroupRecordDisk boundaryHitgroupRecord = {};
-      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      optixSbtRecordPackHeader(this->hitgroupPG_, &boundaryHitgroupRecord);
       boundaryHitgroupRecord.data.point =
-          (Vec3Df *)diskGeometry.boundaryPointBuffer.dPointer();
+          (Vec3Df *)diskGeometry_.boundaryPointBuffer.dPointer();
       boundaryHitgroupRecord.data.base.normal =
-          (Vec3Df *)diskGeometry.boundaryNormalBuffer.dPointer();
-      boundaryHitgroupRecord.data.radius = diskGeometry.boundaryRadius;
+          (Vec3Df *)diskGeometry_.boundaryNormalBuffer.dPointer();
+      boundaryHitgroupRecord.data.radius = diskGeometry_.boundaryRadius;
       boundaryHitgroupRecord.data.base.geometryType = 1;
       boundaryHitgroupRecord.data.base.isBoundary = true;
       hitgroupRecords.push_back(boundaryHitgroupRecord);
     }
 
-    hitgroupRecordBuffer.allocUpload(hitgroupRecords);
-    sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
-    sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordDisk);
-    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
+    this->hitgroupRecordBuffer_.allocUpload(hitgroupRecords);
+    this->shaderBindingTable_.hitgroupRecordBase =
+        this->hitgroupRecordBuffer_.dPointer();
+    this->shaderBindingTable_.hitgroupRecordStrideInBytes =
+        sizeof(HitgroupRecordDisk);
+    this->shaderBindingTable_.hitgroupRecordCount = ignoreBoundary_ ? 1 : 2;
   }
 
-  DiskMesh diskMesh;
-  DiskGeometry<D> diskGeometry;
+private:
+  DiskMesh diskMesh_;
+  DiskGeometry diskGeometry_;
 
   PointNeighborhood<float, D> pointNeighborhood_;
   PointNeighborhood<float, D> pointNeighborhoodCache_;
@@ -222,20 +227,8 @@ protected:
   Vec3Df maxBox{};
 
   using Trace<T, D>::context_;
-  using Trace<T, D>::geometryType_;
-
-  using Trace<T, D>::launchParams;
-  using Trace<T, D>::resultBuffer;
-
-  using Trace<T, D>::raygenPG;
-  using Trace<T, D>::raygenRecordBuffer;
-  using Trace<T, D>::missPG;
-  using Trace<T, D>::missRecordBuffer;
-  using Trace<T, D>::hitgroupPG;
-  using Trace<T, D>::hitgroupRecordBuffer;
-  using Trace<T, D>::directCallablePGs;
-  using Trace<T, D>::directCallableRecordBuffer;
-  using Trace<T, D>::sbt;
+  using Trace<T, D>::launchParams_;
+  using Trace<T, D>::ignoreBoundary_;
 };
 
 } // namespace viennaray::gpu

@@ -14,13 +14,13 @@ public:
 
   explicit TraceLine(int deviceID = 0) : Trace<T, D>("Line", deviceID) {}
 
-  ~TraceLine() override { lineGeometry.freeBuffers(); }
+  ~TraceLine() override { lineGeometry_.freeBuffers(); }
 
   void setGeometry(const LineMesh &passedMesh, const float sourceOffset = 0.f) {
     this->gridDelta_ = static_cast<float>(passedMesh.gridDelta);
-    lineMesh = passedMesh;
-    lineGeometry.buildAccel(*context_, lineMesh, launchParams,
-                            this->ignoreBoundary, sourceOffset);
+    lineMesh_ = passedMesh;
+    lineGeometry_.buildAccel(*context_, lineMesh_, launchParams_,
+                             ignoreBoundary_, sourceOffset);
   }
 
   void smoothFlux(std::vector<ResultType> &flux, int numNeighbors) override {
@@ -28,30 +28,30 @@ public:
   }
 
   void normalizeResults() override {
-    assert(resultBuffer.sizeInBytes != 0 &&
+    assert(this->resultBuffer_.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
 
     double sourceArea =
-        launchParams.source.maxPoint[0] - launchParams.source.minPoint[0];
+        launchParams_.source.maxPoint[0] - launchParams_.source.minPoint[0];
 
     // calculate areas on host and send to device for now
-    std::vector<float> areas(launchParams.numElements, 0.f);
+    std::vector<float> areas(launchParams_.numElements, 0.f);
 #pragma omp for
-    for (int idx = 0; idx < launchParams.numElements; ++idx) {
-      Vec3Df const &p0 = lineMesh.nodes[lineMesh.lines[idx][0]];
-      Vec3Df const &p1 = lineMesh.nodes[lineMesh.lines[idx][1]];
+    for (int idx = 0; idx < launchParams_.numElements; ++idx) {
+      Vec3Df const &p0 = lineMesh_.nodes[lineMesh_.lines[idx][0]];
+      Vec3Df const &p1 = lineMesh_.nodes[lineMesh_.lines[idx][1]];
       areas[idx] = Norm(p1 - p0);
     }
 
     CudaBuffer areaBuffer;
     areaBuffer.allocUpload(areas);
     CUdeviceptr d_areas = areaBuffer.dPointer();
-    CUdeviceptr d_data = resultBuffer.dPointer();
+    CUdeviceptr d_data = this->resultBuffer_.dPointer();
 
     void *kernel_args[] = {
-        &d_data,     &d_areas,       &launchParams.numElements,
-        &sourceArea, &this->numRays, &this->numFluxes_};
-    LaunchKernel::launch(this->normModuleName, this->normKernelName,
+        &d_data,     &d_areas,        &launchParams_.numElements,
+        &sourceArea, &this->numRays_, &this->numFluxes_};
+    LaunchKernel::launch(this->normModuleName_, this->normKernelName_,
                          kernel_args, *context_);
     areaBuffer.free();
   }
@@ -62,56 +62,47 @@ protected:
 
     // geometry hitgroup
     HitgroupRecordLine geometryHitgroupRecord = {};
-    optixSbtRecordPackHeader(hitgroupPG, &geometryHitgroupRecord);
+    optixSbtRecordPackHeader(this->hitgroupPG_, &geometryHitgroupRecord);
     geometryHitgroupRecord.data.nodes =
-        (Vec3Df *)lineGeometry.geometryNodesBuffer.dPointer();
+        (Vec3Df *)lineGeometry_.geometryNodesBuffer.dPointer();
     geometryHitgroupRecord.data.lines =
-        (Vec2D<unsigned> *)lineGeometry.geometryLinesBuffer.dPointer();
+        (Vec2D<unsigned> *)lineGeometry_.geometryLinesBuffer.dPointer();
     geometryHitgroupRecord.data.base.geometryType = 2;
     geometryHitgroupRecord.data.base.isBoundary = false;
     geometryHitgroupRecord.data.base.cellData =
         (void *)this->cellDataBuffer_.dPointer();
     geometryHitgroupRecord.data.base.normal =
-        (Vec3Df *)lineGeometry.geometryNormalsBuffer.dPointer();
+        (Vec3Df *)lineGeometry_.geometryNormalsBuffer.dPointer();
     hitgroupRecords.push_back(geometryHitgroupRecord);
 
     // boundary hitgroup
-    if (!this->ignoreBoundary) {
+    if (!ignoreBoundary_) {
       HitgroupRecordLine boundaryHitgroupRecord = {};
-      optixSbtRecordPackHeader(hitgroupPG, &boundaryHitgroupRecord);
+      optixSbtRecordPackHeader(this->hitgroupPG_, &boundaryHitgroupRecord);
       boundaryHitgroupRecord.data.nodes =
-          (Vec3Df *)lineGeometry.boundaryNodesBuffer.dPointer();
+          (Vec3Df *)lineGeometry_.boundaryNodesBuffer.dPointer();
       boundaryHitgroupRecord.data.lines =
-          (Vec2D<unsigned> *)lineGeometry.boundaryLinesBuffer.dPointer();
+          (Vec2D<unsigned> *)lineGeometry_.boundaryLinesBuffer.dPointer();
       boundaryHitgroupRecord.data.base.geometryType = 2;
       boundaryHitgroupRecord.data.base.isBoundary = true;
       hitgroupRecords.push_back(boundaryHitgroupRecord);
     }
 
-    hitgroupRecordBuffer.allocUpload(hitgroupRecords);
-    sbt.hitgroupRecordBase = hitgroupRecordBuffer.dPointer();
-    sbt.hitgroupRecordStrideInBytes = sizeof(HitgroupRecordLine);
-    sbt.hitgroupRecordCount = this->ignoreBoundary ? 1 : 2;
+    this->hitgroupRecordBuffer_.allocUpload(hitgroupRecords);
+    this->shaderBindingTable_.hitgroupRecordBase =
+        this->hitgroupRecordBuffer_.dPointer();
+    this->shaderBindingTable_.hitgroupRecordStrideInBytes =
+        sizeof(HitgroupRecordLine);
+    this->shaderBindingTable_.hitgroupRecordCount = ignoreBoundary_ ? 1 : 2;
   }
 
 private:
-  LineMesh lineMesh;
-  LineGeometry lineGeometry;
+  LineMesh lineMesh_;
+  LineGeometry lineGeometry_;
 
   using Trace<T, D>::context_;
-
-  using Trace<T, D>::launchParams;
-  using Trace<T, D>::resultBuffer;
-
-  using Trace<T, D>::raygenPG;
-  using Trace<T, D>::raygenRecordBuffer;
-  using Trace<T, D>::missPG;
-  using Trace<T, D>::missRecordBuffer;
-  using Trace<T, D>::hitgroupPG;
-  using Trace<T, D>::hitgroupRecordBuffer;
-  using Trace<T, D>::directCallablePGs;
-  using Trace<T, D>::directCallableRecordBuffer;
-  using Trace<T, D>::sbt;
+  using Trace<T, D>::launchParams_;
+  using Trace<T, D>::ignoreBoundary_;
 };
 
 } // namespace viennaray::gpu

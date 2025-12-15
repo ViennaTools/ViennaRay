@@ -11,7 +11,7 @@ namespace viennaray::gpu {
 
 using namespace viennacore;
 
-template <int D> struct DiskGeometry {
+struct DiskGeometry {
   // geometry
   CudaBuffer geometryPointBuffer;
   CudaBuffer geometryNormalBuffer;
@@ -26,6 +26,7 @@ template <int D> struct DiskGeometry {
   CudaBuffer asBuffer;
 
   /// build acceleration structure from triangle mesh
+  template <int D>
   void buildAccel(DeviceContext &context, const DiskMesh &mesh,
                   LaunchParams &launchParams, const bool ignoreBoundary,
                   float sourceOffset) {
@@ -99,7 +100,7 @@ template <int D> struct DiskGeometry {
     diskInput[0].customPrimitiveArray.sbtIndexOffsetStrideInBytes = 0;
 
     // ------------------------- boundary input -------------------------
-    auto boundaryMesh = makeBoundary(mesh);
+    auto boundaryMesh = makeBoundary<D>(mesh);
     // upload the model to the device: the builder
     boundaryPointBuffer.allocUpload(boundaryMesh.nodes);
     boundaryNormalBuffer.allocUpload(boundaryMesh.normals);
@@ -194,7 +195,7 @@ template <int D> struct DiskGeometry {
     launchParams.traversable = asHandle;
   }
 
-  DiskMesh makeBoundary(const DiskMesh &passedMesh) {
+  template <int D> DiskMesh makeBoundary(const DiskMesh &passedMesh) {
     DiskMesh boundaryMesh;
 
     Vec3Df bbMin = passedMesh.minimumExtent;
