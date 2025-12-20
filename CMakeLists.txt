@@ -99,6 +99,7 @@ include("cmake/cpm.cmake")
 CPMAddPackage(
   NAME ViennaCore
   VERSION 1.8.0
+  GIT_TAG msvc
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 
@@ -153,8 +154,6 @@ endif()
 if(VIENNARAY_USE_GPU AND VIENNACORE_PTX_DIR)
   message(STATUS "[ViennaRay] Enabling GPU support")
   add_subdirectory(gpu)
-  target_include_directories(${PROJECT_NAME}
-                             INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gpu/include>)
 endif()
 
 # --------------------------------------------------------------------------------------------------------

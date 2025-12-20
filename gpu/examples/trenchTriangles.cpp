@@ -1,4 +1,4 @@
-#include <raygTraceTriangle.hpp>
+#include "raygTraceTriangle.hpp"
 
 #include <cuda_runtime.h>
 #include <omp.h>
