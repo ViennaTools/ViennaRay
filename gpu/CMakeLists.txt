@@ -29,16 +29,16 @@ if(VIENNARAY_GPU_DOUBLE_PRECISION)
 endif()
 
 # Add the general pipelines and callable wrapper
-viennacore_add_optixir(disk_pipeline ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu)
-viennacore_add_optixir(triangle_pipeline ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu)
-viennacore_add_optixir(line_pipeline ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu)
-viennacore_add_optixir(callable_wrapper ${VIENNARAY_PIPELINE_DIR}/CallableWrapper.cu)
+viennacore_add_optixir(diskPipeline ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu)
+viennacore_add_optixir(trianglePipeline ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu)
+viennacore_add_optixir(linePipeline ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu)
+viennacore_add_optixir(ViennaRayCallableWrapper ${VIENNARAY_PIPELINE_DIR}/CallableWrapper.cu)
 
 # Add the norm kernels
-viennacore_add_ptx(norm_kernels ${VIENNARAY_CUDA_KERNELS})
+viennacore_add_ptx(normKernels ${VIENNARAY_CUDA_KERNELS})
 
-set(VIENNARAY_GPU_DEPENDENCIES disk_pipeline triangle_pipeline line_pipeline callable_wrapper
-                               norm_kernels)
+set(VIENNARAY_GPU_DEPENDENCIES diskPipeline trianglePipeline linePipeline ViennaRayCallableWrapper
+                               normKernels)
 
 if(VIENNARAY_BUILD_EXAMPLES)
   message(STATUS "[ViennaRay] Adding GPU Examples")
