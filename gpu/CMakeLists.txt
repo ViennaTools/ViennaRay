@@ -30,8 +30,9 @@ viennacore_add_optixir(ViennaRayCallableWrapper ${VIENNARAY_PIPELINE_DIR}/Callab
 # Add the norm kernels
 viennacore_add_ptx(normKernels ${VIENNARAY_CUDA_KERNELS})
 
-set(VIENNARAY_GPU_DEPENDENCIES GeneralPipelineDisk GeneralPipelineTriangle GeneralPipelineLine
-                               normKernels)
+set(VIENNARAY_GPU_DEPENDENCIES
+    GeneralPipelineDisk GeneralPipelineTriangle GeneralPipelineLine normKernels
+    CACHE STRING "ViennaRay GPU dependencies.")
 
 if(VIENNARAY_BUILD_EXAMPLES)
   message(STATUS "[ViennaRay] Adding GPU Examples")
