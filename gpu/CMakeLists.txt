@@ -12,20 +12,14 @@ set(VIENNARAY_PIPELINE_DIR
 target_include_directories(${PROJECT_NAME}
                            INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/gpu/include>)
 
-if(NOT DEFINED VIENNACORE_PTX_INCLUDE_DIRS)
-  set(VIENNACORE_PTX_INCLUDE_DIRS
-      ""
-      CACHE STRING "ViennaCore PTX include directories")
-endif()
-list(APPEND VIENNACORE_PTX_INCLUDE_DIRS "${VIENNARAY_GPU_INCLUDE}")
-
+# Incldue directories for PTX and optix-ir compilation (force cache to update with new entries)
+set(VIENNACORE_PTX_INCLUDE_DIRS
+    ${VIENNACORE_PTX_INCLUDE_DIRS} ${VIENNARAY_GPU_INCLUDE}
+    CACHE STRING "PTX include directories" FORCE)
 if(VIENNARAY_GPU_DOUBLE_PRECISION)
-  if(NOT DEFINED VIENNACORE_PTX_DEFINES)
-    set(VIENNACORE_PTX_DEFINES
-        ""
-        CACHE STRING "ViennaCore PTX compile definitions")
-  endif()
-  list(APPEND VIENNACORE_PTX_DEFINES "VIENNARAY_GPU_DOUBLE_PRECISION=1")
+  set(VIENNACORE_PTX_DEFINES
+      ${VIENNACORE_PTX_DEFINES} "VIENNARAY_GPU_DOUBLE_PRECISION=1"
+      CACHE STRING "PTX compile definitions" FORCE)
 endif()
 
 # Add the general pipelines and callable wrapper
