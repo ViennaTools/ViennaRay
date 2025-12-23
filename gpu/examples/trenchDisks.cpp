@@ -11,8 +11,7 @@ int main() {
   using NumericType = float;
   Logger::setLogLevel(LogLevel::DEBUG);
 
-  auto context = DeviceContext::createContext("../../lib/ptx", 0);
-  // relative to build directory
+  auto context = DeviceContext::createContext();
 
   // Read stored geometry grid
   NumericType gridDelta;
@@ -43,7 +42,7 @@ int main() {
   gpu::TraceDisk<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
-  tracer.setCallables("CallableWrapper", context->modulePath);
+  tracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
   tracer.setNumberOfRaysPerPoint(1000);
   tracer.insertNextParticle(particle);

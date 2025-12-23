@@ -14,8 +14,7 @@ int main(int argc, char **argv) {
   using NumericType = double;
   Logger::setLogLevel(LogLevel::DEBUG);
 
-  auto context = DeviceContext::createContext("../../lib/ptx", 0);
-  // relative to build directory
+  auto context = DeviceContext::createContext();
 
   std::vector<Vec3D<float>> points;
   std::vector<Vec3D<unsigned>> triangles;
@@ -44,7 +43,7 @@ int main(int argc, char **argv) {
   gpu::TraceTriangle<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
-  tracer.setCallables("CallableWrapper", context->modulePath);
+  tracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
   tracer.setNumberOfRaysPerPoint(5000);
   tracer.insertNextParticle(particle);
