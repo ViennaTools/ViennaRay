@@ -28,8 +28,8 @@ template <class NumericType, int D> void RunTest() {
   {
     NumericType stickingProbability = 1.0;
     NumericType sourcePower = 50.;
-    auto particle =
-        std::make_unique<SpecularParticle<NumericType, D>>(stickingProbability, sourcePower, "test");
+    auto particle = std::make_unique<SpecularParticle<NumericType, D>>(
+        stickingProbability, sourcePower, "test");
 
     NumericType sourcePowerTest = particle->getSourceDistributionPower();
     VC_TEST_ASSERT(sourcePowerTest == 100.);

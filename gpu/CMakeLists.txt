@@ -12,15 +12,15 @@ set(VIENNARAY_PIPELINE_DIR
 target_include_directories(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${VIENNARAY_GPU_INCLUDE}>)
 
 # Incldue directories for PTX and optix-ir compilation (force cache to update with new entries)
-if (NOT VIENNARAY_PASSED_FIRST_CONFIGURE)
-    set(VIENNACORE_PTX_INCLUDE_DIRS
-        ${VIENNACORE_PTX_INCLUDE_DIRS} ${VIENNARAY_GPU_INCLUDE}
-        CACHE STRING "PTX include directories" FORCE)
-    if(VIENNARAY_GPU_DOUBLE_PRECISION)
-      set(VIENNACORE_PTX_DEFINES
-          ${VIENNACORE_PTX_DEFINES} "VIENNARAY_GPU_DOUBLE_PRECISION=1"
-          CACHE STRING "PTX compile definitions" FORCE)
-    endif()
+if(NOT VIENNARAY_PASSED_FIRST_CONFIGURE)
+  set(VIENNACORE_PTX_INCLUDE_DIRS
+      ${VIENNACORE_PTX_INCLUDE_DIRS} ${VIENNARAY_GPU_INCLUDE}
+      CACHE STRING "PTX include directories" FORCE)
+  if(VIENNARAY_GPU_DOUBLE_PRECISION)
+    set(VIENNACORE_PTX_DEFINES
+        ${VIENNACORE_PTX_DEFINES} "VIENNARAY_GPU_DOUBLE_PRECISION=1"
+        CACHE STRING "PTX compile definitions" FORCE)
+  endif()
 endif()
 
 # Add the general pipelines and callable wrapper
@@ -46,4 +46,6 @@ if(VIENNARAY_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
-set(VIENNARAY_PASSED_FIRST_CONFIGURE ON CACHE INTERNAL "Indicates whether the first configure has been passed.")
+set(VIENNARAY_PASSED_FIRST_CONFIGURE
+    ON
+    CACHE INTERNAL "Indicates whether the first configure has been passed.")

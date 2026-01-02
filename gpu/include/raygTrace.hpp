@@ -551,7 +551,8 @@ private:
       VIENNACORE_LOG_WARNING("No callable file set.");
       return;
     }
-    std::string callable_path_str = callableFile_.string(); // explicit conversion
+    std::string callable_path_str =
+        callableFile_.string(); // explicit conversion
     auto callableInput = getInputData(callable_path_str.c_str(), inputSize);
     if (!callableInput) {
       VIENNACORE_LOG_ERROR("Callable file " + callableFile_.string() +

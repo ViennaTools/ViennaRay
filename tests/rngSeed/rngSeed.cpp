@@ -16,8 +16,8 @@ int main() {
   rayInternal::createPlaneGrid(gridDelta, extent, {0, 1, 2}, points, normals);
 
   NumericType stickingProbability = 1.0;
-  auto particle =
-      std::make_unique<DiffuseParticle<NumericType, D>>(stickingProbability, "hitFlux");
+  auto particle = std::make_unique<DiffuseParticle<NumericType, D>>(
+      stickingProbability, "hitFlux");
 
   std::vector<NumericType> flux1, flux2;
 
