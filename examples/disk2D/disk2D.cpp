@@ -28,8 +28,8 @@ int main() {
   // however the boundary condition in direction of the tracing direction will
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
   BoundaryCondition boundaryConds[D];
-  boundaryConds[0] = BoundaryCondition::PERIODIC; // x
-  boundaryConds[1] = BoundaryCondition::PERIODIC; // y
+  boundaryConds[0] = BoundaryCondition::PERIODIC_BOUNDARY; // x
+  boundaryConds[1] = BoundaryCondition::PERIODIC_BOUNDARY; // y
 
   // ParticleType: The particle types provides the sticking probability and
   // the reflection process for each surface hit. This class can be user

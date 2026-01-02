@@ -20,8 +20,8 @@ int main() {
   std::vector<int> materialIds(points.size(), 0);
 
   BoundaryCondition boundaryConds[D];
-  boundaryConds[0] = BoundaryCondition::REFLECTIVE;
-  boundaryConds[1] = BoundaryCondition::REFLECTIVE;
+  boundaryConds[0] = BoundaryCondition::REFLECTIVE_BOUNDARY;
+  boundaryConds[1] = BoundaryCondition::REFLECTIVE_BOUNDARY;
   auto particle = std::make_unique<DiffuseParticle<NumericType, D>>(
       NumericType(1), "hitFlux");
 
