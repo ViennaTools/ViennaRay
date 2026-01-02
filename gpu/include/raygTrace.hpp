@@ -260,13 +260,13 @@ public:
 
       std::vector<int> materialIdsMapped(launchParams_.numElements);
 #pragma omp parallel for
-      for (size_t i = 0; i < launchParams_.numElements; i++) {
+      for (int i = 0; i < launchParams_.numElements; i++) {
         materialIdsMapped[i] = materialIdMap[materialIds[i]];
       }
       materialIdsBuffer_.allocUpload(materialIdsMapped);
     } else {
       std::vector<int> materialIdsMapped(launchParams_.numElements);
-      for (size_t i = 0; i < launchParams_.numElements; i++) {
+      for (int i = 0; i < launchParams_.numElements; i++) {
         materialIdsMapped[i] = static_cast<int>(materialIds[i]);
       }
       materialIdsBuffer_.allocUpload(materialIdsMapped);
@@ -538,7 +538,8 @@ private:
                            " not found.");
     }
 
-    auto pipelineInput = getInputData(pipelinePath.c_str(), inputSize);
+    std::string path_str = pipelinePath.string(); // explicit conversion
+    auto pipelineInput = getInputData(path_str.c_str(), inputSize);
     if (!pipelineInput) {
       VIENNACORE_LOG_ERROR("Pipeline file " + pipelinePath.string() +
                            " not found.");
@@ -550,7 +551,8 @@ private:
       VIENNACORE_LOG_WARNING("No callable file set.");
       return;
     }
-    auto callableInput = getInputData(callableFile_.c_str(), inputSize);
+    std::string callable_path_str = callableFile_.string(); // explicit conversion
+    auto callableInput = getInputData(callable_path_str.c_str(), inputSize);
     if (!callableInput) {
       VIENNACORE_LOG_ERROR("Callable file " + callableFile_.string() +
                            " not found.");

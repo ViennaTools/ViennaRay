@@ -36,8 +36,9 @@ int main() {
   // defined, but has to interface the rayParticle<NumericType> class and
   // provide the functions: initNew(...), surfaceCollision(...),
   // surfaceReflection(...).
+  NumericType stickingProbability = 0.1;
   auto particle =
-      std::make_unique<DiffuseParticle<NumericType, D>>(0.5, "flux");
+      std::make_unique<DiffuseParticle<NumericType, D>>(stickingProbability, "flux");
 
   TraceDisk<NumericType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);

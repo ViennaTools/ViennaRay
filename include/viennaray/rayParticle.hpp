@@ -11,7 +11,7 @@
 
 #define VIENNARAY_PARTICLE_STOP                                                \
   std::pair<NumericType, Vec3D<NumericType>> {                                 \
-    1., Vec3D<NumericType> { 0., 0., 0. }                                      \
+    NumericType(1), Vec3D<NumericType>{}                                       \
   }
 
 namespace viennaray {
