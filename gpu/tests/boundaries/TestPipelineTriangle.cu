@@ -4,15 +4,15 @@
 #define __CUDACC__
 #endif
 
-#include <raygBoundary.hpp>
-#include <raygCallableConfig.hpp>
-#include <raygLaunchParams.hpp>
-#include <raygPerRayData.hpp>
-#include <raygReflection.hpp>
-#include <raygSBTRecords.hpp>
-#include <raygSource.hpp>
+#include "raygBoundary.hpp"
+#include "raygCallableConfig.hpp"
+#include "raygLaunchParams.hpp"
+#include "raygPerRayData.hpp"
+#include "raygReflection.hpp"
+#include "raygSBTRecords.hpp"
+#include "raygSource.hpp"
 
-#include <vcContext.hpp>
+#include "vcContext.hpp"
 
 // #define COUNT_RAYS
 

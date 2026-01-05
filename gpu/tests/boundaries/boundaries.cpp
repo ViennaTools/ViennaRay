@@ -1,5 +1,5 @@
+#include <gpu/raygTraceTriangle.hpp>
 #include <rayUtil.hpp>
-#include <raygTraceTriangle.hpp>
 
 #include <vcTestAsserts.hpp>
 

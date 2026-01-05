@@ -1,5 +1,5 @@
-#include <raygTraceLine.hpp>
-#include <raygTraceTriangle.hpp>
+#include <gpu/raygTraceLine.hpp>
+#include <gpu/raygTraceTriangle.hpp>
 
 #include <omp.h>
 

@@ -1,8 +1,8 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include <raygReflection.hpp>
-#include <vcVectorType.hpp>
+#include "raygReflection.hpp"
+#include "vcVectorType.hpp"
 
 #define VIENNARAY_TEST
 

@@ -1,4 +1,4 @@
-#include <raygTraceDisk.hpp>
+#include <gpu/raygTraceDisk.hpp>
 
 #include <omp.h>
 
