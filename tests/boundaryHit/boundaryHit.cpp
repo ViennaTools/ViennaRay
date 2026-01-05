@@ -26,9 +26,9 @@ int main() {
     geometry.initGeometry(device, points, normals, gridDelta);
     BoundaryCondition boundCons[D];
     {
-      boundCons[0] = BoundaryCondition::REFLECTIVE;
-      boundCons[1] = BoundaryCondition::PERIODIC;
-      boundCons[2] = BoundaryCondition::PERIODIC;
+      boundCons[0] = BoundaryCondition::REFLECTIVE_BOUNDARY;
+      boundCons[1] = BoundaryCondition::PERIODIC_BOUNDARY;
+      boundCons[2] = BoundaryCondition::PERIODIC_BOUNDARY;
       auto boundingBox = geometry.getBoundingBox();
       auto traceSetting = rayInternal::getTraceSettings(TraceDirection::POS_Z);
       rayInternal::adjustBoundingBox<NumericType, D>(
@@ -86,9 +86,9 @@ int main() {
     geometry.initGeometry(device, points, normals, gridDelta);
     BoundaryCondition boundCons[D];
     {
-      boundCons[0] = BoundaryCondition::PERIODIC;
-      boundCons[1] = BoundaryCondition::PERIODIC;
-      boundCons[2] = BoundaryCondition::REFLECTIVE;
+      boundCons[0] = BoundaryCondition::PERIODIC_BOUNDARY;
+      boundCons[1] = BoundaryCondition::PERIODIC_BOUNDARY;
+      boundCons[2] = BoundaryCondition::REFLECTIVE_BOUNDARY;
       auto boundingBox = geometry.getBoundingBox();
       auto traceSetting = rayInternal::getTraceSettings(TraceDirection::POS_Y);
       rayInternal::adjustBoundingBox<NumericType, D>(
@@ -146,9 +146,9 @@ int main() {
     geometry.initGeometry(device, points, normals, gridDelta);
     BoundaryCondition boundCons[D];
     {
-      boundCons[0] = BoundaryCondition::PERIODIC;
-      boundCons[1] = BoundaryCondition::PERIODIC;
-      boundCons[2] = BoundaryCondition::PERIODIC;
+      boundCons[0] = BoundaryCondition::PERIODIC_BOUNDARY;
+      boundCons[1] = BoundaryCondition::PERIODIC_BOUNDARY;
+      boundCons[2] = BoundaryCondition::PERIODIC_BOUNDARY;
       auto boundingBox = geometry.getBoundingBox();
       auto traceSetting = rayInternal::getTraceSettings(TraceDirection::POS_Z);
       rayInternal::adjustBoundingBox<NumericType, D>(

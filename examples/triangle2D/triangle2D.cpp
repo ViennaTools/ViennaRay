@@ -23,8 +23,9 @@ int main() {
   TraceTriangle<NumericType, D> tracer;
   tracer.setGeometry(lineMesh);
 
-  auto particle =
-      std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");
+  NumericType stickingProbability = 0.1;
+  auto particle = std::make_unique<DiffuseParticle<NumericType, D>>(
+      stickingProbability, "flux");
   tracer.setParticleType(particle);
   tracer.setNumberOfRaysPerPoint(5000);
 

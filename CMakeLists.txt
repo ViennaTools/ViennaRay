@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 3.9.1)
+  VERSION 3.10.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library switches
@@ -74,6 +74,7 @@ if(VIENNARAY_GPU_DOUBLE_PRECISION)
 endif()
 
 if(VIENNARAY_PRINT_PROGRESS)
+  message(STATUS "[ViennaRay] Enabling progress printing")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_PRINT_PROGRESS)
 endif()
 
@@ -98,7 +99,7 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 1.8.0
+  VERSION 1.9.0
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 
@@ -149,12 +150,9 @@ endif()
 # Setup GPU
 # --------------------------------------------------------------------------------------------------------
 
-# If CUDA or OptiX is not found in ViennaCore, VIENNACORE_PTX_DIR is not set
-if(VIENNARAY_USE_GPU AND VIENNACORE_PTX_DIR)
+if(VIENNARAY_USE_GPU)
   message(STATUS "[ViennaRay] Enabling GPU support")
   add_subdirectory(gpu)
-  target_include_directories(${PROJECT_NAME}
-                             INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gpu/include>)
 endif()
 
 # --------------------------------------------------------------------------------------------------------

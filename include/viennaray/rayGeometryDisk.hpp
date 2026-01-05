@@ -279,8 +279,10 @@ public:
       if constexpr (D == 3) {
         diskAreas_[idx] = disk[3] * disk[3] * M_PI; // full disk area
 
-        if (boundaryConds[boundaryDirs[0]] == BoundaryCondition::IGNORE &&
-            boundaryConds[boundaryDirs[1]] == BoundaryCondition::IGNORE) {
+        if (boundaryConds[boundaryDirs[0]] ==
+                BoundaryCondition::IGNORE_BOUNDARY &&
+            boundaryConds[boundaryDirs[1]] ==
+                BoundaryCondition::IGNORE_BOUNDARY) {
           // no boundaries
           continue;
         }
@@ -316,7 +318,8 @@ public:
         auto normal = getNormalRef(idx);
 
         // test min boundary
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
+        if ((boundaryConds[boundaryDirs[0]] !=
+             BoundaryCondition::IGNORE_BOUNDARY) &&
             (std::abs(disk[boundaryDirs[0]] - bdBox[0][boundaryDirs[0]]) <
              disk[3])) {
           NumericType insideTest =
@@ -332,7 +335,8 @@ public:
         }
 
         // test max boundary
-        if ((boundaryConds[boundaryDirs[0]] != BoundaryCondition::IGNORE) &&
+        if ((boundaryConds[boundaryDirs[0]] !=
+             BoundaryCondition::IGNORE_BOUNDARY) &&
             (std::abs(disk[boundaryDirs[0]] - bdBox[1][boundaryDirs[0]]) <
              disk[3])) {
           NumericType insideTest =

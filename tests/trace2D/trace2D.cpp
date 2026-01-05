@@ -20,10 +20,10 @@ int main() {
   std::vector<int> materialIds(points.size(), 0);
 
   BoundaryCondition boundaryConds[D];
-  boundaryConds[0] = BoundaryCondition::REFLECTIVE;
-  boundaryConds[1] = BoundaryCondition::REFLECTIVE;
-  auto particle =
-      std::make_unique<DiffuseParticle<NumericType, D>>(1.0, "hitFlux");
+  boundaryConds[0] = BoundaryCondition::REFLECTIVE_BOUNDARY;
+  boundaryConds[1] = BoundaryCondition::REFLECTIVE_BOUNDARY;
+  auto particle = std::make_unique<DiffuseParticle<NumericType, D>>(
+      NumericType(1), "hitFlux");
 
   TraceDisk<NumericType, D> rayTracer;
   rayTracer.setParticleType(particle);

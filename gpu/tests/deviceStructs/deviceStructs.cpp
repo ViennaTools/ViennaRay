@@ -1,5 +1,5 @@
-#include <raygLaunchParams.hpp>
-#include <raygPerRayData.hpp>
+#include <gpu/raygLaunchParams.hpp>
+#include <gpu/raygPerRayData.hpp>
 
 #include <iostream>
 

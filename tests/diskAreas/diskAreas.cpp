@@ -40,8 +40,8 @@ int main() {
                                            traceSettings);
   std::array<viennacore::Vec3D<NumericType>, 3> orthoBasis;
   auto raySource = std::make_unique<SourceRandom<NumericType, D>>(
-      boundingBox, 1., traceSettings, geometry.getNumPrimitives(), false,
-      orthoBasis);
+      boundingBox, NumericType(1), traceSettings, geometry.getNumPrimitives(),
+      false, orthoBasis);
   geometry.computeDiskAreas(boundary);
 
   DiffuseParticle<NumericType, D> particle(1.0, "hitFlux");

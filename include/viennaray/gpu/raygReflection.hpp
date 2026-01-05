@@ -49,6 +49,7 @@ __device__ __inline__ Vec3Df computeNormal(const void *sbtData,
     printf("Unknown geometry type in computeNormal\n");
   } break;
   }
+  return Vec3Df{0.f, 0.f, 0.f};
 }
 
 __device__ __forceinline__ Vec3Df getNormal(const void *sbtData,

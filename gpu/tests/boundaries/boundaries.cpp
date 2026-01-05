@@ -1,5 +1,5 @@
+#include <gpu/raygTraceTriangle.hpp>
 #include <rayUtil.hpp>
-#include <raygTraceTriangle.hpp>
 
 #include <vcTestAsserts.hpp>
 
@@ -43,7 +43,7 @@ template <int D> TriangleMesh createGeometry() {
 
 int main() {
 
-  auto context = DeviceContext::createContext("../../../lib/ptx", 0);
+  auto context = DeviceContext::createContext();
 
   gpu::Particle<float> particle;
   particle.name = "Particle";

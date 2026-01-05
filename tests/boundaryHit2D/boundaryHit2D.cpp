@@ -30,7 +30,7 @@ int main() {
   GeometryDisk<NumericType, D> geometry;
   geometry.initGeometry(device, points, normals, gridDelta);
 
-  boundCons[1] = BoundaryCondition::REFLECTIVE;
+  boundCons[1] = BoundaryCondition::REFLECTIVE_BOUNDARY;
   {
     // build reflective boundary in y and z directions
     auto dir = TraceDirection::POS_X;
@@ -79,7 +79,7 @@ int main() {
     VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
   }
 
-  boundCons[1] = BoundaryCondition::PERIODIC;
+  boundCons[1] = BoundaryCondition::PERIODIC_BOUNDARY;
   {
     // build periodic boundary in y and z directions
     auto dir = TraceDirection::POS_X;
@@ -142,7 +142,7 @@ int main() {
 
   GeometryDisk<NumericType, D> geometry2;
   geometry2.initGeometry(device, points, normals, gridDelta);
-  boundCons[0] = BoundaryCondition::REFLECTIVE;
+  boundCons[0] = BoundaryCondition::REFLECTIVE_BOUNDARY;
   {
     // build periodic boundary in x and z directions
     auto dir = TraceDirection::POS_Y;
@@ -191,7 +191,7 @@ int main() {
     VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
   }
 
-  boundCons[0] = BoundaryCondition::PERIODIC;
+  boundCons[0] = BoundaryCondition::PERIODIC_BOUNDARY;
   {
     // build periodic boundary in x and z directions
     auto dir = TraceDirection::POS_Y;

@@ -8,9 +8,9 @@ namespace viennaray {
 using namespace viennacore;
 
 enum class BoundaryCondition : unsigned {
-  REFLECTIVE = 0,
-  PERIODIC = 1,
-  IGNORE = 2
+  REFLECTIVE_BOUNDARY = 0,
+  PERIODIC_BOUNDARY = 1,
+  IGNORE_BOUNDARY = 2
 };
 
 template <typename NumericType, int D> class Boundary {
@@ -45,11 +45,11 @@ public:
     if constexpr (D == 2) {
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
-      if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE) {
+      if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE_BOUNDARY) {
         reflectRay(rayHit);
         reflect = true;
         return;
-      } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC) {
+      } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC_BOUNDARY) {
         auto impactCoords = getNewOrigin(rayHit.ray);
         // periodically move ray origin
         if (primID == 0 || primID == 1) {
@@ -71,12 +71,12 @@ public:
       assert(false && "Correctness Assumption");
     } else {
       if (primID <= 3) {
-        if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE) {
+        if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE_BOUNDARY) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC) {
+        } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC_BOUNDARY) {
           auto impactCoords = getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 0 || primID == 1) {
@@ -95,12 +95,12 @@ public:
           return;
         }
       } else if (primID <= 7) {
-        if (boundaryConds_[1] == BoundaryCondition::REFLECTIVE) {
+        if (boundaryConds_[1] == BoundaryCondition::REFLECTIVE_BOUNDARY) {
           // use specular reflection
           reflectRay(rayHit);
           reflect = true;
           return;
-        } else if (boundaryConds_[1] == BoundaryCondition::PERIODIC) {
+        } else if (boundaryConds_[1] == BoundaryCondition::PERIODIC_BOUNDARY) {
           auto impactCoords = getNewOrigin(rayHit.ray);
           // periodically move ray origin
           if (primID == 4 || primID == 5) {

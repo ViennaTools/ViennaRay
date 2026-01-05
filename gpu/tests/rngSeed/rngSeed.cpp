@@ -1,6 +1,6 @@
+#include <gpu/raygTraceDisk.hpp>
+#include <gpu/raygTraceTriangle.hpp>
 #include <rayParticle.hpp>
-#include <raygTraceDisk.hpp>
-#include <raygTraceTriangle.hpp>
 #include <vcTestAsserts.hpp>
 
 using namespace viennaray;
@@ -9,8 +9,7 @@ int main() {
   constexpr int D = 3;
   using NumericType = float;
 
-  auto context = DeviceContext::createContext("../../../lib/ptx",
-                                              0); // relative to build directory
+  auto context = DeviceContext::createContext();
 
   gpu::Particle<NumericType> particle;
   particle.name = "Particle";
@@ -35,7 +34,7 @@ int main() {
     {
       gpu::TraceDisk<NumericType, D> rayTracer;
       rayTracer.insertNextParticle(particle);
-      rayTracer.setCallables("CallableWrapper", context->modulePath);
+      rayTracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
       rayTracer.setParticleCallableMap({pMap, cMap});
       rayTracer.setGeometry(mesh);
       rayTracer.setNumberOfRaysPerPoint(100);
@@ -50,7 +49,7 @@ int main() {
     {
       gpu::TraceDisk<NumericType, D> rayTracer;
       rayTracer.insertNextParticle(particle);
-      rayTracer.setCallables("CallableWrapper", context->modulePath);
+      rayTracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
       rayTracer.setParticleCallableMap({pMap, cMap});
       rayTracer.setGeometry(mesh);
       rayTracer.setNumberOfRaysPerPoint(100);
@@ -83,7 +82,7 @@ int main() {
     {
       gpu::TraceTriangle<NumericType, D> rayTracer;
       rayTracer.insertNextParticle(particle);
-      rayTracer.setCallables("CallableWrapper", context->modulePath);
+      rayTracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
       rayTracer.setParticleCallableMap({pMap, cMap});
       rayTracer.setGeometry(mesh);
       rayTracer.setNumberOfRaysPerPoint(100);
@@ -98,7 +97,7 @@ int main() {
     {
       gpu::TraceTriangle<NumericType, D> rayTracer;
       rayTracer.insertNextParticle(particle);
-      rayTracer.setCallables("CallableWrapper", context->modulePath);
+      rayTracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
       rayTracer.setParticleCallableMap({pMap, cMap});
       rayTracer.setGeometry(mesh);
       rayTracer.setNumberOfRaysPerPoint(100);

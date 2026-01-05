@@ -15,10 +15,9 @@ using namespace viennaray;
 int main() {
   Logger::setLogLevel(LogLevel::DEBUG);
 
-  DeviceContext context;
-  context.create("../../../lib/ptx"); // relative to build directory
-  const std::string moduleName = "testReflections.ptx";
-  context.addModule(moduleName);
+  auto context = DeviceContext::createContext();
+  const std::string moduleName = "testReflectionsKernel.ptx";
+  context->addModule(moduleName);
   {
     unsigned numResults = 10000;
     CudaBuffer resultBuffer;
@@ -31,7 +30,7 @@ int main() {
     CUdeviceptr d_data = resultBuffer.dPointer();
     void *kernel_args[] = {&inDir, &normal, &d_data, &numResults};
 
-    LaunchKernel::launch(moduleName, "test_diffuse", kernel_args, context);
+    LaunchKernel::launch(moduleName, "test_diffuse", kernel_args, *context);
 
     resultBuffer.download(results.data(), numResults);
 
@@ -65,7 +64,8 @@ int main() {
     CUdeviceptr d_data = resultBuffer.dPointer();
     void *kernel_args[] = {&inDir, &normal, &coneAngle, &d_data, &numResults};
 
-    LaunchKernel::launch(moduleName, "test_coned_cosine", kernel_args, context);
+    LaunchKernel::launch(moduleName, "test_coned_cosine", kernel_args,
+                         *context);
     resultBuffer.download(results.data(), numResults);
 
 #ifdef WRITE_TO_FILE

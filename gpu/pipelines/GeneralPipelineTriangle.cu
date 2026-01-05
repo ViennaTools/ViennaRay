@@ -4,15 +4,15 @@
 #define __CUDACC__
 #endif
 
-#include <raygBoundary.hpp>
-#include <raygCallableConfig.hpp>
-#include <raygLaunchParams.hpp>
-#include <raygPerRayData.hpp>
-#include <raygReflection.hpp>
-#include <raygSBTRecords.hpp>
-#include <raygSource.hpp>
+#include "raygBoundary.hpp"
+#include "raygCallableConfig.hpp"
+#include "raygLaunchParams.hpp"
+#include "raygPerRayData.hpp"
+#include "raygReflection.hpp"
+#include "raygSBTRecords.hpp"
+#include "raygSource.hpp"
 
-#include <vcContext.hpp>
+#include "vcContext.hpp"
 
 // #define COUNT_RAYS
 
@@ -104,8 +104,9 @@ extern "C" __global__ void __raygen__() {
       hint |= (1 << 0);
     }
     if (optixHitObjectIsHit()) {
-      const HitSBTDataTriangle *hitData = reinterpret_cast<const HitSBTDataTriangle *>(
-          optixHitObjectGetSbtDataPointer());
+      const HitSBTDataTriangle *hitData =
+          reinterpret_cast<const HitSBTDataTriangle *>(
+              optixHitObjectGetSbtDataPointer());
       hint |= hitData->base.isBoundary << 1;
     }
     optixReorder(hint, hintBitLength);

@@ -293,7 +293,6 @@ template <typename T>
   if (len2 == T(0)) {
     VIENNACORE_LOG_ERROR(
         "Cannot build orthonormal basis for zero-length vector");
-    return B;
   }
   const T invLen = T(1) / std::sqrt(len2);
   u = u * invLen;

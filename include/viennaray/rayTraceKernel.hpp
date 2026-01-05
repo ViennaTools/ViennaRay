@@ -78,7 +78,7 @@ public:
       data = dataLog_;
       assert(data.data.size() == dataLog_.data.size());
       for (auto &d : data.data) {
-        std::fill(d.begin(), d.end(), 0.);
+        std::fill(d.begin(), d.end(), NumericType(0));
       }
     }
 

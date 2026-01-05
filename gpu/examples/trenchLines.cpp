@@ -1,5 +1,5 @@
-#include <raygTraceLine.hpp>
-#include <raygTraceTriangle.hpp>
+#include <gpu/raygTraceLine.hpp>
+#include <gpu/raygTraceTriangle.hpp>
 
 #include <omp.h>
 
@@ -12,8 +12,7 @@ int main() {
   using NumericType = float;
   Logger::setLogLevel(LogLevel::DEBUG);
 
-  auto context = DeviceContext::createContext("../../lib/ptx", 0);
-  // relative to build directory
+  auto context = DeviceContext::createContext();
 
   // Read stored geometry grid
   std::vector<Vec3D<float>> points;
@@ -46,7 +45,7 @@ int main() {
   gpu::TraceLine<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
-  tracer.setCallables("CallableWrapper", context->modulePath);
+  tracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
   tracer.setNumberOfRaysPerPoint(5000);
   tracer.insertNextParticle(particle);
@@ -72,7 +71,7 @@ int main() {
   gpu::TraceTriangle<NumericType, D> triangleTracer(context);
   triangleTracer.setGeometry(triMesh);
   triangleTracer.setMaterialIds(materialIds);
-  triangleTracer.setCallables("CallableWrapper", context->modulePath);
+  triangleTracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
   triangleTracer.setParticleCallableMap({pMap, cMap});
   triangleTracer.setNumberOfRaysPerPoint(5000);
   triangleTracer.insertNextParticle(particle);

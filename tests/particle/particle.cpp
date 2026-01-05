@@ -10,8 +10,9 @@ using namespace viennaray;
 template <class NumericType, int D> void RunTest() {
 
   {
-    auto particle =
-        std::make_unique<DiffuseParticle<NumericType, D>>(1., "test");
+    NumericType stickingProbability = 1.0;
+    auto particle = std::make_unique<DiffuseParticle<NumericType, D>>(
+        stickingProbability, "test");
 
     NumericType sourcePower = particle->getSourceDistributionPower();
     VC_TEST_ASSERT(sourcePower == 1.);
@@ -25,11 +26,13 @@ template <class NumericType, int D> void RunTest() {
   }
 
   {
-    auto particle =
-        std::make_unique<SpecularParticle<NumericType, D>>(1., 100., "test");
+    NumericType stickingProbability = 1.0;
+    NumericType sourcePower = 50.;
+    auto particle = std::make_unique<SpecularParticle<NumericType, D>>(
+        stickingProbability, sourcePower, "test");
 
-    NumericType sourcePower = particle->getSourceDistributionPower();
-    VC_TEST_ASSERT(sourcePower == 100.);
+    NumericType sourcePowerTest = particle->getSourceDistributionPower();
+    VC_TEST_ASSERT(sourcePowerTest == 50.);
 
     auto labels = particle->getLocalDataLabels();
     VC_TEST_ASSERT(labels.size() == 1);

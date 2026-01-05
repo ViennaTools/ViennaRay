@@ -30,17 +30,18 @@ int main() {
   // however the boundary condition in direction of the tracing direction will
   // not be used. Possible choices are: PERIODIC, REFLECTIVE, IGNORE
   BoundaryCondition boundaryConds[D];
-  boundaryConds[0] = BoundaryCondition::PERIODIC; // x
-  boundaryConds[1] = BoundaryCondition::PERIODIC; // y
-  boundaryConds[2] = BoundaryCondition::PERIODIC; // z
+  boundaryConds[0] = BoundaryCondition::PERIODIC_BOUNDARY; // x
+  boundaryConds[1] = BoundaryCondition::PERIODIC_BOUNDARY; // y
+  boundaryConds[2] = BoundaryCondition::PERIODIC_BOUNDARY; // z
 
   // ParticleType: The particle types provides the sticking probability and
   // the reflection process for each surface hit. This class can be user
   // defined, but has to interface the rayParticle<NumericType> class and
   // provide the functions: initNew(...), surfaceCollision(...),
   // surfaceReflection(...).
-  auto particle =
-      std::make_unique<DiffuseParticle<NumericType, D>>(0.1, "flux");
+  NumericType stickingProbability = 0.1;
+  auto particle = std::make_unique<DiffuseParticle<NumericType, D>>(
+      stickingProbability, "flux");
 
   TraceDisk<NumericType, D> rayTracer;
   rayTracer.setGeometry(points, normals, gridDelta);
