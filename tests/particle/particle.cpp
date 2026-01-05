@@ -32,7 +32,7 @@ template <class NumericType, int D> void RunTest() {
         stickingProbability, sourcePower, "test");
 
     NumericType sourcePowerTest = particle->getSourceDistributionPower();
-    VC_TEST_ASSERT(sourcePowerTest == 100.);
+    VC_TEST_ASSERT(sourcePowerTest == 50.);
 
     auto labels = particle->getLocalDataLabels();
     VC_TEST_ASSERT(labels.size() == 1);

@@ -727,8 +727,6 @@ private:
       shaderBindingTable_.callablesRecordStrideInBytes = sizeof(CallableRecord);
       shaderBindingTable_.callablesRecordCount =
           static_cast<unsigned int>(directCallablePGs_.size());
-    } else {
-      assert(false && "No direct callables found.");
     }
   }
 
