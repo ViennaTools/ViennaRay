@@ -97,6 +97,7 @@ public:
 
     if (materialIdsBuffer_.sizeInBytes != 0) {
       launchParams_.materialIds = (int *)materialIdsBuffer_.dPointer();
+      launchParams_.materialMap = (int *)materialMapBuffer_.dPointer();
     }
 
     launchParams_.seed = config_.rngSeed + config_.runNumber++;
@@ -243,14 +244,24 @@ public:
 
   template <class NumericType>
   void setMaterialIds(const std::vector<NumericType> &materialIds,
-                      const bool mapToConsecutive = true) {
+                      const bool mapToConsecutive = true,
+                      const std::set<int> &pUniqueMaterialIds = {}) {
     assert(materialIds.size() == launchParams_.numElements);
 
-    if (mapToConsecutive) {
-      uniqueMaterialIds_.clear();
+    uniqueMaterialIds_.clear();
+    if (!pUniqueMaterialIds.empty()) {
+      uniqueMaterialIds_ = pUniqueMaterialIds;
+    } else {
       for (auto &matId : materialIds) {
         uniqueMaterialIds_.insert(static_cast<int>(matId));
       }
+    }
+
+    std::vector<int> materialMap(uniqueMaterialIds_.begin(),
+                                 uniqueMaterialIds_.end());
+    materialMapBuffer_.allocUpload(materialMap);
+
+    if (mapToConsecutive) {
       std::unordered_map<NumericType, unsigned> materialIdMap;
       int currentId = 0;
       for (auto &uniqueMaterialId : uniqueMaterialIds_) {
@@ -266,6 +277,7 @@ public:
       materialIdsBuffer_.allocUpload(materialIdsMapped);
     } else {
       std::vector<int> materialIdsMapped(launchParams_.numElements);
+#pragma omp parallel for
       for (int i = 0; i < launchParams_.numElements; i++) {
         materialIdsMapped[i] = static_cast<int>(materialIds[i]);
       }
@@ -347,6 +359,7 @@ public:
       buffer.free();
     }
     materialIdsBuffer_.free();
+    materialMapBuffer_.free();
     for (auto &buffer : materialStickingBuffer_) {
       buffer.free();
     }
@@ -749,6 +762,7 @@ protected:
   std::vector<Particle<T>> particles_;
   CudaBuffer dataPerParticleBuffer_;               // same for all particles
   std::vector<CudaBuffer> materialStickingBuffer_; // different for particles
+  CudaBuffer materialMapBuffer_;
 
   // sbt data
   CudaBuffer cellDataBuffer_;
