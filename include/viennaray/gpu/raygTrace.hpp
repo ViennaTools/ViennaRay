@@ -243,14 +243,20 @@ public:
 
   template <class NumericType>
   void setMaterialIds(const std::vector<NumericType> &materialIds,
-                      const bool mapToConsecutive = true) {
+                      const bool mapToConsecutive = true,
+                      const std::set<int> &pUniqueMaterialIds = {}) {
     assert(materialIds.size() == launchParams_.numElements);
 
-    if (mapToConsecutive) {
-      uniqueMaterialIds_.clear();
+    uniqueMaterialIds_.clear();
+    if (!pUniqueMaterialIds.empty()) {
+      uniqueMaterialIds_ = pUniqueMaterialIds;
+    } else {
       for (auto &matId : materialIds) {
         uniqueMaterialIds_.insert(static_cast<int>(matId));
       }
+    }
+
+    if (mapToConsecutive) {
       std::unordered_map<NumericType, unsigned> materialIdMap;
       int currentId = 0;
       for (auto &uniqueMaterialId : uniqueMaterialIds_) {
@@ -266,6 +272,7 @@ public:
       materialIdsBuffer_.allocUpload(materialIdsMapped);
     } else {
       std::vector<int> materialIdsMapped(launchParams_.numElements);
+#pragma omp parallel for
       for (int i = 0; i < launchParams_.numElements; i++) {
         materialIdsMapped[i] = static_cast<int>(materialIds[i]);
       }
