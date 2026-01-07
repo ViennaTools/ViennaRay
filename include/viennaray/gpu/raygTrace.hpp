@@ -97,6 +97,7 @@ public:
 
     if (materialIdsBuffer_.sizeInBytes != 0) {
       launchParams_.materialIds = (int *)materialIdsBuffer_.dPointer();
+      launchParams_.materialMap = (int *)materialMapBuffer_.dPointer();
     }
 
     launchParams_.seed = config_.rngSeed + config_.runNumber++;
@@ -256,6 +257,10 @@ public:
       }
     }
 
+    std::vector<int> materialMap(uniqueMaterialIds_.begin(),
+                                 uniqueMaterialIds_.end());
+    materialMapBuffer_.allocUpload(materialMap);
+
     if (mapToConsecutive) {
       std::unordered_map<NumericType, unsigned> materialIdMap;
       int currentId = 0;
@@ -354,6 +359,7 @@ public:
       buffer.free();
     }
     materialIdsBuffer_.free();
+    materialMapBuffer_.free();
     for (auto &buffer : materialStickingBuffer_) {
       buffer.free();
     }
@@ -756,6 +762,7 @@ protected:
   std::vector<Particle<T>> particles_;
   CudaBuffer dataPerParticleBuffer_;               // same for all particles
   std::vector<CudaBuffer> materialStickingBuffer_; // different for particles
+  CudaBuffer materialMapBuffer_;
 
   // sbt data
   CudaBuffer cellDataBuffer_;

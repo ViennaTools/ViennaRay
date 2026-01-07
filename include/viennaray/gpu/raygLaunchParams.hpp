@@ -40,6 +40,7 @@ struct LaunchParams {
   float sticking = 1.f;
   float cosineExponent = 1.f;
   int *materialIds;
+  int *materialMap;
   float *materialSticking;
   void *customData;
 
