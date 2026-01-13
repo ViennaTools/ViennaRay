@@ -41,7 +41,6 @@ public:
   }
 
   void normalizeResults() override {
-    this->syncStreams();
     double sourceArea = 0.0;
     if constexpr (D == 2) {
       sourceArea =
@@ -52,6 +51,7 @@ public:
            launchParams_.source.minPoint[0]) *
           (launchParams_.source.maxPoint[1] - launchParams_.source.minPoint[1]);
     }
+    this->syncStreams();
     assert(this->resultBuffer_.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
     CUdeviceptr d_data = this->resultBuffer_.dPointer();
