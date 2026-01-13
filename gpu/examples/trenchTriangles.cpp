@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
   std::vector<gpu::CallableConfig> cMap = {
       {0, gpu::CallableSlot::COLLISION, "__direct_callable__particleCollision"},
       {0, gpu::CallableSlot::REFLECTION,
-       "__direct_callable__particleReflectionConstSticking"}};
+       "__direct_callable__particleReflection"}};
 
   gpu::TraceTriangle<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);

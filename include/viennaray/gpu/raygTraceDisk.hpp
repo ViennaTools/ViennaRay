@@ -169,6 +169,7 @@ public:
     areaBuffer.allocUpload(areas);
     CUdeviceptr d_areas = areaBuffer.dPointer();
     CUdeviceptr d_data = this->resultBuffer_.dPointer();
+    this->syncStreams();
 
     void *kernel_args[] = {
         &d_data,     &d_areas,        &launchParams_.numElements,

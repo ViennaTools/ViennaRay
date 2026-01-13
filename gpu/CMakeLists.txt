@@ -22,7 +22,8 @@ endif()
 viennacore_add_optixir(GeneralPipelineDisk ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu)
 viennacore_add_optixir(GeneralPipelineTriangle ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu)
 viennacore_add_optixir(GeneralPipelineLine ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu)
-viennacore_add_optixir(ViennaRayCallableWrapper ${VIENNARAY_PIPELINE_DIR}/CallableWrapper.cu)
+viennacore_add_optixir(ViennaRayCallableWrapper ${VIENNARAY_PIPELINE_DIR}/CallableWrapper.cu
+                       DEPENDS "${VIENNARAY_PIPELINE_DIR}/Particle.cuh")
 
 # Add the norm kernels
 viennacore_add_ptx(normKernels ${VIENNARAY_CUDA_KERNELS})

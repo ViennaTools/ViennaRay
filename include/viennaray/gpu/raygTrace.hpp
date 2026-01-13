@@ -134,31 +134,33 @@ public:
     // set up material specific sticking probabilities
     materialStickingBuffer_.resize(particles_.size());
     for (size_t i = 0; i < particles_.size(); i++) {
-      if (!particles_[i].materialSticking.empty()) {
+      auto &materialStickingMap = particles_[i].materialSticking;
+
+      if (!materialStickingMap.empty()) {
         if (uniqueMaterialIds_.empty() || materialIdsBuffer_.sizeInBytes == 0) {
           VIENNACORE_LOG_ERROR(
               "Material IDs not set, when using material dependent "
               "sticking.");
         }
-        std::vector<float> materialSticking(uniqueMaterialIds_.size());
-        unsigned currentId = 0;
-        for (auto &matId : uniqueMaterialIds_) {
-          if (particles_[i].materialSticking.find(matId) ==
-              particles_[i].materialSticking.end()) {
-            materialSticking[currentId++] =
-                static_cast<float>(particles_[i].sticking);
+        std::vector<float> materialStickingArray(uniqueMaterialIds_.size());
+        for (size_t idx = 0; idx < uniqueMaterialIds_.size(); ++idx) {
+          if (auto it = materialStickingMap.find(uniqueMaterialIds_[idx]);
+              it != materialStickingMap.end()) {
+            materialStickingArray[idx] = static_cast<float>(it->second);
           } else {
-            materialSticking[currentId++] =
-                static_cast<float>(particles_[i].materialSticking[matId]);
+            // not in map, use default sticking
+            materialStickingArray[idx] =
+                static_cast<float>(particles_[i].sticking);
           }
         }
-        materialStickingBuffer_[i].allocUpload(materialSticking);
+        materialStickingBuffer_[i].allocUpload(materialStickingArray);
       }
     }
 
-    // Every particle gets its own stream and launch parameters
-    std::vector<cudaStream_t> streams(particles_.size());
+    // Every particle gets its launch parameters
     launchParamsBuffers_.resize(particles_.size());
+    assert(launchParamsBuffers_.size() == streams_.size() &&
+           "Number of streams not initialized correctly.");
 
     if (particleMap_.empty()) {
       VIENNACORE_LOG_ERROR("No particle name->particleType mapping provided.");
@@ -190,8 +192,6 @@ public:
       }
 
       launchParamsBuffers_[i].allocUploadSingle(launchParams_);
-
-      CUDA_CHECK(StreamCreate(&streams[i]));
     }
 
     generateSBT();
@@ -199,7 +199,7 @@ public:
 #ifndef NDEBUG // Launch on single stream in debug mode
     for (size_t i = 0; i < particles_.size(); i++) {
       OPTIX_CHECK(optixLaunch(
-          pipeline_, streams[0],
+          pipeline_, streams_[0],
           /*! parameters and SBT */
           launchParamsBuffers_[i].dPointer(),
           launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
@@ -209,7 +209,7 @@ public:
 #else // Launch on multiple streams in release mode
     for (size_t i = 0; i < particles_.size(); i++) {
       OPTIX_CHECK(optixLaunch(
-          pipeline_, streams[i],
+          pipeline_, streams_[i],
           /*! parameters and SBT */
           launchParamsBuffers_[i].dPointer(),
           launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
@@ -218,12 +218,7 @@ public:
     }
 #endif
 
-    // sync
-    for (auto &s : streams) {
-      CUDA_CHECK(StreamSynchronize(s));
-      CUDA_CHECK(StreamDestroy(s));
-    }
-
+    isSynced_ = false;
     resultsDownloaded_ = false;
   }
 
@@ -244,45 +239,50 @@ public:
 
   template <class NumericType>
   void setMaterialIds(const std::vector<NumericType> &materialIds,
-                      const bool mapToConsecutive = true,
-                      const std::set<int> &pUniqueMaterialIds = {}) {
+                      const bool mapToConsecutive = true) {
     assert(materialIds.size() == launchParams_.numElements);
 
-    uniqueMaterialIds_.clear();
-    if (!pUniqueMaterialIds.empty()) {
-      uniqueMaterialIds_ = pUniqueMaterialIds;
+    // copy material IDs
+    if constexpr (std::is_same_v<NumericType, int>) {
+      uniqueMaterialIds_ = materialIds;
     } else {
-      for (auto &matId : materialIds) {
-        uniqueMaterialIds_.insert(static_cast<int>(matId));
-      }
+      // cast to int
+      uniqueMaterialIds_.resize(materialIds.size());
+      std::transform(materialIds.begin(), materialIds.end(),
+                     uniqueMaterialIds_.begin(),
+                     [](auto x) { return static_cast<int>(x); });
     }
 
-    std::vector<int> materialMap(uniqueMaterialIds_.begin(),
-                                 uniqueMaterialIds_.end());
-    materialMapBuffer_.allocUpload(materialMap);
+    // reduce to sorted unique IDs
+    std::sort(uniqueMaterialIds_.begin(), uniqueMaterialIds_.end());
+    uniqueMaterialIds_.erase(
+        std::unique(uniqueMaterialIds_.begin(), uniqueMaterialIds_.end()),
+        uniqueMaterialIds_.end());
+
+    std::vector<int> materialIdsMapped(launchParams_.numElements);
 
     if (mapToConsecutive) {
-      std::unordered_map<NumericType, unsigned> materialIdMap;
-      int currentId = 0;
-      for (auto &uniqueMaterialId : uniqueMaterialIds_) {
-        materialIdMap[uniqueMaterialId] = currentId++;
-      }
-      assert(currentId == materialIdMap.size());
-
-      std::vector<int> materialIdsMapped(launchParams_.numElements);
+      // mapping to consecutive IDs. Use binary search
 #pragma omp parallel for
       for (int i = 0; i < launchParams_.numElements; i++) {
-        materialIdsMapped[i] = materialIdMap[materialIds[i]];
+        int idx = 0, matId = static_cast<int>(materialIds[i]);
+        for (; idx < uniqueMaterialIds_.size(); ++idx) {
+          if (uniqueMaterialIds_[idx] == matId)
+            break;
+        }
+        materialIdsMapped[i] = idx;
       }
-      materialIdsBuffer_.allocUpload(materialIdsMapped);
     } else {
-      std::vector<int> materialIdsMapped(launchParams_.numElements);
+      // no mapping, just copy
 #pragma omp parallel for
       for (int i = 0; i < launchParams_.numElements; i++) {
         materialIdsMapped[i] = static_cast<int>(materialIds[i]);
       }
-      materialIdsBuffer_.allocUpload(materialIdsMapped);
     }
+
+    // upload to device
+    materialMapBuffer_.allocUpload(uniqueMaterialIds_);
+    materialIdsBuffer_.allocUpload(materialIdsMapped);
   }
 
   void setNumberOfRaysPerPoint(const size_t pNumRays) {
@@ -396,6 +396,9 @@ public:
       }
     }
     directCallablePGs_.clear();
+    for (auto &s : streams_) {
+      CUDA_CHECK(StreamDestroy(s));
+    }
   }
 
   unsigned int prepareParticlePrograms() {
@@ -422,6 +425,12 @@ public:
         (unsigned int *)dataPerParticleBuffer_.dPointer();
     VIENNACORE_LOG_DEBUG("Number of flux arrays: " +
                          std::to_string(numFluxes_));
+
+    // each particle gets its own stream
+    streams_.resize(particles_.size());
+    for (size_t i = 0; i < particles_.size(); i++) {
+      CUDA_CHECK(StreamCreate(&streams_[i]));
+    }
 
     return numFluxes_;
   }
@@ -455,8 +464,19 @@ public:
     launchParams_.customData = (void *)d_params;
   }
 
+  void syncStreams() {
+    if (isSynced_)
+      return;
+
+    for (auto &s : streams_) {
+      CUDA_CHECK(StreamSynchronize(s));
+    }
+    isSynced_ = true;
+  }
+
   void downloadResults() {
     if (!resultsDownloaded_) {
+      syncStreams();
       results_.resize(launchParams_.numElements * numFluxes_);
       resultBuffer_.download(results_.data(),
                              launchParams_.numElements * numFluxes_);
@@ -752,7 +772,7 @@ protected:
   std::unordered_map<std::string, unsigned> particleMap_;
   std::vector<CallableConfig> callableMap_;
 
-  std::set<int> uniqueMaterialIds_;
+  std::vector<int> uniqueMaterialIds_;
   CudaBuffer materialIdsBuffer_;
 
   float gridDelta_ = 0.0f;
@@ -788,6 +808,7 @@ protected:
   // launch parameters
   LaunchParams launchParams_;
   std::vector<CudaBuffer> launchParamsBuffers_; // one per particle
+  std::vector<cudaStream_t> streams_;
 
   // results Buffer
   CudaBuffer resultBuffer_;
@@ -796,6 +817,7 @@ protected:
   rayInternal::KernelConfig config_;
   bool ignoreBoundary_ = false;
   bool resultsDownloaded_ = false;
+  bool isSynced_ = false;
 
   size_t numRays_ = 0;
   unsigned numCellData_ = 0;
