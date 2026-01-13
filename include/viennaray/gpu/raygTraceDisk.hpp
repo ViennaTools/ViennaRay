@@ -84,6 +84,7 @@ public:
   }
 
   void normalizeResults() override {
+    this->syncStreams();
     assert(this->resultBuffer_.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
     double sourceArea = 0.0;

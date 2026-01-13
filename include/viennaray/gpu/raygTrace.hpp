@@ -157,9 +157,10 @@ public:
       }
     }
 
-    // Every particle gets its own stream and launch parameters
-    std::vector<cudaStream_t> streams(particles_.size());
+    // Every particle gets its launch parameters
     launchParamsBuffers_.resize(particles_.size());
+    assert(launchParamsBuffers_.size() == streams_.size() &&
+           "Number of streams not initialized correctly.");
 
     if (particleMap_.empty()) {
       VIENNACORE_LOG_ERROR("No particle name->particleType mapping provided.");
@@ -191,8 +192,6 @@ public:
       }
 
       launchParamsBuffers_[i].allocUploadSingle(launchParams_);
-
-      CUDA_CHECK(StreamCreate(&streams[i]));
     }
 
     generateSBT();
@@ -200,7 +199,7 @@ public:
 #ifndef NDEBUG // Launch on single stream in debug mode
     for (size_t i = 0; i < particles_.size(); i++) {
       OPTIX_CHECK(optixLaunch(
-          pipeline_, streams[0],
+          pipeline_, streams_[0],
           /*! parameters and SBT */
           launchParamsBuffers_[i].dPointer(),
           launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
@@ -210,7 +209,7 @@ public:
 #else // Launch on multiple streams in release mode
     for (size_t i = 0; i < particles_.size(); i++) {
       OPTIX_CHECK(optixLaunch(
-          pipeline_, streams[i],
+          pipeline_, streams_[i],
           /*! parameters and SBT */
           launchParamsBuffers_[i].dPointer(),
           launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
@@ -219,12 +218,7 @@ public:
     }
 #endif
 
-    // sync
-    for (auto &s : streams) {
-      CUDA_CHECK(StreamSynchronize(s));
-      CUDA_CHECK(StreamDestroy(s));
-    }
-
+    isSynced_ = false;
     resultsDownloaded_ = false;
   }
 
@@ -402,6 +396,9 @@ public:
       }
     }
     directCallablePGs_.clear();
+    for (auto &s : streams_) {
+      CUDA_CHECK(StreamDestroy(s));
+    }
   }
 
   unsigned int prepareParticlePrograms() {
@@ -428,6 +425,12 @@ public:
         (unsigned int *)dataPerParticleBuffer_.dPointer();
     VIENNACORE_LOG_DEBUG("Number of flux arrays: " +
                          std::to_string(numFluxes_));
+
+    // each particle gets its own stream
+    streams_.resize(particles_.size());
+    for (size_t i = 0; i < particles_.size(); i++) {
+      CUDA_CHECK(StreamCreate(&streams_[i]));
+    }
 
     return numFluxes_;
   }
@@ -461,8 +464,19 @@ public:
     launchParams_.customData = (void *)d_params;
   }
 
+  void syncStreams() {
+    if (isSynced_)
+      return;
+
+    for (auto &s : streams_) {
+      CUDA_CHECK(StreamSynchronize(s));
+    }
+    isSynced_ = true;
+  }
+
   void downloadResults() {
     if (!resultsDownloaded_) {
+      syncStreams();
       results_.resize(launchParams_.numElements * numFluxes_);
       resultBuffer_.download(results_.data(),
                              launchParams_.numElements * numFluxes_);
@@ -794,6 +808,7 @@ protected:
   // launch parameters
   LaunchParams launchParams_;
   std::vector<CudaBuffer> launchParamsBuffers_; // one per particle
+  std::vector<cudaStream_t> streams_;
 
   // results Buffer
   CudaBuffer resultBuffer_;
@@ -802,6 +817,7 @@ protected:
   rayInternal::KernelConfig config_;
   bool ignoreBoundary_ = false;
   bool resultsDownloaded_ = false;
+  bool isSynced_ = false;
 
   size_t numRays_ = 0;
   unsigned numCellData_ = 0;
