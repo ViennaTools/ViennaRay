@@ -49,38 +49,39 @@ endif()
 # Setup Library
 # --------------------------------------------------------------------------------------------------------
 
-add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME} src/rayBoundary.cpp src/rayGeometryDisk.cpp src/rayGeometryTriangle.cpp
+                          src/rayPointNeighborhood.cpp src/rayDiskBoundingBoxIntersector.cpp)
 add_library(ViennaTools::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_compile_definitions(${PROJECT_NAME}
-                           INTERFACE VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION})
+                           PUBLIC VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION})
 
 set_target_properties(
   ${PROJECT_NAME}
-  PROPERTIES CXX_STANDARD 17
+  PROPERTIES CXX_STANDARD 20
              CXX_EXTENSIONS OFF
              CXX_STANDARD_REQUIRED ON
              WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 if(VIENNARAY_USE_WDIST)
   message(STATUS "[ViennaRay] Using weighted distribution of ray weights")
-  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_WDIST)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_WDIST)
 endif()
 
 if(VIENNARAY_GPU_DOUBLE_PRECISION)
   message(STATUS "[ViennaRay] Using double precision on GPU")
-  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_GPU_DOUBLE_PRECISION)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_GPU_DOUBLE_PRECISION)
 endif()
 
 if(VIENNARAY_PRINT_PROGRESS)
   message(STATUS "[ViennaRay] Enabling progress printing")
-  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_PRINT_PROGRESS)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_PRINT_PROGRESS)
 endif()
 
 if(EMBREE_RAY_MASK)
   message(STATUS "[ViennaRay] Using embree ray masking")
-  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_USE_RAY_MASKING)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC VIENNARAY_USE_RAY_MASKING)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
@@ -88,8 +89,8 @@ endif()
 # --------------------------------------------------------------------------------------------------------
 
 target_include_directories(
-  ${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/viennaray>
-                            $<INSTALL_INTERFACE:include/viennaray-${PROJECT_VERSION}>)
+  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/viennaray>
+                          $<INSTALL_INTERFACE:include/viennaray-${PROJECT_VERSION}>)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Dependencies
@@ -99,7 +100,7 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 1.9.2
+  VERSION 1.9.4
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 
@@ -124,7 +125,7 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/embree/embree"
   OPTIONS "EMBREE_TUTORIALS OFF")
 
-target_link_libraries(${PROJECT_NAME} INTERFACE embree ViennaTools::ViennaCore)
+target_link_libraries(${PROJECT_NAME} PUBLIC embree ViennaTools::ViennaCore)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Examples
