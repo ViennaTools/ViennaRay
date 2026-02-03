@@ -60,7 +60,7 @@ __device__ __forceinline__ Vec3Df getNormal(const void *sbtData,
 static __device__ __forceinline__ void
 specularReflection(PerRayData *prd, const Vec3Df &geoNormal) {
 #ifndef VIENNARAY_TEST
-  prd->pos = prd->pos + prd->tMin * prd->dir;
+  prd->pos = prd->pos + prd->tMin * prd->traceDir;
 #endif
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
@@ -76,31 +76,27 @@ static __device__ Vec3Df PickRandomPointOnUnitSphere(CudaRNG *state) {
   return Vec3Df{r * c, r * s, z};
 }
 
-static __device__ void
-diffuseReflection(PerRayData *prd, const Vec3Df &geoNormal, const uint8_t D) {
+static __device__ void diffuseReflection(PerRayData *prd,
+                                         const Vec3Df &geoNormal) {
 #ifndef VIENNARAY_TEST
-  prd->pos = prd->pos + prd->tMin * prd->dir;
+  prd->pos = prd->pos + prd->tMin * prd->traceDir;
 #endif
   const Vec3Df randomDirection = PickRandomPointOnUnitSphere(&prd->RNGstate);
   prd->dir = geoNormal + randomDirection;
-
-  if (D == 2)
-    prd->dir[2] = 0.f;
-
   Normalize(prd->dir);
 }
 
-static __device__ void diffuseReflection(PerRayData *prd, const uint8_t D) {
+static __device__ void diffuseReflection(PerRayData *prd) {
 
   const HitSBTDataDisk *sbtData =
       (const HitSBTDataDisk *)optixGetSbtDataPointer();
   const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
-  diffuseReflection(prd, geoNormal, D);
+  diffuseReflection(prd, geoNormal);
 }
 
 static __device__ __forceinline__ void
 conedCosineReflection(PerRayData *prd, const Vec3Df &geomNormal,
-                      const float maxConeAngle, const uint8_t D) {
+                      const float maxConeAngle) {
   // Calculate specular direction
   specularReflection(prd, geomNormal);
 
@@ -108,7 +104,7 @@ conedCosineReflection(PerRayData *prd, const Vec3Df &geomNormal,
     return;
   }
   if (maxConeAngle >= M_PI_2f) {
-    diffuseReflection(prd, geomNormal, D);
+    diffuseReflection(prd, geomNormal);
     return;
   }
 
@@ -152,9 +148,6 @@ conedCosineReflection(PerRayData *prd, const Vec3Df &geomNormal,
   const float dp = DotProduct(dir, geomNormal);
   if (dp <= 0.f)
     dir = dir - 2.f * dp * geomNormal;
-
-  if (D == 2)
-    dir[2] = 0.f;
 
   Normalize(dir);
   prd->dir = dir;

@@ -16,7 +16,7 @@
 
 using namespace viennaray::gpu;
 
-extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
+extern "C" __constant__ LaunchParams launchParams;
 
 extern "C" __global__ void __intersection__() {
   const HitSBTDataLine *sbtData =
@@ -32,7 +32,8 @@ extern "C" __global__ void __intersection__() {
   const Vec3Df &p1 = sbtData->nodes[idx[1]];
 
   Vec3Df lineDir = p1 - p0;
-  float d = 1.f / (prd->dir[0] * lineDir[1] - prd->dir[1] * lineDir[0]);
+  float d =
+      1.f / (prd->traceDir[0] * lineDir[1] - prd->traceDir[1] * lineDir[0]);
 
   bool valid = true;
 
@@ -41,9 +42,9 @@ extern "C" __global__ void __intersection__() {
   // float t = CrossProduct((p0 - prd->pos), lineDir)[2] * d;
   valid &= t > 1e-5f;
 
-  float s =
-      d * (p0ToRayOrigin[0] * prd->dir[1] - p0ToRayOrigin[1] * prd->dir[0]);
-  // float s = CrossProduct((p0 - prd->pos), prd->dir)[2] * d;
+  float s = d * (p0ToRayOrigin[0] * prd->traceDir[1] -
+                 p0ToRayOrigin[1] * prd->traceDir[0]);
+  // float s = CrossProduct((p0 - prd->pos), prd->traceDir)[2] * d;
   valid &= s > 1e-5f && s < 1.0f - 1e-5f;
 
   if (valid) {
@@ -81,6 +82,8 @@ extern "C" __global__ void __closesthit__() {
         callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
     optixDirectCall<void, const HitSBTDataLine *, PerRayData *>(callIdx,
                                                                 sbtData, prd);
+
+    prd->numReflections++;
   }
 }
 
@@ -95,15 +98,20 @@ extern "C" __global__ void __raygen__() {
   // per-ray data
   PerRayData prd;
   // each ray has its own RNG state
-  initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
+  initializeRNGState(prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, launchParams.source, launchParams.D);
+  initializeRayPosition(prd, launchParams.source, launchParams.D);
   if (launchParams.source.customDirectionBasis) {
-    initializeRayDirection(&prd, launchParams.cosineExponent,
-                           launchParams.source.directionBasis, launchParams.D);
+    initializeRayDirection(prd, launchParams.cosineExponent,
+                           launchParams.source.directionBasis);
   } else {
-    initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
+    initializeRayDirection(prd, launchParams.cosineExponent);
+    if (launchParams.D == 2) {
+      // fold z into y for 2D
+      prd.dir[1] = prd.dir[2];
+      prd.traceDir[1] = prd.traceDir[2];
+    }
   }
 
   unsigned callIdx =
@@ -117,12 +125,22 @@ extern "C" __global__ void __raygen__() {
   unsigned int hintBitLength = 2;
 
   while (continueRay(launchParams, prd)) {
+    if (launchParams.D == 2) {
+      prd.traceDir[2] = 0.f;
+      viennacore::Normalize(prd.traceDir);
+    }
+    // printf("Idx: %u, pos: (%f, %f, %f), dir: (%f, %f, %f), traceDir: "
+    //        "(%f, %f, %f), r: %u\n",
+    //        linearLaunchIndex, prd.pos[0], prd.pos[1], prd.pos[2], prd.dir[0],
+    //        prd.dir[1], prd.dir[2], prd.traceDir[0], prd.traceDir[1],
+    //        prd.traceDir[2], prd.numReflections);
     optixTraverse(launchParams.traversable, // traversable GAS
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
-                  make_float3(prd.dir[0], prd.dir[1], prd.dir[2]), // direction
-                  1e-4f,                                           // tmin
-                  1e20f,                                           // tmax
-                  0.0f,                                            // rayTime
+                  make_float3(prd.traceDir[0], prd.traceDir[1],
+                              prd.traceDir[2]), // direction
+                  1e-4f,                        // tmin
+                  1e20f,                        // tmax
+                  0.0f,                         // rayTime
                   OptixVisibilityMask(255),
                   OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
                   0,                             // SBT offset
@@ -140,7 +158,6 @@ extern "C" __global__ void __raygen__() {
     }
     optixReorder(hint, hintBitLength);
     optixInvoke(u0, u1);
-    prd.totalCount = 0; // Reset PerRayData
-    prd.numReflections++;
+    prd.traceDir = prd.dir; // Update traceDir for the next iteration
   }
 }

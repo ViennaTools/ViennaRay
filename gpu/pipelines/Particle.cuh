@@ -27,7 +27,7 @@ particleReflection(const void *sbtData, viennaray::gpu::PerRayData *prd) {
   int materialId = launchParams.materialIds[prd->primID];
   prd->rayWeight -= prd->rayWeight * launchParams.materialSticking[materialId];
   auto geoNormal = viennaray::gpu::computeNormal(sbtData, prd->primID);
-  viennaray::gpu::diffuseReflection(prd, geoNormal, launchParams.D);
+  viennaray::gpu::diffuseReflection(prd, geoNormal);
 }
 
 __forceinline__ __device__ void
@@ -35,7 +35,7 @@ particleReflectionConstSticking(const void *sbtData,
                                 viennaray::gpu::PerRayData *prd) {
   prd->rayWeight -= prd->rayWeight * launchParams.sticking;
   auto geoNormal = viennaray::gpu::computeNormal(sbtData, prd->primID);
-  viennaray::gpu::diffuseReflection(prd, geoNormal, launchParams.D);
+  viennaray::gpu::diffuseReflection(prd, geoNormal);
 }
 
 __forceinline__ __device__ void particleInit(viennaray::gpu::PerRayData *prd) {

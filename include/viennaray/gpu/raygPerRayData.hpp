@@ -17,6 +17,8 @@ struct PerRayData {
   // Position and direction
   Vec3Df pos;
   Vec3Df dir;
+  Vec3Df traceDir; // direction for calculating the intersection, which can be
+                   // different in 2D from the actual ray direction
 
   // Simulation specific data
   float rayWeight = 1.f;
@@ -65,10 +67,10 @@ static __device__ __forceinline__ PerRayData *getPRD() {
 }
 
 static __device__ __forceinline__ void
-initializeRNGState(PerRayData *prd, unsigned int linearLaunchIndex,
+initializeRNGState(PerRayData &prd, unsigned int linearLaunchIndex,
                    unsigned int seed) {
   auto rngSeed = tea<3>(linearLaunchIndex, seed);
-  curand_init(rngSeed, 0, 0, &prd->RNGstate);
+  curand_init(rngSeed, 0, 0, &prd.RNGstate);
 }
 #endif
 
