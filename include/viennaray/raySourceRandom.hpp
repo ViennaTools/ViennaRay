@@ -73,17 +73,14 @@ private:
     auto r1 = uniDist(rngState);
     auto r2 = uniDist(rngState);
 
+    NumericType sinPhi, cosPhi;
+    rayInternal::sincos(M_PI * 2. * r1, sinPhi, cosPhi);
     const NumericType cosTheta = std::pow(r2, ee_);
     const NumericType sinTheta = std::sqrt(1. - cosTheta * cosTheta);
-    direction[rayDir_] = posNeg_ * cosTheta;
-    direction[firstDir_] = std::cos(M_PI * 2. * r1) * sinTheta;
 
-    if constexpr (D == 2) {
-      direction[secondDir_] = 0.;
-      Normalize(direction);
-    } else {
-      direction[secondDir_] = std::sin(M_PI * 2. * r1) * sinTheta;
-    }
+    direction[rayDir_] = posNeg_ * cosTheta;
+    direction[firstDir_] = cosPhi * sinTheta;
+    direction[secondDir_] = sinPhi * sinTheta;
 
     return direction;
   }
@@ -93,15 +90,15 @@ private:
     std::uniform_real_distribution<NumericType> uniDist;
 
     do {
-      Vec3D<NumericType> rndDirection{0., 0., 0.};
       auto r1 = uniDist(rngState);
       auto r2 = uniDist(rngState);
 
+      NumericType sinPhi, cosPhi;
+      rayInternal::sincos(M_PI * 2. * r1, sinPhi, cosPhi);
       const NumericType cosTheta = std::pow(r2, ee_);
       const NumericType sinTheta = std::sqrt(1. - cosTheta * cosTheta);
-      rndDirection[0] = cosTheta;
-      rndDirection[1] = std::cos(M_PI * 2. * r1) * sinTheta;
-      rndDirection[2] = std::sin(M_PI * 2. * r1) * sinTheta;
+      Vec3D<NumericType> rndDirection{cosTheta, cosPhi * sinTheta,
+                                      sinPhi * sinTheta};
 
       direction[0] = orthonormalBasis_[0][0] * rndDirection[0] +
                      orthonormalBasis_[1][0] * rndDirection[1] +
@@ -114,11 +111,6 @@ private:
                      orthonormalBasis_[2][2] * rndDirection[2];
     } while ((posNeg_ < 0. && direction[rayDir_] > 0.) ||
              (posNeg_ > 0. && direction[rayDir_] < 0.));
-
-    if constexpr (D == 2) {
-      direction[secondDir_] = 0;
-      Normalize(direction);
-    }
 
     return direction;
   }

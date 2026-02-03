@@ -201,61 +201,62 @@ getTraceSettings(TraceDirection sourceDir) {
   return set;
 }
 
-template <typename T>
-void fillRayDirection(RTCRay &ray, const Vec3D<T> &direction,
-                      const float time = 0.0f) {
+template <int D, typename T>
+inline void fillRayDirection(RTCRay &ray, Vec3D<T> direction,
+                             float time = 0.0f) {
+  static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>,
+                "fillRayDirection: T must be float or double");
+
+  if constexpr (D == 2) {
+    if (direction[2] != T(0)) {
+      direction[2] = T(0);
+      Normalize(direction);
+    }
+  }
+
 #ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray.dir_x) = _mm_set_ps(
       time, static_cast<float>(direction[2]), static_cast<float>(direction[1]),
       static_cast<float>(direction[0]));
 #else
-  ray.dir_x = (float)direction[0];
-  ray.dir_y = (float)direction[1];
-  ray.dir_z = (float)direction[2];
+  ray.dir_x = static_cast<float>(direction[0]);
+  ray.dir_y = static_cast<float>(direction[1]);
+  ray.dir_z = static_cast<float>(direction[2]);
   ray.time = time;
 #endif
 }
 
 template <typename T>
-void fillRayPosition(RTCRay &ray, const Vec3D<T> &origin,
-                     const float tnear = 1e-4f) {
+inline void fillRayPosition(RTCRay &ray, const Vec3D<T> &origin,
+                            float tnear = 1e-4f) {
+  static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>,
+                "fillRayPosition: T must be float or double");
+
 #ifdef ARCH_X86
   reinterpret_cast<__m128 &>(ray) =
       _mm_set_ps(tnear, static_cast<float>(origin[2]),
                  static_cast<float>(origin[1]), static_cast<float>(origin[0]));
 #else
-  ray.org_x = (float)origin[0];
-  ray.org_y = (float)origin[1];
-  ray.org_z = (float)origin[2];
+  ray.org_x = static_cast<float>(origin[0]);
+  ray.org_y = static_cast<float>(origin[1]);
+  ray.org_z = static_cast<float>(origin[2]);
   ray.tnear = tnear;
 #endif
 }
 
-template <>
-inline void fillRayDirection<float>(RTCRay &ray, const Vec3D<float> &direction,
-                                    const float time) {
-#ifdef ARCH_X86
-  reinterpret_cast<__m128 &>(ray.dir_x) =
-      _mm_set_ps(time, direction[2], direction[1], direction[0]);
-#else
-  ray.dir_x = direction[0];
-  ray.dir_y = direction[1];
-  ray.dir_z = direction[2];
-  ray.time = time;
-#endif
-}
+template <typename T> inline void sincos(double x, T &s, T &c) {
+  static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>,
+                "sincos only supports float or double");
 
-template <>
-inline void fillRayPosition<float>(RTCRay &ray, const Vec3D<float> &origin,
-                                   const float tnear) {
-#ifdef ARCH_X86
-  reinterpret_cast<__m128 &>(ray) =
-      _mm_set_ps(tnear, origin[2], origin[1], origin[0]);
+#if defined(__GLIBC__)
+  if constexpr (std::is_same_v<T, float>) {
+    sincosf(x, &s, &c);
+  } else {
+    ::sincos(x, &s, &c);
+  }
 #else
-  ray.org_x = (float)origin[0];
-  ray.org_y = (float)origin[1];
-  ray.org_z = (float)origin[2];
-  ray.tnear = tnear;
+  s = std::sin(x);
+  c = std::cos(x);
 #endif
 }
 
