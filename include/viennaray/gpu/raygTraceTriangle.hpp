@@ -89,7 +89,8 @@ protected:
     // boundary hitgroup
     if (!ignoreBoundary_) {
       HitgroupRecordTriangle boundaryHitgroupRecord = {};
-      optixSbtRecordPackHeader(this->hitgroupPG_, &boundaryHitgroupRecord);
+      optixSbtRecordPackHeader(this->boundaryHitgroupPG_,
+                               &boundaryHitgroupRecord);
       boundaryHitgroupRecord.data.vertex =
           (Vec3Df *)triangleGeometry_.boundaryVertexBuffer.dPointer();
       boundaryHitgroupRecord.data.index =

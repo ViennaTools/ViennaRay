@@ -29,29 +29,36 @@ extern "C" __global__ void __closesthit__() {
   prd->tMin = optixGetRayTmax();
   prd->primID = primID;
 
-  if (sbtData->base.isBoundary) {
-    if (launchParams.periodicBoundary) {
-      applyPeriodicBoundary(prd, sbtData, launchParams.D);
-    } else {
-      reflectFromBoundary(prd, sbtData, launchParams.D);
-    }
+  prd->ISCount = 1;
+  prd->primIDs[0] = primID;
+
+  // ------------- SURFACE COLLISION --------------- //
+  unsigned callIdx;
+
+  callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
+  optixDirectCall<void, const viennaray::gpu::HitSBTDataTriangle *,
+                  PerRayData *>(callIdx, sbtData, prd);
+
+  // ------------- REFLECTION --------------- //
+  callIdx = callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
+  optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(callIdx,
+                                                                  sbtData, prd);
+  prd->numReflections++;
+}
+
+extern "C" __global__ void __closesthit__boundary__() {
+  const HitSBTDataTriangle *sbtData =
+      (const HitSBTDataTriangle *)optixGetSbtDataPointer();
+  PerRayData *prd = getPRD();
+
+  const unsigned int primID = optixGetPrimitiveIndex();
+  prd->tMin = optixGetRayTmax();
+  prd->primID = primID;
+
+  if (launchParams.periodicBoundary) {
+    applyPeriodicBoundary(prd, sbtData, launchParams.D);
   } else {
-    prd->ISCount = 1;
-    prd->primIDs[0] = primID;
-
-    // ------------- SURFACE COLLISION --------------- //
-    unsigned callIdx;
-
-    callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
-    optixDirectCall<void, const viennaray::gpu::HitSBTDataTriangle *,
-                    PerRayData *>(callIdx, sbtData, prd);
-
-    // ------------- REFLECTION --------------- //
-    callIdx =
-        callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
-    optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(
-        callIdx, sbtData, prd);
-    prd->numReflections++;
+    reflectFromBoundary(prd, sbtData, launchParams.D);
   }
 }
 

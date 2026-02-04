@@ -88,59 +88,69 @@ extern "C" __global__ void __closesthit__() {
     return;
   }
 
-  if (sbtData->base.isBoundary) {
-    // This is effectively the miss shader
-    if (launchParams.D == 2 &&
-        (primID == 2 || primID == 3)) { // bottom or top - ymin or ymax
-      prd->rayWeight = 0.0f;
+  // ------------- NEIGHBOR FILTERING --------------- //
+  // Keep only hits close to tMin
+  prd->ISCount = 0;
+  for (int i = 0; i < prd->totalCount; ++i) {
+    if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
+        prd->ISCount < MAX_NEIGHBORS) {
+      prd->primIDs[prd->ISCount++] = prd->primIDs[i];
+    }
+  }
+
+  // ------------- SURFACE COLLISION --------------- //
+  unsigned callIdx =
+      callableIndex(launchParams.particleType, CallableSlot::COLLISION);
+  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, sbtData,
+                                                              prd);
+
+  // ------------- REFLECTION --------------- //
+  callIdx = callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
+  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, sbtData,
+                                                              prd);
+
+  prd->numReflections++;
+}
+
+extern "C" __global__ void __closesthit__boundary__() {
+  const HitSBTDataDisk *sbtData =
+      (const HitSBTDataDisk *)optixGetSbtDataPointer();
+  PerRayData *prd = getPRD();
+
+  const unsigned int primID = optixGetPrimitiveIndex();
+  prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
+  prd->primID = primID;
+
+  const Vec3Df &normal = sbtData->base.normal[primID];
+
+  // If closest hit was on backside, let it through once
+  if (DotProduct(prd->traceDir, normal) > 0.0f) {
+    // If back was hit a second time, kill the ray
+    if (prd->hitFromBack) {
+      prd->rayWeight = 0.f;
       return;
     }
-    if (launchParams.D == 3 &&
-        (primID == 4 || primID == 5)) { // bottom or top - zmin or zmax
-      prd->rayWeight = 0.0f;
-      return;
-    }
+    prd->hitFromBack = true;
+    prd->pos = prd->pos + prd->tMin * prd->traceDir;
+    return;
+  }
 
-    if (launchParams.periodicBoundary) {
-      applyPeriodicBoundary(prd, sbtData, launchParams.D);
-    } else {
-      reflectFromBoundary(prd, sbtData, launchParams.D);
-    }
+  // This is effectively the miss shader
+  if (launchParams.D == 2 &&
+      (primID == 2 || primID == 3)) { // bottom or top - ymin or ymax
+    prd->rayWeight = 0.0f;
+    return;
+  }
+  if (launchParams.D == 3 &&
+      (primID == 4 || primID == 5)) { // bottom or top - zmin or zmax
+    prd->rayWeight = 0.0f;
+    return;
+  }
 
+  if (launchParams.periodicBoundary) {
+    applyPeriodicBoundary(prd, sbtData, launchParams.D);
   } else {
-    // ------------- NEIGHBOR FILTERING --------------- //
-    // Keep only hits close to tMin
-    prd->ISCount = 0;
-    for (int i = 0; i < prd->totalCount; ++i) {
-      if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
-          prd->ISCount < MAX_NEIGHBORS) {
-        prd->primIDs[prd->ISCount++] = prd->primIDs[i];
-      }
-    }
-
-    // // CPU like neighbor detection
-    // prd->ISCount = 0;
-    // for (int i = 0; i < prd->totalCount; ++i) {
-    //   float distance = viennacore::Distance(sbtData->point[primID],
-    //                                         sbtData->point[prd->primIDs[i]]);
-    //   if (distance < 2 * sbtData->radius && prd->ISCount < MAX_NEIGHBORS) {
-    //     prd->TIndex[prd->ISCount++] = prd->primIDs[i];
-    //   }
-    // }
-
-    // ------------- SURFACE COLLISION --------------- //
-    unsigned callIdx =
-        callableIndex(launchParams.particleType, CallableSlot::COLLISION);
-    optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx,
-                                                                sbtData, prd);
-
-    // ------------- REFLECTION --------------- //
-    callIdx =
-        callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
-    optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx,
-                                                                sbtData, prd);
-
-    prd->numReflections++;
+    reflectFromBoundary(prd, sbtData, launchParams.D);
   }
 }
 
