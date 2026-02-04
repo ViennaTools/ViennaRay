@@ -14,7 +14,7 @@
 
 using namespace viennaray::gpu;
 
-extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
+extern "C" __constant__ LaunchParams launchParams;
 
 extern "C" __global__ void __intersection__() {
   const HitSBTDataDisk *sbtData =
@@ -31,10 +31,6 @@ extern "C" __global__ void __intersection__() {
 
   bool valid = true;
   float prodOfDirections = DotProduct(normal, prd->traceDir);
-
-  // Backface hits have to be reported so CH can let the ray through or kill the
-  // ray if needed
-  // valid &= DotProduct(prd->traceDir, normal) <= 0.0f;
 
   // Check if ray is not parallel to the plane
   valid &= fabsf(prodOfDirections) >= 1e-6f;

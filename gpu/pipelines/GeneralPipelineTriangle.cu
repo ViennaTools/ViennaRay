@@ -12,8 +12,6 @@
 
 #include "vcContext.hpp"
 
-// #define COUNT_RAYS
-
 using namespace viennaray::gpu;
 
 extern "C" __constant__ LaunchParams launchParams;
@@ -32,8 +30,8 @@ extern "C" __global__ void __closesthit__() {
   // ------------- SURFACE COLLISION --------------- //
   unsigned callIdx;
   callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
-  optixDirectCall<void, const viennaray::gpu::HitSBTDataTriangle *,
-                  PerRayData *>(callIdx, sbtData, prd);
+  optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(callIdx,
+                                                                  sbtData, prd);
 
   // ------------- REFLECTION --------------- //
   callIdx = callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
@@ -108,9 +106,5 @@ extern "C" __global__ void __raygen__() {
     optixReorder(hint, hintBitLength);
     optixInvoke(u0, u1);
     prd.traceDir = prd.dir; // Update traceDir for the next iteration
-#ifdef COUNT_RAYS
-    int *counter = reinterpret_cast<int *>(launchParams.customData);
-    atomicAdd(counter, 1);
-#endif
   }
 }

@@ -65,16 +65,17 @@ initializeRayDirection(PerRayData &prd, const float power,
 __device__ __forceinline__ void
 initializeRayPosition(PerRayData &prd, const LaunchParams::SourcePlane &source,
                       const uint16_t D) {
-  const float4 u = curand_uniform4(&prd.RNGstate); // (0,1]
+  const float u = curand_uniform(&prd.RNGstate); // (0,1]
   prd.pos[0] =
-      source.minPoint[0] + u.x * (source.maxPoint[0] - source.minPoint[0]);
+      source.minPoint[0] + u * (source.maxPoint[0] - source.minPoint[0]);
 
   if (D == 2) {
     prd.pos[1] = source.planeHeight;
     prd.pos[2] = 0.f;
   } else {
+    const float v = curand_uniform(&prd.RNGstate); // (0,1]
     prd.pos[1] =
-        source.minPoint[1] + u.y * (source.maxPoint[1] - source.minPoint[1]);
+        source.minPoint[1] + v * (source.maxPoint[1] - source.minPoint[1]);
     prd.pos[2] = source.planeHeight;
   }
 }

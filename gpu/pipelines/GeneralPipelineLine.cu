@@ -22,7 +22,7 @@ extern "C" __global__ void __intersection__() {
   PerRayData *prd = getPRD();
 
   // Get the index of the AABB box that was hit
-  const int primID = optixGetPrimitiveIndex();
+  const unsigned int primID = optixGetPrimitiveIndex();
 
   // Read geometric data from the primitive that is inside that AABB box
   const Vec2D<unsigned> &idx = (sbtData->lines)[primID];
@@ -37,12 +37,10 @@ extern "C" __global__ void __intersection__() {
 
   const Vec3Df p0ToRayOrigin = p0 - prd->pos;
   float t = d * (p0ToRayOrigin[0] * lineDir[1] - p0ToRayOrigin[1] * lineDir[0]);
-  // float t = CrossProduct((p0 - prd->pos), lineDir)[2] * d;
-  valid &= t > 1e-5f;
+  valid &= t > optixGetRayTmin();
 
   float s = d * (p0ToRayOrigin[0] * prd->traceDir[1] -
                  p0ToRayOrigin[1] * prd->traceDir[0]);
-  // float s = CrossProduct((p0 - prd->pos), prd->traceDir)[2] * d;
   valid &= s > 1e-5f && s < 1.0f - 1e-5f;
 
   if (valid) {
