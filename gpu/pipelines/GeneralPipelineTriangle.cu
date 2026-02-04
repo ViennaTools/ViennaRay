@@ -49,12 +49,23 @@ extern "C" __global__ void __closesthit__boundary__() {
   prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
 
   const unsigned int primID = optixGetPrimitiveIndex();
-  unsigned dim = primID / 4;
-  if (launchParams.periodicBoundary) {
-    prd->pos[dim] = sbtData->vertex[sbtData->index[primID ^ 2][0]][dim];
-  } else {
-    prd->dir[dim] -= 2 * prd->dir[dim];
-    prd->pos[dim] = sbtData->vertex[sbtData->index[primID][0]][dim];
+  // 0-3: X axis (dim 0), 4-7: Y axis (dim 1)
+  const unsigned int dim = primID / 4;
+  // 0,1,4,5 are Minimum side (0); 2,3,6,7 are Maximum side (1)
+  const unsigned int side = (primID & 2) >> 1;
+
+  const int periodic = launchParams.periodicBoundary;
+  const float bounds[2] = {sbtData->box.minExtent[dim],
+                           sbtData->box.maxExtent[dim]};
+
+  // Update Position:
+  // Periodic(1): opposite side (side ^ 1)
+  // Reflect(0): same side (side ^ 0)
+  prd->pos[dim] = bounds[side ^ periodic];
+
+  if (!launchParams.periodicBoundary) {
+    // Reflect direction
+    prd->dir[dim] = -prd->dir[dim];
   }
 }
 

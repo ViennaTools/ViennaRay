@@ -20,6 +20,9 @@ struct TriangleGeometry {
   CudaBuffer boundaryVertexBuffer;
   CudaBuffer boundaryIndexBuffer;
 
+  Vec3Df minExtent;
+  Vec3Df maxExtent;
+
   // buffer that keeps the (final, compacted) accel structure
   CudaBuffer asBuffer;
 
@@ -46,6 +49,8 @@ struct TriangleGeometry {
           mesh.maximumExtent[2] + mesh.gridDelta + sourceOffset;
     }
     launchParams.numElements = mesh.triangles.size();
+    minExtent = mesh.minimumExtent;
+    maxExtent = mesh.maximumExtent;
 
     // 2 inputs: one for the geometry, one for the boundary
     std::array<OptixBuildInput, 2> triangleInput{};

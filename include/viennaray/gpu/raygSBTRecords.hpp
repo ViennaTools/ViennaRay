@@ -22,8 +22,16 @@ struct HitSBTDataDisk {
 
 struct HitSBTDataTriangle {
   HitSBTDataBase base;
-  Vec3Df *vertex;
-  Vec3D<unsigned> *index;
+  union {
+    struct {
+      Vec3Df *vertex;
+      Vec3D<unsigned> *index;
+    };
+    struct {
+      Vec3Df minExtent;
+      Vec3Df maxExtent;
+    } box;
+  };
 };
 
 struct HitSBTDataLine {

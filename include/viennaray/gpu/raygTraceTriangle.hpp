@@ -91,10 +91,8 @@ protected:
       HitgroupRecordTriangle boundaryHitgroupRecord = {};
       optixSbtRecordPackHeader(this->boundaryHitgroupPG_,
                                &boundaryHitgroupRecord);
-      boundaryHitgroupRecord.data.vertex =
-          (Vec3Df *)triangleGeometry_.boundaryVertexBuffer.dPointer();
-      boundaryHitgroupRecord.data.index =
-          (Vec3D<unsigned> *)triangleGeometry_.boundaryIndexBuffer.dPointer();
+      boundaryHitgroupRecord.data.box.minExtent = triangleGeometry_.minExtent;
+      boundaryHitgroupRecord.data.box.maxExtent = triangleGeometry_.maxExtent;
       boundaryHitgroupRecord.data.base.geometryType = 0;
       boundaryHitgroupRecord.data.base.isBoundary = true;
 
