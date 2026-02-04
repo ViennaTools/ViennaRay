@@ -83,23 +83,33 @@ initializeRayPosition(PerRayData &prd, const LaunchParams::SourcePlane &source,
 __device__ __forceinline__ void
 initializeRayPositionAndDirection(PerRayData &prd,
                                   const LaunchParams &launchParams) {
-  const float4 u = curand_uniform4(&prd.RNGstate); // (0,1]
-  prd.pos[0] =
-      launchParams.source.minPoint[0] +
-      u.x * (launchParams.source.maxPoint[0] - launchParams.source.minPoint[0]);
-  prd.pos[1] =
-      launchParams.source.minPoint[1] +
-      u.y * (launchParams.source.maxPoint[1] - launchParams.source.minPoint[1]);
-  prd.pos[2] = launchParams.source.planeHeight;
-
-  const float tt = powf(u.w, 1.f / (launchParams.cosineExponent + 1.f));
-  float s, c;
-  __sincosf(2.f * M_PIf * u.z, &s, &c);
-  const float sqrt1mtt = sqrtf(1.f - tt * tt);
-  prd.dir[0] = c * sqrt1mtt;
-  prd.dir[1] = s * sqrt1mtt;
-  prd.dir[2] = -tt;
-  prd.traceDir = prd.dir;
+  initializeRayPosition(prd, launchParams.source, launchParams.D);
+  if (launchParams.source.customDirectionBasis) {
+    initializeRayDirection(prd, launchParams.cosineExponent,
+                           launchParams.source.directionBasis);
+  } else {
+    initializeRayDirection(prd, launchParams.cosineExponent);
+    if (launchParams.D == 2) {
+      // fold z into y for 2D
+      prd.dir[1] = prd.dir[2];
+      prd.traceDir[1] = prd.traceDir[2];
+    }
+  }
 }
+
+__device__ __forceinline__ unsigned
+getCoherenceHint(PerRayData &prd, const LaunchParams &launchParams) {
+  unsigned int hint = 0;
+  if (prd.rayWeight < launchParams.rayWeightThreshold || prd.energy < 0.f) {
+    hint |= (1 << 0);
+  }
+  if (optixHitObjectIsHit()) {
+    const HitSBTDataDisk *hitData = reinterpret_cast<const HitSBTDataDisk *>(
+        optixHitObjectGetSbtDataPointer());
+    hint |= hitData->base.isBoundary << 1;
+  }
+  return hint;
+}
+
 } // namespace viennaray::gpu
 #endif

@@ -158,20 +158,7 @@ extern "C" __global__ void __raygen__() {
   initializeRNGState(prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(prd, launchParams.source, launchParams.D);
-  if (launchParams.source.customDirectionBasis) {
-    initializeRayDirection(prd, launchParams.cosineExponent,
-                           launchParams.source.directionBasis);
-    prd.traceDir = prd.dir;
-  } else {
-    initializeRayDirection(prd, launchParams.cosineExponent);
-    prd.traceDir = prd.dir;
-    if (launchParams.D == 2) {
-      // fold z into y for 2D
-      prd.dir[1] = prd.dir[2];
-      prd.traceDir[1] = prd.traceDir[2];
-    }
-  }
+  initializeRayPositionAndDirection(prd, launchParams);
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -201,15 +188,7 @@ extern "C" __global__ void __raygen__() {
                   1,                             // SBT stride
                   0,                             // missSBTIndex
                   u0, u1);                       // Payload
-    unsigned int hint = 0;
-    if (prd.rayWeight < launchParams.rayWeightThreshold || prd.energy < 0.f) {
-      hint |= (1 << 0);
-    }
-    if (optixHitObjectIsHit()) {
-      const HitSBTDataDisk *hitData = reinterpret_cast<const HitSBTDataDisk *>(
-          optixHitObjectGetSbtDataPointer());
-      hint |= hitData->base.isBoundary << 1;
-    }
+    unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, hintBitLength);
     optixInvoke(u0, u1);
     prd.totalCount = 0;     // Reset PerRayData

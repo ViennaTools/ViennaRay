@@ -101,18 +101,7 @@ extern "C" __global__ void __raygen__() {
   initializeRNGState(prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(prd, launchParams.source, launchParams.D);
-  if (launchParams.source.customDirectionBasis) {
-    initializeRayDirection(prd, launchParams.cosineExponent,
-                           launchParams.source.directionBasis);
-  } else {
-    initializeRayDirection(prd, launchParams.cosineExponent);
-    if (launchParams.D == 2) {
-      // fold z into y for 2D
-      prd.dir[1] = prd.dir[2];
-      prd.traceDir[1] = prd.traceDir[2];
-    }
-  }
+  initializeRayPositionAndDirection(prd, launchParams);
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -129,11 +118,6 @@ extern "C" __global__ void __raygen__() {
       prd.traceDir[2] = 0.f;
       viennacore::Normalize(prd.traceDir);
     }
-    // printf("Idx: %u, pos: (%f, %f, %f), dir: (%f, %f, %f), traceDir: "
-    //        "(%f, %f, %f), r: %u\n",
-    //        linearLaunchIndex, prd.pos[0], prd.pos[1], prd.pos[2], prd.dir[0],
-    //        prd.dir[1], prd.dir[2], prd.traceDir[0], prd.traceDir[1],
-    //        prd.traceDir[2], prd.numReflections);
     optixTraverse(launchParams.traversable, // traversable GAS
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
                   make_float3(prd.traceDir[0], prd.traceDir[1],
@@ -147,15 +131,7 @@ extern "C" __global__ void __raygen__() {
                   1,                             // SBT stride
                   0,                             // missSBTIndex
                   u0, u1);                       // Payload
-    unsigned int hint = 0;
-    if (prd.rayWeight < launchParams.rayWeightThreshold || prd.energy < 0.f) {
-      hint |= (1 << 0);
-    }
-    if (optixHitObjectIsHit()) {
-      const HitSBTDataLine *hitData = reinterpret_cast<const HitSBTDataLine *>(
-          optixHitObjectGetSbtDataPointer());
-      hint |= hitData->base.isBoundary << 1;
-    }
+    unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, hintBitLength);
     optixInvoke(u0, u1);
     prd.traceDir = prd.dir; // Update traceDir for the next iteration
