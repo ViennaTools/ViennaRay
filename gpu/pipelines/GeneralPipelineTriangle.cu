@@ -4,11 +4,9 @@
 #define __CUDACC__
 #endif
 
-#include "raygBoundary.hpp"
 #include "raygCallableConfig.hpp"
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
-#include "raygReflection.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygSource.hpp"
 
@@ -28,13 +26,11 @@ extern "C" __global__ void __closesthit__() {
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->tMin = optixGetRayTmax();
   prd->primID = primID;
-
   prd->ISCount = 1;
   prd->primIDs[0] = primID;
 
   // ------------- SURFACE COLLISION --------------- //
   unsigned callIdx;
-
   callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
   optixDirectCall<void, const viennaray::gpu::HitSBTDataTriangle *,
                   PerRayData *>(callIdx, sbtData, prd);
@@ -51,14 +47,16 @@ extern "C" __global__ void __closesthit__boundary__() {
       (const HitSBTDataTriangle *)optixGetSbtDataPointer();
   PerRayData *prd = getPRD();
 
-  const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax();
-  prd->primID = primID;
+  // update ray position to hit point
+  prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
 
+  const unsigned int primID = optixGetPrimitiveIndex();
+  unsigned dim = primID / 4;
   if (launchParams.periodicBoundary) {
-    applyPeriodicBoundary(prd, sbtData, launchParams.D);
+    prd->pos[dim] = sbtData->vertex[sbtData->index[primID ^ 2][0]][dim];
   } else {
-    reflectFromBoundary(prd, sbtData, launchParams.D);
+    prd->dir[dim] -= 2 * prd->dir[dim];
+    prd->pos[dim] = sbtData->vertex[sbtData->index[primID][0]][dim];
   }
 }
 

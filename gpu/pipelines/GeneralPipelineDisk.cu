@@ -4,11 +4,9 @@
 #define __CUDACC__
 #endif
 
-#include "raygBoundary.hpp"
 #include "raygCallableConfig.hpp"
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
-#include "raygReflection.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygSource.hpp"
 
@@ -123,14 +121,8 @@ extern "C" __global__ void __closesthit__boundary__() {
 
   const Vec3Df &normal = sbtData->base.normal[primID];
 
-  // If closest hit was on backside, let it through once
+  // If closest hit was on backside of boundary, let it through
   if (DotProduct(prd->traceDir, normal) > 0.0f) {
-    // If back was hit a second time, kill the ray
-    if (prd->hitFromBack) {
-      prd->rayWeight = 0.f;
-      return;
-    }
-    prd->hitFromBack = true;
     prd->pos = prd->pos + prd->tMin * prd->traceDir;
     return;
   }
@@ -147,10 +139,15 @@ extern "C" __global__ void __closesthit__boundary__() {
     return;
   }
 
+  // update ray position to hit point
+  prd->pos = prd->pos + prd->traceDir * prd->tMin;
+
+  unsigned axis = primID / 2;
   if (launchParams.periodicBoundary) {
-    applyPeriodicBoundary(prd, sbtData, launchParams.D);
+    prd->pos[axis] = sbtData->point[primID ^ 1][axis]; // wrap to opposite side
   } else {
-    reflectFromBoundary(prd, sbtData, launchParams.D);
+    prd->dir[axis] -= 2 * prd->dir[axis]; // reflect
+    prd->pos[axis] = sbtData->point[primID][axis];
   }
 }
 

@@ -4,11 +4,9 @@
 #define __CUDACC__
 #endif
 
-#include "raygBoundary.hpp"
 #include "raygCallableConfig.hpp"
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
-#include "raygReflection.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygSource.hpp"
 
@@ -83,14 +81,14 @@ extern "C" __global__ void __closesthit__boundary__() {
       (const HitSBTDataLine *)optixGetSbtDataPointer();
   PerRayData *prd = getPRD();
 
-  const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax();
-  prd->primID = primID;
+  // update ray position to hit point
+  prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
 
+  const unsigned int primID = optixGetPrimitiveIndex();
   if (launchParams.periodicBoundary) {
-    applyPeriodicBoundary(prd, sbtData, launchParams.D);
+    prd->pos[0] = sbtData->nodes[primID ^ 1][0]; // wrap around x-coordinate
   } else {
-    reflectFromBoundary(prd, sbtData, launchParams.D);
+    prd->dir[0] -= 2 * prd->dir[0]; // reflect
   }
 }
 
