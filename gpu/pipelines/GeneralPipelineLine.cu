@@ -88,6 +88,8 @@ extern "C" __global__ void __closesthit__boundary__() {
   } else {
     prd->dir[0] -= 2 * prd->dir[0]; // reflect
   }
+
+  prd->numBoundaryHits++;
 }
 
 extern "C" __global__ void __miss__() { getPRD()->rayWeight = 0.f; }

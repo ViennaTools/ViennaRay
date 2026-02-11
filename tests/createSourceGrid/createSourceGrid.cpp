@@ -38,7 +38,7 @@ int main() {
     for (size_t i = 0; i < numGridPoints; ++i) {
       auto originAndDirection = source.getOriginAndDirection(i, rngState);
       rayInternal::fillRayPosition(rayHit.ray, originAndDirection[0]);
-      rayInternal::fillRayDirection(rayHit.ray, originAndDirection[1]);
+      rayInternal::fillRayDirection<D>(rayHit.ray, originAndDirection[1]);
 
       VC_TEST_ASSERT(rayHit.ray.dir_z < 0.)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, (1. + 2 * gridDelta), eps)

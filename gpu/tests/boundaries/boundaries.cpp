@@ -68,11 +68,11 @@ int main() {
     tracer.apply();
 
     auto flux = tracer.getFlux(0, 0, 0);
-    // std::cout << "Flux values at each triangle:" << std::endl;
-    // for (size_t i = 0; i < flux.size(); ++i) {
-    //   std::cout << "Triangle " << i << ": " << flux[i] << std::endl;
-    // }
-    // rayInternal::writeVTP(mesh, "boundary_3d_reflective.vtp", flux);
+    std::cout << "Flux values at each triangle:" << std::endl;
+    for (size_t i = 0; i < flux.size(); ++i) {
+      std::cout << "Triangle " << i << ": " << flux[i] << std::endl;
+    }
+    rayInternal::writeVTP(mesh, "boundary_3d_reflective.vtp", flux);
 
     VC_TEST_ASSERT(flux[3] > 0.f);
     VC_TEST_ASSERT(flux[5] > 0.f);

@@ -145,6 +145,8 @@ extern "C" __global__ void __closesthit__boundary__() {
     prd->dir[axis] -= 2 * prd->dir[axis]; // reflect
     prd->pos[axis] = sbtData->point[primID][axis];
   }
+
+  prd->numBoundaryHits++;
 }
 
 extern "C" __global__ void __miss__() { getPRD()->rayWeight = 0.f; }
