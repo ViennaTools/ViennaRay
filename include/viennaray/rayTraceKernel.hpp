@@ -136,12 +136,10 @@ public:
               pSource_->getOriginAndDirection(idx, rngState);
           fillRayPosition(rayHit.ray, originAndDirection[0]);
           if (isZero(rayDirection)) {
-            assert(IsNormalized(originAndDirection[1]));
-            fillRayDirection<D>(rayHit.ray, originAndDirection[1]);
-          } else {
-            assert(IsNormalized(rayDirection));
-            fillRayDirection<D>(rayHit.ray, rayDirection);
+            rayDirection = std::move(originAndDirection[1]);
           }
+          assert(IsNormalized(rayDirection));
+          fillRayDirection<D>(rayHit.ray, rayDirection);
         }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
@@ -302,7 +300,7 @@ public:
           }
 
           // get sticking probability (1) and reflected direction (2)
-          const auto stickingDirection = particle->surfaceReflection(
+          auto stickingDirection = particle->surfaceReflection(
               rayWeight, rayDirection, geomNormal, rayHit.hit.primID,
               geometry_.getMaterialId(rayHit.hit.primID), pGlobalData_,
               rngState);
@@ -323,8 +321,9 @@ public:
           }
 
           // Update ray direction and origin
+          rayDirection = std::move(stickingDirection.second);
           fillRayPosition(rayHit.ray, hitPoint);
-          fillRayDirection<D>(rayHit.ray, stickingDirection.second);
+          fillRayDirection<D>(rayHit.ray, rayDirection);
 
         } while (reflect);
         totalBoundaryHits += boundaryHits;
