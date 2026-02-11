@@ -25,33 +25,27 @@ getOrthonormalBasis(const Vec3Df &n) {
   return {n, t, b2};
 }
 
-__device__ __forceinline__ void
-initializeRayDirection(PerRayData *prd, const float power, const uint16_t D) {
+__device__ __forceinline__ void initializeRayDirection(PerRayData &prd,
+                                                       const float power) {
   // source direction
-  const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
+  const float4 u = curand_uniform4(&prd.RNGstate); // (0,1]
   const float cosTheta = powf(u.w, 1.f / (power + 1.f));
   const float sinTheta = sqrtf(max(0.f, 1.f - cosTheta * cosTheta));
   float sinPhi, cosPhi;
   __sincosf(2.f * M_PIf * u.x, &sinPhi, &cosPhi);
 
-  prd->dir[0] = cosPhi * sinTheta;
-  if (D == 2) {
-    prd->dir[1] = -cosTheta;
-    prd->dir[2] = 0.f;
-    Normalize(prd->dir);
-  } else {
-    prd->dir[1] = sinPhi * sinTheta;
-    prd->dir[2] = -cosTheta;
-    // already normalized
-  }
+  prd.dir[0] = cosPhi * sinTheta;
+  prd.dir[1] = sinPhi * sinTheta;
+  prd.dir[2] = -cosTheta;
+  prd.traceDir = prd.dir;
 }
 
 __device__ __forceinline__ void
-initializeRayDirection(PerRayData *prd, const float power,
-                       const std::array<Vec3Df, 3> &basis, const uint16_t D) {
+initializeRayDirection(PerRayData &prd, const float power,
+                       const std::array<Vec3Df, 3> &basis) {
   // source direction
   do {
-    const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
+    const float4 u = curand_uniform4(&prd.RNGstate); // (0,1]
     const float cosTheta = powf(u.w, 1.f / (power + 1.f));
     const float sinTheta = sqrtf(max(0.f, 1.f - cosTheta * cosTheta));
     float sinPhi, cosPhi;
@@ -61,52 +55,62 @@ initializeRayDirection(PerRayData *prd, const float power,
     float ry = cosPhi * sinTheta;
     float rz = sinPhi * sinTheta;
 
-    prd->dir = basis[0] * rx + basis[1] * ry + basis[2] * rz;
-  } while (prd->dir[2] >= 0.f);
+    prd.dir = basis[0] * rx + basis[1] * ry + basis[2] * rz;
+  } while (prd.dir[2] >= 0.f);
 
-  if (D == 2)
-    prd->dir[2] = 0.f;
-
-  Normalize(prd->dir);
+  viennacore::Normalize(prd.dir);
+  prd.traceDir = prd.dir;
 }
 
 __device__ __forceinline__ void
-initializeRayPosition(PerRayData *prd, const LaunchParams::SourcePlane &source,
+initializeRayPosition(PerRayData &prd, const LaunchParams::SourcePlane &source,
                       const uint16_t D) {
-  const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
-  prd->pos[0] =
-      source.minPoint[0] + u.x * (source.maxPoint[0] - source.minPoint[0]);
+  const float u = curand_uniform(&prd.RNGstate); // (0,1]
+  prd.pos[0] =
+      source.minPoint[0] + u * (source.maxPoint[0] - source.minPoint[0]);
 
   if (D == 2) {
-    prd->pos[1] = source.planeHeight;
-    prd->pos[2] = 0.f;
+    prd.pos[1] = source.planeHeight;
+    prd.pos[2] = 0.f;
   } else {
-    prd->pos[1] =
-        source.minPoint[1] + u.y * (source.maxPoint[1] - source.minPoint[1]);
-    prd->pos[2] = source.planeHeight;
+    const float v = curand_uniform(&prd.RNGstate); // (0,1]
+    prd.pos[1] =
+        source.minPoint[1] + v * (source.maxPoint[1] - source.minPoint[1]);
+    prd.pos[2] = source.planeHeight;
   }
 }
 
 // This is slightly faster because there is only one call to curand_uniform4
 __device__ __forceinline__ void
-initializeRayPositionAndDirection(PerRayData *prd,
-                                  const LaunchParams *launchParams) {
-  const float4 u = curand_uniform4(&prd->RNGstate); // (0,1]
-  prd->pos[0] = launchParams->source.minPoint[0] +
-                u.x * (launchParams->source.maxPoint[0] -
-                       launchParams->source.minPoint[0]);
-  prd->pos[1] = launchParams->source.minPoint[1] +
-                u.y * (launchParams->source.maxPoint[1] -
-                       launchParams->source.minPoint[1]);
-  prd->pos[2] = launchParams->source.planeHeight;
-
-  const float tt = powf(u.w, 1.f / (launchParams->cosineExponent + 1.f));
-  float s, c;
-  __sincosf(2.f * M_PIf * u.z, &s, &c);
-  const float sqrt1mtt = sqrtf(1.f - tt * tt);
-  prd->dir[0] = c * sqrt1mtt;
-  prd->dir[1] = s * sqrt1mtt;
-  prd->dir[2] = -tt;
+initializeRayPositionAndDirection(PerRayData &prd,
+                                  const LaunchParams &launchParams) {
+  initializeRayPosition(prd, launchParams.source, launchParams.D);
+  if (launchParams.source.customDirectionBasis) {
+    initializeRayDirection(prd, launchParams.cosineExponent,
+                           launchParams.source.directionBasis);
+  } else {
+    initializeRayDirection(prd, launchParams.cosineExponent);
+    if (launchParams.D == 2) {
+      // fold z into y for 2D
+      prd.dir[1] = prd.dir[2];
+      prd.traceDir[1] = prd.traceDir[2];
+    }
+  }
 }
+
+__device__ __forceinline__ unsigned
+getCoherenceHint(PerRayData &prd, const LaunchParams &launchParams) {
+  unsigned int hint = 0;
+  if (prd.rayWeight < launchParams.rayWeightThreshold || prd.energy < 0.f) {
+    hint |= (1 << 0);
+  }
+  if (optixHitObjectIsHit()) {
+    const HitSBTDataDisk *hitData = reinterpret_cast<const HitSBTDataDisk *>(
+        optixHitObjectGetSbtDataPointer());
+    hint |= hitData->base.isBoundary << 1;
+  }
+  return hint;
+}
+
 } // namespace viennaray::gpu
 #endif

@@ -106,10 +106,9 @@ public:
     assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in normalizeFlux");
 
-    const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
-
     switch (norm) {
     case NormalizationType::MAX: {
+      const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
       auto maxv = *std::max_element(flux.begin(), flux.end());
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
@@ -124,12 +123,12 @@ public:
             "No source was specified in rayTrace for the normalization.");
         break;
       }
-      NumericType sourceArea = this->pSource_->getSourceArea();
-      auto numTotalRays =
+      const NumericType sourceArea = this->pSource_->getSourceArea();
+      const auto numTotalRays =
           this->config_.numRaysFixed == 0
               ? this->pSource_->getNumPoints() * this->config_.numRaysPerPoint
               : this->config_.numRaysFixed;
-      NumericType normFactor = sourceArea / numTotalRays;
+      const NumericType normFactor = sourceArea / numTotalRays;
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
         flux[idx] *= normFactor / geometry_.getDiskArea(idx);
@@ -148,6 +147,12 @@ public:
                   int numNeighbors = 1) override {
     assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in smoothFlux");
+    if (numNeighbors < 1) {
+      VIENNACORE_LOG_DEBUG(
+          "Number of neighbors for flux smoothing less than 1. Skipping.");
+      return;
+    }
+
     auto oldFlux = flux;
     PointNeighborhood<NumericType, D> pointNeighborhood;
     if (numNeighbors == 1) {
@@ -171,8 +176,8 @@ public:
       NumericType vv = oldFlux[idx];
 
       auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
-      NumericType sum = 1.;
       auto const normal = geometry_.getPrimNormal(idx);
+      NumericType sum = 1.;
 
       for (auto const &nbi : neighborhood) {
         auto nnormal = geometry_.getPrimNormal(nbi);

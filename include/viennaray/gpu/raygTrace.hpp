@@ -631,8 +631,19 @@ private:
       pgDesc.hitgroup.moduleIS = module_;
       pgDesc.hitgroup.entryFunctionNameIS = entryFunctionNameIS.c_str();
     }
-
     createProgramGroup(&pgDesc, &pgOptions, &hitgroupPG_);
+
+    std::string entryFunctionNameCHBound = "__closesthit__boundary__";
+    OptixProgramGroupDesc pgDescBound = {};
+    pgDescBound.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
+    pgDescBound.hitgroup.moduleCH = module_;
+    pgDescBound.hitgroup.entryFunctionNameCH = entryFunctionNameCHBound.c_str();
+
+    if (geometryType_ != "Triangle") {
+      pgDescBound.hitgroup.moduleIS = module_;
+      pgDescBound.hitgroup.entryFunctionNameIS = entryFunctionNameIS.c_str();
+    }
+    createProgramGroup(&pgDescBound, &pgOptions, &boundaryHitgroupPG_);
   }
 
   /// does all setup for the direct callables
@@ -674,6 +685,8 @@ private:
     programGroups.push_back(raygenPG_);
     programGroups.push_back(missPG_);
     programGroups.push_back(hitgroupPG_);
+    if (boundaryHitgroupPG_)
+      programGroups.push_back(boundaryHitgroupPG_);
 
     for (auto const &directCallablePG : directCallablePGs_) {
       programGroups.push_back(directCallablePG);
@@ -801,6 +814,7 @@ protected:
   CudaBuffer missRecordBuffer_;
   OptixProgramGroup hitgroupPG_{};
   CudaBuffer hitgroupRecordBuffer_;
+  OptixProgramGroup boundaryHitgroupPG_{};
   std::vector<OptixProgramGroup> directCallablePGs_;
   CudaBuffer directCallableRecordBuffer_;
   OptixShaderBindingTable shaderBindingTable_{};

@@ -70,6 +70,7 @@ public:
 
       assert(false && "Correctness Assumption");
     } else {
+      // D == 3
       if (primID <= 3) {
         if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE_BOUNDARY) {
           // use specular reflection
@@ -151,11 +152,11 @@ public:
 
 private:
   static Vec3D<rayInternal::rtcNumericType> getNewOrigin(const RTCRay &ray) {
-    assert(IsNormalized(Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z}) &&
-           "MetaGeometry: direction not normalized");
-    auto xx = ray.org_x + ray.dir_x * ray.tfar;
-    auto yy = ray.org_y + ray.dir_y * ray.tfar;
-    auto zz = ray.org_z + ray.dir_z * ray.tfar;
+    auto dir = *reinterpret_cast<const Vec3D<float> *>(&ray.dir_x);
+    assert(IsNormalized(dir) && "Ray direction not normalized");
+    auto xx = ray.org_x + dir[0] * ray.tfar;
+    auto yy = ray.org_y + dir[1] * ray.tfar;
+    auto zz = ray.org_z + dir[2] * ray.tfar;
     return Vec3D<rayInternal::rtcNumericType>{xx, yy, zz};
   }
 
@@ -257,16 +258,17 @@ private:
   }
 
   static void reflectRay(RTCRayHit &rayHit) {
-    auto dir = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
-        &rayHit.ray.dir_x);
-    auto normal = *reinterpret_cast<Vec3D<rayInternal::rtcNumericType> *>(
-        &rayHit.hit.Ng_x);
-    Normalize(dir);
+    auto dir = *reinterpret_cast<Vec3D<float> *>(&rayHit.ray.dir_x);
+    assert(IsNormalized(dir) && "Direction not normalized");
+    assert(D == 3 || dir[2] == 0.f && "In 2D case, z-component must be 0");
+    auto normal = *reinterpret_cast<Vec3D<float> *>(&rayHit.hit.Ng_x);
+    // Normalize(dir);
     Normalize(normal);
-    auto const direction =
-        ReflectionSpecular<rayInternal::rtcNumericType>(dir, normal);
+    auto const direction = ReflectionSpecular<float>(dir, normal);
     auto const origin = getNewOrigin(rayHit.ray);
-    rayInternal::fillRayDirection(rayHit.ray, direction);
+    // use <D=3> here because z-component should already be 0 in D=2 case
+    assert(D == 3 || dir[2] == 0.f && "In 2D case, z-component must be 0");
+    rayInternal::fillRayDirection<3>(rayHit.ray, direction);
     rayInternal::fillRayPosition(rayHit.ray, origin);
   }
 

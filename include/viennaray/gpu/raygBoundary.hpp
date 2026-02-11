@@ -22,20 +22,20 @@ reflectFromBoundary(PerRayData *prd, const SBTData *hsd, const int D) {
   prd->numBoundaryHits++;
 
   if constexpr (std::is_same_v<SBTData, HitSBTDataDisk>) {
-    prd->pos =
-        prd->pos + prd->dir * (optixGetRayTmax() - launchParams.tThreshold);
+    prd->pos = prd->pos +
+               prd->traceDir * (optixGetRayTmax() - launchParams.tThreshold);
     if (primID == 0 || primID == 1) {
       prd->dir[0] -= 2 * prd->dir[0]; // x boundary
     } else if ((primID == 2 || primID == 3) && D == 3) {
       prd->dir[1] -= 2 * prd->dir[1]; // y boundary
     }
   } else if constexpr (std::is_same_v<SBTData, HitSBTDataTriangle>) {
-    prd->pos = prd->pos + prd->dir * optixGetRayTmax();
+    prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
     unsigned dim = primID / 4;
     prd->dir[dim] -= 2 * prd->dir[dim];
     prd->pos[dim] = hsd->vertex[hsd->index[primID][0]][dim];
   } else if constexpr (std::is_same_v<SBTData, HitSBTDataLine>) {
-    prd->pos = prd->pos + prd->dir * optixGetRayTmax();
+    prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
     if (primID == 0 || primID == 1) // x boundary
       prd->dir[0] -= 2 * prd->dir[0];
   }
@@ -49,8 +49,8 @@ applyPeriodicBoundary(PerRayData *prd, const SBTData *hsd, const int D) {
   prd->numBoundaryHits++;
 
   if constexpr (std::is_same_v<SBTData, HitSBTDataDisk>) {
-    prd->pos =
-        prd->pos + prd->dir * (optixGetRayTmax() - launchParams.tThreshold);
+    prd->pos = prd->pos +
+               prd->traceDir * (optixGetRayTmax() - launchParams.tThreshold);
     if (primID == 0) { // xmin
       prd->pos[0] = hsd->point[1][0];
     } else if (primID == 1) { // xmax
@@ -61,11 +61,11 @@ applyPeriodicBoundary(PerRayData *prd, const SBTData *hsd, const int D) {
       prd->pos[1] = hsd->point[2][1];
     }
   } else if constexpr (std::is_same_v<SBTData, HitSBTDataTriangle>) {
-    prd->pos = prd->pos + prd->dir * optixGetRayTmax();
+    prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
     unsigned dim = primID / 4;
     prd->pos[dim] = hsd->vertex[hsd->index[primID ^ 2][0]][dim];
   } else if constexpr (std::is_same_v<SBTData, HitSBTDataLine>) {
-    prd->pos = prd->pos + prd->dir * optixGetRayTmax();
+    prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
     if (primID == 0) { // xmin
       prd->pos[0] = hsd->nodes[1][0];
     } else if (primID == 1) { // xmax

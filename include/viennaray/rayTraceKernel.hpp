@@ -30,9 +30,8 @@ public:
         traceInfo_(traceInfo), dataLog_(dataLog) {}
 
   void apply() {
+    // Create Embree scene
     auto rtcScene = rtcNewScene(device_);
-
-    // RTC scene flags
     rtcSetSceneFlags(rtcScene, RTC_SCENE_FLAG_NONE);
 
     // Selecting higher build quality results in better rendering performance
@@ -49,8 +48,8 @@ public:
 
     size_t geoHits = 0;
     size_t nonGeoHits = 0;
-    size_t totalTraces = 0;
     size_t particleHits = 0;
+    size_t totalTraces = 0;
     size_t totalBoundaryHits = 0;
     size_t totalReflections = 0;
     size_t raysTerminated = 0;
@@ -86,7 +85,7 @@ public:
     timer.start();
 
 #pragma omp parallel reduction(                                                \
-        + : geoHits, nonGeoHits, totalTraces, particleHits, totalBoundaryHits, \
+        + : geoHits, nonGeoHits, particleHits, totalTraces, totalBoundaryHits, \
             totalReflections, raysTerminated) shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
@@ -124,23 +123,23 @@ public:
         // probabilistic weight
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
+        Vec3D<NumericType> rayDirection;
         unsigned int numReflections = 0;
         unsigned int boundaryHits = 0;
 
         {
           particle->initNew(rngState);
           particle->logData(myDataLog);
-          auto direction = particle->initNewWithDirection(rngState);
+          rayDirection = particle->initNewWithDirection(rngState);
 
           auto originAndDirection =
               pSource_->getOriginAndDirection(idx, rngState);
           fillRayPosition(rayHit.ray, originAndDirection[0]);
-          if (isZero(direction)) {
-            fillRayDirection(rayHit.ray, originAndDirection[1]);
-          } else {
-            assert(IsNormalized(direction));
-            fillRayDirection(rayHit.ray, direction);
+          if (isZero(rayDirection)) {
+            rayDirection = std::move(originAndDirection[1]);
           }
+          assert(IsNormalized(rayDirection));
+          fillRayDirection<D>(rayHit.ray, rayDirection);
         }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
@@ -180,27 +179,22 @@ public:
           if (lambda > 0.) {
             std::uniform_real_distribution<NumericType> dist(0., 1.);
             NumericType scatterProbability =
-                1 - std::exp(-rayHit.ray.tfar / lambda);
+                1. - std::exp(-rayHit.ray.tfar / lambda);
             auto rnd = dist(rngState);
             if (rnd < scatterProbability) {
 
               const auto &ray = rayHit.ray;
-              const auto origin = Vec3D<rtcNumericType>{
-                  static_cast<rtcNumericType>(ray.org_x + ray.dir_x * rnd),
-                  static_cast<rtcNumericType>(ray.org_y + ray.dir_y * rnd),
-                  static_cast<rtcNumericType>(ray.org_z + ray.dir_z * rnd)};
-
-              auto direction =
-                  rayInternal::pickRandomPointOnUnitSphere<rtcNumericType>(
+              const auto origin =
+                  Vec3Df{static_cast<float>(ray.org_x + ray.dir_x * rnd),
+                         static_cast<float>(ray.org_y + ray.dir_y * rnd),
+                         static_cast<float>(ray.org_z + ray.dir_z * rnd)};
+              rayDirection =
+                  rayInternal::pickRandomPointOnUnitSphere<NumericType>(
                       rngState);
-              if constexpr (D == 2) {
-                direction[2] = 0.f;
-                Normalize(direction);
-              }
 
               // Update ray direction and origin
               fillRayPosition(rayHit.ray, origin);
-              fillRayDirection(rayHit.ray, direction);
+              fillRayDirection<D>(rayHit.ray, rayDirection);
 
               particleHits++;
               reflect = true;
@@ -224,14 +218,11 @@ public:
           const auto hitPoint = Vec3Df{ray.org_x + ray.dir_x * ray.tfar,
                                        ray.org_y + ray.dir_y * ray.tfar,
                                        ray.org_z + ray.dir_z * ray.tfar};
-
-          const auto rayDir =
-              Vec3D<NumericType>{ray.dir_x, ray.dir_y, ray.dir_z};
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
 
           // Check for backface hit in case of disks
           if constexpr (geoType == GeometryType::DISK) {
-            if (DotProduct(rayDir, geomNormal) > 0) {
+            if (DotProduct(rayDirection, geomNormal) > 0) {
               // If the dot product of the ray direction and the surface normal
               // is greater than zero, then we hit the back face of the disk.
               if (hitFromBack) {
@@ -296,21 +287,21 @@ public:
 #else
               auto distRayWeight = rayWeight;
 #endif
-              particle->surfaceCollision(distRayWeight, rayDir, normal,
+              particle->surfaceCollision(distRayWeight, rayDirection, normal,
                                          hitDiskIds[diskId], matID, myLocalData,
                                          pGlobalData_, rngState);
             }
           } else {
             // Triangle Geometry - single hit
             particle->surfaceCollision(
-                rayWeight, rayDir, geomNormal, rayHit.hit.primID,
+                rayWeight, rayDirection, geomNormal, rayHit.hit.primID,
                 geometry_.getMaterialId(rayHit.hit.primID), myLocalData,
                 pGlobalData_, rngState);
           }
 
-          // get sticking probability and reflection direction
-          const auto stickingDirection = particle->surfaceReflection(
-              rayWeight, rayDir, geomNormal, rayHit.hit.primID,
+          // get sticking probability (1) and reflected direction (2)
+          auto stickingDirection = particle->surfaceReflection(
+              rayWeight, rayDirection, geomNormal, rayHit.hit.primID,
               geometry_.getMaterialId(rayHit.hit.primID), pGlobalData_,
               rngState);
 
@@ -330,8 +321,9 @@ public:
           }
 
           // Update ray direction and origin
+          rayDirection = std::move(stickingDirection.second);
           fillRayPosition(rayHit.ray, hitPoint);
-          fillRayDirection(rayHit.ray, stickingDirection.second);
+          fillRayDirection<D>(rayHit.ray, rayDirection);
 
         } while (reflect);
         totalBoundaryHits += boundaryHits;

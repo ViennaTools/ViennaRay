@@ -31,7 +31,7 @@ int main() {
 
   gpu::Particle<NumericType> particle;
   particle.name = "Particle";
-  particle.sticking = 1.f;
+  particle.sticking = 0.5f;
   particle.dataLabels = {"particleFlux"};
   particle.materialSticking[7] = 1.f;
   particle.materialSticking[1] = .1f;
@@ -40,15 +40,17 @@ int main() {
   std::vector<gpu::CallableConfig> cMap = {
       {0, gpu::CallableSlot::COLLISION, "__direct_callable__particleCollision"},
       {0, gpu::CallableSlot::REFLECTION,
-       "__direct_callable__particleReflection"}};
+       "__direct_callable__particleReflectionConstSticking"},
+  };
 
   gpu::TraceLine<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);
   tracer.setMaterialIds(materialIds);
   tracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
-  tracer.setNumberOfRaysPerPoint(5000);
   tracer.insertNextParticle(particle);
+  tracer.setNumberOfRaysPerPoint(5000);
+  tracer.setMaxBoundaryHits(10);
   tracer.prepareParticlePrograms();
 
   tracer.apply();
@@ -73,16 +75,17 @@ int main() {
   triangleTracer.setMaterialIds(materialIds);
   triangleTracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
   triangleTracer.setParticleCallableMap({pMap, cMap});
-  triangleTracer.setNumberOfRaysPerPoint(5000);
   triangleTracer.insertNextParticle(particle);
+  triangleTracer.setNumberOfRaysPerPoint(5000);
+  triangleTracer.setMaxBoundaryHits(10);
   triangleTracer.prepareParticlePrograms();
 
   triangleTracer.apply();
   triangleTracer.normalizeResults();
 
-  flux = triangleTracer.getFlux(0, 0);
+  auto fluxTriangles = triangleTracer.getFlux(0, 0);
   rayInternal::writeVTP<float, 3>("trenchLines_triFlux.vtp", triMesh.nodes,
-                                  triMesh.triangles, flux);
+                                  triMesh.triangles, fluxTriangles);
 
   return 0;
 }

@@ -199,7 +199,8 @@ protected:
     // boundary hitgroup
     if (!ignoreBoundary_) {
       HitgroupRecordDisk boundaryHitgroupRecord = {};
-      optixSbtRecordPackHeader(this->hitgroupPG_, &boundaryHitgroupRecord);
+      optixSbtRecordPackHeader(this->boundaryHitgroupPG_,
+                               &boundaryHitgroupRecord);
       boundaryHitgroupRecord.data.point =
           (Vec3Df *)diskGeometry_.boundaryPointBuffer.dPointer();
       boundaryHitgroupRecord.data.base.normal =

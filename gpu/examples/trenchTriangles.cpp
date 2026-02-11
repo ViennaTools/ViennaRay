@@ -57,9 +57,16 @@ int main(int argc, char **argv) {
   tracer.setParameters(rayCountBuffer.dPointer());
 #endif
 
+  Timer timer;
+  timer.start();
   tracer.apply();
   tracer.normalizeResults();
+  timer.finish();
+
   auto flux = tracer.getFlux(0, 0);
+
+  std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " seconds."
+            << std::endl;
 
   rayInternal::writeVTP<float, D, gpu::ResultType>(
       "trenchTriangles_triMesh.vtp", mesh.nodes, mesh.triangles, flux);

@@ -16,10 +16,10 @@ extern "C" __global__ void test_diffuse(viennacore::Vec3Df inDir,
 
   for (; tidx < numResults; tidx += stride) {
     viennaray::gpu::PerRayData prd;
-    initializeRNGState(&prd, tidx, 0);
+    initializeRNGState(prd, tidx, 0);
     prd.dir = inDir;
 
-    diffuseReflection(&prd, normal, 3);
+    diffuseReflection(&prd, normal);
     results[tidx] = prd.dir;
   }
 }
@@ -35,10 +35,10 @@ extern "C" __global__ void test_coned_cosine(viennacore::Vec3Df inDir,
 
   for (; tidx < numResults; tidx += stride) {
     viennaray::gpu::PerRayData prd;
-    initializeRNGState(&prd, tidx, 0);
+    initializeRNGState(prd, tidx, 0);
     prd.dir = inDir;
 
-    conedCosineReflection(&prd, normal, coneAngle, 3);
+    conedCosineReflection(&prd, normal, coneAngle);
     results[tidx] = prd.dir;
   }
 }

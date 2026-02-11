@@ -4,11 +4,9 @@
 #define __CUDACC__
 #endif
 
-#include "raygBoundary.hpp"
 #include "raygCallableConfig.hpp"
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
-#include "raygReflection.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygSource.hpp"
 
@@ -16,7 +14,7 @@
 
 using namespace viennaray::gpu;
 
-extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
+extern "C" __constant__ LaunchParams launchParams;
 
 extern "C" __global__ void __intersection__() {
   const HitSBTDataDisk *sbtData =
@@ -32,11 +30,7 @@ extern "C" __global__ void __intersection__() {
   const float radius = sbtData->radius;
 
   bool valid = true;
-  float prodOfDirections = DotProduct(normal, prd->dir);
-
-  // Backface hits have to be reported so CH can let the ray through or kill the
-  // ray if needed
-  // valid &= DotProduct(prd->dir, normal) <= 0.0f;
+  float prodOfDirections = DotProduct(normal, prd->traceDir);
 
   // Check if ray is not parallel to the plane
   valid &= fabsf(prodOfDirections) >= 1e-6f;
@@ -45,7 +39,7 @@ extern "C" __global__ void __intersection__() {
   float t = (ddneg - DotProduct(normal, prd->pos)) / prodOfDirections;
   // Avoid negative t or self intersections
   valid &= t > optixGetRayTmin();
-  const Vec3Df intersection = prd->pos + prd->dir * t;
+  const Vec3Df intersection = prd->pos + prd->traceDir * t;
 
   // Check if within disk radius
   const Vec3Df diff = intersection - diskOrigin;
@@ -77,69 +71,82 @@ extern "C" __global__ void __closesthit__() {
   const Vec3Df &normal = sbtData->base.normal[primID];
 
   // If closest hit was on backside, let it through once
-  if (DotProduct(prd->dir, normal) > 0.0f) {
+  if (DotProduct(prd->traceDir, normal) > 0.0f) {
     // If back was hit a second time, kill the ray
     if (prd->hitFromBack) {
       prd->rayWeight = 0.f;
       return;
     }
     prd->hitFromBack = true;
-    prd->pos = prd->pos + prd->tMin * prd->dir;
+    prd->pos = prd->pos + prd->tMin * prd->traceDir;
     return;
   }
 
-  if (sbtData->base.isBoundary) {
-    // This is effectively the miss shader
-    if (launchParams.D == 2 &&
-        (primID == 2 || primID == 3)) { // bottom or top - ymin or ymax
-      prd->rayWeight = 0.0f;
-      return;
+  // ------------- NEIGHBOR FILTERING --------------- //
+  // Keep only hits close to tMin
+  prd->ISCount = 0;
+  for (int i = 0; i < prd->totalCount; ++i) {
+    if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
+        prd->ISCount < MAX_NEIGHBORS) {
+      prd->primIDs[prd->ISCount++] = prd->primIDs[i];
     }
-    if (launchParams.D == 3 &&
-        (primID == 4 || primID == 5)) { // bottom or top - zmin or zmax
-      prd->rayWeight = 0.0f;
-      return;
-    }
-
-    if (launchParams.periodicBoundary) {
-      applyPeriodicBoundary(prd, sbtData, launchParams.D);
-    } else {
-      reflectFromBoundary(prd, sbtData, launchParams.D);
-    }
-
-  } else {
-    // ------------- NEIGHBOR FILTERING --------------- //
-    // Keep only hits close to tMin
-    prd->ISCount = 0;
-    for (int i = 0; i < prd->totalCount; ++i) {
-      if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
-          prd->ISCount < MAX_NEIGHBORS) {
-        prd->primIDs[prd->ISCount++] = prd->primIDs[i];
-      }
-    }
-
-    // // CPU like neighbor detection
-    // prd->ISCount = 0;
-    // for (int i = 0; i < prd->totalCount; ++i) {
-    //   float distance = viennacore::Distance(sbtData->point[primID],
-    //                                         sbtData->point[prd->primIDs[i]]);
-    //   if (distance < 2 * sbtData->radius && prd->ISCount < MAX_NEIGHBORS) {
-    //     prd->TIndex[prd->ISCount++] = prd->primIDs[i];
-    //   }
-    // }
-
-    // ------------- SURFACE COLLISION --------------- //
-    unsigned callIdx =
-        callableIndex(launchParams.particleType, CallableSlot::COLLISION);
-    optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx,
-                                                                sbtData, prd);
-
-    // ------------- REFLECTION --------------- //
-    callIdx =
-        callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
-    optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx,
-                                                                sbtData, prd);
   }
+
+  // ------------- SURFACE COLLISION --------------- //
+  unsigned callIdx =
+      callableIndex(launchParams.particleType, CallableSlot::COLLISION);
+  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, sbtData,
+                                                              prd);
+
+  // ------------- REFLECTION --------------- //
+  callIdx = callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
+  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, sbtData,
+                                                              prd);
+
+  prd->numReflections++;
+}
+
+extern "C" __global__ void __closesthit__boundary__() {
+  const HitSBTDataDisk *sbtData =
+      (const HitSBTDataDisk *)optixGetSbtDataPointer();
+  PerRayData *prd = getPRD();
+
+  const unsigned int primID = optixGetPrimitiveIndex();
+  prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
+  prd->primID = primID;
+
+  const Vec3Df &normal = sbtData->base.normal[primID];
+
+  // If closest hit was on backside of boundary, let it through
+  if (DotProduct(prd->traceDir, normal) > 0.0f) {
+    prd->pos = prd->pos + prd->tMin * prd->traceDir;
+    return;
+  }
+
+  // This is effectively the miss shader
+  if (launchParams.D == 2 &&
+      (primID == 2 || primID == 3)) { // bottom or top - ymin or ymax
+    prd->rayWeight = 0.0f;
+    return;
+  }
+  if (launchParams.D == 3 &&
+      (primID == 4 || primID == 5)) { // bottom or top - zmin or zmax
+    prd->rayWeight = 0.0f;
+    return;
+  }
+
+  // update ray position to hit point
+  prd->pos = prd->pos + prd->traceDir * prd->tMin;
+
+  unsigned axis = primID / 2;
+  if (launchParams.periodicBoundary) {
+    prd->pos[axis] = sbtData->point[primID ^ 1][axis]; // wrap to opposite side
+  } else {
+    prd->dir[axis] -= 2 * prd->dir[axis]; // reflect
+    prd->pos[axis] = sbtData->point[primID][axis];
+  }
+
+  prd->numBoundaryHits++;
 }
 
 extern "C" __global__ void __miss__() { getPRD()->rayWeight = 0.f; }
@@ -153,16 +160,10 @@ extern "C" __global__ void __raygen__() {
   // per-ray data
   PerRayData prd;
   // each ray has its own RNG state
-  initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
+  initializeRNGState(prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, launchParams.source, launchParams.D);
-  if (launchParams.source.customDirectionBasis) {
-    initializeRayDirection(&prd, launchParams.cosineExponent,
-                           launchParams.source.directionBasis, launchParams.D);
-  } else {
-    initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
-  }
+  initializeRayPositionAndDirection(prd, launchParams);
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -175,30 +176,27 @@ extern "C" __global__ void __raygen__() {
   unsigned int hintBitLength = 2;
 
   while (continueRay(launchParams, prd)) {
+    if (launchParams.D == 2) {
+      prd.traceDir[2] = 0.f;
+      viennacore::Normalize(prd.traceDir);
+    }
     optixTraverse(launchParams.traversable, // traversable GAS
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
-                  make_float3(prd.dir[0], prd.dir[1], prd.dir[2]), // direction
-                  1e-4f,                                           // tmin
-                  1e20f,                                           // tmax
-                  0.0f,                                            // rayTime
+                  make_float3(prd.traceDir[0], prd.traceDir[1],
+                              prd.traceDir[2]), // direction
+                  1e-4f,                        // tmin
+                  1e20f,                        // tmax
+                  0.0f,                         // rayTime
                   OptixVisibilityMask(255),
                   OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
                   0,                             // SBT offset
                   1,                             // SBT stride
                   0,                             // missSBTIndex
                   u0, u1);                       // Payload
-    unsigned int hint = 0;
-    if (prd.rayWeight < launchParams.rayWeightThreshold || prd.energy < 0.f) {
-      hint |= (1 << 0);
-    }
-    if (optixHitObjectIsHit()) {
-      const HitSBTDataDisk *hitData = reinterpret_cast<const HitSBTDataDisk *>(
-          optixHitObjectGetSbtDataPointer());
-      hint |= hitData->base.isBoundary << 1;
-    }
+    unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, hintBitLength);
     optixInvoke(u0, u1);
-    prd.totalCount = 0; // Reset PerRayData
-    prd.numReflections++;
+    prd.totalCount = 0;     // Reset PerRayData
+    prd.traceDir = prd.dir; // Update traceDir for the next iteration
   }
 }

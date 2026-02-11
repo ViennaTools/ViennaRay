@@ -79,7 +79,8 @@ protected:
     // boundary hitgroup
     if (!ignoreBoundary_) {
       HitgroupRecordLine boundaryHitgroupRecord = {};
-      optixSbtRecordPackHeader(this->hitgroupPG_, &boundaryHitgroupRecord);
+      optixSbtRecordPackHeader(this->boundaryHitgroupPG_,
+                               &boundaryHitgroupRecord);
       boundaryHitgroupRecord.data.nodes =
           (Vec3Df *)lineGeometry_.boundaryNodesBuffer.dPointer();
       boundaryHitgroupRecord.data.lines =

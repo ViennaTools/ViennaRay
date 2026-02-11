@@ -4,21 +4,17 @@
 #define __CUDACC__
 #endif
 
-#include "raygBoundary.hpp"
 #include "raygCallableConfig.hpp"
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
-#include "raygReflection.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygSource.hpp"
 
 #include "vcContext.hpp"
 
-// #define COUNT_RAYS
-
 using namespace viennaray::gpu;
 
-extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
+extern "C" __constant__ LaunchParams launchParams;
 
 extern "C" __global__ void __closesthit__() {
   const HitSBTDataTriangle *sbtData =
@@ -28,30 +24,51 @@ extern "C" __global__ void __closesthit__() {
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->tMin = optixGetRayTmax();
   prd->primID = primID;
+  prd->ISCount = 1;
+  prd->primIDs[0] = primID;
 
-  if (sbtData->base.isBoundary) {
-    if (launchParams.periodicBoundary) {
-      applyPeriodicBoundary(prd, sbtData, launchParams.D);
-    } else {
-      reflectFromBoundary(prd, sbtData, launchParams.D);
-    }
-  } else {
-    prd->ISCount = 1;
-    prd->primIDs[0] = primID;
+  // ------------- SURFACE COLLISION --------------- //
+  unsigned callIdx;
+  callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
+  optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(callIdx,
+                                                                  sbtData, prd);
 
-    // ------------- SURFACE COLLISION --------------- //
-    unsigned callIdx;
+  // ------------- REFLECTION --------------- //
+  callIdx = callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
+  optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(callIdx,
+                                                                  sbtData, prd);
+  prd->numReflections++;
+}
 
-    callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
-    optixDirectCall<void, const viennaray::gpu::HitSBTDataTriangle *,
-                    PerRayData *>(callIdx, sbtData, prd);
+extern "C" __global__ void __closesthit__boundary__() {
+  const HitSBTDataTriangle *sbtData =
+      (const HitSBTDataTriangle *)optixGetSbtDataPointer();
+  PerRayData *prd = getPRD();
 
-    // ------------- REFLECTION --------------- //
-    callIdx =
-        callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
-    optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(
-        callIdx, sbtData, prd);
+  // update ray position to hit point
+  prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
+
+  const unsigned int primID = optixGetPrimitiveIndex();
+  // 0-3: X axis (dim 0), 4-7: Y axis (dim 1)
+  const unsigned int dim = primID / 4;
+  // 0,1,4,5 are Minimum side (0); 2,3,6,7 are Maximum side (1)
+  const unsigned int side = (primID & 2) >> 1;
+
+  const int periodic = launchParams.periodicBoundary;
+  const float bounds[2] = {sbtData->box.minExtent[dim],
+                           sbtData->box.maxExtent[dim]};
+
+  // Update Position:
+  // Periodic(1): opposite side (side ^ 1)
+  // Reflect(0): same side (side ^ 0)
+  prd->pos[dim] = bounds[side ^ periodic];
+
+  if (!launchParams.periodicBoundary) {
+    // Reflect direction
+    prd->dir[dim] = -prd->dir[dim];
   }
+
+  prd->numBoundaryHits++;
 }
 
 extern "C" __global__ void __miss__() { getPRD()->rayWeight = 0.f; }
@@ -65,16 +82,10 @@ extern "C" __global__ void __raygen__() {
   // per-ray data
   PerRayData prd;
   // each ray has its own RNG state
-  initializeRNGState(&prd, linearLaunchIndex, launchParams.seed);
+  initializeRNGState(prd, linearLaunchIndex, launchParams.seed);
 
   // initialize ray position and direction
-  initializeRayPosition(&prd, launchParams.source, launchParams.D);
-  if (launchParams.source.customDirectionBasis) {
-    initializeRayDirection(&prd, launchParams.cosineExponent,
-                           launchParams.source.directionBasis, launchParams.D);
-  } else {
-    initializeRayDirection(&prd, launchParams.cosineExponent, launchParams.D);
-  }
+  initializeRayPositionAndDirection(prd, launchParams);
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -87,34 +98,26 @@ extern "C" __global__ void __raygen__() {
   unsigned int hintBitLength = 2;
 
   while (continueRay(launchParams, prd)) {
+    if (launchParams.D == 2) {
+      prd.traceDir[2] = 0.f;
+      viennacore::Normalize(prd.traceDir);
+    }
     optixTraverse(launchParams.traversable, // traversable GAS
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
-                  make_float3(prd.dir[0], prd.dir[1], prd.dir[2]), // direction
-                  1e-4f,                                           // tmin
-                  1e20f,                                           // tmax
-                  0.0f,                                            // rayTime
+                  make_float3(prd.traceDir[0], prd.traceDir[1],
+                              prd.traceDir[2]), // direction
+                  1e-4f,                        // tmin
+                  1e20f,                        // tmax
+                  0.0f,                         // rayTime
                   OptixVisibilityMask(255),
                   OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
                   0,                             // SBT offset
                   1,                             // SBT stride
                   0,                             // missSBTIndex
                   u0, u1);                       // Payload
-    unsigned int hint = 0;
-    if (prd.rayWeight < launchParams.rayWeightThreshold || prd.energy < 0.f) {
-      hint |= (1 << 0);
-    }
-    if (optixHitObjectIsHit()) {
-      const HitSBTDataTriangle *hitData =
-          reinterpret_cast<const HitSBTDataTriangle *>(
-              optixHitObjectGetSbtDataPointer());
-      hint |= hitData->base.isBoundary << 1;
-    }
+    unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, hintBitLength);
     optixInvoke(u0, u1);
-    prd.numReflections++;
-#ifdef COUNT_RAYS
-    int *counter = reinterpret_cast<int *>(launchParams.customData);
-    atomicAdd(counter, 1);
-#endif
+    prd.traceDir = prd.dir; // Update traceDir for the next iteration
   }
 }
