@@ -23,7 +23,7 @@ int main() {
 
   auto device = rtcNewDevice("");
   GeometryDisk<NumericType, D> geometry;
-  geometry.initGeometry(device, points, normals, gridDelta);
+  geometry.initGeometry(device, points, normals, gridDelta - eps);
   // setup simple 2D plane grid with normal in y-direction with discs only
   // overlapping at adjacent grid points x - x - x - x - x
   //                                     0 - 1 - 2 - 3 - 4
