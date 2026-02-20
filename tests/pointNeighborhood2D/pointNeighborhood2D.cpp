@@ -23,9 +23,10 @@ int main() {
 
   auto device = rtcNewDevice("");
   GeometryDisk<NumericType, D> geometry;
-  geometry.initGeometry(device, points, normals, gridDelta);
+  geometry.initGeometry(device, points, normals, gridDelta - eps);
   // setup simple 2D plane grid with normal in y-direction with discs only
   // overlapping at adjacent grid points x - x - x - x - x
+  //                                     0 - 1 - 2 - 3 - 4
 
   // assert boundary points have 1 neighbor
   // assert inner points have 2 neighbors
@@ -33,6 +34,10 @@ int main() {
   for (unsigned int idx = 0; idx < geometry.getNumPrimitives(); ++idx) {
     auto point = geometry.getPoint(idx);
     auto neighbors = geometry.getNeighborIndices(idx);
+    // std::printf("idx=%u point=(%f,%f,%f) neighbors=%zu\n", idx, point[0],
+    //             point[1], point[2], neighbors.size());
+    // for (auto n : neighbors)
+    //   std::printf("  -> %u\n", n);
     if (std::fabs(point[0]) > 1 - eps) {
       // corner point
       VC_TEST_ASSERT(neighbors.size() == 1)

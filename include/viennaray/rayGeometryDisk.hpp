@@ -198,8 +198,7 @@ public:
     return pointNeighborhood_.getNeighborIndices(idx);
   }
 
-  [[nodiscard]] PointNeighborhood<NumericType, D> const &
-  getPointNeighborhood() const {
+  [[nodiscard]] auto const &getPointNeighborhood() const {
     return pointNeighborhood_;
   }
 

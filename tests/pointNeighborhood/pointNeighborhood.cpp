@@ -23,7 +23,12 @@ int main() {
 
   auto device = rtcNewDevice("");
   GeometryDisk<NumericType, D> geometry;
+  Timer timer;
+  timer.start();
   geometry.initGeometry(device, points, normals, gridDelta - eps);
+  timer.finish();
+  std::cout << "Point neighborhood initialization time: "
+            << timer.currentDuration * 1e-6 << " ms\n";
   auto bdBox = geometry.getBoundingBox();
 
   for (unsigned int idx = 0; idx < geometry.getNumPrimitives(); ++idx) {
