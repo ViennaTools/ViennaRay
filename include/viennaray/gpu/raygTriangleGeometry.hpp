@@ -164,7 +164,7 @@ struct TriangleGeometry {
                     numBuildInputs, tempBuffer.dPointer(),
                     tempBuffer.sizeInBytes, outputBuffer.dPointer(),
                     outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1);
-    cudaDeviceSynchronize();
+    cuCtxSynchronize();
 
     // perform compaction
     uint64_t compactedSize;
@@ -173,7 +173,7 @@ struct TriangleGeometry {
     asBuffer.alloc(compactedSize);
     optixAccelCompact(context.optix, 0, asHandle, asBuffer.dPointer(),
                       asBuffer.sizeInBytes, &asHandle);
-    cudaDeviceSynchronize();
+    cuCtxSynchronize();
 
     // clean up
     outputBuffer.free(); // << the UNcompacted, temporary output buffer
