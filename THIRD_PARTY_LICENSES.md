@@ -1,6 +1,7 @@
 # Third-Party Licenses
 
-ViennaRay is licensed under the MIT License.  
+ViennaRay is licensed under the GPL-3.0 License.  
+
 This file lists third-party libraries used by ViennaRay and their respective licenses.
 
 Some dependencies are optional (e.g., GPU acceleration via NVIDIA OptiX) and may be subject to additional terms.
@@ -9,7 +10,7 @@ Some dependencies are optional (e.g., GPU acceleration via NVIDIA OptiX) and may
 
 ### ViennaCore
 
-**License:** MIT
+**License:** GPL-3.0 License
 **URL:** [https://github.com/ViennaTools/viennacore](https://github.com/ViennaTools/viennacore)
 
 ---
