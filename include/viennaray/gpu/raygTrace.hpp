@@ -229,11 +229,9 @@ public:
       VIENNACORE_LOG_WARNING(
           "Passed cell data does not match number of elements.");
     }
-    cellDataBuffer_ = passedCellDataBuffer;
-#ifndef NDEBUG
-    // In debug mode, we set the buffer as reference to avoid accidental frees
-    cellDataBuffer_.isRef = true;
-#endif
+    cellDataBuffer_ = passedCellDataBuffer; // note: this is a reference, and
+                                            // does not own the memory, so no
+                                            // free() in destructor
     numCellData_ = numData;
   }
 
