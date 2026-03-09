@@ -397,7 +397,7 @@ public:
     }
     directCallablePGs_.clear();
     for (auto &s : streams_) {
-      CUDA_CHECK(cuStreamDestroy(s));
+      context_->ch.cuStreamDestroy_(s);
     }
   }
 
@@ -429,7 +429,7 @@ public:
     // each particle gets its own stream
     streams_.resize(particles_.size());
     for (size_t i = 0; i < particles_.size(); i++) {
-      CUDA_CHECK(cuStreamCreate(&streams_[i], CU_STREAM_DEFAULT));
+      context_->ch.cuStreamCreate_(&streams_[i], CU_STREAM_DEFAULT);
     }
 
     return numFluxes_;
@@ -469,7 +469,7 @@ public:
       return;
 
     for (auto &s : streams_) {
-      CUDA_CHECK(cuStreamSynchronize(s));
+      context_->ch.cuStreamSynchronize_(s);
     }
     isSynced_ = true;
   }

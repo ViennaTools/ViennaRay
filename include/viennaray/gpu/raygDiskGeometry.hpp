@@ -170,20 +170,21 @@ struct DiskGeometry {
     CudaBuffer outputBuffer;
     outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-    optixAccelBuild(context.optix, 0, &accelOptions, diskInput.data(),
-                    numBuildInputs, tempBuffer.dPointer(),
-                    tempBuffer.sizeInBytes, outputBuffer.dPointer(),
-                    outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1);
-    cuCtxSynchronize();
+    OPTIX_CHECK(optixAccelBuild(
+        context.optix, 0, &accelOptions, diskInput.data(), numBuildInputs,
+        tempBuffer.dPointer(), tempBuffer.sizeInBytes, outputBuffer.dPointer(),
+        outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1));
+    context.sync();
 
     // perform compaction
     uint64_t compactedSize;
     compactedSizeBuffer.download(&compactedSize, 1);
 
     asBuffer.alloc(compactedSize);
-    optixAccelCompact(context.optix, 0, asHandle, asBuffer.dPointer(),
-                      asBuffer.sizeInBytes, &asHandle);
-    cuCtxSynchronize();
+    OPTIX_CHECK(optixAccelCompact(context.optix, 0, asHandle,
+                                  asBuffer.dPointer(), asBuffer.sizeInBytes,
+                                  &asHandle));
+    context.sync();
 
     // clean up
     outputBuffer.free(); // << the UNcompacted, temporary output buffer
