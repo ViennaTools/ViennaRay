@@ -1,6 +1,5 @@
 #include "gpu/raygTraceTriangle.hpp"
 
-#include <cuda_runtime.h>
 #include <omp.h>
 
 // #define COUNT_RAYS

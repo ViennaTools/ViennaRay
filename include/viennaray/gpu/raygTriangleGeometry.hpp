@@ -70,6 +70,8 @@ struct TriangleGeometry {
     // device pointers
     CUdeviceptr d_geoVertices = geometryVertexBuffer.dPointer();
     CUdeviceptr d_geoIndices = geometryIndexBuffer.dPointer();
+    assert((d_geoVertices != 0) && (d_geoIndices != 0) &&
+           "Device pointers for geometry vertices and indices cannot be null!");
 
     triangleInput[0].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
     triangleInput[0].triangleArray.vertexStrideInBytes = sizeof(Vec3Df);
@@ -160,20 +162,21 @@ struct TriangleGeometry {
     CudaBuffer outputBuffer;
     outputBuffer.alloc(blasBufferSizes.outputSizeInBytes);
 
-    optixAccelBuild(context.optix, 0, &accelOptions, triangleInput.data(),
-                    numBuildInputs, tempBuffer.dPointer(),
-                    tempBuffer.sizeInBytes, outputBuffer.dPointer(),
-                    outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1);
-    cuCtxSynchronize();
+    OPTIX_CHECK(optixAccelBuild(
+        context.optix, 0, &accelOptions, triangleInput.data(), numBuildInputs,
+        tempBuffer.dPointer(), tempBuffer.sizeInBytes, outputBuffer.dPointer(),
+        outputBuffer.sizeInBytes, &asHandle, &emitDesc, 1));
+    context.sync();
 
     // perform compaction
     uint64_t compactedSize;
     compactedSizeBuffer.download(&compactedSize, 1);
 
     asBuffer.alloc(compactedSize);
-    optixAccelCompact(context.optix, 0, asHandle, asBuffer.dPointer(),
-                      asBuffer.sizeInBytes, &asHandle);
-    cuCtxSynchronize();
+    OPTIX_CHECK(optixAccelCompact(context.optix, 0, asHandle,
+                                  asBuffer.dPointer(), asBuffer.sizeInBytes,
+                                  &asHandle));
+    context.sync();
 
     // clean up
     outputBuffer.free(); // << the UNcompacted, temporary output buffer
