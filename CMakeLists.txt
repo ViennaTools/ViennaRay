@@ -123,7 +123,7 @@ CPMFindPackage(
   GIT_REPOSITORY "https://github.com/embree/embree"
   OPTIONS "EMBREE_TUTORIALS OFF")
 
-target_link_libraries(${PROJECT_NAME} INTERFACE embree ViennaTools::ViennaCore)
+target_link_libraries(${PROJECT_NAME} INTERFACE embree ViennaCore)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Examples
