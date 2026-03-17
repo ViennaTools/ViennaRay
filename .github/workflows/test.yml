@@ -32,11 +32,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-bincache
+
     name: "🧪 Test on ${{ matrix.os }} (⚙️: ${{ matrix.config }}, 💿: ${{ matrix.container || matrix.os }})"
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🖥️ Setup Environment
         uses: ./.github/actions/setup
@@ -49,14 +52,33 @@ jobs:
         run: |
           brew install embree tbb
 
-      - name: 🦥 Cache Dependencies
+      - name: Create vcpkg binary cache dir
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
+
+      - name: 🦥 Cache vcpkg build
+        if: ${{ matrix.os == 'windows-latest' }}
         uses: actions/cache@v4
         with:
-          key: test-${{ matrix.os }}-${{ matrix.config }}
-          path: build
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-${{ matrix.os }}-${{ matrix.config }}
 
-      - name: 🏗️ Compile
+      - name: 🛠️ Build embree (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          ./vcpkg/vcpkg install embree
+
+      - name: 🏗️ Compile (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          cmake -DVIENNARAY_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -B build
+          cmake --build build --config ${{ matrix.config }}
+
+      - name: 🏗️ Compile (other)
+        if: ${{ matrix.os != 'windows-latest' }}
         run: cmake -DVIENNARAY_BUILD_TESTS=ON -B build && cmake --build build --config ${{ matrix.config }}
 
       - name: 🧪 Test
-        run: ctest -E "Benchmark|Performance" -C ${{ matrix.config }} --test-dir build
+        run: ctest --output-on-failure -E "Benchmark|Performance" -C ${{ matrix.config }} --test-dir build
