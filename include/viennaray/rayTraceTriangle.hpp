@@ -116,7 +116,7 @@ public:
           this->config_.numRaysFixed == 0
               ? this->pSource_->getNumPoints() * this->config_.numRaysPerPoint
               : this->config_.numRaysFixed;
-      NumericType normFactor = sourceArea / numTotalRays;
+      const NumericType normFactor = sourceArea / numTotalRays;
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
         flux[idx] *= normFactor / geometry_.getPrimArea(idx);

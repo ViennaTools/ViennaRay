@@ -220,9 +220,10 @@ public:
                                        ray.org_z + ray.dir_z * ray.tfar};
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
 
-          // Check for backface hit in case of disks
+          // Check for backface hit
+          const auto backfaceHit = DotProduct(rayDirection, geomNormal) > 0;
           if constexpr (geoType == GeometryType::DISK) {
-            if (DotProduct(rayDirection, geomNormal) > 0) {
+            if (backfaceHit) {
               // If the dot product of the ray direction and the surface normal
               // is greater than zero, then we hit the back face of the disk.
               if (hitFromBack) {
@@ -237,6 +238,13 @@ public:
               fillRayPosition(rayHit.ray, hitPoint);
               // keep ray direction as it is
               continue;
+            }
+          } else {
+            if (backfaceHit) {
+              // For triangle geometries, we simply discard backface hits as
+              // they are not considered valid geometry hits.
+              ++raysTerminated;
+              break;
             }
           }
 
