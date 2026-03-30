@@ -63,13 +63,13 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayHit, reflect);
+      boundary.processHit(rayHit, reflect, direction);
 
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, 1., eps)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.5, eps)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_z, 0.25, eps)
 
-      VC_TEST_ASSERT_ISCLOSE(-rayHit.ray.dir_x, direction[0], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_x, direction[0], eps)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
 
@@ -123,7 +123,7 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayHit, reflect);
+      boundary.processHit(rayHit, reflect, direction);
 
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, 0.5, eps)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.25, eps)
@@ -131,7 +131,7 @@ int main() {
 
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_x, direction[0], eps)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_y, direction[1], eps)
-      VC_TEST_ASSERT_ISCLOSE(-rayHit.ray.dir_z, direction[2], eps)
+      VC_TEST_ASSERT_ISCLOSE(rayHit.ray.dir_z, direction[2], eps)
 
       VC_TEST_ASSERT(reflect)
     }
@@ -183,7 +183,7 @@ int main() {
                                            0,  // geomID
                                            0}; // instanceID
 
-      boundary.processHit(rayHit, reflect);
+      boundary.processHit(rayHit, reflect, direction);
 
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_x, -1., eps)
       VC_TEST_ASSERT_ISCLOSE(rayHit.ray.org_y, 0.5, eps)

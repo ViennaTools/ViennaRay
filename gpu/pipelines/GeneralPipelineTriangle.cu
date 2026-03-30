@@ -110,11 +110,12 @@ extern "C" __global__ void __raygen__() {
                   1e20f,                        // tmax
                   0.0f,                         // rayTime
                   OptixVisibilityMask(255),
-                  OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
-                  0,                             // SBT offset
-                  1,                             // SBT stride
-                  0,                             // missSBTIndex
-                  u0, u1);                       // Payload
+                  OPTIX_RAY_FLAG_DISABLE_ANYHIT |
+                      OPTIX_RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+                  0,       // SBT offset
+                  1,       // SBT stride
+                  0,       // missSBTIndex
+                  u0, u1); // Payload
     unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, hintBitLength);
     optixInvoke(u0, u1);
