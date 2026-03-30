@@ -75,7 +75,7 @@ public:
       if (primID <= 3) {
         if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE_BOUNDARY) {
           // use specular reflection
-          reflectRay(rayHit);
+          reflectRay(rayHit, rayDirection);
           reflect = true;
           return;
         } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC_BOUNDARY) {
@@ -99,7 +99,7 @@ public:
       } else if (primID <= 7) {
         if (boundaryConds_[1] == BoundaryCondition::REFLECTIVE_BOUNDARY) {
           // use specular reflection
-          reflectRay(rayHit);
+          reflectRay(rayHit, rayDirection);
           reflect = true;
           return;
         } else if (boundaryConds_[1] == BoundaryCondition::PERIODIC_BOUNDARY) {
