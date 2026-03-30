@@ -209,7 +209,7 @@ public:
               ++raysTerminated;
               break;
             }
-            boundary_.processHit(rayHit, reflect);
+            boundary_.processHit(rayHit, reflect, rayDirection);
             continue;
           }
 

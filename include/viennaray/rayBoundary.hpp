@@ -26,7 +26,8 @@ public:
     initBoundary(device);
   }
 
-  void processHit(RTCRayHit &rayHit, bool &reflect) const {
+  void processHit(RTCRayHit &rayHit, bool &reflect,
+                  Vec3D<NumericType> &rayDirection) const {
     const auto primID = rayHit.hit.primID;
 
     // Ray hits backside of boundary
@@ -46,7 +47,7 @@ public:
       assert((primID == 0 || primID == 1 || primID == 2 || primID == 3) &&
              "Assumption");
       if (boundaryConds_[0] == BoundaryCondition::REFLECTIVE_BOUNDARY) {
-        reflectRay(rayHit);
+        reflectRay(rayHit, rayDirection);
         reflect = true;
         return;
       } else if (boundaryConds_[0] == BoundaryCondition::PERIODIC_BOUNDARY) {
@@ -257,18 +258,15 @@ private:
             (NumericType)pVertexBuffer_[tt.v2].zz};
   }
 
-  static void reflectRay(RTCRayHit &rayHit) {
-    auto dir = *reinterpret_cast<Vec3D<float> *>(&rayHit.ray.dir_x);
-    assert(IsNormalized(dir) && "Direction not normalized");
-    assert(D == 3 || dir[2] == 0.f && "In 2D case, z-component must be 0");
-    auto normal = *reinterpret_cast<Vec3D<float> *>(&rayHit.hit.Ng_x);
-    // Normalize(dir);
+  static void reflectRay(RTCRayHit &rayHit, Vec3D<NumericType> &rayDirection) {
+    auto n = *reinterpret_cast<Vec3D<float> *>(&rayHit.hit.Ng_x);
+    Vec3D<NumericType> normal{static_cast<NumericType>(n[0]),
+                              static_cast<NumericType>(n[1]),
+                              static_cast<NumericType>(n[2])};
     Normalize(normal);
-    auto const direction = ReflectionSpecular<float>(dir, normal);
+    rayDirection = ReflectionSpecular<NumericType>(rayDirection, normal);
     auto const origin = getNewOrigin(rayHit.ray);
-    // use <D=3> here because z-component should already be 0 in D=2 case
-    assert(D == 3 || dir[2] == 0.f && "In 2D case, z-component must be 0");
-    rayInternal::fillRayDirection<3>(rayHit.ray, direction);
+    rayInternal::fillRayDirection<D>(rayHit.ray, rayDirection);
     rayInternal::fillRayPosition(rayHit.ray, origin);
   }
 
