@@ -260,7 +260,7 @@ public:
     std::vector<int> materialIdsMapped(launchParams_.numElements);
 
     if (mapToConsecutive) {
-      // mapping to consecutive IDs. Use binary search
+      // mapping to consecutive IDs
 #pragma omp parallel for
       for (int i = 0; i < launchParams_.numElements; i++) {
         int idx = 0, matId = static_cast<int>(materialIds[i]);
@@ -268,6 +268,8 @@ public:
           if (uniqueMaterialIds_[idx] == matId)
             break;
         }
+        assert(idx < uniqueMaterialIds_.size() &&
+               "Material ID not found in unique material IDs.");
         materialIdsMapped[i] = idx;
       }
     } else {
@@ -783,7 +785,7 @@ protected:
   std::unordered_map<std::string, unsigned> particleMap_;
   std::vector<CallableConfig> callableMap_;
 
-  std::vector<int> uniqueMaterialIds_;
+  std::vector<int> uniqueMaterialIds_; // sorted unique material IDs
   CudaBuffer materialIdsBuffer_;
 
   float gridDelta_ = 0.0f;
@@ -793,7 +795,7 @@ protected:
   std::vector<Particle<T>> particles_;
   CudaBuffer dataPerParticleBuffer_;               // same for all particles
   std::vector<CudaBuffer> materialStickingBuffer_; // different for particles
-  CudaBuffer materialMapBuffer_;
+  CudaBuffer materialMapBuffer_; // maps material ID to index in sticking array
 
   // sbt data
   CudaBuffer cellDataBuffer_;

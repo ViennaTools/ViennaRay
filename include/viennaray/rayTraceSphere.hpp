@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rayGeometryDisk.hpp>
+#include <rayGeometrySphere.hpp>
 #include <rayTrace.hpp>
 
 #include <vcLogger.hpp>
@@ -10,22 +10,22 @@ namespace viennaray {
 using namespace viennacore;
 
 template <class NumericType, int D>
-class TraceDisk final : public Trace<NumericType, D> {
+class TraceSphere final : public Trace<NumericType, D> {
 public:
-  TraceDisk() = default;
-  ~TraceDisk() override { geometry_.releaseGeometry(); }
+  TraceSphere() = default;
+  ~TraceSphere() override { geometry_.releaseGeometry(); }
 
   /// Run the ray tracer
   void apply() override {
     checkSettings();
     auto boundingBox = geometry_.getBoundingBox();
     rayInternal::adjustBoundingBox<NumericType, D>(
-        boundingBox, this->sourceDirection_, this->diskRadius_);
+        boundingBox, this->sourceDirection_, this->sphereRadius_);
     auto traceSettings = rayInternal::getTraceSettings(this->sourceDirection_);
 
     auto boundary = Boundary<NumericType, D>(
         this->device_, boundingBox, this->boundaryConditions_, traceSettings);
-    geometry_.computeDiskAreas(boundary);
+    geometry_.computeSphereAreas(boundary);
 
     std::array<Vec3D<NumericType>, 3> orthonormalBasis;
     if (this->usePrimaryDirection_)
@@ -46,7 +46,7 @@ public:
       }
     }
 
-    rayInternal::TraceKernel<NumericType, D, GeometryType::DISK> tracer(
+    rayInternal::TraceKernel<NumericType, D, GeometryType::SPHERE> tracer(
         this->device_, geometry_, boundary, this->pSource_, this->pParticle_,
         this->config_, this->dataLog_, this->RTInfo_);
     tracer.setTracingData(&this->localData_, this->pGlobalData_);
@@ -61,38 +61,32 @@ public:
   /// In this case the last dimension is ignored.
   template <size_t Dim>
   void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
-                   std::vector<VectorType<NumericType, Dim>> const &normals,
                    const NumericType gridDelta) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
 
     this->gridDelta_ = gridDelta;
-    diskRadius_ = gridDelta * rayInternal::DiskFactor<D>;
-    this->geometry_.initGeometry(this->device_, points, normals, diskRadius_);
+    sphereRadius_ = gridDelta * rayInternal::DiskFactor<D>;
+    this->geometry_.initGeometry(this->device_, points, sphereRadius_);
   }
 
   /// Set the ray tracing geometry
   /// Specify the disk radius manually.
   template <size_t Dim>
   void setGeometry(std::vector<VectorType<NumericType, Dim>> const &points,
-                   std::vector<VectorType<NumericType, Dim>> const &normals,
-                   const NumericType gridDelta, const NumericType diskRadii) {
+                   const NumericType gridDelta, const NumericType sphereRadii) {
     static_assert((D != 3 || Dim != 2) &&
                   "Setting 2D geometry in 3D trace object");
 
     this->gridDelta_ = gridDelta;
-    diskRadius_ = diskRadii;
-    geometry_.initGeometry(this->device_, points, normals, diskRadius_);
+    sphereRadius_ = sphereRadii;
+    geometry_.initGeometry(this->device_, points, sphereRadius_);
   }
 
   void setGeometry(const DiskMesh &diskMesh) {
     this->gridDelta_ = static_cast<NumericType>(diskMesh.gridDelta);
-    diskRadius_ = diskMesh.gridDelta * rayInternal::DiskFactor<D>;
+    sphereRadius_ = diskMesh.gridDelta * rayInternal::DiskFactor<D>;
     geometry_.template initGeometry<D>(this->device_, diskMesh);
-  }
-
-  void setMaxBackfaceHits(const unsigned maxBackfaceHits) {
-    this->config_.maxBackfaceHits = maxBackfaceHits;
   }
 
   /// Set material ID's for each geometry point.
@@ -100,6 +94,8 @@ public:
   template <typename T> void setMaterialIds(std::vector<T> const &materialIds) {
     geometry_.setMaterialIds(materialIds);
   }
+
+  auto const &getSphereAreas() const { return geometry_.getSphereAreas(); }
 
   /// Helper function to normalize the recorded flux in a post-processing step.
   /// The flux can be normalized to the source flux and the maximum recorded
@@ -112,11 +108,11 @@ public:
 
     switch (norm) {
     case NormalizationType::MAX: {
-      const auto totalDiskArea = diskRadius_ * diskRadius_ * M_PI;
+      const auto totalSphereArea = sphereRadius_ * sphereRadius_ * M_PI * 4.0;
       auto maxv = *std::max_element(flux.begin(), flux.end());
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
-        flux[idx] *= (totalDiskArea / geometry_.getDiskArea(idx)) / maxv;
+        flux[idx] *= totalSphereArea / maxv;
       }
       break;
     }
@@ -133,9 +129,15 @@ public:
               ? this->pSource_->getNumPoints() * this->config_.numRaysPerPoint
               : this->config_.numRaysFixed;
       const NumericType normFactor = sourceArea / numTotalRays;
+
 #pragma omp parallel for
       for (int idx = 0; idx < flux.size(); ++idx) {
-        flux[idx] *= normFactor / geometry_.getDiskArea(idx);
+        auto sphereArea = geometry_.getSphereArea(idx);
+        if (sphereArea <= 0) {
+          flux[idx] = 0;
+        } else {
+          flux[idx] *= normFactor / sphereArea;
+        }
       }
       break;
     }
@@ -148,53 +150,7 @@ public:
   /// Helper function to smooth the recorded flux by averaging over the
   /// neighborhood in a post-processing step.
   void smoothFlux(std::vector<NumericType> &flux,
-                  int numNeighbors = 1) override {
-    assert(flux.size() == geometry_.getNumPrimitives() &&
-           "Unequal number of points in smoothFlux");
-    if (numNeighbors < 1) {
-      VIENNACORE_LOG_DEBUG(
-          "Number of neighbors for flux smoothing less than 1. Skipping.");
-      return;
-    }
-
-    auto oldFlux = flux;
-    PointNeighborhood<NumericType, D> pointNeighborhood;
-    if (numNeighbors == 1) {
-      // re-use the neighborhood from the geometry
-      pointNeighborhood = geometry_.getPointNeighborhood();
-    } else {
-      // create a new neighborhood with a larger radius
-      auto boundingBox = geometry_.getBoundingBox();
-      std::vector<Vec3D<NumericType>> points(geometry_.getNumPrimitives());
-#pragma omp parallel for
-      for (int idx = 0; idx < geometry_.getNumPrimitives(); idx++) {
-        points[idx] = geometry_.getPoint(idx);
-      }
-      pointNeighborhood.template init<3>(points, numNeighbors * 2 * diskRadius_,
-                                         boundingBox[0], boundingBox[1]);
-    }
-
-#pragma omp parallel for
-    for (int idx = 0; idx < geometry_.getNumPrimitives(); idx++) {
-
-      NumericType vv = oldFlux[idx];
-
-      auto const &neighborhood = pointNeighborhood.getNeighborIndices(idx);
-      auto const normal = geometry_.getPrimNormal(idx);
-      NumericType sum = 1.;
-
-      for (auto const &nbi : neighborhood) {
-        auto nnormal = geometry_.getPrimNormal(nbi);
-        auto weight = DotProduct(normal, nnormal);
-        if (weight > 0.) {
-          vv += oldFlux[nbi] * weight;
-          sum += weight;
-        }
-      }
-
-      flux[idx] = vv / sum;
-    }
-  }
+                  int numNeighbors = 1) override {}
 
 private:
   void checkSettings() {
@@ -212,17 +168,17 @@ private:
       VIENNACORE_LOG_ERROR(
           "Invalid source direction in 2D geometry. Aborting.");
     }
-    if (diskRadius_ > this->gridDelta_) {
+    if (sphereRadius_ > this->gridDelta_) {
       this->RTInfo_.warning = true;
       VIENNACORE_LOG_WARNING(
-          "Disk radius should be smaller than grid delta. Hit "
+          "Sphere radius should be smaller than grid delta. Hit "
           "count normalization not correct.");
     }
   }
 
 private:
-  GeometryDisk<NumericType, D> geometry_;
-  NumericType diskRadius_ = 0;
+  GeometrySphere<NumericType, D> geometry_;
+  NumericType sphereRadius_ = 0;
 };
 
 } // namespace viennaray

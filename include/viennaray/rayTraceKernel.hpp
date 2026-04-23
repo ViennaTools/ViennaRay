@@ -151,7 +151,7 @@ public:
         }
 
         bool reflect = false;
-        bool hitFromBack = false;
+        unsigned int backfaceHits = 0;
         do {
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
@@ -218,33 +218,40 @@ public:
           const auto hitPoint = Vec3Df{ray.org_x + ray.dir_x * ray.tfar,
                                        ray.org_y + ray.dir_y * ray.tfar,
                                        ray.org_z + ray.dir_z * ray.tfar};
-          const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
+          auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
+          if constexpr (geoType == GeometryType::SPHERE) {
+            // For sphere geometries, we need to calculate the normal vector
+            // from the hit point and the sphere center.
+            const auto &sphereData = geometry_.getPrimRef(rayHit.hit.primID);
+            const auto &sphereCenter =
+                *reinterpret_cast<Vec3Df const *>(&sphereData);
+            geomNormal = hitPoint - sphereCenter;
+            Normalize(geomNormal);
+          }
 
           // Check for backface hit
           const auto backfaceHit = DotProduct(rayDirection, geomNormal) > 0;
-          if constexpr (geoType == GeometryType::DISK) {
-            if (backfaceHit) {
+          if (backfaceHit) {
+            if constexpr (geoType == GeometryType::DISK) {
               // If the dot product of the ray direction and the surface normal
               // is greater than zero, then we hit the back face of the disk.
-              if (hitFromBack) {
-                // if hitFromBack == true, then the ray hits the back of a disk
-                // the second time. In this case we discard the ray.
+              if (++backfaceHits > config_.maxBackfaceHits) {
                 ++raysTerminated;
                 break;
               }
-              hitFromBack = true;
               // Let ray through, i.e., continue.
               reflect = true;
               fillRayPosition(rayHit.ray, hitPoint);
               // keep ray direction as it is
               continue;
-            }
-          } else {
-            if (backfaceHit) {
+            } else if constexpr (geoType == GeometryType::TRIANGLE) {
               // For triangle geometries, we simply discard backface hits as
               // they are not considered valid geometry hits.
               ++raysTerminated;
               break;
+            } else if constexpr (geoType == GeometryType::SPHERE) {
+              // flip normal
+              geomNormal = Inv(geomNormal);
             }
           }
 
@@ -271,7 +278,7 @@ public:
             for (const auto &id :
                  geometry_.getNeighborIndices(rayHit.hit.primID)) {
               rtcNumericType distance;
-              if (checkLocalIntersection(ray, id, distance)) {
+              if (checkLocalIntersectionDisk(ray, id, distance)) {
                 hitDiskIds.push_back(id);
 #ifdef VIENNARAY_USE_WDIST
                 impactDistances.push_back(distance + 1e-6f);
@@ -299,12 +306,27 @@ public:
                                          hitDiskIds[diskId], matID, myLocalData,
                                          pGlobalData_, rngState);
             }
-          } else {
+          } else if constexpr (geoType == GeometryType::TRIANGLE) {
             // Triangle Geometry - single hit
             particle->surfaceCollision(
                 rayWeight, rayDirection, geomNormal, rayHit.hit.primID,
                 geometry_.getMaterialId(rayHit.hit.primID), myLocalData,
                 pGlobalData_, rngState);
+          } else if constexpr (geoType == GeometryType::SPHERE) {
+            particle->surfaceCollision(
+                rayWeight, rayDirection, geomNormal, rayHit.hit.primID,
+                geometry_.getMaterialId(rayHit.hit.primID), myLocalData,
+                pGlobalData_, rngState);
+
+            // check for additional intersections
+            for (const auto &id :
+                 geometry_.getNeighborIndices(rayHit.hit.primID)) {
+              if (checkLocalIntersectionSphere(ray, id)) {
+                particle->surfaceCollision(rayWeight, rayDirection, geomNormal,
+                                           id, geometry_.getMaterialId(id),
+                                           myLocalData, pGlobalData_, rngState);
+              }
+            }
           }
 
           // get sticking probability (1) and reflected direction (2)
@@ -417,10 +439,10 @@ public:
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     if (raysTerminated > 1000) {
-      VIENNACORE_LOG_DEBUG(
-          "A total of " + std::to_string(raysTerminated) +
-          " rays were terminated early due to excessive boundary hits or "
-          "reflections.");
+      VIENNACORE_LOG_DEBUG("A total of " + std::to_string(raysTerminated) +
+                           " rays were terminated early due to excessive "
+                           "boundary hits, backface hits, or"
+                           "reflections.");
     }
 
     rtcReleaseScene(rtcScene);
@@ -460,8 +482,41 @@ private:
     return true;
   }
 
-  bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
-                              rtcNumericType &impactDistance) const {
+  bool checkLocalIntersectionSphere(RTCRay const &ray,
+                                    const unsigned int primID) const {
+    auto const &rayOrigin =
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.org_x);
+    auto const &rayDirection =
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.dir_x);
+
+    const auto &sphereData = geometry_.getPrimRef(primID);
+    const auto &sphereCenter =
+        *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&sphereData);
+    const auto &radius = sphereData[3];
+
+    auto oc = rayOrigin - sphereCenter;
+    auto a = DotProduct(rayDirection, rayDirection);
+    auto b = 2.0f * DotProduct(oc, rayDirection);
+    auto c = DotProduct(oc, oc) - radius * radius;
+    auto discriminant = b * b - 4 * a * c;
+    if (discriminant < 0)
+      return false;
+
+    auto sqrtDisc = sqrtf(discriminant);
+
+    auto t = (-b - sqrtDisc) / (2 * a);
+    if (t >= ray.tnear && t <= ray.tfar + radius * 2.f)
+      return true;
+
+    t = (-b + sqrtDisc) / (2 * a);
+    if (t >= ray.tnear && t <= ray.tfar + radius * 2.f)
+      return true;
+
+    return false;
+  }
+
+  bool checkLocalIntersectionDisk(RTCRay const &ray, const unsigned int primID,
+                                  rtcNumericType &impactDistance) const {
     auto const &rayOrigin =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.org_x);
     auto const &rayDirection =

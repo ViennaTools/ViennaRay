@@ -85,6 +85,7 @@ struct KernelConfig {
   size_t numRaysFixed = 0;
   unsigned maxReflections = std::numeric_limits<unsigned>::max();
   unsigned maxBoundaryHits = 1000;
+  unsigned maxBackfaceHits = 1;
   unsigned rngSeed = 0;
 
   bool useRandomSeed = true;

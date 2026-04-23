@@ -6,7 +6,12 @@
 
 namespace viennaray {
 
-enum class GeometryType : unsigned { DISK = 0, TRIANGLE = 1, UNDEFINED };
+enum class GeometryType : unsigned {
+  DISK = 0,
+  TRIANGLE = 1,
+  SPHERE = 2,
+  UNDEFINED
+};
 
 using namespace viennacore;
 
