@@ -53,6 +53,14 @@ struct LaunchParams {
     bool customDirectionBasis = false;
   } source;
 
+  bool useSurfaceSource = false;
+  viennacore::Vec3Df *surfaceSourcePositions = nullptr;
+  viennacore::Vec3Df *surfaceSourceNormals = nullptr;
+  float *surfaceSourceWeights = nullptr;
+  unsigned int surfaceSourceCount = 0;
+  float surfaceSourceArea = 0.f;
+  float surfaceSourceOffset = 0.f;
+
   OptixTraversableHandle traversable;
 };
 

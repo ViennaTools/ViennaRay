@@ -87,7 +87,9 @@ public:
     assert(this->resultBuffer_.sizeInBytes != 0 &&
            "Normalization: Result buffer not initialized.");
     double sourceArea = 0.0;
-    if constexpr (D == 2) {
+    if (launchParams_.useSurfaceSource) {
+      sourceArea = launchParams_.surfaceSourceArea;
+    } else if constexpr (D == 2) {
       sourceArea =
           (launchParams_.source.maxPoint[0] - launchParams_.source.minPoint[0]);
     } else {

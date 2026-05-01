@@ -114,20 +114,47 @@ public:
     launchParams_.maxReflections = config_.maxReflections;
     launchParams_.maxBoundaryHits = config_.maxBoundaryHits;
 
+    launchParams_.useSurfaceSource = surfaceSourceEnabled_;
+    if (surfaceSourceEnabled_) {
+      launchParams_.surfaceSourcePositions =
+          (Vec3Df *)surfaceSourcePositionsBuffer_.dPointer();
+      launchParams_.surfaceSourceNormals =
+          (Vec3Df *)surfaceSourceNormalsBuffer_.dPointer();
+      launchParams_.surfaceSourceWeights =
+          (float *)surfaceSourceWeightsBuffer_.dPointer();
+      launchParams_.surfaceSourceCount = surfaceSourceCount_;
+      launchParams_.surfaceSourceArea = surfaceSourceArea_;
+      launchParams_.surfaceSourceOffset = surfaceSourceOffset_;
+    }
+
     int numPointsPerDim = static_cast<int>(
         std::sqrt(static_cast<double>(launchParams_.numElements)));
+    unsigned int launchDimX = config_.numRaysPerPoint;
+    unsigned int launchDimY = numPointsPerDim;
+    unsigned int launchDimZ = numPointsPerDim;
 
     if (config_.numRaysFixed > 0) {
       numPointsPerDim = 1;
       config_.numRaysPerPoint = config_.numRaysFixed;
+      launchDimX = config_.numRaysPerPoint;
+      launchDimY = numPointsPerDim;
+      launchDimZ = numPointsPerDim;
     }
 
-    numRays_ = numPointsPerDim * numPointsPerDim * config_.numRaysPerPoint;
+    if (surfaceSourceEnabled_) {
+      launchDimY = surfaceSourceCount_;
+      launchDimZ = 1;
+    }
+
+    numRays_ = static_cast<size_t>(launchDimX) * launchDimY * launchDimZ;
     if (numRays_ > (1 << 29)) {
       VIENNACORE_LOG_WARNING("Too many rays for single launch: " +
                              util::prettyDouble(numRays_));
-      config_.numRaysPerPoint = (1 << 29) / (numPointsPerDim * numPointsPerDim);
-      numRays_ = numPointsPerDim * numPointsPerDim * config_.numRaysPerPoint;
+      const auto sourcePoints = static_cast<size_t>(launchDimY) * launchDimZ;
+      config_.numRaysPerPoint =
+          std::max<unsigned int>(1, (1 << 29) / sourcePoints);
+      launchDimX = config_.numRaysPerPoint;
+      numRays_ = static_cast<size_t>(launchDimX) * sourcePoints;
     }
     VIENNACORE_LOG_DEBUG("Number of rays: " + util::prettyDouble(numRays_));
 
@@ -204,7 +231,7 @@ public:
           launchParamsBuffers_[i].dPointer(),
           launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
           /*! dimensions of the launch: */
-          config_.numRaysPerPoint, numPointsPerDim, numPointsPerDim));
+          launchDimX, launchDimY, launchDimZ));
     }
 #else // Launch on multiple streams in release mode
     for (size_t i = 0; i < particles_.size(); i++) {
@@ -214,7 +241,7 @@ public:
           launchParamsBuffers_[i].dPointer(),
           launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
           /*! dimensions of the launch: */
-          config_.numRaysPerPoint, numPointsPerDim, numPointsPerDim));
+          launchDimX, launchDimY, launchDimZ));
     }
 #endif
 
@@ -233,6 +260,37 @@ public:
                                             // does not own the memory, so no
                                             // free() in destructor
     numCellData_ = numData;
+  }
+
+  void setSurfaceSource(const std::vector<Vec3Df> &positions,
+                        const std::vector<Vec3Df> &normals,
+                        const std::vector<float> &weights,
+                        const float sourceArea, const float sourceOffset) {
+    if (positions.size() != normals.size() || positions.size() != weights.size()) {
+      VIENNACORE_LOG_ERROR("Surface source arrays must have matching sizes.");
+    }
+    if (positions.empty()) {
+      VIENNACORE_LOG_ERROR("Surface source must contain at least one point.");
+    }
+
+    surfaceSourcePositionsBuffer_.allocUpload(positions);
+    surfaceSourceNormalsBuffer_.allocUpload(normals);
+    surfaceSourceWeightsBuffer_.allocUpload(weights);
+    surfaceSourceCount_ = static_cast<unsigned int>(positions.size());
+    surfaceSourceArea_ = sourceArea;
+    surfaceSourceOffset_ = sourceOffset;
+    surfaceSourceEnabled_ = true;
+  }
+
+  void clearSurfaceSource() {
+    surfaceSourceEnabled_ = false;
+    surfaceSourceCount_ = 0;
+    surfaceSourceArea_ = 0.f;
+    surfaceSourceOffset_ = 0.f;
+    launchParams_.useSurfaceSource = false;
+    surfaceSourcePositionsBuffer_.free();
+    surfaceSourceNormalsBuffer_.free();
+    surfaceSourceWeightsBuffer_.free();
   }
 
   template <class NumericType>
@@ -361,6 +419,7 @@ public:
     for (auto &buffer : materialStickingBuffer_) {
       buffer.free();
     }
+    clearSurfaceSource();
   }
 
   void destroyMembers() {
@@ -797,6 +856,9 @@ protected:
 
   // sbt data
   CudaBuffer cellDataBuffer_;
+  CudaBuffer surfaceSourcePositionsBuffer_;
+  CudaBuffer surfaceSourceNormalsBuffer_;
+  CudaBuffer surfaceSourceWeightsBuffer_;
 
   OptixPipeline pipeline_{};
   OptixPipelineCompileOptions pipelineCompileOptions_ = {};
@@ -828,11 +890,15 @@ protected:
 
   rayInternal::KernelConfig config_;
   bool ignoreBoundary_ = false;
+  bool surfaceSourceEnabled_ = false;
   bool resultsDownloaded_ = false;
   bool isSynced_ = false;
 
   size_t numRays_ = 0;
   unsigned numCellData_ = 0;
+  unsigned int surfaceSourceCount_ = 0;
+  float surfaceSourceArea_ = 0.f;
+  float surfaceSourceOffset_ = 0.f;
   const std::string globalParamsName_ = "launchParams";
 
   const std::string normModuleName_ = "normKernels.ptx";

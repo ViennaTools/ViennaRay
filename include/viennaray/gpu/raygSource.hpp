@@ -63,6 +63,24 @@ initializeRayDirection(PerRayData &prd, const float power,
 }
 
 __device__ __forceinline__ void
+initializeRayDirectionFromBasis(PerRayData &prd, const float power,
+                                const std::array<Vec3Df, 3> &basis) {
+  const float4 u = curand_uniform4(&prd.RNGstate); // (0,1]
+  const float cosTheta = powf(u.w, 1.f / (power + 1.f));
+  const float sinTheta = sqrtf(max(0.f, 1.f - cosTheta * cosTheta));
+  float sinPhi, cosPhi;
+  __sincosf(2.f * M_PIf * u.x, &sinPhi, &cosPhi);
+
+  const float rx = cosTheta;
+  const float ry = cosPhi * sinTheta;
+  const float rz = sinPhi * sinTheta;
+
+  prd.dir = basis[0] * rx + basis[1] * ry + basis[2] * rz;
+  viennacore::Normalize(prd.dir);
+  prd.traceDir = prd.dir;
+}
+
+__device__ __forceinline__ void
 initializeRayPosition(PerRayData &prd, const LaunchParams::SourcePlane &source,
                       const uint16_t D) {
   const float u = curand_uniform(&prd.RNGstate); // (0,1]
@@ -84,6 +102,22 @@ initializeRayPosition(PerRayData &prd, const LaunchParams::SourcePlane &source,
 __device__ __forceinline__ void
 initializeRayPositionAndDirection(PerRayData &prd,
                                   const LaunchParams &launchParams) {
+  if (launchParams.useSurfaceSource) {
+    const uint3 launchIdx = optixGetLaunchIndex();
+    const unsigned sourceIdx = launchIdx.y;
+
+    Vec3Df normal = launchParams.surfaceSourceNormals[sourceIdx];
+    viennacore::Normalize(normal);
+
+    prd.pos = launchParams.surfaceSourcePositions[sourceIdx] +
+              normal * launchParams.surfaceSourceOffset;
+    prd.rayWeight = launchParams.surfaceSourceWeights[sourceIdx];
+
+    initializeRayDirectionFromBasis(prd, launchParams.cosineExponent,
+                                    getOrthonormalBasis(normal));
+    return;
+  }
+
   initializeRayPosition(prd, launchParams.source, launchParams.D);
   if (launchParams.source.customDirectionBasis) {
     initializeRayDirection(prd, launchParams.cosineExponent,
