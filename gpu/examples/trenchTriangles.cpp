@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
   particle.sticking = 1.f;
   particle.dataLabels = {"particleFlux"};
   particle.materialSticking[7] = 0.1f;
-  particle.materialSticking[1] = 1.0f;
+  particle.materialSticking[1] = 0.1f;
 
   std::unordered_map<std::string, unsigned int> pMap = {{"Particle", 0}};
   std::vector<gpu::CallableConfig> cMap = {
@@ -74,4 +74,48 @@ int main(int argc, char **argv) {
   rayCountBuffer.download(&rayCount, 1);
   std::cout << "Trace count: " << rayCount << std::endl;
 #endif
+
+  // surface source test
+  gpu::TraceTriangle<NumericType, D> tracerSurface(context);
+  tracerSurface.setGeometry(mesh);
+  tracerSurface.setMaterialIds(materialIds);
+  tracerSurface.setCallables("ViennaRayCallableWrapper", context->modulePath);
+  tracerSurface.setParticleCallableMap({pMap, cMap});
+  tracerSurface.setNumberOfRaysPerPoint(5000);
+  tracerSurface.insertNextParticle(particle);
+  tracerSurface.prepareParticlePrograms();
+
+  std::vector<float> surfaceSourceWeights(mesh.triangles.size());
+  assert(flux.size() == surfaceSourceWeights.size() &&
+         "Flux size does not match surface source weights size.");
+  for (size_t i = 0; i < surfaceSourceWeights.size(); ++i) {
+    surfaceSourceWeights[i] = static_cast<float>(flux[i]);
+  }
+  float sourceArea = 0.f;
+  std::vector<Vec3Df> surfaceSourcePosition(mesh.triangles.size());
+  for (size_t i = 0; i < mesh.triangles.size(); ++i) {
+    sourceArea +=
+        0.5f * Norm(CrossProduct(mesh.nodes[mesh.triangles[i][1]] -
+                                     mesh.nodes[mesh.triangles[i][0]],
+                                 mesh.nodes[mesh.triangles[i][2]] -
+                                     mesh.nodes[mesh.triangles[i][0]]));
+    surfaceSourcePosition[i] =
+        (mesh.nodes[mesh.triangles[i][0]] + mesh.nodes[mesh.triangles[i][1]] +
+         mesh.nodes[mesh.triangles[i][2]]) /
+        3.f;
+  }
+
+  tracerSurface.setSurfaceSource(surfaceSourcePosition, mesh.normals,
+                                 surfaceSourceWeights, sourceArea, 1e-4f);
+
+  tracerSurface.apply();
+  tracerSurface.normalizeResults();
+
+  auto fluxSurface = tracerSurface.getFlux(0, 0);
+
+  rayInternal::writeVTP<float, D, gpu::ResultType>(
+      "trenchTriangles_surfaceSource.vtp", mesh.nodes, mesh.triangles,
+      fluxSurface);
+
+  return 0;
 }
