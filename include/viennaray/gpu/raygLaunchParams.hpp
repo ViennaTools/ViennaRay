@@ -20,6 +20,8 @@ __both__ __forceinline__ unsigned callableIndex(unsigned p, CallableSlot s) {
 }
 
 struct LaunchParams {
+  OptixTraversableHandle traversable;
+
   ResultType *resultBuffer;
 
   float rayWeightThreshold = 0.1f;
@@ -57,11 +59,7 @@ struct LaunchParams {
   viennacore::Vec3Df *surfaceSourcePositions = nullptr;
   viennacore::Vec3Df *surfaceSourceNormals = nullptr;
   float *surfaceSourceWeights = nullptr;
-  unsigned int surfaceSourceCount = 0;
-  float surfaceSourceArea = 0.f;
   float surfaceSourceOffset = 0.f;
-
-  OptixTraversableHandle traversable;
 };
 
 #ifdef __CUDACC__

@@ -113,8 +113,7 @@ initializeRayPositionAndDirection(PerRayData &prd,
               normal * launchParams.surfaceSourceOffset;
     prd.rayWeight = launchParams.surfaceSourceWeights[sourceIdx];
 
-    initializeRayDirectionFromBasis(prd, launchParams.cosineExponent,
-                                    getOrthonormalBasis(normal));
+    initializeRayDirectionFromBasis(prd, 1.f, getOrthonormalBasis(normal));
     return;
   }
 

@@ -122,8 +122,6 @@ public:
           (Vec3Df *)surfaceSourceNormalsBuffer_.dPointer();
       launchParams_.surfaceSourceWeights =
           (float *)surfaceSourceWeightsBuffer_.dPointer();
-      launchParams_.surfaceSourceCount = surfaceSourceCount_;
-      launchParams_.surfaceSourceArea = surfaceSourceArea_;
       launchParams_.surfaceSourceOffset = surfaceSourceOffset_;
     }
 
@@ -142,7 +140,7 @@ public:
     }
 
     if (surfaceSourceEnabled_) {
-      launchDimY = surfaceSourceCount_;
+      launchDimY = surfaceSourcePositionsCount_;
       launchDimZ = 1;
     }
 
@@ -225,23 +223,23 @@ public:
 
 #ifndef NDEBUG // Launch on single stream in debug mode
     for (size_t i = 0; i < particles_.size(); i++) {
-      OPTIX_CHECK(optixLaunch(
-          pipeline_, streams_[0],
-          /*! parameters and SBT */
-          launchParamsBuffers_[i].dPointer(),
-          launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
-          /*! dimensions of the launch: */
-          launchDimX, launchDimY, launchDimZ));
+      OPTIX_CHECK(optixLaunch(pipeline_, streams_[0],
+                              /*! parameters and SBT */
+                              launchParamsBuffers_[i].dPointer(),
+                              launchParamsBuffers_[i].sizeInBytes,
+                              &shaderBindingTable_,
+                              /*! dimensions of the launch: */
+                              launchDimX, launchDimY, launchDimZ));
     }
 #else // Launch on multiple streams in release mode
     for (size_t i = 0; i < particles_.size(); i++) {
-      OPTIX_CHECK(optixLaunch(
-          pipeline_, streams_[i],
-          /*! parameters and SBT */
-          launchParamsBuffers_[i].dPointer(),
-          launchParamsBuffers_[i].sizeInBytes, &shaderBindingTable_,
-          /*! dimensions of the launch: */
-          launchDimX, launchDimY, launchDimZ));
+      OPTIX_CHECK(optixLaunch(pipeline_, streams_[i],
+                              /*! parameters and SBT */
+                              launchParamsBuffers_[i].dPointer(),
+                              launchParamsBuffers_[i].sizeInBytes,
+                              &shaderBindingTable_,
+                              /*! dimensions of the launch: */
+                              launchDimX, launchDimY, launchDimZ));
     }
 #endif
 
@@ -266,7 +264,8 @@ public:
                         const std::vector<Vec3Df> &normals,
                         const std::vector<float> &weights,
                         const float sourceArea, const float sourceOffset) {
-    if (positions.size() != normals.size() || positions.size() != weights.size()) {
+    if (positions.size() != normals.size() ||
+        positions.size() != weights.size()) {
       VIENNACORE_LOG_ERROR("Surface source arrays must have matching sizes.");
     }
     if (positions.empty()) {
@@ -276,7 +275,7 @@ public:
     surfaceSourcePositionsBuffer_.allocUpload(positions);
     surfaceSourceNormalsBuffer_.allocUpload(normals);
     surfaceSourceWeightsBuffer_.allocUpload(weights);
-    surfaceSourceCount_ = static_cast<unsigned int>(positions.size());
+    surfaceSourcePositionsCount_ = static_cast<unsigned int>(positions.size());
     surfaceSourceArea_ = sourceArea;
     surfaceSourceOffset_ = sourceOffset;
     surfaceSourceEnabled_ = true;
@@ -284,7 +283,7 @@ public:
 
   void clearSurfaceSource() {
     surfaceSourceEnabled_ = false;
-    surfaceSourceCount_ = 0;
+    surfaceSourcePositionsCount_ = 0;
     surfaceSourceArea_ = 0.f;
     surfaceSourceOffset_ = 0.f;
     launchParams_.useSurfaceSource = false;
@@ -896,7 +895,7 @@ protected:
 
   size_t numRays_ = 0;
   unsigned numCellData_ = 0;
-  unsigned int surfaceSourceCount_ = 0;
+  unsigned int surfaceSourcePositionsCount_ = 0;
   float surfaceSourceArea_ = 0.f;
   float surfaceSourceOffset_ = 0.f;
   const std::string globalParamsName_ = "launchParams";
