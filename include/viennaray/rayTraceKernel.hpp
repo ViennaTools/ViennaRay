@@ -241,10 +241,11 @@ public:
             }
           } else {
             if (backfaceHit) {
-              // For triangle geometries, we simply discard backface hits as
-              // they are not considered valid geometry hits.
-              ++raysTerminated;
-              break;
+              // Match OptiX triangle tracing with back-face culling: ignore
+              // this hit and continue along the same ray.
+              reflect = true;
+              fillRayPosition(rayHit.ray, hitPoint);
+              continue;
             }
           }
 
