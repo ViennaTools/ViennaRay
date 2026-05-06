@@ -78,6 +78,10 @@ public:
     particles_.push_back(particle);
   }
 
+  void setRayWeightThreshold(float threshold) {
+    launchParams_.rayWeightThreshold = threshold;
+  }
+
   void apply() {
     if (particles_.empty()) {
       VIENNACORE_LOG_ERROR(

@@ -82,7 +82,8 @@ getIdxOffset(int dataIdx, const LaunchParams &launchParams) {
 }
 
 __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
-                                            PerRayData &prd) {
+                                            PerRayData &prd,
+                                            const float &initialRayWeight) {
   if (prd.rayWeight <= 0.f || prd.energy < 0.f)
     return false;
 
@@ -93,13 +94,13 @@ __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
   // If the weight of the ray is above a certain threshold, we always reflect.
   // If the weight of the ray is below the threshold, we randomly decide to
   // either kill the ray or increase its weight (in an unbiased way).
-  if (prd.rayWeight >= launchParams.rayWeightThreshold && prd.energy >= 0.f)
+  if (prd.rayWeight >= launchParams.rayWeightThreshold * initialRayWeight)
     return true;
 
   // We want to set the weight of (the reflection of) the ray to the value of
   // renewWeight. In order to stay unbiased we kill the reflection with a
   // probability of (1 - rayWeight / renewWeight).
-  float renewWeight = 0.3f;
+  float renewWeight = 0.3f * initialRayWeight;
   float rnd = getNextRand(&prd.RNGstate);
   float killProbability = 1.f - prd.rayWeight / renewWeight;
   if (rnd < killProbability) {

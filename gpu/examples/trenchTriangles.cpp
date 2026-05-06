@@ -26,12 +26,13 @@ int main(int argc, char **argv) {
     materialIds[i] = 1;
   }
 
+  float sticking = .5f;
   gpu::Particle<NumericType> particle;
   particle.name = "Particle";
-  particle.sticking = 1.f;
+  particle.sticking = sticking;
   particle.dataLabels = {"particleFlux"};
-  particle.materialSticking[7] = 0.1f;
-  particle.materialSticking[1] = 0.1f;
+  particle.materialSticking[7] = sticking;
+  particle.materialSticking[1] = sticking;
 
   std::unordered_map<std::string, unsigned int> pMap = {{"Particle", 0}};
   std::vector<gpu::CallableConfig> cMap = {
@@ -44,7 +45,7 @@ int main(int argc, char **argv) {
   tracer.setMaterialIds(materialIds);
   tracer.setCallables("ViennaRayCallableWrapper", context->modulePath);
   tracer.setParticleCallableMap({pMap, cMap});
-  tracer.setNumberOfRaysPerPoint(5000);
+  tracer.setNumberOfRaysPerPoint(3000);
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
@@ -68,7 +69,7 @@ int main(int argc, char **argv) {
             << std::endl;
 
   rayInternal::writeVTP<float, D, gpu::ResultType>(
-      "trenchTriangles_triMesh.vtp", mesh.nodes, mesh.triangles, flux);
+      "trenchTriangles_flux.vtp", mesh.nodes, mesh.triangles, flux);
 
 #ifdef COUNT_RAYS
   rayCountBuffer.download(&rayCount, 1);
@@ -76,42 +77,45 @@ int main(int argc, char **argv) {
 #endif
 
   // surface source test
-  gpu::TraceTriangle<NumericType, D> tracerSurface(context);
-  tracerSurface.setGeometry(mesh);
-  tracerSurface.setMaterialIds(materialIds);
-  tracerSurface.setCallables("ViennaRayCallableWrapper", context->modulePath);
-  tracerSurface.setParticleCallableMap({pMap, cMap});
-  tracerSurface.setNumberOfRaysPerPoint(5000);
-  tracerSurface.insertNextParticle(particle);
-  tracerSurface.prepareParticlePrograms();
-
-  std::vector<float> surfaceSourceWeights(mesh.triangles.size());
-  assert(flux.size() == surfaceSourceWeights.size() &&
-         "Flux size does not match surface source weights size.");
-  for (size_t i = 0; i < surfaceSourceWeights.size(); ++i) {
-    surfaceSourceWeights[i] = static_cast<float>(flux[i]);
-  }
+  double totalFlux = 0.0;
   float sourceArea = 0.f;
   std::vector<Vec3Df> surfaceSourcePosition(mesh.triangles.size());
+  std::vector<float> surfaceSourceWeights(mesh.triangles.size());
+  std::vector<float> areas(mesh.triangles.size());
   for (size_t i = 0; i < mesh.triangles.size(); ++i) {
-    sourceArea +=
-        0.5f * Norm(CrossProduct(mesh.nodes[mesh.triangles[i][1]] -
-                                     mesh.nodes[mesh.triangles[i][0]],
-                                 mesh.nodes[mesh.triangles[i][2]] -
-                                     mesh.nodes[mesh.triangles[i][0]]));
-    surfaceSourcePosition[i] =
-        (mesh.nodes[mesh.triangles[i][0]] + mesh.nodes[mesh.triangles[i][1]] +
-         mesh.nodes[mesh.triangles[i][2]]) /
-        3.f;
+    const auto &A = mesh.nodes[mesh.triangles[i][0]];
+    const auto &B = mesh.nodes[mesh.triangles[i][1]];
+    const auto &C = mesh.nodes[mesh.triangles[i][2]];
+    float area = 0.5f * Norm(CrossProduct(B - A, C - A));
+    sourceArea += area;
+    surfaceSourcePosition[i] = (A + B + C) / 3.f;
+    surfaceSourceWeights[i] = static_cast<float>(flux[i]) * area * sticking;
+    totalFlux += flux[i] * area;
+    areas[i] = area;
   }
 
-  tracerSurface.setSurfaceSource(surfaceSourcePosition, mesh.normals,
-                                 surfaceSourceWeights, sourceArea, 1e-4f);
+  float averageArea = sourceArea / static_cast<float>(mesh.triangles.size());
+  for (size_t i = 0; i < surfaceSourceWeights.size(); ++i) {
+    surfaceSourceWeights[i] = surfaceSourceWeights[i] / averageArea;
+  }
 
-  tracerSurface.apply();
-  tracerSurface.normalizeResults();
+  std::cout << "Total flux from source plane: " << totalFlux * sticking
+            << std::endl;
 
-  auto fluxSurface = tracerSurface.getFlux(0, 0);
+  tracer.setSurfaceSource(surfaceSourcePosition, mesh.normals,
+                          surfaceSourceWeights, sourceArea, 1e-4f);
+
+  tracer.apply();
+  tracer.normalizeResults();
+
+  auto fluxSurface = tracer.getFlux(0, 0);
+
+  double totalSurfaceFlux = 0.0;
+  for (size_t i = 0; i < mesh.triangles.size(); ++i) {
+    totalSurfaceFlux += fluxSurface[i] * areas[i];
+  }
+  std::cout << "Total flux from surface desorption: "
+            << totalSurfaceFlux * sticking << std::endl;
 
   rayInternal::writeVTP<float, D, gpu::ResultType>(
       "trenchTriangles_surfaceSource.vtp", mesh.nodes, mesh.triangles,

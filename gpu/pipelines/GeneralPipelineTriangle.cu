@@ -86,6 +86,7 @@ extern "C" __global__ void __raygen__() {
 
   // initialize ray position and direction
   initializeRayPositionAndDirection(prd, launchParams);
+  const float initialRayWeight = prd.rayWeight;
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -97,7 +98,7 @@ extern "C" __global__ void __raygen__() {
   packPointer((void *)&prd, u0, u1);
   unsigned int hintBitLength = 2;
 
-  while (continueRay(launchParams, prd)) {
+  while (continueRay(launchParams, prd, initialRayWeight)) {
     if (launchParams.D == 2) {
       prd.traceDir[2] = 0.f;
       viennacore::Normalize(prd.traceDir);
