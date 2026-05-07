@@ -241,11 +241,10 @@ public:
             }
           } else {
             if (backfaceHit) {
-              // Match OptiX triangle tracing with back-face culling: ignore
-              // this hit and continue along the same ray.
-              reflect = true;
-              fillRayPosition(rayHit.ray, hitPoint);
-              continue;
+              // For triangle geometries, we simply discard backface hits as
+              // they are not considered valid geometry hits.
+              ++raysTerminated;
+              break;
             }
           }
 
@@ -290,11 +289,10 @@ public:
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
               const auto matID = geometry_.getMaterialId(hitDiskIds[diskId]);
               const auto normal = geometry_.getPrimNormal(hitDiskIds[diskId]);
+              NumericType distRayWeight = rayWeight;
 #ifdef VIENNARAY_USE_WDIST
-              auto distRayWeight = rayWeight / impactDistances[diskId] /
-                                   invDistanceWeightSum * numDisksHit;
-#else
-              auto distRayWeight = rayWeight;
+              distRayWeight = rayWeight / impactDistances[diskId] /
+                              invDistanceWeightSum * numDisksHit;
 #endif
               particle->surfaceCollision(distRayWeight, rayDirection, normal,
                                          hitDiskIds[diskId], matID, myLocalData,
