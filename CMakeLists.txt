@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 4.1.2)
+  VERSION 4.2.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library switches
@@ -98,7 +98,7 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME ViennaCore
-  VERSION 2.1.1
+  VERSION 2.1.2
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 

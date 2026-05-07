@@ -33,18 +33,33 @@ jobs:
     container: ${{ matrix.container }}
 
     env:
+      VCPKG_COMMIT: c3867e714dd3a51c272826eea77267876517ed99
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-bincache
 
     name: "🧪 Test on ${{ matrix.os }} (⚙️: ${{ matrix.config }}, 💿: ${{ matrix.container || matrix.os }})"
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 🖥️ Setup Environment
         uses: ./.github/actions/setup
         with:
           os: ${{ matrix.os }}
+
+      - name: 🖥️ Setup vcpkg (Windows)
+        shell: pwsh
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          Remove-Item Env:VCPKG_ROOT -ErrorAction SilentlyContinue
+
+          git clone https://github.com/microsoft/vcpkg.git
+          git -C vcpkg checkout $env:VCPKG_COMMIT
+          & .\vcpkg\bootstrap-vcpkg.bat
+
+          "VCPKG_ROOT=$($env:GITHUB_WORKSPACE)\vcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
 
       - name: 📋 Install MacOS Dependencies
         shell: bash
@@ -52,23 +67,18 @@ jobs:
         run: |
           brew install embree tbb
 
-      - name: Create vcpkg binary cache dir
+      - name: 🦥 Cache vcpkg binary (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-${{ matrix.os }}-${{ matrix.config }}-${{ env.VCPKG_COMMIT }}
+
+      - name: 🛠️ Build Dependencies (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "${{ env.VCPKG_DEFAULT_BINARY_CACHE }}"
-
-      - name: 🦥 Cache vcpkg build
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-          key: vcpkg-${{ matrix.os }}-${{ matrix.config }}
-
-      - name: 🛠️ Build embree (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          ./vcpkg/vcpkg install embree
+          ./vcpkg/vcpkg install --triplet x64-windows
 
       - name: 🏗️ Compile (Windows)
         if: ${{ matrix.os == 'windows-latest' }}

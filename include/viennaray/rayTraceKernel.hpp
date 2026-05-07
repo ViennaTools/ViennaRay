@@ -289,11 +289,10 @@ public:
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
               const auto matID = geometry_.getMaterialId(hitDiskIds[diskId]);
               const auto normal = geometry_.getPrimNormal(hitDiskIds[diskId]);
+              NumericType distRayWeight = rayWeight;
 #ifdef VIENNARAY_USE_WDIST
-              auto distRayWeight = rayWeight / impactDistances[diskId] /
-                                   invDistanceWeightSum * numDisksHit;
-#else
-              auto distRayWeight = rayWeight;
+              distRayWeight = rayWeight / impactDistances[diskId] /
+                              invDistanceWeightSum * numDisksHit;
 #endif
               particle->surfaceCollision(distRayWeight, rayDirection, normal,
                                          hitDiskIds[diskId], matID, myLocalData,

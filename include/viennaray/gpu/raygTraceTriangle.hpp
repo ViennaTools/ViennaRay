@@ -42,7 +42,9 @@ public:
 
   void normalizeResults() override {
     double sourceArea = 0.0;
-    if constexpr (D == 2) {
+    if (launchParams_.useSurfaceSource) {
+      sourceArea = this->surfaceSourceArea_;
+    } else if constexpr (D == 2) {
       sourceArea =
           (launchParams_.source.maxPoint[0] - launchParams_.source.minPoint[0]);
     } else {

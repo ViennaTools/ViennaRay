@@ -17,9 +17,16 @@ using namespace viennaray::gpu;
 extern "C" __constant__ LaunchParams launchParams;
 
 extern "C" __global__ void __closesthit__() {
+  PerRayData *prd = getPRD();
+
+  if (optixIsTriangleBackFaceHit()) {
+    // Discard geometry back face hits for triangles
+    prd->rayWeight = 0.f;
+    return;
+  }
+
   const HitSBTDataTriangle *sbtData =
       (const HitSBTDataTriangle *)optixGetSbtDataPointer();
-  PerRayData *prd = getPRD();
 
   const unsigned int primID = optixGetPrimitiveIndex();
   prd->tMin = optixGetRayTmax();
@@ -47,6 +54,11 @@ extern "C" __global__ void __closesthit__boundary__() {
 
   // update ray position to hit point
   prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
+
+  if (optixIsTriangleBackFaceHit()) {
+    // Continue ray without any changes
+    return;
+  }
 
   const unsigned int primID = optixGetPrimitiveIndex();
   // 0-3: X axis (dim 0), 4-7: Y axis (dim 1)
@@ -86,6 +98,7 @@ extern "C" __global__ void __raygen__() {
 
   // initialize ray position and direction
   initializeRayPositionAndDirection(prd, launchParams);
+  const float initialRayWeight = prd.rayWeight;
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
@@ -97,7 +110,7 @@ extern "C" __global__ void __raygen__() {
   packPointer((void *)&prd, u0, u1);
   unsigned int hintBitLength = 2;
 
-  while (continueRay(launchParams, prd)) {
+  while (continueRay(launchParams, prd, initialRayWeight)) {
     if (launchParams.D == 2) {
       prd.traceDir[2] = 0.f;
       viennacore::Normalize(prd.traceDir);
@@ -109,9 +122,7 @@ extern "C" __global__ void __raygen__() {
                   1e-4f,                        // tmin
                   1e20f,                        // tmax
                   0.0f,                         // rayTime
-                  OptixVisibilityMask(255),
-                  OPTIX_RAY_FLAG_DISABLE_ANYHIT |
-                      OPTIX_RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+                  OptixVisibilityMask(255), OPTIX_RAY_FLAG_DISABLE_ANYHIT,
                   0,       // SBT offset
                   1,       // SBT stride
                   0,       // missSBTIndex
