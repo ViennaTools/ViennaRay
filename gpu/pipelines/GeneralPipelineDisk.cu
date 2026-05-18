@@ -174,7 +174,6 @@ extern "C" __global__ void __raygen__() {
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
-  unsigned int hintBitLength = 2;
 
   while (continueRay(launchParams, prd, initialRayWeight)) {
     if (launchParams.D == 2) {
@@ -195,7 +194,7 @@ extern "C" __global__ void __raygen__() {
                   0,                             // missSBTIndex
                   u0, u1);                       // Payload
     unsigned int hint = getCoherenceHint(prd, launchParams);
-    optixReorder(hint, hintBitLength);
+    optixReorder(hint, 2);
     optixInvoke(u0, u1);
     prd.totalCount = 0;     // Reset PerRayData
     prd.traceDir = prd.dir; // Update traceDir for the next iteration
