@@ -36,11 +36,10 @@ int main() {
 
   std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
 
-  auto &localData = tracer.getLocalData();
-  tracer.normalizeFlux(localData.getVectorData(0), NormalizationType::SOURCE);
+  auto flux = *tracer.getLocalData().getScalarData("flux");
+  tracer.normalizeFlux(flux, NormalizationType::SOURCE);
 
   auto triMesh = convertLinesToTriangles(lineMesh);
   rayInternal::writeVTP<NumericType, 3>("lineGeometryOutput.vtp", triMesh.nodes,
-                                        triMesh.triangles,
-                                        localData.getVectorData(0));
+                                        triMesh.triangles, flux);
 }

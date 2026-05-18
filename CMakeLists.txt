@@ -51,13 +51,13 @@ endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_17)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 target_compile_definitions(${PROJECT_NAME}
                            INTERFACE VIENNARAY_EMBREE_VERSION=${VIENNARAY_EMBREE_VERSION})
 
 set_target_properties(
   ${PROJECT_NAME}
-  PROPERTIES CXX_STANDARD 17
+  PROPERTIES CXX_STANDARD 20
              CXX_EXTENSIONS OFF
              CXX_STANDARD_REQUIRED ON
              WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -99,6 +99,7 @@ include("cmake/cpm.cmake")
 CPMAddPackage(
   NAME ViennaCore
   VERSION 2.1.2
+  GIT_TAG point-data
   GIT_REPOSITORY "https://github.com/ViennaTools/ViennaCore"
   OPTIONS "VIENNACORE_USE_GPU ${VIENNARAY_USE_GPU}")
 

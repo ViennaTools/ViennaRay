@@ -132,13 +132,13 @@ public:
   virtual void smoothFlux(std::vector<NumericType> &flux,
                           int numNeighbors = 1) = 0;
 
-  [[nodiscard]] TracingData<NumericType> &getLocalData() { return localData_; }
+  [[nodiscard]] PointData<NumericType> &getLocalData() { return localData_; }
 
-  [[nodiscard]] TracingData<NumericType> *getGlobalData() {
-    return pGlobalData_;
+  [[nodiscard]] auto getGlobalData() { return pGlobalData_; }
+
+  void setGlobalData(SmartPointer<PointData<NumericType>> &data) {
+    pGlobalData_ = data;
   }
-
-  void setGlobalData(TracingData<NumericType> &data) { pGlobalData_ = &data; }
 
   [[nodiscard]] TraceInfo getRayTraceInfo() const { return RTInfo_; }
 
@@ -173,8 +173,8 @@ protected:
 
   rayInternal::KernelConfig config_;
 
-  TracingData<NumericType> localData_;
-  TracingData<NumericType> *pGlobalData_ = nullptr;
+  PointData<NumericType> localData_;
+  SmartPointer<PointData<NumericType>> pGlobalData_ = nullptr;
   TraceInfo RTInfo_;
   DataLog<NumericType> dataLog_;
 };

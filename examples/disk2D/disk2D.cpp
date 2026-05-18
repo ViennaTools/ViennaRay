@@ -58,7 +58,7 @@ int main() {
   std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
 
   // Extract the normalized hit counts for each geometry point
-  auto &flux = rayTracer.getLocalData().getVectorData("flux");
+  auto flux = *rayTracer.getLocalData().getScalarData("flux");
   rayTracer.normalizeFlux(flux, NormalizationType::SOURCE);
   rayTracer.smoothFlux(flux, 1);
 

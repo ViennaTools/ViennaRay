@@ -36,9 +36,9 @@ int main() {
 
   std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
 
-  auto &localData = tracer.getLocalData();
-  tracer.normalizeFlux(localData.getVectorData(0), NormalizationType::SOURCE);
+  auto flux = *tracer.getLocalData().getScalarData("flux");
+  tracer.normalizeFlux(flux, NormalizationType::SOURCE);
 
   rayInternal::writeVTP<NumericType, D>("triangleGeometryOutput.vtp", points,
-                                        triangles, localData.getVectorData(0));
+                                        triangles, flux);
 }

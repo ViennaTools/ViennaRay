@@ -30,7 +30,7 @@ int main() {
 
     rayTracer.apply();
 
-    flux1 = rayTracer.getLocalData().getVectorData(0);
+    flux1 = *rayTracer.getLocalData().getScalarData("hitFlux");
   }
 
   {
@@ -42,7 +42,7 @@ int main() {
 
     rayTracer.apply();
 
-    flux2 = rayTracer.getLocalData().getVectorData(0);
+    flux2 = *rayTracer.getLocalData().getScalarData("hitFlux");
   }
 
   VC_TEST_ASSERT(flux1.size() == flux2.size());

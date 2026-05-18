@@ -22,8 +22,8 @@ int main() {
 
   auto device = rtcNewDevice("");
 
-  auto localData = TracingData<NumericType>();
-  const auto globalData = TracingData<NumericType>();
+  auto localData = PointData<NumericType>();
+  const auto globalData = PointData<NumericType>();
 
   GeometryDisk<NumericType, D> geometry;
   auto diskRadius = gridDelta * rayInternal::DiskFactor<D>;
@@ -46,9 +46,10 @@ int main() {
 
   DiffuseParticle<NumericType, D> particle(1.0, "hitFlux");
   auto cp = particle.clone();
-  localData.setNumberOfVectorData(cp->getLocalDataLabels().size());
   auto numPoints = geometry.getNumPrimitives();
-  localData.resizeAllVectorData(numPoints, 0.);
+  for (const auto &label : particle.getLocalDataLabels()) {
+    localData.insertReplaceScalarData(numPoints, 0., label);
+  }
 
   DataLog<NumericType> log;
   TraceInfo info;

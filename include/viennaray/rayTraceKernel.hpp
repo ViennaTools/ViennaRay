@@ -66,7 +66,7 @@ public:
 #endif
 
     // thread local data storage
-    std::vector<TracingData<NumericType>> threadLocalData(numThreads);
+    std::vector<PointData<NumericType>> threadLocalData(numThreads);
     for (auto &data : threadLocalData) {
       data = *pLocalData_;
     }
@@ -344,66 +344,10 @@ public:
     for (int i = 0; i < numThreads; ++i) {
       dataLog_.merge(threadLocalDataLog[i]);
     }
+
     // merge local data
-    if (!pLocalData_->getVectorData().empty()) {
-      // merge vector data
-#pragma omp parallel for
-      for (int i = 0; i < pLocalData_->getVectorData().size(); ++i) {
-        switch (pLocalData_->getVectorMergeType(i)) {
-        case TracingDataMergeEnum::SUM: {
-          for (size_t j = 0; j < pLocalData_->getVectorData(i).size(); ++j) {
-            for (int k = 0; k < numThreads; ++k) {
-              pLocalData_->getVectorData(i)[j] +=
-                  threadLocalData[k].getVectorData(i)[j];
-            }
-          }
-          break;
-        }
-
-        case TracingDataMergeEnum::APPEND: {
-          pLocalData_->getVectorData(i).clear();
-          for (int k = 0; k < numThreads; ++k) {
-            pLocalData_->appendVectorData(i,
-                                          threadLocalData[k].getVectorData(i));
-          }
-          break;
-        }
-
-        default: {
-          VIENNACORE_LOG_WARNING("Invalid merge type in local vector data.");
-          break;
-        }
-        }
-      }
-    }
-
-    if (!pLocalData_->getScalarData().empty()) {
-      // merge scalar data
-      for (int i = 0; i < pLocalData_->getScalarData().size(); ++i) {
-        switch (pLocalData_->getScalarMergeType(i)) {
-        case TracingDataMergeEnum::SUM: {
-          for (int j = 0; j < numThreads; ++j) {
-            pLocalData_->getScalarData(i) +=
-                threadLocalData[j].getScalarData(i);
-          }
-          break;
-        }
-
-        case TracingDataMergeEnum::AVERAGE: {
-          for (int j = 0; j < numThreads; ++j) {
-            pLocalData_->getScalarData(i) +=
-                threadLocalData[j].getScalarData(i);
-          }
-          pLocalData_->getScalarData(i) /= static_cast<NumericType>(numThreads);
-          break;
-        }
-
-        default: {
-          VIENNACORE_LOG_WARNING("Invalid merge type in local scalar data.");
-          break;
-        }
-        }
-      }
+    for (int i = 0; i < numThreads; ++i) {
+      pLocalData_->merge(threadLocalData[i]);
     }
 
     traceInfo_.numRays = numRays;
@@ -425,8 +369,8 @@ public:
     rtcReleaseScene(rtcScene);
   }
 
-  void setTracingData(TracingData<NumericType> *pLocalData,
-                      const TracingData<NumericType> *pGlobalData) {
+  void setTracingData(PointData<NumericType> *pLocalData,
+                      const PointData<NumericType> *pGlobalData) {
     pLocalData_ = pLocalData;
     pGlobalData_ = pGlobalData;
   }
@@ -520,8 +464,8 @@ private:
 
   const KernelConfig config_;
 
-  TracingData<NumericType> *pLocalData_ = nullptr;
-  TracingData<NumericType> const *pGlobalData_ = nullptr;
+  PointData<NumericType> *pLocalData_ = nullptr;
+  PointData<NumericType> const *pGlobalData_ = nullptr;
   TraceInfo &traceInfo_;
   DataLog<NumericType> &dataLog_;
 };

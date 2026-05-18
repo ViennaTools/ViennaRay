@@ -131,8 +131,9 @@ extern "C" __global__ void __raygen__() {
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
+  const float initialRayWeight = prd.rayWeight;
 
-  while (continueRay(launchParams, prd)) {
+  while (continueRay(launchParams, prd, initialRayWeight)) {
     printf("Tracing ray %u from pos (%f, %f, %f) in dir (%f, %f, %f)\n",
            linearLaunchIndex, prd.pos[0], prd.pos[1], prd.pos[2], prd.dir[0],
            prd.dir[1], prd.dir[2]);

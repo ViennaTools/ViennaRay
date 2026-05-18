@@ -43,17 +43,16 @@ public:
 
     auto localDataLabels = this->pParticle_->getLocalDataLabels();
     if (!localDataLabels.empty()) {
-      this->localData_.setNumberOfVectorData(localDataLabels.size());
       auto numPoints = geometry_.getNumPrimitives();
-      for (int i = 0; i < localDataLabels.size(); ++i) {
-        this->localData_.setVectorData(i, numPoints, 0., localDataLabels[i]);
+      for (const auto &label : localDataLabels) {
+        this->localData_.insertReplaceScalarData(numPoints, 0., label);
       }
     }
 
     rayInternal::TraceKernel<NumericType, D, GeometryType::TRIANGLE> tracer(
         this->device_, geometry_, boundary, this->pSource_, this->pParticle_,
         this->config_, this->dataLog_, this->RTInfo_);
-    tracer.setTracingData(&this->localData_, this->pGlobalData_);
+    tracer.setTracingData(&this->localData_, this->pGlobalData_.get());
     tracer.apply();
     ++this->config_.runNumber;
 
