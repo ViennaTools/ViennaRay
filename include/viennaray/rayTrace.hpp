@@ -136,7 +136,7 @@ public:
 
   [[nodiscard]] auto getGlobalData() { return pGlobalData_; }
 
-  void setGlobalData(SmartPointer<PointData<NumericType>> &data) {
+  void setGlobalData(SmartPointer<PointData<NumericType>> data) {
     pGlobalData_ = data;
   }
 
