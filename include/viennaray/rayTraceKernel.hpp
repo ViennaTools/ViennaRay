@@ -347,7 +347,8 @@ public:
 
     // merge local data
     for (int i = 0; i < numThreads; ++i) {
-      pLocalData_->merge(threadLocalData[i]);
+      pLocalData_->mergeScalarData(threadLocalData[i],
+                                   std::plus<NumericType>());
     }
 
     traceInfo_.numRays = numRays;

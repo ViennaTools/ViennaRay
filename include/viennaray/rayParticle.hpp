@@ -56,7 +56,8 @@ public:
   /// primId: ID fo the hit disc;
   /// materialId: ID of material at hit disc;
   /// localData: user-defined data;
-  /// globalData: constant user-defined data;
+  /// globalData: constant user-defined data; (can be nullptr if no global data
+  /// is provided)
   /// Rng: thread-safe random number generator (standard library conform);
   virtual void surfaceCollision(NumericType rayWeight,
                                 const Vec3D<NumericType> &rayDir,
@@ -153,7 +154,7 @@ public:
                         const PointData<NumericType> *globalData,
                         RNG &rngState) final {
     // collect data for this hit
-    localData.getScalarData(0)->at(primID) += rayWeight;
+    localData.addToScalarData(0, primID, rayWeight);
   }
 
   NumericType getSourceDistributionPower() const final { return 1.; }
@@ -194,7 +195,7 @@ public:
                         const PointData<NumericType> *globalData,
                         RNG &rngState) final {
     // collect data for this hit
-    localData.getScalarData(0)->at(primID) += rayWeight;
+    localData.addToScalarData(0, primID, rayWeight);
   }
 
   NumericType getSourceDistributionPower() const final { return sourcePower_; }
