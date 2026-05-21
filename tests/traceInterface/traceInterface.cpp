@@ -56,7 +56,7 @@ int main() {
 
   rayTracer.apply();
 
-  auto flux = rayTracer.getLocalData().getVectorData(0);
+  auto flux = *rayTracer.getLocalData().getScalarData("hitFlux");
   VC_TEST_ASSERT(flux.size() == points.size());
 
   rayTracer.normalizeFlux(flux);

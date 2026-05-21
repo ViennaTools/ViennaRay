@@ -4,10 +4,11 @@
 #include <rayTracingData.hpp>
 #include <rayUtil.hpp>
 
-#include <utility>
+#include <vcPointData.hpp>
 #include <vcRNG.hpp>
 
 #include <memory>
+#include <utility>
 
 #define VIENNARAY_PARTICLE_STOP                                                \
   std::pair<NumericType, Vec3D<NumericType>> {                                 \
@@ -44,7 +45,7 @@ public:
   surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                     const Vec3D<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const TracingData<NumericType> *globalData,
+                    const PointData<NumericType> *globalData,
                     RNG &rngState) = 0;
 
   /// Surface collision. This function gets called whenever an intersection of
@@ -55,14 +56,15 @@ public:
   /// primId: ID fo the hit disc;
   /// materialId: ID of material at hit disc;
   /// localData: user-defined data;
-  /// globalData: constant user-defined data;
+  /// globalData: constant user-defined data; (can be nullptr if no global data
+  /// is provided)
   /// Rng: thread-safe random number generator (standard library conform);
   virtual void surfaceCollision(NumericType rayWeight,
                                 const Vec3D<NumericType> &rayDir,
                                 const Vec3D<NumericType> &geomNormal,
                                 const unsigned int primID, const int materialId,
-                                TracingData<NumericType> &localData,
-                                const TracingData<NumericType> *globalData,
+                                PointData<NumericType> &localData,
+                                const PointData<NumericType> *globalData,
                                 RNG &rngState) = 0;
 
   /// Set the power of the cosine source distribution for this particle.
@@ -96,7 +98,7 @@ public:
   surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                     const Vec3D<NumericType> &geomNormal,
                     const unsigned int primId, const int materialId,
-                    const TracingData<NumericType> *globalData,
+                    const PointData<NumericType> *globalData,
                     RNG &rngState) override {
     // return the sticking probability and direction after reflection for this
     // hit
@@ -105,8 +107,8 @@ public:
   void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                         const Vec3D<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
-                        TracingData<NumericType> &localData,
-                        const TracingData<NumericType> *globalData,
+                        PointData<NumericType> &localData,
+                        const PointData<NumericType> *globalData,
                         RNG &rngState) override { // collect data for this hit
   }
   NumericType getSourceDistributionPower() const override { return 1.; }
@@ -138,7 +140,7 @@ public:
   surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                     const Vec3D<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
-                    const TracingData<NumericType> *globalData,
+                    const PointData<NumericType> *globalData,
                     RNG &rngState) final {
     auto direction = ReflectionDiffuse<NumericType, D>(geomNormal, rngState);
     return std::pair<NumericType, Vec3D<NumericType>>{stickingProbability_,
@@ -148,11 +150,11 @@ public:
   void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                         const Vec3D<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
-                        TracingData<NumericType> &localData,
-                        const TracingData<NumericType> *globalData,
+                        PointData<NumericType> &localData,
+                        const PointData<NumericType> *globalData,
                         RNG &rngState) final {
     // collect data for this hit
-    localData.getVectorData(0)[primID] += rayWeight;
+    localData.addToScalarData(0, primID, rayWeight);
   }
 
   NumericType getSourceDistributionPower() const final { return 1.; }
@@ -179,7 +181,7 @@ public:
   surfaceReflection(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                     const Vec3D<NumericType> &geomNormal,
                     const unsigned int primID, const int materialId,
-                    const TracingData<NumericType> *globalData,
+                    const PointData<NumericType> *globalData,
                     RNG &rngState) final {
     auto direction = ReflectionSpecular<NumericType, D>(rayDir, geomNormal);
     return std::pair<NumericType, Vec3D<NumericType>>{stickingProbability_,
@@ -189,11 +191,11 @@ public:
   void surfaceCollision(NumericType rayWeight, const Vec3D<NumericType> &rayDir,
                         const Vec3D<NumericType> &geomNormal,
                         const unsigned int primID, const int materialId,
-                        TracingData<NumericType> &localData,
-                        const TracingData<NumericType> *globalData,
+                        PointData<NumericType> &localData,
+                        const PointData<NumericType> *globalData,
                         RNG &rngState) final {
     // collect data for this hit
-    localData.getVectorData(0)[primID] += rayWeight;
+    localData.addToScalarData(0, primID, rayWeight);
   }
 
   NumericType getSourceDistributionPower() const final { return sourcePower_; }
