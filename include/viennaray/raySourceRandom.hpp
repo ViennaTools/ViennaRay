@@ -12,8 +12,8 @@ class SourceRandom : public Source<NumericType> {
 
 public:
   SourceRandom(const boundingBoxType &boundingBox, NumericType cosinePower,
-               std::array<int, 5> &pTraceSettings, const size_t numPoints_,
-               const bool customDirection,
+               std::array<int, 5> const &pTraceSettings,
+               const size_t numPoints_, const bool customDirection,
                const std::array<Vec3D<NumericType>, 3> &orthonormalBasis)
       : bdBox_(boundingBox), rayDir_(pTraceSettings[0]),
         firstDir_(pTraceSettings[1]), secondDir_(pTraceSettings[2]),

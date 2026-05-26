@@ -155,6 +155,43 @@ private:
   }
 
 protected:
+  void prepareLocalData(unsigned int numPoints) {
+    assert(pParticle_ != nullptr &&
+           "Particle type must be set before preparing local data");
+
+    // initialize local data with the correct size and labels
+    localData_.clear();
+    auto localDataLabels = pParticle_->getLocalDataLabels();
+    if (!localDataLabels.empty()) {
+      for (const auto &label : localDataLabels) {
+        localData_.insertReplaceScalarData(numPoints, 0., label);
+      }
+    }
+  }
+
+  void prepareSource(unsigned int numPoints,
+                     std::array<Vec3D<NumericType>, 2> const &boundingBox,
+                     std::array<int, 5> const &traceSettings) {
+    assert(pParticle_ != nullptr &&
+           "Particle type must be set before preparing source");
+
+    std::array<Vec3D<NumericType>, 3> orthonormalBasis;
+    if (usePrimaryDirection_) {
+      VIENNACORE_LOG_DEBUG("ViennaRay: Using custom primary direction");
+      orthonormalBasis = rayInternal::getOrthonormalBasis(primaryDirection_);
+    }
+    if (!useCustomSource) {
+      // default source is a random source with cosine distribution around the
+      // primary direction
+      pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
+          boundingBox, pParticle_->getSourceDistributionPower(), traceSettings,
+          numPoints, usePrimaryDirection_, orthonormalBasis);
+    } else {
+      VIENNACORE_LOG_DEBUG("ViennaRay: Using custom source");
+    }
+  }
+
+protected:
   RTCDevice device_;
 
   std::shared_ptr<Source<NumericType>> pSource_ = nullptr;

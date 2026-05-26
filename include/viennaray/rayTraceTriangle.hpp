@@ -11,6 +11,9 @@ using namespace viennacore;
 
 template <class NumericType, int D>
 class TraceTriangle final : public Trace<NumericType, D> {
+  using TraceKernel =
+      rayInternal::TraceKernel<NumericType, D, GeometryType::TRIANGLE>;
+
 public:
   TraceTriangle() = default;
   ~TraceTriangle() override { geometry_.releaseGeometry(); }
@@ -26,32 +29,13 @@ public:
     auto boundary = Boundary<NumericType, D>(
         this->device_, boundingBox, this->boundaryConditions_, traceSettings);
 
-    std::array<Vec3D<NumericType>, 3> orthonormalBasis;
-    if (this->usePrimaryDirection_) {
-      VIENNACORE_LOG_DEBUG("ViennaRay: Using custom primary direction");
-      orthonormalBasis =
-          rayInternal::getOrthonormalBasis(this->primaryDirection_);
-    }
-    if (!this->useCustomSource) {
-      this->pSource_ = std::make_shared<SourceRandom<NumericType, D>>(
-          boundingBox, this->pParticle_->getSourceDistributionPower(),
-          traceSettings, geometry_.getNumPrimitives(),
-          this->usePrimaryDirection_, orthonormalBasis);
-    } else {
-      VIENNACORE_LOG_DEBUG("ViennaRay: Using custom source");
-    }
+    this->prepareSource(geometry_.getNumPrimitives(), boundingBox,
+                        traceSettings);
+    this->prepareLocalData(geometry_.getNumPrimitives());
 
-    auto localDataLabels = this->pParticle_->getLocalDataLabels();
-    if (!localDataLabels.empty()) {
-      auto numPoints = geometry_.getNumPrimitives();
-      for (const auto &label : localDataLabels) {
-        this->localData_.insertReplaceScalarData(numPoints, 0., label);
-      }
-    }
-
-    rayInternal::TraceKernel<NumericType, D, GeometryType::TRIANGLE> tracer(
-        this->device_, geometry_, boundary, this->pSource_, this->pParticle_,
-        this->config_, this->dataLog_, this->RTInfo_);
+    TraceKernel tracer(this->device_, geometry_, boundary, this->pSource_,
+                       this->pParticle_, this->config_, this->dataLog_,
+                       this->RTInfo_);
     tracer.setTracingData(&this->localData_, this->pGlobalData_.get());
     tracer.apply();
     ++this->config_.runNumber;
