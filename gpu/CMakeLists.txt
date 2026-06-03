@@ -6,17 +6,28 @@ set(VIENNARAY_PIPELINE_DIR
     "${PROJECT_SOURCE_DIR}/gpu/pipelines"
     CACHE STRING "ViennaRay pipeline directory.")
 
-# Incldue directories for PTX and optix-ir compilation (force cache to update with new entries)
-if(NOT VIENNARAY_PASSED_FIRST_CONFIGURE)
-  set(VIENNACORE_NVCC_INCLUDE_DIRS
-      ${VIENNACORE_NVCC_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include/viennaray/gpu
-      CACHE STRING "PTX include directories" FORCE)
-  if(VIENNARAY_GPU_DOUBLE_PRECISION)
-    set(VIENNACORE_NVCC_DEFINES
-        ${VIENNACORE_NVCC_DEFINES} "VIENNARAY_GPU_DOUBLE_PRECISION=1"
-        CACHE STRING "PTX compile definitions" FORCE)
-  endif()
+# Include directories and definitions for PTX and optix-ir compilation.
+set(_VIENNARAY_NVCC_INCLUDE_DIRS ${VIENNACORE_NVCC_INCLUDE_DIRS}
+                                 ${PROJECT_SOURCE_DIR}/include/viennaray/gpu)
+list(REMOVE_DUPLICATES _VIENNARAY_NVCC_INCLUDE_DIRS)
+set(VIENNACORE_NVCC_INCLUDE_DIRS
+    ${_VIENNARAY_NVCC_INCLUDE_DIRS}
+    CACHE STRING "PTX include directories" FORCE)
+
+set(_VIENNARAY_NVCC_DEFINES ${VIENNACORE_NVCC_DEFINES})
+list(REMOVE_ITEM _VIENNARAY_NVCC_DEFINES "VIENNARAY_GPU_DOUBLE_PRECISION=1"
+     "VIENNARAY_GPU_DOUBLE_PRECISION" "VIENNARAY_BENCHMARK=1"
+     "VIENNARAY_BENCHMARK")
+if(VIENNARAY_GPU_DOUBLE_PRECISION)
+  list(APPEND _VIENNARAY_NVCC_DEFINES "VIENNARAY_GPU_DOUBLE_PRECISION=1")
 endif()
+if(VIENNARAY_BENCHMARK)
+  list(APPEND _VIENNARAY_NVCC_DEFINES "VIENNARAY_BENCHMARK=1")
+endif()
+list(REMOVE_DUPLICATES _VIENNARAY_NVCC_DEFINES)
+set(VIENNACORE_NVCC_DEFINES
+    ${_VIENNARAY_NVCC_DEFINES}
+    CACHE STRING "PTX compile definitions" FORCE)
 
 # Add the general pipelines and callable wrapper
 viennacore_add_optixir(GeneralPipelineDisk ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu)

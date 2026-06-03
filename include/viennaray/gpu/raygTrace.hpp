@@ -99,6 +99,18 @@ public:
                             ResultType(0));
     launchParams_.resultBuffer = (ResultType *)resultBuffer_.dPointer();
 
+#ifdef VIENNARAY_BENCHMARK
+    traceCountDownloaded_ = !trackNumberOfTraces_;
+    traceCount_ = 0;
+    if (trackNumberOfTraces_) {
+      traceCountBuffer_.allocInit(1, traceCount_);
+      launchParams_.traceCountBuffer =
+          (unsigned long long *)traceCountBuffer_.dPointer();
+    } else {
+      launchParams_.traceCountBuffer = nullptr;
+    }
+#endif
+
     if (materialIdsBuffer_.sizeInBytes != 0) {
       launchParams_.materialIds = (int *)materialIdsBuffer_.dPointer();
       launchParams_.materialMap = (int *)materialMapBuffer_.dPointer();
@@ -360,6 +372,27 @@ public:
     config_.maxBoundaryHits = pMaxBoundaryHits;
   }
 
+  void setTrackNumberOfTraces(const bool enable = true) {
+#ifdef VIENNARAY_BENCHMARK
+    trackNumberOfTraces_ = enable;
+    traceCountDownloaded_ = true;
+    traceCount_ = 0;
+    if (!enable) {
+      if (traceCountBuffer_.sizeInBytes != 0) {
+        syncStreams();
+      }
+      traceCountBuffer_.free();
+      launchParams_.traceCountBuffer = nullptr;
+    }
+#else
+    if (enable) {
+      VIENNACORE_LOG_ERROR(
+          "Trace-count tracking requires configuring with "
+          "VIENNARAY_BENCHMARK=ON.");
+    }
+#endif
+  }
+
   void setUseRandomSeeds(const bool set) { config_.useRandomSeed = set; }
 
   void setRngSeed(const unsigned seed) {
@@ -375,6 +408,24 @@ public:
   }
 
   size_t getNumberOfRays() const { return numRays_; }
+
+  [[nodiscard]] unsigned long long getNumberOfTraces() {
+#ifdef VIENNARAY_BENCHMARK
+    if (!trackNumberOfTraces_) {
+      VIENNACORE_LOG_WARNING(
+          "Trace-count tracking is disabled. Call "
+          "setTrackNumberOfTraces(true) before apply().");
+      return 0;
+    }
+    downloadTraceCount();
+    return traceCount_;
+#else
+    VIENNACORE_LOG_WARNING(
+        "Trace-count tracking is unavailable because ViennaRay was configured "
+        "without VIENNARAY_BENCHMARK=ON.");
+    return 0;
+#endif
+  }
 
   std::vector<ResultType> getFlux(int particleIdx, int dataIdx,
                                   int smoothingNeighbors = 0) {
@@ -414,6 +465,7 @@ public:
     raygenRecordBuffer_.free();
     directCallableRecordBuffer_.free();
     dataPerParticleBuffer_.free();
+    traceCountBuffer_.free();
     for (auto &buffer : launchParamsBuffers_) {
       buffer.free();
     }
@@ -542,6 +594,17 @@ public:
                              launchParams_.numElements * numFluxes_);
       resultsDownloaded_ = true;
     }
+  }
+
+  void downloadTraceCount() {
+#ifdef VIENNARAY_BENCHMARK
+    if (!traceCountDownloaded_) {
+      assert(traceCountBuffer_.sizeInBytes == sizeof(traceCount_));
+      syncStreams();
+      traceCountBuffer_.download(&traceCount_, 1);
+      traceCountDownloaded_ = true;
+    }
+#endif
   }
 
   // To be implemented by derived classes
@@ -890,14 +953,18 @@ protected:
   // results Buffer
   CudaBuffer resultBuffer_;
   std::vector<ResultType> results_;
+  CudaBuffer traceCountBuffer_;
 
   rayInternal::KernelConfig config_;
   bool ignoreBoundary_ = false;
   bool surfaceSourceEnabled_ = false;
   bool resultsDownloaded_ = false;
+  bool trackNumberOfTraces_ = false;
+  bool traceCountDownloaded_ = true;
   bool isSynced_ = false;
 
   size_t numRays_ = 0;
+  unsigned long long traceCount_ = 0;
   unsigned numCellData_ = 0;
   unsigned int surfaceSourcePositionsCount_ = 0;
   float surfaceSourceArea_ = 0.f;

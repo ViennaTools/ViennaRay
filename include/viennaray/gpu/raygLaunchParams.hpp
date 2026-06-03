@@ -23,6 +23,9 @@ struct LaunchParams {
   OptixTraversableHandle traversable;
 
   ResultType *resultBuffer;
+#ifdef VIENNARAY_BENCHMARK
+  unsigned long long *traceCountBuffer = nullptr;
+#endif
 
   float rayWeightThreshold = 0.1f;
   float tThreshold = 0.5f;
