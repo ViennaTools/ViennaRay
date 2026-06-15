@@ -1,0 +1,41 @@
+# trenchSplitting configuration
+# Lines starting with # are comments. Units: µm for lengths, degrees for angles.
+#
+# dimension = 2  →  periodic trench, source from +Y, geometry params: width, depth
+# dimension = 3  →  cylindrical hole, source from +Z, geometry params: radius, depth
+
+# ---- Simulation mode ----
+dimension   = 2      # 2 = trench  |  3 = cylinder
+
+# ---- Geometry (2D trench) ----
+width       = 0.10   # trench width (µm)
+
+# ---- Geometry (3D cylinder) ----
+radius      = 0.05   # cylinder radius (µm)
+
+# ---- Geometry (shared) ----
+depth       = 1.00   # structure depth (µm)  →  10:1 AR for default width/radius
+gridDelta   = 0.02   # surface-point spacing (µm)
+halfCell    = 0.30   # half-width of periodic unit cell (µm); must exceed width/2 or radius
+
+# ---- Particle / source ----
+sourcePower = 1.0    # power-cosine source exponent (1=Lambertian, 100=near-vertical beam)
+coneAngle   = 90.0   # reflection cone half-angle in degrees (0=specular, 90=diffuse)
+sticking    = 0.30   # sticking probability per surface hit
+
+# ---- Sampling ----
+raysPerPoint = 30    # primary rays per surface point per seed
+nSeeds       = 5     # independent replicas used to estimate noise
+
+# ---- Splitting ----
+# SplittingStrategy runs a cheap probe trace to detect which axis has the
+# steepest N_eff gradient, then sets splitInterval = geometry_range / numSplits.
+numSplits         = 5      # target number of forks per full traversal
+splitFactor       = 2      # branching factor at each split
+splitKillFraction = 0.001  # RR weight floor: ref >= fraction × initial weight
+probeRays         = 10     # rays/pt used in the auto-detection probe pass
+probeSeeds        = 3      # seeds used in the probe pass (must be >= 2)
+
+# ---- Runtime ----
+numThreads = 16
+maxBoundaryHits = 10000   # raise for deep/low-sticking structures (default 1000)

@@ -70,6 +70,8 @@ struct TraceInfo {
   size_t particleHits = 0;
   size_t boundaryHits = 0;
   size_t reflections = 0;
+  size_t terminatedByBoundary = 0; // exceeded maxBoundaryHits
+  size_t terminatedByBackface  = 0; // back-face hit twice on a disk
   double time = 0.0;
   bool warning = false;
   bool error = false;
@@ -91,6 +93,17 @@ struct KernelConfig {
   bool printProgress = false;
 
   unsigned runNumber = 1;
+
+  // Depth-adaptive splitting: when a ray travels more than splitInterval units
+  // along the depth axis (splitAxis) away from its last split position it forks
+  // into splitFactor continuations each carrying weight/splitFactor.  Children
+  // receive an RR threshold reference scaled down by 1/splitFactor per
+  // generation.  splitKillFraction × initialWeight is a global floor on that
+  // reference, bounding the cascade.  Disabled when splitInterval == 0.
+  unsigned splitFactor = 2;
+  double splitKillFraction = 0.01; // floor: RR ref >= splitKillFraction × W0
+  double splitInterval = 0.0;     // 0 = disabled; >0 = depth between splits (geometry units)
+  unsigned splitAxis = 1;          // coordinate index (0=X, 1=Y, 2=Z) for depth trigger
 };
 
 // embree uses float internally
@@ -611,4 +624,15 @@ createSourceGrid(const std::array<Vec3D<NumericType>, 2> &pBdBox,
 }
 
 /* ------------------------------------------------------- */
+
+/// Map a TraceDirection to the coordinate axis index it moves along (0/1/2).
+inline unsigned splitAxisFromDirection(TraceDirection dir) {
+  switch (dir) {
+  case TraceDirection::POS_X: case TraceDirection::NEG_X: return 0;
+  case TraceDirection::POS_Y: case TraceDirection::NEG_Y: return 1;
+  case TraceDirection::POS_Z: case TraceDirection::NEG_Z: return 2;
+  }
+  return 1;
+}
+
 } // namespace rayInternal

@@ -53,6 +53,8 @@ public:
     size_t totalBoundaryHits = 0;
     size_t totalReflections = 0;
     size_t raysTerminated = 0;
+    size_t raysTerminatedByBoundary = 0;
+    size_t raysTerminatedByBackface  = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
@@ -86,7 +88,9 @@ public:
 
 #pragma omp parallel reduction(                                                \
         + : geoHits, nonGeoHits, particleHits, totalTraces, totalBoundaryHits, \
-            totalReflections, raysTerminated) shared(threadLocalData)
+            totalReflections, raysTerminated,                                   \
+            raysTerminatedByBoundary, raysTerminatedByBackface)                 \
+    shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -123,6 +127,7 @@ public:
         // probabilistic weight
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
+        NumericType rrRefWeight = initialRayWeight; // RR threshold reference; rescaled after each split
         Vec3D<NumericType> rayDirection;
         unsigned int numReflections = 0;
         unsigned int boundaryHits = 0;
@@ -149,6 +154,25 @@ public:
         if (config_.printProgress && threadID == 0) {
           util::ProgressBar(idx, numRays);
         }
+
+        // Depth-adaptive splitting state (thread-local per ray)
+        struct SplitTask {
+          Vec3Df hitPoint;
+          Vec3D<NumericType> incDir;
+          Vec3D<NumericType> normal;
+          unsigned primID;
+          int matID;
+          NumericType weight;
+          NumericType rrRefWeight;
+          unsigned numReflections;
+          NumericType lastSplitCoord;
+        };
+        std::vector<SplitTask> splitStack;
+        // lastSplitCoord: sentinel until the first geometry hit, which anchors it.
+        NumericType lastSplitCoord = std::numeric_limits<NumericType>::max();
+
+        bool runPath = true;
+        while (runPath) {
 
         bool reflect = false;
         bool hitFromBack = false;
@@ -205,8 +229,8 @@ public:
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == boundaryID) {
             if (++boundaryHits > config_.maxBoundaryHits) {
-              // terminate ray if too many boundary hits
               ++raysTerminated;
+              ++raysTerminatedByBoundary;
               break;
             }
             boundary_.processHit(rayHit, reflect, rayDirection);
@@ -230,6 +254,7 @@ public:
                 // if hitFromBack == true, then the ray hits the back of a disk
                 // the second time. In this case we discard the ray.
                 ++raysTerminated;
+                ++raysTerminatedByBackface;
                 break;
               }
               hitFromBack = true;
@@ -322,9 +347,37 @@ public:
             ++raysTerminated;
             break;
           }
-          reflect = rejectionControl(rayWeight, initialRayWeight, rngState);
+          const NumericType rrFloor = static_cast<NumericType>(
+              config_.splitKillFraction) * initialRayWeight;
+          reflect = rejectionControl(
+              rayWeight, std::max(rrRefWeight, rrFloor), rngState);
           if (!reflect) {
             break;
+          }
+
+          // Depth-triggered splitting: fork when the ray has moved more than
+          // splitInterval units along splitAxis away from the last split.
+          // lastSplitCoord is anchored to the first geometry hit so the
+          // reference is the trench entry, not the source plane.
+          const unsigned sAxis = config_.splitAxis;
+          if (lastSplitCoord == std::numeric_limits<NumericType>::max())
+            lastSplitCoord = hitPoint[sAxis];
+
+          if (config_.splitFactor > 1 &&
+              config_.splitInterval > 0.0 &&
+              std::abs(hitPoint[sAxis] - lastSplitCoord) >
+                  static_cast<NumericType>(config_.splitInterval)) {
+            rayWeight /= static_cast<NumericType>(config_.splitFactor);
+            const NumericType childRrRef =
+                rrRefWeight / static_cast<NumericType>(config_.splitFactor);
+            for (unsigned k = 1; k < config_.splitFactor; ++k) {
+              splitStack.push_back({hitPoint, rayDirection, geomNormal,
+                                    rayHit.hit.primID,
+                                    geometry_.getMaterialId(rayHit.hit.primID),
+                                    rayWeight, childRrRef, numReflections,
+                                    hitPoint[sAxis]});
+            }
+            lastSplitCoord = hitPoint[sAxis];
           }
 
           // Update ray direction and origin
@@ -333,6 +386,31 @@ public:
           fillRayDirection<D>(rayHit.ray, rayDirection);
 
         } while (reflect);
+
+        // Drain split stack: set up each forked continuation and re-enter the
+        // do-while via the outer while(runPath) loop.
+        if (splitStack.empty()) {
+          runPath = false;
+        } else {
+          auto task = splitStack.back();
+          splitStack.pop_back();
+          numReflections = task.numReflections;
+          rrRefWeight = task.rrRefWeight;
+          lastSplitCoord = task.lastSplitCoord;
+          // Sample a fresh reflected direction from the BRDF. The sticking was
+          // already applied when task.weight was computed; we discard the
+          // returned sticking coefficient and use only the direction.
+          rayDirection = particle->surfaceReflection(task.weight, task.incDir,
+                                                     task.normal, task.primID,
+                                                     task.matID, pGlobalData_,
+                                                     rngState)
+                             .second;
+          rayWeight = task.weight;
+          fillRayPosition(rayHit.ray, task.hitPoint);
+          fillRayDirection<D>(rayHit.ray, rayDirection);
+        }
+
+        } // while (runPath)
         totalBoundaryHits += boundaryHits;
         totalReflections += numReflections;
       } // end ray tracing for loop
@@ -358,13 +436,16 @@ public:
     traceInfo_.particleHits = particleHits;
     traceInfo_.boundaryHits = totalBoundaryHits;
     traceInfo_.reflections = totalReflections;
+    traceInfo_.terminatedByBoundary = raysTerminatedByBoundary;
+    traceInfo_.terminatedByBackface  = raysTerminatedByBackface;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     if (raysTerminated > 1000) {
       VIENNACORE_LOG_DEBUG(
           "A total of " + std::to_string(raysTerminated) +
-          " rays were terminated early due to excessive boundary hits or "
-          "reflections.");
+          " rays were terminated early: " +
+          std::to_string(raysTerminatedByBoundary) + " boundary, " +
+          std::to_string(raysTerminatedByBackface) + " back-face disk.");
     }
 
     rtcReleaseScene(rtcScene);

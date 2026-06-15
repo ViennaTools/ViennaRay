@@ -1,4 +1,5 @@
 .idea/
+docs
 *a.out
 build*
 cmake-build*

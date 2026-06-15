@@ -94,10 +94,41 @@ public:
     config_.maxBoundaryHits = maxBoundaryHits;
   }
 
+  /// Enable depth-adaptive splitting. Each time a ray descends more than
+  /// `interval` units in Y below its previous split position, it forks into
+  /// `splitFactor` independent continuations each carrying weight/splitFactor.
+  /// The Russian Roulette threshold rescales per generation so children are
+  /// not killed prematurely. Set interval > 0 to enable; 0 disables splitting.
+  void setSplitInterval(const double interval) {
+    config_.splitInterval = interval;
+  }
+  void setSplitFactor(const unsigned splitFactor) {
+    config_.splitFactor = splitFactor;
+  }
+  /// Global floor for the per-generation RR weight reference.
+  /// The reference scales down by 1/splitFactor each generation; without a
+  /// floor the cascade never terminates.  fraction is relative to the initial
+  /// ray weight (e.g. 0.001 means the floor is 0.001 × W0).
+  void setKillFraction(const double fraction) {
+    config_.splitKillFraction = fraction;
+  }
+
   /// Set the source direction, where the rays should be traced from.
+  /// Also updates splitAxis to match, so depth-triggered splitting works
+  /// out of the box without any extra call.
   void setSourceDirection(const TraceDirection direction) {
     sourceDirection_ = direction;
+    config_.splitAxis = rayInternal::splitAxisFromDirection(direction);
   }
+
+  /// Override the axis used for depth-triggered splitting (0=X, 1=Y, 2=Z).
+  /// Call this after setSourceDirection() if the strategy class has detected
+  /// a different dominant depth axis from statistics.
+  void setSplitAxis(const unsigned axis) { config_.splitAxis = axis; }
+
+  [[nodiscard]] size_t getNumberOfRaysPerPoint() const { return config_.numRaysPerPoint; }
+  [[nodiscard]] size_t getNumberOfRaysFixed()    const { return config_.numRaysFixed; }
+  [[nodiscard]] bool   getUseRandomSeeds()       const { return config_.useRandomSeed; }
 
   /// Set the primary direction of the source distribution. This can be used to
   /// obtain a tilted source distribution. Setting the primary direction does
