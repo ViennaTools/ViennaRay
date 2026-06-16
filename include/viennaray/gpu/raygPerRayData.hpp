@@ -40,6 +40,7 @@ struct PerRayData {
   float tValues[MAX_NEIGHBORS];        // all intersection distances
   unsigned int primIDs[MAX_NEIGHBORS]; // their primitive IDs
   bool hitFromBack = false;
+  Vec3Df lastHitNormal; // stored by closesthit for use by splitting raygen
 };
 
 // this can only get compiled if included in a cuda kernel

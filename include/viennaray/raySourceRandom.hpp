@@ -82,6 +82,17 @@ private:
     direction[firstDir_] = cosPhi * sinTheta;
     direction[secondDir_] = sinPhi * sinTheta;
 
+    if constexpr (D == 2) {
+      // Confine rays to the 2D plane (match GPU which zeros traceDir[2] and
+      // renormalizes on every bounce in GeneralPipelineTriangle.cu).
+      direction[secondDir_] = 0.;
+      const auto len =
+          std::sqrt(direction[rayDir_] * direction[rayDir_] +
+                    direction[firstDir_] * direction[firstDir_]);
+      direction[rayDir_] /= len;
+      direction[firstDir_] /= len;
+    }
+
     return direction;
   }
 

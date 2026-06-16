@@ -17,6 +17,7 @@ template <class NumericType>
 struct SeedRunResult {
   std::vector<NumericType> meanFlux; // per-point mean flux across seeds
   std::vector<NumericType> relStd;   // per-point relative std (std/mean)
+  std::vector<double>      totalHits; // raw unweighted hit count summed over seeds
   double                   wallTime; // total wall time for all seeds (seconds)
   unsigned                 nSeeds;
   size_t                   nPoints;
@@ -49,13 +50,14 @@ runMultiSeed(Trace<NumericType, D> &tracer,
              unsigned               nSeeds,
              const std::string     &fluxLabel = "flux",
              NormalizationType      norm      = NormalizationType::SOURCE,
-             unsigned               seedBase  = 1) {
+             unsigned               seedBase  = 1,
+             const std::string     &hitLabel  = "") {
   using NT = NumericType;
 
   const bool savedRandom = tracer.getUseRandomSeeds();
   tracer.setUseRandomSeeds(false);
 
-  std::vector<double> sum, sum2;
+  std::vector<double> sum, sum2, hitSum;
   size_t nPts = 0;
 
   viennacore::Timer timer;
@@ -69,6 +71,13 @@ runMultiSeed(Trace<NumericType, D> &tracer,
     if (!raw)
       throw std::runtime_error("runMultiSeed: flux label '" + fluxLabel +
                                "' not found — check particle's getLocalDataLabels()");
+    const std::vector<NumericType> *rawHits = nullptr;
+    if (!hitLabel.empty()) {
+      rawHits = tracer.getLocalData().getScalarData(hitLabel);
+      if (!rawHits)
+        throw std::runtime_error("runMultiSeed: hit label '" + hitLabel +
+                                 "' not found — check particle's getLocalDataLabels()");
+    }
 
     auto flux = *raw;
     tracer.normalizeFlux(flux, norm);
@@ -77,12 +86,15 @@ runMultiSeed(Trace<NumericType, D> &tracer,
       nPts = flux.size();
       sum.assign(nPts, 0.0);
       sum2.assign(nPts, 0.0);
+      hitSum.assign(nPts, 0.0);
     }
 
     for (size_t i = 0; i < nPts; ++i) {
       double v = static_cast<double>(flux[i]);
       sum[i]  += v;
       sum2[i] += v * v;
+      if (rawHits)
+        hitSum[i] += static_cast<double>((*rawHits)[i]);
     }
   }
 
@@ -96,6 +108,7 @@ runMultiSeed(Trace<NumericType, D> &tracer,
   result.wallTime = timer.currentDuration * 1e-9;
   result.meanFlux.resize(nPts);
   result.relStd.resize(nPts);
+  result.totalHits = std::move(hitSum);
 
   for (size_t i = 0; i < nPts; ++i) {
     double mu  = sum[i] / nSeeds;

@@ -7,6 +7,7 @@
 #include "raygCallableConfig.hpp"
 #include "raygLaunchParams.hpp"
 #include "raygPerRayData.hpp"
+#include "raygReflection.hpp"
 #include "raygSBTRecords.hpp"
 #include "raygSource.hpp"
 
@@ -33,6 +34,7 @@ extern "C" __global__ void __closesthit__() {
   prd->primID = primID;
   prd->ISCount = 1;
   prd->primIDs[0] = primID;
+  prd->lastHitNormal = computeNormal(sbtData, primID);
 
   // ------------- SURFACE COLLISION --------------- //
   unsigned callIdx;
@@ -98,37 +100,118 @@ extern "C" __global__ void __raygen__() {
 
   // initialize ray position and direction
   initializeRayPositionAndDirection(prd, launchParams);
-  const float initialRayWeight = prd.rayWeight;
+  if (launchParams.D == 2) {
+    projectDirectionToDimension(prd.dir, launchParams.D);
+    prd.traceDir = prd.dir;
+  }
+  const float initialLaunchWeight = prd.rayWeight;
+  float rrRefWeight = initialLaunchWeight;
 
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::INIT);
   optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *>(
       callIdx, nullptr, &prd);
 
+  // split stack for depth-adaptive ray spawning
+  struct SplitEntry {
+    Vec3Df pos, incDir, normal;
+    float weight, rrRefWeight, lastSplitCoord;
+    unsigned numRefl;
+  };
+  SplitEntry stack[32];
+  int top = 0;
+  const float splitCoordSentinel = 3.402823466e+38F;
+  float lastSplitCoord = splitCoordSentinel;
+
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
 
-  while (continueRay(launchParams, prd, initialRayWeight)) {
-    if (launchParams.D == 2) {
-      prd.traceDir[2] = 0.f;
-      viennacore::Normalize(prd.traceDir);
+  do {
+    if (top > 0) {
+      --top;
+      prd.pos             = stack[top].pos;
+      prd.dir             = sampleConedCosineDirection(
+          stack[top].incDir, stack[top].normal, &prd.RNGstate,
+          launchParams.coneAngle, launchParams.D);
+      prd.traceDir        = prd.dir;
+      prd.rayWeight       = stack[top].weight;
+      prd.numReflections  = stack[top].numRefl;
+      rrRefWeight         = stack[top].rrRefWeight;
+      lastSplitCoord      = stack[top].lastSplitCoord;
+      if (launchParams.D == 2) {
+        projectDirectionToDimension(prd.dir, launchParams.D);
+        prd.traceDir = prd.dir;
+      }
     }
-    optixTraverse(launchParams.traversable, // traversable GAS
-                  make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
-                  make_float3(prd.traceDir[0], prd.traceDir[1],
-                              prd.traceDir[2]), // direction
-                  1e-4f,                        // tmin
-                  1e20f,                        // tmax
-                  0.0f,                         // rayTime
-                  OptixVisibilityMask(255), OPTIX_RAY_FLAG_DISABLE_ANYHIT,
-                  0,       // SBT offset
-                  1,       // SBT stride
-                  0,       // missSBTIndex
-                  u0, u1); // Payload
-    unsigned int hint = getCoherenceHint(prd, launchParams);
-    optixReorder(hint, 2 /*hint bit length*/);
-    optixInvoke(u0, u1);
-    prd.traceDir = prd.dir; // Update traceDir for the next iteration
-  }
+
+    while (rayCanTrace(launchParams, prd)) {
+      if (launchParams.D == 2) {
+        projectDirectionToDimension(prd.dir, launchParams.D);
+        prd.traceDir = prd.dir;
+      }
+      const Vec3Df incidentDir = prd.dir;
+      prd.ISCount = 0;
+      optixTraverse(launchParams.traversable,
+                    make_float3(prd.pos[0], prd.pos[1], prd.pos[2]),
+                    make_float3(prd.traceDir[0], prd.traceDir[1],
+                                prd.traceDir[2]),
+                    1e-4f, 1e20f, 0.0f,
+                    OptixVisibilityMask(255), OPTIX_RAY_FLAG_DISABLE_ANYHIT,
+                    0, 1, 0, u0, u1);
+      unsigned int hint = getCoherenceHint(prd, launchParams);
+      optixReorder(hint, 2);
+      optixInvoke(u0, u1);
+
+      if (prd.ISCount == 0) {
+        prd.traceDir = prd.dir;
+        continue;
+      }
+
+      if (prd.rayWeight <= 0.f)
+        break;
+
+      if (launchParams.D == 2) {
+        projectDirectionToDimension(prd.dir, launchParams.D);
+      }
+
+      if (prd.numReflections > launchParams.maxReflections)
+        break;
+
+      if (!rejectionControl(launchParams, prd, rrRefWeight,
+                            initialLaunchWeight))
+        break;
+
+      // depth-adaptive splitting
+      if (launchParams.splitInterval > 0.f) {
+        const float coord = prd.pos[launchParams.splitAxis];
+        const int nChildren = static_cast<int>(launchParams.splitFactor) - 1;
+        if (lastSplitCoord == splitCoordSentinel)
+          lastSplitCoord = coord;
+        if (nChildren > 0 &&
+            fabsf(coord - lastSplitCoord) > launchParams.splitInterval &&
+            (32 - top) >= nChildren) {
+          prd.rayWeight /= launchParams.splitFactor;
+          const float childRrRefWeight =
+              rrRefWeight / launchParams.splitFactor;
+          for (int c = 1; c <= nChildren; ++c) {
+            SplitEntry &e    = stack[top++];
+            e.pos            = prd.pos;
+            e.incDir         = incidentDir;
+            e.normal         = prd.lastHitNormal;
+            e.weight         = prd.rayWeight;
+            e.rrRefWeight    = childRrRefWeight;
+            e.lastSplitCoord = coord;
+            e.numRefl        = prd.numReflections;
+          }
+          lastSplitCoord = coord;
+        }
+      }
+
+      if (launchParams.D == 2) {
+        projectDirectionToDimension(prd.dir, launchParams.D);
+      }
+      prd.traceDir = prd.dir;
+    }
+  } while (top > 0);
 }

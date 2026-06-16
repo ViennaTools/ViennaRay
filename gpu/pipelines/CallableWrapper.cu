@@ -43,3 +43,9 @@ __direct_callable__particleInit(const void *sbtData,
                                 viennaray::gpu::PerRayData *prd) {
   particleInit(prd);
 }
+
+extern "C" __device__ void
+__direct_callable__conicalReflection(const void *sbtData,
+                                     viennaray::gpu::PerRayData *prd) {
+  particleConicalReflection(sbtData, prd);
+}

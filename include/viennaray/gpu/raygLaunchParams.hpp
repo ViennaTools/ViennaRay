@@ -41,6 +41,13 @@ struct LaunchParams {
 
   float sticking = 1.f;
   float cosineExponent = 1.f;
+  float coneAngle = float(M_PI / 2.0); // half-angle for conedCosineReflection
+
+  // depth-adaptive splitting
+  uint8_t splitAxis     = 1;     // 0=X, 1=Y, 2=Z
+  float   splitInterval = 0.f;   // 0 = splitting disabled
+  uint8_t splitFactor   = 1;
+  float   killFraction  = 0.001f;
   int *materialIds;
   int *materialMap;
   float *materialSticking;
@@ -81,9 +88,8 @@ getIdxOffset(int dataIdx, const LaunchParams &launchParams) {
   return offset;
 }
 
-__device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
-                                            PerRayData &prd,
-                                            const float &initialRayWeight) {
+__device__ __forceinline__ bool rayCanTrace(const LaunchParams &launchParams,
+                                            const PerRayData &prd) {
   if (prd.rayWeight <= 1e-6f || prd.energy < 0.f)
     return false;
 
@@ -91,19 +97,27 @@ __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
       prd.numBoundaryHits > launchParams.maxBoundaryHits)
     return false;
 
+  return true;
+}
+
+__device__ __forceinline__ bool
+rejectionControl(const LaunchParams &launchParams, PerRayData &prd,
+                 const float rrRefWeight, const float initialLaunchWeight) {
+  const float rrFloor = launchParams.killFraction * initialLaunchWeight;
+  const float rrBase = fmaxf(rrRefWeight, rrFloor);
+
   // If the weight of the ray is above a certain threshold, we always reflect.
   // If the weight of the ray is below the threshold, we randomly decide to
   // either kill the ray or increase its weight (in an unbiased way).
-  if (prd.rayWeight >=
-      launchParams.rayWeightThreshold * initialRayWeight + 1e-6f)
+  if (prd.rayWeight >= launchParams.rayWeightThreshold * rrBase)
     return true;
 
   // We want to set the weight of (the reflection of) the ray to the value of
   // renewWeight. In order to stay unbiased we kill the reflection with a
   // probability of (1 - rayWeight / renewWeight).
-  float renewWeight = 0.3f * initialRayWeight + 1e-6f;
-  float rnd = getNextRand(&prd.RNGstate);
-  float killProbability = 1.f - prd.rayWeight / renewWeight;
+  const float renewWeight = 0.3f * rrBase;
+  const float rnd = getNextRand(&prd.RNGstate);
+  const float killProbability = 1.f - prd.rayWeight / renewWeight;
   if (rnd < killProbability) {
     // kill the ray
     return false;
@@ -112,6 +126,14 @@ __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
   prd.rayWeight = renewWeight;
   // continue ray
   return true;
+}
+
+__device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
+                                            PerRayData &prd,
+                                            const float &initialRayWeight) {
+  return rayCanTrace(launchParams, prd) &&
+         rejectionControl(launchParams, prd, initialRayWeight,
+                          initialRayWeight);
 }
 #endif
 

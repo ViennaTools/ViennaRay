@@ -82,6 +82,23 @@ public:
     launchParams_.rayWeightThreshold = threshold;
   }
 
+  void setConeAngle(float angleRadians) {
+    launchParams_.coneAngle = angleRadians;
+  }
+
+  void setSplitAxis(uint8_t axis) { launchParams_.splitAxis = axis; }
+  void setSplitInterval(float interval) {
+    launchParams_.splitInterval = interval;
+  }
+  void setSplitFactor(uint8_t factor) { launchParams_.splitFactor = factor; }
+  void setKillFraction(float fraction) {
+    launchParams_.killFraction = fraction;
+  }
+
+  bool getUseRandomSeeds() const { return config_.useRandomSeed; }
+  size_t getNumberOfRaysPerPoint() const { return config_.numRaysPerPoint; }
+  size_t getNumberOfRaysFixed() const { return config_.numRaysFixed; }
+
   void apply() {
     if (particles_.empty()) {
       VIENNACORE_LOG_ERROR(
@@ -132,15 +149,23 @@ public:
     int numPointsPerDim = static_cast<int>(
         std::sqrt(static_cast<double>(launchParams_.numElements)));
     unsigned int launchDimX = config_.numRaysPerPoint;
-    unsigned int launchDimY = numPointsPerDim;
-    unsigned int launchDimZ = numPointsPerDim;
+    unsigned int launchDimY;
+    unsigned int launchDimZ;
+
+    if constexpr (D == 2) {
+      launchDimY = launchParams_.numElements;
+      launchDimZ = 1;
+    } else {
+      launchDimY = numPointsPerDim;
+      launchDimZ = numPointsPerDim;
+    }
 
     if (config_.numRaysFixed > 0) {
       numPointsPerDim = 1;
       config_.numRaysPerPoint = config_.numRaysFixed;
       launchDimX = config_.numRaysPerPoint;
-      launchDimY = numPointsPerDim;
-      launchDimZ = numPointsPerDim;
+      launchDimY = 1;
+      launchDimZ = 1;
     }
 
     if (surfaceSourceEnabled_) {

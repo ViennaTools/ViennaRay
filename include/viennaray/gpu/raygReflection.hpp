@@ -76,40 +76,44 @@ static __device__ Vec3Df PickRandomPointOnUnitSphere(CudaRNG *state) {
   return Vec3Df{r * c, r * s, z};
 }
 
-static __device__ void diffuseReflection(PerRayData *prd,
-                                         const Vec3Df &geoNormal) {
-#ifndef VIENNARAY_TEST
-  prd->pos = prd->pos + prd->tMin * prd->traceDir;
-#endif
-  const Vec3Df randomDirection = PickRandomPointOnUnitSphere(&prd->RNGstate);
-  prd->dir = geoNormal + randomDirection;
-  Normalize(prd->dir);
+static __device__ __forceinline__ void projectDirectionToDimension(Vec3Df &dir,
+                                                                   uint8_t D) {
+  if (D == 2) {
+    dir[2] = 0.f;
+    Normalize(dir);
+  }
 }
 
-static __device__ void diffuseReflection(PerRayData *prd) {
-
-  const HitSBTDataDisk *sbtData =
-      (const HitSBTDataDisk *)optixGetSbtDataPointer();
-  const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
-  diffuseReflection(prd, geoNormal);
+static __device__ __forceinline__ Vec3Df
+sampleDiffuseDirection(const Vec3Df &geoNormal, CudaRNG *state, uint8_t D) {
+  Vec3Df dir = PickRandomPointOnUnitSphere(state);
+  dir[0] += geoNormal[0];
+  dir[1] += geoNormal[1];
+  if (D == 3)
+    dir[2] += geoNormal[2];
+  else
+    dir[2] = 0.f;
+  Normalize(dir);
+  return dir;
 }
 
-static __device__ __forceinline__ void
-conedCosineReflection(PerRayData *prd, const Vec3Df &geomNormal,
-                      const float maxConeAngle) {
-  // Calculate specular direction
-  specularReflection(prd, geomNormal);
+static __device__ __forceinline__ Vec3Df
+sampleConedCosineDirection(const Vec3Df &incidentDir, const Vec3Df &geomNormal,
+                           CudaRNG *state, const float maxConeAngle,
+                           uint8_t D) {
+  Vec3Df w =
+      incidentDir - (2.f * DotProduct(incidentDir, geomNormal)) * geomNormal;
+  Normalize(w);
 
   if (maxConeAngle <= 0.f) {
-    return;
+    projectDirectionToDimension(w, D);
+    return w;
   }
   if (maxConeAngle >= M_PI_2f) {
-    diffuseReflection(prd, geomNormal);
-    return;
+    return sampleDiffuseDirection(geomNormal, state, D);
   }
 
   // Frisvad ONB around specular direction
-  const auto &w = prd->dir;
   Vec3Df t, b;
   if (w[2] < -0.999999f) {
     t = {0.f, -1.f, 0.f};
@@ -124,33 +128,56 @@ conedCosineReflection(PerRayData *prd, const Vec3Df &geomNormal,
   // Sample polar angle via accept-reject
   float theta;
   for (;;) {
-    const float u = sqrt(getNextRand(&prd->RNGstate)); // in (0,1)
-    const float s = sqrt(fmax(0.f, 1.f - u));          // sqrt(1-u)
+    const float u = sqrt(getNextRand(state));       // in (0,1)
+    const float s = sqrt(fmax(0.f, 1.f - u));       // sqrt(1-u)
     theta = maxConeAngle * s;
-    // RHS = cos(pi/2 * s) * sin(theta)
     const float rhs = __cosf(M_PI_2f * s) * __sinf(theta);
-    if (getNextRand(&prd->RNGstate) * theta * u <= rhs)
+    if (getNextRand(state) * theta * u <= rhs)
       break;
   }
 
-  // One azimuth sample
-  const float phi = M_PIf * 2.f * getNextRand(&prd->RNGstate);
+  const float phi = M_PIf * 2.f * getNextRand(state);
   float sP, cP, sT, cT;
   __sincosf(theta, &sT, &cT);
   __sincosf(phi, &sP, &cP);
 
-  // Combine: d = sinT*(cosP*t + sinP*b) + cosT*w using FMA for efficiency
   Vec3Df dir{__fmaf_rn(sT, __fmaf_rn(cP, t[0], sP * b[0]), cT * w[0]),
              __fmaf_rn(sT, __fmaf_rn(cP, t[1], sP * b[1]), cT * w[1]),
              __fmaf_rn(sT, __fmaf_rn(cP, t[2], sP * b[2]), cT * w[2])};
 
-  // Ensure correct hemisphere
   const float dp = DotProduct(dir, geomNormal);
   if (dp <= 0.f)
     dir = dir - 2.f * dp * geomNormal;
 
+  projectDirectionToDimension(dir, D);
   Normalize(dir);
-  prd->dir = dir;
+  return dir;
+}
+
+static __device__ void diffuseReflection(PerRayData *prd,
+                                         const Vec3Df &geoNormal) {
+#ifndef VIENNARAY_TEST
+  prd->pos = prd->pos + prd->tMin * prd->traceDir;
+#endif
+  prd->dir = sampleDiffuseDirection(geoNormal, &prd->RNGstate, 3);
+}
+
+static __device__ void diffuseReflection(PerRayData *prd) {
+
+  const HitSBTDataDisk *sbtData =
+      (const HitSBTDataDisk *)optixGetSbtDataPointer();
+  const Vec3Df geoNormal = computeNormal(sbtData, optixGetPrimitiveIndex());
+  diffuseReflection(prd, geoNormal);
+}
+
+static __device__ __forceinline__ void
+conedCosineReflection(PerRayData *prd, const Vec3Df &geomNormal,
+                      const float maxConeAngle, uint8_t D = 3) {
+#ifndef VIENNARAY_TEST
+  prd->pos = prd->pos + prd->tMin * prd->traceDir;
+#endif
+  prd->dir = sampleConedCosineDirection(
+      prd->dir, geomNormal, &prd->RNGstate, maxConeAngle, D);
 }
 } // namespace viennaray::gpu
 #endif

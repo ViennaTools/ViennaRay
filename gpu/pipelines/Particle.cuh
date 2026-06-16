@@ -19,6 +19,12 @@ particleCollision(viennaray::gpu::PerRayData *prd) {
                    .resultBuffer[viennaray::gpu::getIdxOffset(0, launchParams) +
                                  prd->primIDs[i]],
               static_cast<viennaray::gpu::ResultType>(prd->rayWeight));
+    if (launchParams.dataPerParticle[launchParams.particleIdx] > 1) {
+      atomicAdd(&launchParams
+                     .resultBuffer[viennaray::gpu::getIdxOffset(1, launchParams) +
+                                   prd->primIDs[i]],
+                static_cast<viennaray::gpu::ResultType>(1));
+    }
   }
 }
 
@@ -40,4 +46,12 @@ particleReflectionConstSticking(const void *sbtData,
 
 __forceinline__ __device__ void particleInit(viennaray::gpu::PerRayData *prd) {
   // Optional
+}
+
+__forceinline__ __device__ void
+particleConicalReflection(const void *sbtData, viennaray::gpu::PerRayData *prd) {
+  prd->rayWeight -= prd->rayWeight * launchParams.sticking;
+  auto geoNormal = viennaray::gpu::computeNormal(sbtData, prd->primID);
+  viennaray::gpu::conedCosineReflection(prd, geoNormal, launchParams.coneAngle,
+                                        launchParams.D);
 }

@@ -6,6 +6,7 @@
 
 # ---- Simulation mode ----
 dimension   = 2      # 2 = trench  |  3 = cylinder
+useGPU      = 1      # 1 = GPU path (requires CUDA/OptiX build); 0 = CPU path
 
 # ---- Geometry (2D trench) ----
 width       = 0.10   # trench width (µm)
@@ -39,3 +40,4 @@ probeSeeds        = 3      # seeds used in the probe pass (must be >= 2)
 # ---- Runtime ----
 numThreads = 16
 maxBoundaryHits = 10000   # raise for deep/low-sticking structures (default 1000)
+writeVTK = 0              # 1 = write VTK flux files after each run (slow; off for sweeps)
