@@ -131,15 +131,14 @@ public:
           particle->initNew(rngState);
           particle->logData(myDataLog);
           rayDirection = particle->initNewWithDirection(rngState);
-
-          auto originAndDirection =
-              pSource_->getOriginAndDirection(idx, rngState);
-          fillRayPosition(rayHit.ray, originAndDirection[0]);
           if (isZero(rayDirection)) {
-            rayDirection = std::move(originAndDirection[1]);
+            rayDirection = pSource_->getDirection(idx, rngState);
           }
           assert(IsNormalized(rayDirection));
           fillRayDirection<D>(rayHit.ray, rayDirection);
+
+          auto origin = pSource_->getOrigin(idx, rngState);
+          fillRayPosition(rayHit.ray, origin);
         }
 
 #ifdef VIENNARAY_USE_RAY_MASKING
