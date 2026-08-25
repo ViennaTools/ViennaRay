@@ -70,6 +70,7 @@ struct TraceInfo {
   size_t particleHits = 0;
   size_t boundaryHits = 0;
   size_t reflections = 0;
+  size_t backfaceHits = 0;
   double time = 0.0;
   bool warning = false;
   bool error = false;
@@ -85,6 +86,7 @@ struct KernelConfig {
   size_t numRaysFixed = 0;
   unsigned maxReflections = std::numeric_limits<unsigned>::max();
   unsigned maxBoundaryHits = 1000;
+  unsigned maxBackfaceHits = 1;
   unsigned rngSeed = 0;
 
   bool useRandomSeed = true;

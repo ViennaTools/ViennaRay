@@ -52,6 +52,7 @@ public:
     size_t totalTraces = 0;
     size_t totalBoundaryHits = 0;
     size_t totalReflections = 0;
+    size_t totalBackfaceHits = 0;
     size_t raysTerminated = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
@@ -84,9 +85,10 @@ public:
     Timer timer;
     timer.start();
 
-#pragma omp parallel reduction(                                                \
-        + : geoHits, nonGeoHits, particleHits, totalTraces, totalBoundaryHits, \
-            totalReflections, raysTerminated) shared(threadLocalData)
+#pragma omp parallel reduction(+ : geoHits, nonGeoHits, particleHits,          \
+                                   totalTraces, totalBoundaryHits,             \
+                                   totalReflections, totalBackfaceHits,        \
+                                   raysTerminated) shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -124,8 +126,9 @@ public:
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
         Vec3D<NumericType> rayDirection;
-        unsigned int numReflections = 0;
-        unsigned int boundaryHits = 0;
+        unsigned numReflections = 0;
+        unsigned boundaryHits = 0;
+        unsigned backfaceHits = 0;
 
         {
           particle->initNew(rngState);
@@ -150,7 +153,6 @@ public:
         }
 
         bool reflect = false;
-        bool hitFromBack = false;
         do {
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
@@ -220,28 +222,24 @@ public:
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
 
           // Check for backface hit
-          const auto backfaceHit = DotProduct(rayDirection, geomNormal) > 0;
-          if constexpr (geoType == GeometryType::DISK) {
-            if (backfaceHit) {
-              // If the dot product of the ray direction and the surface normal
-              // is greater than zero, then we hit the back face of the disk.
-              if (hitFromBack) {
-                // if hitFromBack == true, then the ray hits the back of a disk
-                // the second time. In this case we discard the ray.
+          // If the dot product of the ray direction and the surface
+          // normal is greater than zero, then we hit the back face of the
+          // disk.
+          if (DotProduct(rayDirection, geomNormal) > 0) {
+            if constexpr (geoType == GeometryType::DISK) {
+              if (++backfaceHits > config_.maxBackfaceHits) {
                 ++raysTerminated;
                 break;
               }
-              hitFromBack = true;
               // Let ray through, i.e., continue.
               reflect = true;
               fillRayPosition(rayHit.ray, hitPoint);
               // keep ray direction as it is
               continue;
-            }
-          } else {
-            if (backfaceHit) {
+            } else {
               // For triangle geometries, we simply discard backface hits as
               // they are not considered valid geometry hits.
+              ++backfaceHits;
               ++raysTerminated;
               break;
             }
@@ -254,6 +252,9 @@ public:
           if constexpr (geoType == GeometryType::DISK) {
             // Disk Geometry - multiple hits possible
             std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
+            if constexpr (D == 3)
+              hitDiskIds.reserve(4);
+            // reserve space for at least 4 hits, to avoid reallocations
 #ifdef VIENNARAY_USE_WDIST
             std::vector<rtcNumericType>
                 impactDistances; // distances between point of impact and disk
@@ -277,7 +278,7 @@ public:
 #endif
               }
             }
-            const size_t numDisksHit = hitDiskIds.size();
+            const auto numDisksHit = hitDiskIds.size();
 
 #ifdef VIENNARAY_USE_WDIST
             rtcNumericType invDistanceWeightSum = 0;
@@ -334,6 +335,7 @@ public:
         } while (reflect);
         totalBoundaryHits += boundaryHits;
         totalReflections += numReflections;
+        totalBackfaceHits += backfaceHits;
       } // end ray tracing for loop
     } // end parallel section
 
@@ -357,13 +359,14 @@ public:
     traceInfo_.particleHits = particleHits;
     traceInfo_.boundaryHits = totalBoundaryHits;
     traceInfo_.reflections = totalReflections;
+    traceInfo_.backfaceHits = totalBackfaceHits;
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     if (raysTerminated > 1000) {
-      VIENNACORE_LOG_DEBUG(
-          "A total of " + std::to_string(raysTerminated) +
-          " rays were terminated early due to excessive boundary hits or "
-          "reflections.");
+      VIENNACORE_LOG_DEBUG("A total of " + std::to_string(raysTerminated) +
+                           " rays were terminated early due to excessive "
+                           "boundary hits, backface hits or "
+                           "reflections.");
     }
 
     rtcReleaseScene(rtcScene);
