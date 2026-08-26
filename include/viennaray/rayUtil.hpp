@@ -109,6 +109,12 @@ struct KernelConfig {
   unsigned runNumber = 1;
 };
 
+struct Scene {
+  RTCScene rtcScene = nullptr;
+  unsigned int geometryID = RTC_INVALID_GEOMETRY_ID;
+  unsigned int boundaryID = RTC_INVALID_GEOMETRY_ID;
+};
+
 // embree uses float internally
 using rtcNumericType = float;
 

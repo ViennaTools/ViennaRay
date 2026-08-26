@@ -51,6 +51,9 @@ int main() {
   // Ray settings
   rayTracer.setNumberOfRaysPerPoint(2000);
 
+  // Build and cache the geometry, boundary, and Embree scene.
+  rayTracer.commitGeometry();
+
   // Run the ray tracer
   rayTracer.apply();
 

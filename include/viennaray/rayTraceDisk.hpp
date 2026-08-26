@@ -5,6 +5,8 @@
 
 #include <vcLogger.hpp>
 
+#include <functional>
+
 namespace viennaray {
 
 using namespace viennacore;
@@ -16,32 +18,33 @@ class TraceDisk final : public Trace<NumericType, D> {
 
 public:
   TraceDisk() = default;
-  ~TraceDisk() override { geometry_.releaseGeometry(); }
+  ~TraceDisk() override {
+    this->releaseScene();
+    geometry_.releaseGeometry();
+  }
 
   /// Run the ray tracer
   void apply() override {
-    checkSettings();
-    auto boundingBox = geometry_.getBoundingBox();
-    rayInternal::adjustBoundingBox<NumericType, D>(
-        boundingBox, this->sourceDirection_, this->diskRadius_);
-    auto traceSettings = rayInternal::getTraceSettings(this->sourceDirection_);
+    if (!checkParticle()) {
+      return;
+    }
+    commitGeometry();
+    if (!this->hasCommittedScene()) {
+      return;
+    }
 
-    auto boundary = Boundary<NumericType, D>(
-        this->device_, boundingBox, this->boundaryConditions_, traceSettings);
-    geometry_.computeDiskAreas(boundary);
-
-    this->prepareSource(geometry_.getNumPrimitives(), boundingBox,
-                        traceSettings);
+    this->prepareSource(geometry_.getNumPrimitives(),
+                        this->getCommittedBoundingBox(),
+                        this->getCommittedTraceSettings());
     this->prepareLocalData(geometry_.getNumPrimitives());
 
-    TraceKernel tracer(this->device_, geometry_, boundary, this->pSource_,
+    TraceKernel tracer(this->getCommittedScene(), geometry_,
+                       this->getCommittedBoundary(), this->pSource_,
                        this->pParticle_, this->config_, this->dataLog_,
                        this->RTInfo_);
     tracer.setTracingData(&this->localData_, this->pGlobalData_.get());
     tracer.apply();
     ++this->config_.runNumber;
-
-    boundary.releaseGeometry();
   }
 
   /// Set the ray tracing geometry
@@ -56,7 +59,13 @@ public:
 
     this->gridDelta_ = gridDelta;
     diskRadius_ = gridDelta * rayInternal::DiskFactor<D>;
-    this->geometry_.initGeometry(this->device_, points, normals, diskRadius_);
+    auto pointsCopy = points;
+    auto normalsCopy = normals;
+    stageGeometry([this, points = std::move(pointsCopy),
+                   normals = std::move(normalsCopy), radius = diskRadius_]() {
+      geometry_.template initGeometry<Dim>(this->device_, points, normals,
+                                           radius);
+    });
   }
 
   /// Set the ray tracing geometry
@@ -70,13 +79,22 @@ public:
 
     this->gridDelta_ = gridDelta;
     diskRadius_ = diskRadii;
-    geometry_.initGeometry(this->device_, points, normals, diskRadius_);
+    auto pointsCopy = points;
+    auto normalsCopy = normals;
+    stageGeometry([this, points = std::move(pointsCopy),
+                   normals = std::move(normalsCopy), radius = diskRadius_]() {
+      geometry_.template initGeometry<Dim>(this->device_, points, normals,
+                                           radius);
+    });
   }
 
   void setGeometry(const DiskMesh &diskMesh) {
     this->gridDelta_ = static_cast<NumericType>(diskMesh.gridDelta);
     diskRadius_ = diskMesh.gridDelta * rayInternal::DiskFactor<D>;
-    geometry_.template initGeometry<D>(this->device_, diskMesh);
+    auto meshCopy = diskMesh;
+    stageGeometry([this, mesh = std::move(meshCopy)]() {
+      geometry_.template initGeometry<D>(this->device_, mesh);
+    });
   }
 
   /// Set material ID's for each geometry point.
@@ -85,12 +103,33 @@ public:
     geometry_.setMaterialIds(materialIds);
   }
 
+  void commitGeometry() override {
+    if (this->hasCommittedScene()) {
+      return;
+    }
+
+    if (pendingGeometryBuilder_) {
+      pendingGeometryBuilder_();
+      pendingGeometryBuilder_ = {};
+    }
+    if (!checkGeometrySettings()) {
+      return;
+    }
+
+    this->buildScene(geometry_, diskRadius_);
+    geometry_.computeDiskAreas(this->getCommittedBoundary());
+  }
+
   /// Helper function to normalize the recorded flux in a post-processing step.
   /// The flux can be normalized to the source flux and the maximum recorded
   /// value.
   void
   normalizeFlux(std::vector<NumericType> &flux,
                 NormalizationType norm = NormalizationType::SOURCE) override {
+    commitGeometry();
+    if (!this->hasCommittedScene()) {
+      return;
+    }
     assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in normalizeFlux");
 
@@ -133,6 +172,10 @@ public:
   /// neighborhood in a post-processing step.
   void smoothFlux(std::vector<NumericType> &flux,
                   int numNeighbors = 1) override {
+    commitGeometry();
+    if (!this->hasCommittedScene()) {
+      return;
+    }
     assert(flux.size() == geometry_.getNumPrimitives() &&
            "Unequal number of points in smoothFlux");
     if (numNeighbors < 1) {
@@ -181,14 +224,26 @@ public:
   }
 
 private:
-  void checkSettings() {
+  void stageGeometry(std::function<void()> builder) {
+    this->invalidateScene();
+    geometry_.releaseGeometry();
+    pendingGeometryBuilder_ = std::move(builder);
+  }
+
+  bool checkParticle() {
     if (this->pParticle_ == nullptr) {
       this->RTInfo_.error = true;
       VIENNACORE_LOG_ERROR("No particle was specified in rayTrace. Aborting.");
+      return false;
     }
+    return true;
+  }
+
+  bool checkGeometrySettings() {
     if (geometry_.checkGeometryEmpty()) {
       this->RTInfo_.error = true;
       VIENNACORE_LOG_ERROR("No geometry was passed to rayTrace. Aborting.");
+      return false;
     }
     if ((D == 2 && this->sourceDirection_ == TraceDirection::POS_Z) ||
         (D == 2 && this->sourceDirection_ == TraceDirection::NEG_Z)) {
@@ -202,11 +257,13 @@ private:
           "Disk radius should be smaller than grid delta. Hit "
           "count normalization not correct.");
     }
+    return true;
   }
 
 private:
   GeometryDisk<NumericType, D> geometry_;
   NumericType diskRadius_ = 0;
+  std::function<void()> pendingGeometryBuilder_;
 };
 
 } // namespace viennaray

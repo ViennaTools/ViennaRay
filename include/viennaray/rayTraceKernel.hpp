@@ -21,33 +21,17 @@ using namespace viennaray;
 
 template <typename NumericType, int D, GeometryType geoType> class TraceKernel {
 public:
-  TraceKernel(RTCDevice &device, Geometry<NumericType, D> &geometry,
-              Boundary<NumericType, D> &boundary,
+  TraceKernel(Scene const &scene, Geometry<NumericType, D> &geometry,
+              Boundary<NumericType, D> const &boundary,
               std::shared_ptr<Source<NumericType>> source,
               std::unique_ptr<AbstractParticle<NumericType>> &particle,
               KernelConfig const &config, DataLog<NumericType> &dataLog,
               TraceInfo &traceInfo)
-      : device_(device), geometry_(geometry), boundary_(boundary),
+      : scene_(scene), geometry_(geometry), boundary_(boundary),
         pSource_(source), pParticle_(particle->clone()), config_(config),
         traceInfo_(traceInfo), dataLog_(dataLog) {}
 
   void apply() {
-    // Create Embree scene
-    auto rtcScene = rtcNewScene(device_);
-    rtcSetSceneFlags(rtcScene, RTC_SCENE_FLAG_NONE);
-
-    // Selecting higher build quality results in better rendering performance
-    // but slower scene commit times. The default build quality for a scene is
-    // RTC_BUILD_QUALITY_MEDIUM.
-    rtcSetSceneBuildQuality(rtcScene, RTC_BUILD_QUALITY_HIGH);
-    auto rtcGeometry = geometry_.getRTCGeometry();
-    auto rtcBoundary = boundary_.getRTCGeometry();
-
-    auto const boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
-    auto const geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
-    assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
-           "Embree device error");
-
     size_t geoHits = 0;
     size_t nonGeoHits = 0;
     size_t particleHits = 0;
@@ -93,8 +77,6 @@ public:
             totalReflections, totalBackfaceHits, raysTerminated,               \
             totalDiskHits) shared(threadLocalData)
     {
-      rtcJoinCommitScene(rtcScene);
-
       alignas(128) auto rayHit =
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -165,9 +147,9 @@ public:
 
           // Run the intersection
 #if VIENNARAY_EMBREE_VERSION < 4
-          rtcIntersect1(rtcScene, &rtcContext, &rayHit);
+          rtcIntersect1(scene_.rtcScene, &rtcContext, &rayHit);
 #else
-          rtcIntersect1(rtcScene, &rayHit);
+          rtcIntersect1(scene_.rtcScene, &rayHit);
 #endif
 
           ++totalTraces;
@@ -207,7 +189,7 @@ public:
           }
 
           /* -------- Boundary hit -------- */
-          if (rayHit.hit.geomID == boundaryID) {
+          if (rayHit.hit.geomID == scene_.boundaryID) {
             if (++boundaryHits > config_.maxBoundaryHits) {
               // terminate ray if too many boundary hits
               ++raysTerminated;
@@ -249,7 +231,8 @@ public:
           }
 
           /* -------- Surface hit -------- */
-          assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
+          assert(rayHit.hit.geomID == scene_.geometryID &&
+                 "Geometry hit ID invalid");
           ++geoHits;
 
           if constexpr (geoType == GeometryType::DISK) {
@@ -376,8 +359,6 @@ public:
                            "boundary hits, backface hits or "
                            "reflections.");
     }
-
-    rtcReleaseScene(rtcScene);
   }
 
   void setTracingData(PointData<NumericType> *pLocalData,
@@ -464,8 +445,7 @@ private:
   }
 
 private:
-  RTCDevice &device_;
-
+  Scene const &scene_;
   Geometry<NumericType, D> &geometry_;
   Boundary<NumericType, D> const &boundary_;
   std::shared_ptr<Source<NumericType>> const pSource_;
