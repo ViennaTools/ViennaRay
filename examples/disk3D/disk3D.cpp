@@ -14,7 +14,7 @@ int main() {
   // float or double, but keep in mind, that embree internally only works with
   // float and thus any double precision geometry passed, will be converted
   // internally to float.
-  using NumericType = float;
+  using NumericType = double;
 
   // Set the number of threads to use in OpenMP parallelization
   omp_set_num_threads(12);
@@ -52,12 +52,7 @@ int main() {
   rayTracer.setNumberOfRaysPerPoint(2000);
 
   // Run the ray tracer
-  Timer timer;
-  timer.start();
   rayTracer.apply();
-  timer.finish();
-
-  std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
 
   // Extract the normalized hit counts for each geometry point
   auto &flux = *rayTracer.getLocalData().getScalarData("flux");

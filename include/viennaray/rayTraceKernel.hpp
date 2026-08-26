@@ -254,7 +254,7 @@ public:
 
           if constexpr (geoType == GeometryType::DISK) {
             // Disk Geometry - multiple hits possible
-            constexpr size_t maxNumDisksHit = 2 * D;
+            constexpr size_t maxNumDisksHit = D == 2 ? 3 : 8;
             std::array<unsigned int, maxNumDisksHit> hitDiskIds;
             size_t numDisksHit = 1;
             hitDiskIds[0] = rayHit.hit.primID;
@@ -273,8 +273,8 @@ public:
                  geometry_.getNeighborIndices(rayHit.hit.primID)) {
               rtcNumericType distance;
               if (checkLocalIntersection(ray, id, distance)) {
-                assert(numDisksHit < maxNumDisksHit &&
-                       "Too many disks intersected by a ray");
+                // assert(numDisksHit < maxNumDisksHit &&
+                //  "Too many disks intersected by a ray");
                 if (numDisksHit == maxNumDisksHit)
                   break;
                 hitDiskIds[numDisksHit] = id;
@@ -439,7 +439,6 @@ private:
       return false;
     }
 
-    // TODO: Memoize ddneg (tested: no significant speedup)
     auto ddneg = DotProduct(diskOrigin, normal);
     auto tt = (ddneg - DotProduct(normal, rayOrigin)) / prodOfDirections;
     if (tt <= 0) {
@@ -447,12 +446,7 @@ private:
       return false;
     }
 
-    // copy ray direction
-    auto hitPoint = ScaleAdd(rayDirection, rayOrigin, tt);
-    for (int i = 0; i < 3; ++i) {
-      hitPoint[i] = hitPoint[i] - diskOrigin[i];
-    }
-
+    auto hitPoint = ScaleAdd(rayDirection, rayOrigin, tt) - diskOrigin;
     auto const &radius = disk[3];
     auto distance = DotProduct(hitPoint, hitPoint);
     if (distance < radius * radius) {
