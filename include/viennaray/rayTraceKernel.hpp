@@ -13,6 +13,8 @@
 
 #include <omp.h>
 
+#include <array>
+
 namespace rayInternal {
 
 using namespace viennaray;
@@ -53,6 +55,7 @@ public:
     size_t totalBoundaryHits = 0;
     size_t totalReflections = 0;
     size_t totalBackfaceHits = 0;
+    size_t totalDiskHits = 0;
     size_t raysTerminated = 0;
     auto const lambda = pParticle_->getMeanFreePath();
     const long long numRays =
@@ -85,10 +88,10 @@ public:
     Timer timer;
     timer.start();
 
-#pragma omp parallel reduction(+ : geoHits, nonGeoHits, particleHits,          \
-                                   totalTraces, totalBoundaryHits,             \
-                                   totalReflections, totalBackfaceHits,        \
-                                   raysTerminated) shared(threadLocalData)
+#pragma omp parallel reduction(                                                \
+        + : geoHits, nonGeoHits, particleHits, totalTraces, totalBoundaryHits, \
+            totalReflections, totalBackfaceHits, raysTerminated,               \
+            totalDiskHits) shared(threadLocalData)
     {
       rtcJoinCommitScene(rtcScene);
 
@@ -251,20 +254,18 @@ public:
 
           if constexpr (geoType == GeometryType::DISK) {
             // Disk Geometry - multiple hits possible
-            std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
-            if constexpr (D == 3)
-              hitDiskIds.reserve(4);
-            // reserve space for at least 4 hits, to avoid reallocations
+            constexpr size_t maxNumDisksHit = 2 * D;
+            std::array<unsigned int, maxNumDisksHit> hitDiskIds;
+            size_t numDisksHit = 1;
+            hitDiskIds[0] = rayHit.hit.primID;
 #ifdef VIENNARAY_USE_WDIST
-            std::vector<rtcNumericType>
-                impactDistances; // distances between point of impact and disk
-                                 // origins of hit disks
-            {                    // distance on first disk hit
+            // distances between point of impact and disk origins
+            std::array<rtcNumericType, maxNumDisksHit> impactDistances;
+            { // distance on first disk hit
               const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
               const auto &diskOrigin = *reinterpret_cast<Vec3Df const *>(&disk);
-              impactDistances.push_back(
-                  Distance(hitPoint, diskOrigin) +
-                  1e-6f); // add eps to avoid division by 0
+              impactDistances[0] = Distance(hitPoint, diskOrigin) +
+                                   1e-6f; // add eps to avoid division by 0
             }
 #endif
             // check for additional intersections
@@ -272,18 +273,24 @@ public:
                  geometry_.getNeighborIndices(rayHit.hit.primID)) {
               rtcNumericType distance;
               if (checkLocalIntersection(ray, id, distance)) {
-                hitDiskIds.push_back(id);
+                assert(numDisksHit < maxNumDisksHit &&
+                       "Too many disks intersected by a ray");
+                if (numDisksHit == maxNumDisksHit)
+                  break;
+                hitDiskIds[numDisksHit] = id;
 #ifdef VIENNARAY_USE_WDIST
-                impactDistances.push_back(distance + 1e-6f);
+                impactDistances[numDisksHit] = distance + 1e-6f;
 #endif
+                ++numDisksHit;
               }
             }
-            const auto numDisksHit = hitDiskIds.size();
+
+            totalDiskHits += static_cast<size_t>(numDisksHit);
 
 #ifdef VIENNARAY_USE_WDIST
             rtcNumericType invDistanceWeightSum = 0;
-            for (const auto &d : impactDistances)
-              invDistanceWeightSum += 1 / d;
+            for (size_t diskId = 0; diskId < numDisksHit; ++diskId)
+              invDistanceWeightSum += 1 / impactDistances[diskId];
 #endif
             // for each disk hit
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
@@ -360,6 +367,7 @@ public:
     traceInfo_.boundaryHits = totalBoundaryHits;
     traceInfo_.reflections = totalReflections;
     traceInfo_.backfaceHits = totalBackfaceHits;
+    traceInfo_.averageDiskHits = totalDiskHits / static_cast<double>(geoHits);
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     if (raysTerminated > 1000) {
@@ -444,12 +452,16 @@ private:
     for (int i = 0; i < 3; ++i) {
       hitPoint[i] = hitPoint[i] - diskOrigin[i];
     }
-    auto distance = sqrtf(DotProduct(hitPoint, hitPoint));
+
     auto const &radius = disk[3];
-    if (radius > distance) {
-      impactDistance = distance;
+    auto distance = DotProduct(hitPoint, hitPoint);
+    if (distance < radius * radius) {
+#ifdef VIENNARAY_USE_WDIST
+      impactDistance = sqrtf(distance);
+#endif
       return true;
     }
+
     return false;
   }
 

@@ -66,5 +66,7 @@ int main() {
 
   rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, flux);
 
+  rayTracer.getRayTraceInfo().print();
+
   return 0;
 }
