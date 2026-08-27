@@ -114,6 +114,8 @@ public:
         unsigned numReflections = 0;
         unsigned boundaryHits = 0;
         unsigned backfaceHits = 0;
+        NumericType freeFlightDistance =
+            std::numeric_limits<NumericType>::max();
 
         {
           particle->initNew(rngState);
@@ -128,6 +130,8 @@ public:
           auto origin = pSource_->getOrigin(idx, rngState);
           fillRayPosition(rayHit.ray, origin);
         }
+        if (lambda > 0.)
+          freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;
@@ -161,32 +165,31 @@ public:
             break;
           }
 
+          /* -------- Hit -------- */
           // check for scattering event
-          if (lambda > 0.) {
-            std::uniform_real_distribution<NumericType> dist(0., 1.);
-            NumericType scatterProbability =
-                1. - std::exp(-rayHit.ray.tfar / lambda);
-            auto rnd = dist(rngState);
-            if (rnd < scatterProbability) {
+          if (lambda > 0. && freeFlightDistance < rayHit.ray.tfar) {
+            const auto &ray = rayHit.ray;
+            const auto origin = Vec3Df{
+                static_cast<float>(ray.org_x +
+                                   ray.dir_x * freeFlightDistance),
+                static_cast<float>(ray.org_y +
+                                   ray.dir_y * freeFlightDistance),
+                static_cast<float>(ray.org_z +
+                                   ray.dir_z * freeFlightDistance)};
+            rayDirection =
+                rayInternal::pickRandomPointOnUnitSphere<NumericType>(rngState);
 
-              const auto &ray = rayHit.ray;
-              const auto origin =
-                  Vec3Df{static_cast<float>(ray.org_x + ray.dir_x * rnd),
-                         static_cast<float>(ray.org_y + ray.dir_y * rnd),
-                         static_cast<float>(ray.org_z + ray.dir_z * rnd)};
-              rayDirection =
-                  rayInternal::pickRandomPointOnUnitSphere<NumericType>(
-                      rngState);
+            // A scattering event starts a new free flight.
+            freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
+            fillRayPosition(rayHit.ray, origin);
+            fillRayDirection<D>(rayHit.ray, rayDirection);
 
-              // Update ray direction and origin
-              fillRayPosition(rayHit.ray, origin);
-              fillRayDirection<D>(rayHit.ray, rayDirection);
-
-              particleHits++;
-              reflect = true;
-              continue;
-            }
+            ++particleHits;
+            reflect = true;
+            continue;
           }
+          if (lambda > 0.)
+            freeFlightDistance -= rayHit.ray.tfar;
 
           /* -------- Boundary hit -------- */
           if (rayHit.hit.geomID == scene_.boundaryID) {
@@ -321,6 +324,8 @@ public:
           rayDirection = std::move(stickingDirection.second);
           fillRayPosition(rayHit.ray, hitPoint);
           fillRayDirection<D>(rayHit.ray, rayDirection);
+          if (lambda > 0.)
+            freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
 
         } while (reflect);
         totalBoundaryHits += boundaryHits;
@@ -350,7 +355,8 @@ public:
     traceInfo_.boundaryHits = totalBoundaryHits;
     traceInfo_.reflections = totalReflections;
     traceInfo_.backfaceHits = totalBackfaceHits;
-    traceInfo_.averageDiskHits = totalDiskHits / static_cast<double>(geoHits);
+    traceInfo_.averageDiskHits =
+        totalDiskHits / static_cast<double>(geoHits == 0 ? 1 : geoHits);
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     if (raysTerminated > 1000) {
@@ -368,6 +374,13 @@ public:
   }
 
 private:
+  static NumericType sampleFreeFlightDistance(const NumericType meanFreePath,
+                                              RNG &rng) {
+    std::exponential_distribution<NumericType> distribution(
+        NumericType(1) / meanFreePath);
+    return distribution(rng);
+  }
+
   static bool rejectionControl(NumericType &rayWeight,
                                const NumericType &initWeight, RNG &rng) {
     // Choosing a good value for the weight lower threshold is important
