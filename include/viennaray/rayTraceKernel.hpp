@@ -41,7 +41,7 @@ public:
     size_t totalBackfaceHits = 0;
     size_t totalDiskHits = 0;
     size_t raysTerminated = 0;
-    auto const lambda = pParticle_->getMeanFreePath();
+    const auto lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
             ? static_cast<long long>(pSource_->getNumPoints()) *
@@ -117,9 +117,10 @@ public:
         NumericType freeFlightDistance =
             std::numeric_limits<NumericType>::max();
 
+        // initialize particle and ray direction
         {
           particle->initNew(rngState);
-          particle->logData(myDataLog);
+
           rayDirection = particle->initNewWithDirection(rngState);
           if (isZero(rayDirection)) {
             rayDirection = pSource_->getDirection(idx, rngState);
@@ -129,6 +130,8 @@ public:
 
           auto origin = pSource_->getOrigin(idx, rngState);
           fillRayPosition(rayHit.ray, origin);
+
+          particle->logData(myDataLog);
         }
         if (lambda > 0.)
           freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
@@ -146,8 +149,6 @@ public:
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-          // rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle
-          // source
 
           // Run the intersection
 #if VIENNARAY_EMBREE_VERSION < 4
@@ -258,8 +259,10 @@ public:
               if (checkLocalIntersection(ray, id, distance)) {
                 // assert(numDisksHit < maxNumDisksHit &&
                 //  "Too many disks intersected by a ray");
-                if (numDisksHit == maxNumDisksHit)
+                if (numDisksHit == maxNumDisksHit) {
+                  VIENNACORE_LOG_DEBUG("Too many disks intersected by a ray.");
                   break;
+                }
                 hitDiskIds[numDisksHit] = id;
 #ifdef VIENNARAY_USE_WDIST
                 impactDistances[numDisksHit] = distance + 1e-6f;
@@ -333,9 +336,9 @@ public:
 
     timer.finish();
 
-    // Merge all thread-local output arrays in one parallel region. Parallelizing
-    // over output elements gives useful work to every thread even when there is
-    // only one data field, which is the common case.
+    // Merge all thread-local output arrays in one parallel region.
+    // Parallelizing over output elements gives useful work to every thread even
+    // when there is only one data field, which is the common case.
     auto &localScalarData = pLocalData_->getScalarData();
     for (const auto &threadData : threadLocalData) {
       assert(threadData.getScalarDataSize() == localScalarData.size() &&
@@ -350,7 +353,8 @@ public:
       assert(threadLog.data.size() == dataLog_.data.size() &&
              "Size mismatch when merging data logs");
       for (size_t dataIdx = 0; dataIdx < dataLog_.data.size(); ++dataIdx) {
-        assert(threadLog.data[dataIdx].size() == dataLog_.data[dataIdx].size() &&
+        assert(threadLog.data[dataIdx].size() ==
+                   dataLog_.data[dataIdx].size() &&
                "Size mismatch when merging data log array");
       }
     }
@@ -376,7 +380,8 @@ public:
              valueIdx < static_cast<long long>(output.size()); ++valueIdx) {
           NumericType sum = output[valueIdx];
           for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx) {
-            sum += (*threadLocalData[threadIdx].getScalarData(dataIdx))[valueIdx];
+            sum +=
+                (*threadLocalData[threadIdx].getScalarData(dataIdx))[valueIdx];
           }
           output[valueIdx] = sum;
         }
@@ -446,17 +451,18 @@ private:
 
   bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
                               rtcNumericType &impactDistance) const {
-    auto const &rayOrigin =
+    const auto &rayOrigin =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.org_x);
-    auto const &rayDirection =
+    const auto &rayDirection =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.dir_x);
 
-    const auto &normal = geometry_.getNormalRef(primID);
+    const auto &diskNormal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
     const auto &diskOrigin =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&disk);
+    const auto &radius = disk[3];
 
-    auto prodOfDirections = DotProduct(normal, rayDirection);
+    auto prodOfDirections = DotProduct(diskNormal, rayDirection);
     if (prodOfDirections > 0.f) {
       // Disk normal is pointing away from the ray direction,
       // i.e., this might be a hit from the back or no hit at all.
@@ -469,19 +475,17 @@ private:
       return false;
     }
 
-    auto ddneg = DotProduct(diskOrigin, normal);
-    auto tt = (ddneg - DotProduct(normal, rayOrigin)) / prodOfDirections;
+    auto tt = DotProduct(diskOrigin - rayOrigin, diskNormal) / prodOfDirections;
     if (tt <= 0) {
       // Intersection point is behind or exactly on the ray origin.
       return false;
     }
 
-    auto hitPoint = ScaleAdd(rayDirection, rayOrigin, tt) - diskOrigin;
-    auto const &radius = disk[3];
-    auto distance = DotProduct(hitPoint, hitPoint);
-    if (distance < radius * radius) {
+    auto d = ScaleAdd(rayDirection, rayOrigin, tt) - diskOrigin;
+    auto distance2 = DotProduct(d, d);
+    if (distance2 < radius * radius) {
 #ifdef VIENNARAY_USE_WDIST
-      impactDistance = sqrtf(distance);
+      impactDistance = sqrtf(distance2);
 #endif
       return true;
     }
