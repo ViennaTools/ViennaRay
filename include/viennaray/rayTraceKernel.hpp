@@ -19,9 +19,9 @@ namespace rayInternal {
 
 using namespace viennaray;
 
-template <typename NumericType, int D, GeometryType geoType> class TraceKernel {
+template <typename NumericType, int D, typename GeometryT> class TraceKernel {
 public:
-  TraceKernel(Scene const &scene, Geometry<NumericType, D> &geometry,
+  TraceKernel(Scene const &scene, GeometryT const &geometry,
               Boundary<NumericType, D> const &boundary,
               std::shared_ptr<Source<NumericType>> source,
               std::unique_ptr<AbstractParticle<NumericType>> &particle,
@@ -212,7 +212,7 @@ public:
           // normal is greater than zero, then we hit the back face of the
           // disk.
           if (DotProduct(rayDirection, geomNormal) > 0) {
-            if constexpr (geoType == GeometryType::DISK) {
+            if constexpr (GeometryT::geometryType == GeometryType::DISK) {
               if (++backfaceHits > config_.maxBackfaceHits) {
                 ++raysTerminated;
                 break;
@@ -236,7 +236,7 @@ public:
                  "Geometry hit ID invalid");
           ++geoHits;
 
-          if constexpr (geoType == GeometryType::DISK) {
+          if constexpr (GeometryT::geometryType == GeometryType::DISK) {
             // Disk Geometry - multiple hits possible
             constexpr size_t maxNumDisksHit = D == 2 ? 3 : 8;
             std::array<unsigned int, maxNumDisksHit> hitDiskIds;
@@ -499,7 +499,7 @@ private:
 
 private:
   Scene const &scene_;
-  Geometry<NumericType, D> const &geometry_;
+  GeometryT const &geometry_;
   Boundary<NumericType, D> const &boundary_;
   std::shared_ptr<Source<NumericType>> const pSource_;
   std::unique_ptr<AbstractParticle<NumericType>> const pParticle_;

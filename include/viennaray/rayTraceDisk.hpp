@@ -14,7 +14,7 @@ using namespace viennacore;
 template <class NumericType, int D>
 class TraceDisk final : public Trace<NumericType, D> {
   using TraceKernel =
-      rayInternal::TraceKernel<NumericType, D, GeometryType::DISK>;
+      rayInternal::TraceKernel<NumericType, D, GeometryDisk<NumericType, D>>;
 
 public:
   TraceDisk() = default;

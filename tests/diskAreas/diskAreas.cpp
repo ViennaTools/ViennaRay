@@ -65,7 +65,7 @@ int main() {
       rtcAttachGeometry(scene.rtcScene, geometry.getRTCGeometry());
   rtcCommitScene(scene.rtcScene);
 
-  rayInternal::TraceKernel<NumericType, D, GeometryType::DISK> tracer(
+  rayInternal::TraceKernel<NumericType, D, GeometryDisk<NumericType, D>> tracer(
       scene, geometry, boundary, std::move(raySource), cp, config, log, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();

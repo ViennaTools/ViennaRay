@@ -14,7 +14,8 @@ using namespace viennacore;
 template <class NumericType, int D>
 class TraceTriangle final : public Trace<NumericType, D> {
   using TraceKernel =
-      rayInternal::TraceKernel<NumericType, D, GeometryType::TRIANGLE>;
+      rayInternal::TraceKernel<NumericType, D,
+                               GeometryTriangle<NumericType, D>>;
 
 public:
   TraceTriangle() = default;
