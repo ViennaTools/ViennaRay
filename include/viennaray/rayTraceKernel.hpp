@@ -170,12 +170,9 @@ public:
           if (lambda > 0. && freeFlightDistance < rayHit.ray.tfar) {
             const auto &ray = rayHit.ray;
             const auto origin = Vec3Df{
-                static_cast<float>(ray.org_x +
-                                   ray.dir_x * freeFlightDistance),
-                static_cast<float>(ray.org_y +
-                                   ray.dir_y * freeFlightDistance),
-                static_cast<float>(ray.org_z +
-                                   ray.dir_z * freeFlightDistance)};
+                static_cast<float>(ray.org_x + ray.dir_x * freeFlightDistance),
+                static_cast<float>(ray.org_y + ray.dir_y * freeFlightDistance),
+                static_cast<float>(ray.org_z + ray.dir_z * freeFlightDistance)};
             rayDirection =
                 rayInternal::pickRandomPointOnUnitSphere<NumericType>(rngState);
 
@@ -336,15 +333,54 @@ public:
 
     timer.finish();
 
-    // merge data logs
-    for (int i = 0; i < numThreads; ++i) {
-      dataLog_.merge(threadLocalDataLog[i]);
+    // Merge all thread-local output arrays in one parallel region. Parallelizing
+    // over output elements gives useful work to every thread even when there is
+    // only one data field, which is the common case.
+    auto &localScalarData = pLocalData_->getScalarData();
+    for (const auto &threadData : threadLocalData) {
+      assert(threadData.getScalarDataSize() == localScalarData.size() &&
+             "Size mismatch when merging local data");
+      for (size_t dataIdx = 0; dataIdx < localScalarData.size(); ++dataIdx) {
+        assert(threadData.getScalarData(dataIdx)->size() ==
+                   localScalarData[dataIdx].size() &&
+               "Size mismatch when merging local data array");
+      }
+    }
+    for (const auto &threadLog : threadLocalDataLog) {
+      assert(threadLog.data.size() == dataLog_.data.size() &&
+             "Size mismatch when merging data logs");
+      for (size_t dataIdx = 0; dataIdx < dataLog_.data.size(); ++dataIdx) {
+        assert(threadLog.data[dataIdx].size() == dataLog_.data[dataIdx].size() &&
+               "Size mismatch when merging data log array");
+      }
     }
 
-    // merge local data
-    for (int i = 0; i < numThreads; ++i) {
-      pLocalData_->mergeScalarData(threadLocalData[i],
-                                   std::plus<NumericType>());
+#pragma omp parallel
+    {
+      for (size_t dataIdx = 0; dataIdx < dataLog_.data.size(); ++dataIdx) {
+        auto &output = dataLog_.data[dataIdx];
+#pragma omp for schedule(static)
+        for (long long valueIdx = 0;
+             valueIdx < static_cast<long long>(output.size()); ++valueIdx) {
+          NumericType sum = output[valueIdx];
+          for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
+            sum += threadLocalDataLog[threadIdx].data[dataIdx][valueIdx];
+          output[valueIdx] = sum;
+        }
+      }
+
+      for (size_t dataIdx = 0; dataIdx < localScalarData.size(); ++dataIdx) {
+        auto &output = localScalarData[dataIdx];
+#pragma omp for schedule(static)
+        for (long long valueIdx = 0;
+             valueIdx < static_cast<long long>(output.size()); ++valueIdx) {
+          NumericType sum = output[valueIdx];
+          for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx) {
+            sum += (*threadLocalData[threadIdx].getScalarData(dataIdx))[valueIdx];
+          }
+          output[valueIdx] = sum;
+        }
+      }
     }
 
     traceInfo_.numRays = numRays;
@@ -376,8 +412,8 @@ public:
 private:
   static NumericType sampleFreeFlightDistance(const NumericType meanFreePath,
                                               RNG &rng) {
-    std::exponential_distribution<NumericType> distribution(
-        NumericType(1) / meanFreePath);
+    std::exponential_distribution<NumericType> distribution(NumericType(1) /
+                                                            meanFreePath);
     return distribution(rng);
   }
 
@@ -459,7 +495,7 @@ private:
 
 private:
   Scene const &scene_;
-  Geometry<NumericType, D> &geometry_;
+  Geometry<NumericType, D> const &geometry_;
   Boundary<NumericType, D> const &boundary_;
   std::shared_ptr<Source<NumericType>> const pSource_;
   std::unique_ptr<AbstractParticle<NumericType>> const pParticle_;

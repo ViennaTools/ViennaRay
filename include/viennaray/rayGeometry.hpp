@@ -32,14 +32,14 @@ public:
 
   virtual Vec3D<NumericType> getPrimNormal(const unsigned int primID) const = 0;
 
-  virtual std::array<float, 4> &getPrimRef(unsigned int primID) {
+  virtual std::array<float, 4> const &getPrimRef(unsigned int primID) const {
     assert(false && "Geometry: getPrimRef not implemented");
     return zero;
   }
 
-  virtual std::array<float, 3> &getNormalRef(unsigned int primID) {
+  virtual std::array<float, 3> const &getNormalRef(unsigned int primID) const {
     assert(false && "Geometry: getNormalRef not implemented");
-    return *reinterpret_cast<std::array<float, 3> *>(zero.data());
+    return *reinterpret_cast<const std::array<float, 3> *>(zero.data());
   }
 
   virtual std::vector<unsigned int> const &

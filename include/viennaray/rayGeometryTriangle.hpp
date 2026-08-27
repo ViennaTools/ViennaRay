@@ -213,7 +213,7 @@ public:
   //   *>(&pPointBuffer_[primID]);
   // }
 
-  std::array<float, 3> &getNormalRef(unsigned int primID) override {
+  std::array<float, 3> const &getNormalRef(unsigned int primID) const override {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
     return normals_[primID];
   }

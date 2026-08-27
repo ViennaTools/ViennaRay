@@ -47,6 +47,7 @@ int main() {
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setParticleType(particle);
+  rayTracer.setRngSeed(123456789);
 
   // Ray settings
   rayTracer.setNumberOfRaysPerPoint(2000);

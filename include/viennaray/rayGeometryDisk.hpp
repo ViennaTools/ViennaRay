@@ -226,17 +226,19 @@ public:
                               (NumericType)normal.zz};
   }
 
-  std::array<rayInternal::rtcNumericType, 4> &
-  getPrimRef(unsigned int primID) override {
+  std::array<rayInternal::rtcNumericType, 4> const &
+  getPrimRef(unsigned int primID) const override {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
-    return *reinterpret_cast<std::array<rayInternal::rtcNumericType, 4> *>(
+    return *reinterpret_cast<
+        const std::array<rayInternal::rtcNumericType, 4> *>(
         &pPointBuffer_[primID]);
   }
 
-  std::array<rayInternal::rtcNumericType, 3> &
-  getNormalRef(unsigned int primID) override {
+  std::array<rayInternal::rtcNumericType, 3> const &
+  getNormalRef(unsigned int primID) const override {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
-    return *reinterpret_cast<std::array<rayInternal::rtcNumericType, 3> *>(
+    return *reinterpret_cast<
+        const std::array<rayInternal::rtcNumericType, 3> *>(
         &pNormalVecBuffer_[primID]);
   }
 
