@@ -26,7 +26,8 @@ public:
     return getOrigin(rngState);
   }
 
-  Vec3D<NumericType> getDirection(const size_t idx, RNG &rngState) const override {
+  Vec3D<NumericType> getDirection(const size_t idx,
+                                  RNG &rngState) const override {
     if (customDirection_) {
       return getCustomDirection(rngState);
     } else {

@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <filesystem>
+#include <set>
 
 #include <rayParticle.hpp>
 #include <rayPointNeighborhood.hpp>
@@ -15,7 +16,6 @@
 #include "raygLaunchParams.hpp"
 #include "raygSBTRecords.hpp"
 
-#include <set>
 #include <vcChecks.hpp>
 #include <vcContext.hpp>
 #include <vcCudaBuffer.hpp>
@@ -386,9 +386,8 @@ public:
     }
 #else
     if (enable) {
-      VIENNACORE_LOG_ERROR(
-          "Trace-count tracking requires configuring with "
-          "VIENNARAY_BENCHMARK=ON.");
+      VIENNACORE_LOG_ERROR("Trace-count tracking requires configuring with "
+                           "VIENNARAY_BENCHMARK=ON.");
     }
 #endif
   }
@@ -412,9 +411,8 @@ public:
   [[nodiscard]] unsigned long long getNumberOfTraces() {
 #ifdef VIENNARAY_BENCHMARK
     if (!trackNumberOfTraces_) {
-      VIENNACORE_LOG_WARNING(
-          "Trace-count tracking is disabled. Call "
-          "setTrackNumberOfTraces(true) before apply().");
+      VIENNACORE_LOG_WARNING("Trace-count tracking is disabled. Call "
+                             "setTrackNumberOfTraces(true) before apply().");
       return 0;
     }
     downloadTraceCount();
