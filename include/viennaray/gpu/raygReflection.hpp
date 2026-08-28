@@ -45,6 +45,11 @@ __device__ __inline__ Vec3Df computeNormal(const void *sbtData,
     Normalize(normal);
     return normal;
   } break;
+  case 3: {
+    // Cells: the normal is estimated from the filling fractions on the host
+    // (Youngs' stencil) and uploaded per primitive, as for disks.
+    return baseData->normal[primID];
+  } break;
   default: {
     printf("Unknown geometry type in computeNormal\n");
   } break;

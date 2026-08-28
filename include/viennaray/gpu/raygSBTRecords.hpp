@@ -40,6 +40,20 @@ struct HitSBTDataLine {
   Vec2D<unsigned> *lines;
 };
 
+/// A voxel geometry: every primitive is one axis-aligned cubic cell holding a
+/// filling fraction. A ray crossing a cell of fill f over a chord L interacts
+/// with probability 1-(1-f)^(L/gridDelta), so the effective surface sits
+/// between the cell faces -- sub-grid position without a reconstructed
+/// surface. The interaction rule lives in the intersection program; here is
+/// only what it reads: the box (min corner + spacing), the fill, and the
+/// per-cell surface normal the reflection callables consume through `base`.
+struct HitSBTDataCell {
+  HitSBTDataBase base;
+  Vec3Df *minPoint; ///< per-primitive box minimum corner
+  float *fill;      ///< per-primitive filling fraction
+  float gridDelta;  ///< the cells are cubes of this edge
+};
+
 // SBT record for a raygen program
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) RaygenRecord {
   __align__(
@@ -72,6 +86,12 @@ struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordLine {
   __align__(
       OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
   HitSBTDataLine data;
+};
+
+struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) HitgroupRecordCell {
+  __align__(
+      OPTIX_SBT_RECORD_ALIGNMENT) char header[OPTIX_SBT_RECORD_HEADER_SIZE];
+  HitSBTDataCell data;
 };
 
 struct __align__(OPTIX_SBT_RECORD_ALIGNMENT) CallableRecord {
