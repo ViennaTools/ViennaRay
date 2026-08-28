@@ -38,6 +38,11 @@ extern "C" __device__ void __direct_callable__particleReflectionConstSticking(
   particleReflectionConstSticking(sbtData, prd);
 }
 
+extern "C" __device__ void __direct_callable__particleReflectionCellSticking(
+    const void *sbtData, viennaray::gpu::PerRayData *prd) {
+  particleReflectionCellSticking(sbtData, prd);
+}
+
 extern "C" __device__ void
 __direct_callable__particleInit(const void *sbtData,
                                 viennaray::gpu::PerRayData *prd) {

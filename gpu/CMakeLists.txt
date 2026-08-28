@@ -31,8 +31,11 @@ viennacore_add_ptx(normKernels ${VIENNARAY_CUDA_KERNELS})
 
 # CMake target to collect all GPU dependencies for tests and examples
 set(VIENNARAY_GPU_DEPENDENCIES
-    GeneralPipelineDisk GeneralPipelineTriangle GeneralPipelineLine normKernels
-    CACHE STRING "ViennaRay GPU dependencies.")
+    GeneralPipelineDisk GeneralPipelineTriangle GeneralPipelineLine
+    GeneralPipelineCell ViennaRayCallableWrapper normKernels
+    CACHE STRING "ViennaRay GPU dependencies." FORCE)
+# FORCE: the list names build targets, and a stale cached list from before a
+# geometry kind existed silently drops its pipeline from every consumer.
 # Install PTX files
 install(DIRECTORY "${VIENNACORE_NVCC_PTX_DIR}/" DESTINATION "lib/ptx")
 
