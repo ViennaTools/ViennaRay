@@ -30,9 +30,9 @@ public:
 
   /// The arming distance for re-emitted segments: a ray emitted inside the
   /// fractional interface is blind for this distance, so it does not
-  /// interact again where it stands. The device reads it as tThreshold.
+  /// interact again where it stands.
   void setArmingDistance(const float distance) {
-    launchParams_.tThreshold = distance;
+    launchParams_.cellArmingDistance = distance;
   }
 
   void smoothFlux(std::vector<ResultType> &flux, int numNeighbors) override {

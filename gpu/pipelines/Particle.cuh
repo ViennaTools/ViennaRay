@@ -38,7 +38,10 @@ particleReflectionCellSticking(const void *sbtData,
                                viennaray::gpu::PerRayData *prd) {
   const auto *cell =
       reinterpret_cast<const viennaray::gpu::HitSBTDataCell *>(sbtData);
-  const float s = ((const float *)cell->base.cellData)[prd->primID];
+  const float *sticking = (const float *)cell->base.cellData;
+  // without setElementData the pointer is null; fall back to the uniform
+  // sticking rather than faulting inside a direct callable
+  const float s = sticking ? sticking[prd->primID] : launchParams.sticking;
   prd->rayWeight -= prd->rayWeight * __saturatef(s);
   auto geoNormal = viennaray::gpu::computeNormal(sbtData, prd->primID);
   viennaray::gpu::diffuseReflection(prd, geoNormal);
@@ -47,9 +50,16 @@ particleReflectionCellSticking(const void *sbtData,
   // interacts again where it stands -- at low sticking that re-deposits the
   // near-full weight every bounce, and over the hundreds of bounces a
   // sticking of a few percent allows, the bias compounds to a visible dose
-  // error. Two cells along the normal is what the CPU's walk-out finds on an
-  // interface of ordinary thickness.
-  const float displace = 2.f * cell->gridDelta;
+  // error.
+  //
+  // HOW FAR is per cell, uploaded in the second cell-data slot: the host
+  // walked the lattice to the first cell holding no material, exactly as the
+  // CPU does. A fixed displacement cannot know the local interface
+  // thickness, and in a feature narrower than a few cells it puts the ray
+  // inside the opposite wall.
+  const float displace =
+      sticking ? sticking[launchParams.numElements + prd->primID]
+               : 2.f * cell->gridDelta;
   prd->pos[0] += displace * geoNormal[0];
   prd->pos[1] += displace * geoNormal[1];
   prd->pos[2] += displace * geoNormal[2];

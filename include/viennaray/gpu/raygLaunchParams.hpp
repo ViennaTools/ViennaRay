@@ -25,7 +25,12 @@ struct LaunchParams {
   ResultType *resultBuffer;
 
   float rayWeightThreshold = 0.1f;
-  float tThreshold = 0.5f;
+  float tThreshold = 0.5f; ///< disk geometry: neighbour detection. Owned by
+                           ///< Trace::apply(), which resets it every launch.
+  /// Cell geometry: how far a re-emitted segment flies before it may
+  /// interact. Its own field, because tThreshold belongs to the disk
+  /// geometry and is overwritten on every apply().
+  float cellArmingDistance = 0.f;
 
   unsigned int seed = 0;
   bool periodicBoundary = false;

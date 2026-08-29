@@ -18,13 +18,27 @@ if(NOT VIENNARAY_PASSED_FIRST_CONFIGURE)
   endif()
 endif()
 
+# The optixir commands do not scan headers, so a change to LaunchParams or the
+# SBT records leaves every module stale while the host struct moves under it --
+# the device then reads the old layout and misbehaves with no build error. List
+# the shared headers explicitly so a layout change rebuilds the pipelines.
+# CACHE so consumers (ViennaPS's callable wrapper) can depend on them too:
+# a plain variable does not cross the directory scope CPM adds this in.
+set(VIENNARAY_GPU_SHARED_HEADERS
+    "${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygLaunchParams.hpp;${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygSBTRecords.hpp;${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygPerRayData.hpp;${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygReflection.hpp;${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygSource.hpp"
+    CACHE STRING "ViennaRay shared GPU device headers." FORCE)
 # Add the general pipelines and callable wrapper
-viennacore_add_optixir(GeneralPipelineDisk ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu)
-viennacore_add_optixir(GeneralPipelineTriangle ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu)
-viennacore_add_optixir(GeneralPipelineLine ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu)
-viennacore_add_optixir(GeneralPipelineCell ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineCell.cu)
+viennacore_add_optixir(GeneralPipelineDisk ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu
+                       DEPENDS "${VIENNARAY_GPU_SHARED_HEADERS}")
+viennacore_add_optixir(GeneralPipelineTriangle ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu
+                       DEPENDS "${VIENNARAY_GPU_SHARED_HEADERS}")
+viennacore_add_optixir(GeneralPipelineLine ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu
+                       DEPENDS "${VIENNARAY_GPU_SHARED_HEADERS}")
+viennacore_add_optixir(GeneralPipelineCell ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineCell.cu
+                       DEPENDS "${VIENNARAY_GPU_SHARED_HEADERS}")
 viennacore_add_optixir(ViennaRayCallableWrapper ${VIENNARAY_PIPELINE_DIR}/CallableWrapper.cu
-                       DEPENDS "${VIENNARAY_PIPELINE_DIR}/Particle.cuh")
+                       DEPENDS "${VIENNARAY_PIPELINE_DIR}/Particle.cuh"
+                               "${VIENNARAY_GPU_SHARED_HEADERS}")
 
 # Add the norm kernels
 viennacore_add_ptx(normKernels ${VIENNARAY_CUDA_KERNELS})

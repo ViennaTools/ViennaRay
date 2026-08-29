@@ -89,9 +89,21 @@ extern "C" __global__ void __intersection__() {
     // exactly as the CPU engines measure it.
     const float chord = tExit - fmaxf(tEnter, 0.f);
     const float p = 1.f - powf(1.f - f, chord / delta);
+    // The FULL linear launch index: a launch is (rays, sqrt(N), sqrt(N))
+    // unless the caller fixed the ray count, and keying on x alone would
+    // give every ray sharing an x the same transmission decision for a
+    // given cell -- collapsing the sub-grid surface position this rule
+    // exists to produce.
     const uint3 launchIdx = optixGetLaunchIndex();
+    const uint3 launchDim = optixGetLaunchDimensions();
+    const unsigned long long linearIdx =
+        static_cast<unsigned long long>(launchIdx.x) +
+        static_cast<unsigned long long>(launchDim.x) *
+            (static_cast<unsigned long long>(launchIdx.y) +
+             static_cast<unsigned long long>(launchDim.y) *
+                 static_cast<unsigned long long>(launchIdx.z));
     const unsigned long long raySeed =
-        mix64(static_cast<unsigned long long>(launchIdx.x) ^
+        mix64(linearIdx ^
               (static_cast<unsigned long long>(launchParams.seed) << 32)) ^
         mix64(static_cast<unsigned long long>(prd->numReflections) +
               (static_cast<unsigned long long>(prd->numBoundaryHits) << 20));
@@ -187,11 +199,11 @@ extern "C" __global__ void __raygen__() {
       viennacore::Normalize(prd.traceDir);
     }
     // A primary ray flies unarmed; a re-emitted segment is blind for
-    // tThreshold, the arming distance -- the fractional interface is a few
+    // the arming distance -- the fractional interface is a few
     // cells thick, and a ray emitted inside it must not interact again where
     // it stands. The voxel analogue of a level set's self-intersection tmin.
     const float tmin =
-        prd.numReflections == 0 ? 1e-4f : launchParams.tThreshold;
+        prd.numReflections == 0 ? 1e-4f : launchParams.cellArmingDistance;
     optixTraverse(launchParams.traversable,
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]),
                   make_float3(prd.traceDir[0], prd.traceDir[1],
