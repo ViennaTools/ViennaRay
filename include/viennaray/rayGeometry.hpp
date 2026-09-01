@@ -16,8 +16,6 @@ public:
 
   template <typename MatIdType>
   void setMaterialIds(std::vector<MatIdType> const &pMaterialIds) {
-    assert(pMaterialIds.size() == numPrimitives_ &&
-           "Geometry: Number of material IDs does not match number of points");
     materialIds_.clear();
     materialIds_.reserve(numPrimitives_);
     for (const auto id : pMaterialIds) {
