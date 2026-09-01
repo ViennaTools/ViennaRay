@@ -51,8 +51,9 @@ int main() {
   std::unordered_map<std::string, unsigned> particleMap;
   particleMap["Particle"] = 0;
 
-  // // Run 3D test
+  // Run 3D test
   {
+    std::cout << "\nRunning 3D reflective boundary test..." << std::endl;
     constexpr int D = 3;
     TriangleMesh mesh = createGeometry<D>();
 
@@ -81,6 +82,7 @@ int main() {
   // Run 2D test
   {
     // reflective boundary test
+    std::cout << "\nRunning 2D reflective boundary test..." << std::endl;
     constexpr int D = 2;
     TriangleMesh mesh = createGeometry<D>();
 
@@ -108,6 +110,7 @@ int main() {
 
   {
     // periodic boundary test
+    std::cout << "\nRunning 2D periodic boundary test..." << std::endl;
     constexpr int D = 2;
     TriangleMesh mesh = createGeometry<D>();
 

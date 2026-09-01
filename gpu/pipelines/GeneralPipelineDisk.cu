@@ -70,14 +70,12 @@ extern "C" __global__ void __closesthit__() {
 
   const Vec3Df &normal = sbtData->base.normal[primID];
 
-  // If closest hit was on backside, let it through once
+  // If closest hit was on backside, let it through 
   if (DotProduct(prd->traceDir, normal) > 0.0f) {
-    // If back was hit a second time, kill the ray
-    if (prd->hitFromBack) {
+    if (prd->numBackfaceHits++ > launchParams.maxBackfaceHits) {
       prd->rayWeight = 0.f;
       return;
     }
-    prd->hitFromBack = true;
     prd->pos = prd->pos + prd->tMin * prd->traceDir;
     return;
   }

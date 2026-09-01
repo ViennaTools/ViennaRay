@@ -31,6 +31,7 @@ struct PerRayData {
   // Hit data
   unsigned int numBoundaryHits = 0;
   unsigned int numReflections = 0;
+  unsigned int numBackfaceHits = 0;
   unsigned int primID = 0; // primID of closest hit
   float tMin = 1e20f;      // distance to closest hit
 
@@ -39,7 +40,6 @@ struct PerRayData {
   uint8_t totalCount = 0;              // total intersections recorded
   float tValues[MAX_NEIGHBORS];        // all intersection distances
   unsigned int primIDs[MAX_NEIGHBORS]; // their primitive IDs
-  bool hitFromBack = false;
 };
 
 // this can only get compiled if included in a cuda kernel

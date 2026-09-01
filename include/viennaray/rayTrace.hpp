@@ -106,6 +106,12 @@ public:
     config_.maxBoundaryHits = maxBoundaryHits;
   }
 
+  // Set the maximum number of backface hits a ray is allowed to perform. Has no
+  // effect when using triangle geometry.
+  void setMaxBackfaceHits(const unsigned maxBackfaceHits) {
+    config_.maxBackfaceHits = maxBackfaceHits;
+  }
+
   /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const TraceDirection direction) {
     if (sourceDirection_ == direction) {

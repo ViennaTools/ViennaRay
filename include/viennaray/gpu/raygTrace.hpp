@@ -129,6 +129,7 @@ public:
 
     launchParams_.maxReflections = config_.maxReflections;
     launchParams_.maxBoundaryHits = config_.maxBoundaryHits;
+    launchParams_.maxBackfaceHits = config_.maxBackfaceHits;
 
     launchParams_.useSurfaceSource = surfaceSourceEnabled_;
     if (surfaceSourceEnabled_) {
@@ -370,6 +371,10 @@ public:
 
   void setMaxBoundaryHits(const unsigned pMaxBoundaryHits) {
     config_.maxBoundaryHits = pMaxBoundaryHits;
+  }
+
+  void setMaxBackfaceHits(const unsigned pMaxBackfaceHits) {
+    config_.maxBackfaceHits = pMaxBackfaceHits;
   }
 
   void setTrackNumberOfTraces(const bool enable = true) {

@@ -38,6 +38,8 @@ struct LaunchParams {
 
   unsigned maxReflections = std::numeric_limits<unsigned>::max();
   unsigned maxBoundaryHits = 1000;
+  unsigned maxBackfaceHits = 1;
+
   uint8_t particleIdx = 0;
   uint8_t particleType = 0;
   uint8_t D = 3; // Dimension
