@@ -49,13 +49,11 @@ int main() {
   rayTracer.setSourceDirection(TraceDirection::POS_Y);
   rayTracer.setNumberOfRaysPerPoint(2000);
 
-  // Run the ray tracer
-  Timer timer;
-  timer.start();
-  rayTracer.apply();
-  timer.finish();
+  // Build and cache the geometry, boundary, and Embree scene.
+  rayTracer.commitGeometry();
 
-  std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
+  // Run the ray tracer
+  rayTracer.apply();
 
   // Extract the normalized hit counts for each geometry point
   auto flux = *rayTracer.getLocalData().getScalarData("flux");
@@ -63,6 +61,8 @@ int main() {
   rayTracer.smoothFlux(flux, 1);
 
   rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, flux);
+
+  rayTracer.getRayTraceInfo().print();
 
   return 0;
 }

@@ -108,6 +108,10 @@ extern "C" __global__ void __raygen__() {
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
+#ifdef VIENNARAY_BENCHMARK
+  const bool trackTraceCount = launchParams.traceCountBuffer != nullptr;
+  unsigned long long traceCount = 0;
+#endif
 
   while (continueRay(launchParams, prd, initialRayWeight)) {
     if (launchParams.D == 2) {
@@ -130,5 +134,16 @@ extern "C" __global__ void __raygen__() {
     optixReorder(hint, 2 /*hint bit length*/);
     optixInvoke(u0, u1);
     prd.traceDir = prd.dir; // Update traceDir for the next iteration
+#ifdef VIENNARAY_BENCHMARK
+    if (trackTraceCount) {
+      traceCount++;
+    }
+#endif
   }
+
+#ifdef VIENNARAY_BENCHMARK
+  if (trackTraceCount) {
+    atomicAdd(launchParams.traceCountBuffer, traceCount);
+  }
+#endif
 }

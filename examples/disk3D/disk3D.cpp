@@ -14,7 +14,7 @@ int main() {
   // float or double, but keep in mind, that embree internally only works with
   // float and thus any double precision geometry passed, will be converted
   // internally to float.
-  using NumericType = float;
+  using NumericType = double;
 
   // Set the number of threads to use in OpenMP parallelization
   omp_set_num_threads(12);
@@ -47,17 +47,16 @@ int main() {
   rayTracer.setGeometry(points, normals, gridDelta);
   rayTracer.setBoundaryConditions(boundaryConds);
   rayTracer.setParticleType(particle);
+  rayTracer.setRngSeed(123456789);
 
   // Ray settings
   rayTracer.setNumberOfRaysPerPoint(2000);
 
-  // Run the ray tracer
-  Timer timer;
-  timer.start();
-  rayTracer.apply();
-  timer.finish();
+  // Build and cache the geometry, boundary, and Embree scene.
+  rayTracer.commitGeometry();
 
-  std::cout << "Tracing time: " << timer.currentDuration / 1e9 << " s\n";
+  // Run the ray tracer
+  rayTracer.apply();
 
   // Extract the normalized hit counts for each geometry point
   auto &flux = *rayTracer.getLocalData().getScalarData("flux");
@@ -65,6 +64,8 @@ int main() {
   rayTracer.smoothFlux(flux);
 
   rayInternal::writeVTK<NumericType, D>("trenchResult.vtk", points, flux);
+
+  rayTracer.getRayTraceInfo().print();
 
   return 0;
 }

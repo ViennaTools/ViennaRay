@@ -70,14 +70,12 @@ extern "C" __global__ void __closesthit__() {
 
   const Vec3Df &normal = sbtData->base.normal[primID];
 
-  // If closest hit was on backside, let it through once
+  // If closest hit was on backside, let it through 
   if (DotProduct(prd->traceDir, normal) > 0.0f) {
-    // If back was hit a second time, kill the ray
-    if (prd->hitFromBack) {
+    if (prd->numBackfaceHits++ > launchParams.maxBackfaceHits) {
       prd->rayWeight = 0.f;
       return;
     }
-    prd->hitFromBack = true;
     prd->pos = prd->pos + prd->tMin * prd->traceDir;
     return;
   }
@@ -174,6 +172,10 @@ extern "C" __global__ void __raygen__() {
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
+#ifdef VIENNARAY_BENCHMARK
+  const bool trackTraceCount = launchParams.traceCountBuffer != nullptr;
+  unsigned long long traceCount = 0;
+#endif
 
   while (continueRay(launchParams, prd, initialRayWeight)) {
     if (launchParams.D == 2) {
@@ -198,5 +200,16 @@ extern "C" __global__ void __raygen__() {
     optixInvoke(u0, u1);
     prd.totalCount = 0;     // Reset PerRayData
     prd.traceDir = prd.dir; // Update traceDir for the next iteration
+#ifdef VIENNARAY_BENCHMARK
+    if (trackTraceCount) {
+      traceCount++;
+    }
+#endif
   }
+
+#ifdef VIENNARAY_BENCHMARK
+  if (trackTraceCount) {
+    atomicAdd(launchParams.traceCountBuffer, traceCount);
+  }
+#endif
 }

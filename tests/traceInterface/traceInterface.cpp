@@ -9,11 +9,15 @@ class MySource : public Source<NumericType> {
 public:
   MySource() {}
 
-  std::array<Vec3D<NumericType>, 2>
-  getOriginAndDirection(const size_t idx, RNG &rngState) const override {
+  Vec3D<NumericType> getOrigin(const size_t idx, RNG &rngState) const override {
     Vec3D<NumericType> origin{0., 0., 0.};
+    return origin;
+  }
+
+  Vec3D<NumericType> getDirection(const size_t idx,
+                                  RNG &rngState) const override {
     Vec3D<NumericType> direction{0., 0., 1.};
-    return {origin, direction};
+    return direction;
   }
 
   size_t getNumPoints() const override { return 0; }

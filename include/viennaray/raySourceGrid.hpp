@@ -20,15 +20,25 @@ public:
         minMax_(traceSettings[3]), posNeg_(traceSettings[4]),
         ee_(static_cast<NumericType>(2) / (cosinePower + 1)) {}
 
-  std::array<Vec3D<NumericType>, 2>
-  getOriginAndDirection(const size_t idx, RNG &rngState) const override {
-    auto origin = sourceGrid_[idx % numPoints_];
-    auto direction = getDirection(rngState);
+  Vec3D<NumericType> getOrigin(const size_t idx, RNG &rngState) const override {
+    return sourceGrid_[idx % numPoints_];
+  }
 
-    return {origin, direction};
+  Vec3D<NumericType> getDirection(const size_t idx,
+                                  RNG &rngState) const override {
+    return getDirection(rngState);
   }
 
   [[nodiscard]] size_t getNumPoints() const override { return numPoints_; }
+
+  NumericType getSourceArea() const override {
+    if constexpr (D == 2) {
+      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]);
+    } else {
+      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]) *
+             (bdBox_[1][secondDir_] - bdBox_[0][secondDir_]);
+    }
+  }
 
 private:
   Vec3D<NumericType> getDirection(RNG &rngState) const {
@@ -50,15 +60,6 @@ private:
     Normalize(direction);
 
     return direction;
-  }
-
-  NumericType getSourceArea() const override {
-    if constexpr (D == 2) {
-      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]);
-    } else {
-      return (bdBox_[1][firstDir_] - bdBox_[0][firstDir_]) *
-             (bdBox_[1][secondDir_] - bdBox_[0][secondDir_]);
-    }
   }
 
 private:

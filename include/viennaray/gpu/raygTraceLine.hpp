@@ -36,7 +36,7 @@ public:
 
     // calculate areas on host and send to device for now
     std::vector<float> areas(launchParams_.numElements, 0.f);
-#pragma omp for
+#pragma omp parallel for
     for (int idx = 0; idx < launchParams_.numElements; ++idx) {
       Vec3Df const &p0 = lineMesh_.nodes[lineMesh_.lines[idx][0]];
       Vec3Df const &p1 = lineMesh_.nodes[lineMesh_.lines[idx][1]];

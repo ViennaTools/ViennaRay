@@ -13,47 +13,35 @@
 
 #include <omp.h>
 
+#include <array>
+
 namespace rayInternal {
 
 using namespace viennaray;
 
-template <typename NumericType, int D, GeometryType geoType> class TraceKernel {
+template <typename NumericType, int D, typename GeometryT> class TraceKernel {
 public:
-  TraceKernel(RTCDevice &device, Geometry<NumericType, D> &geometry,
-              Boundary<NumericType, D> &boundary,
+  TraceKernel(Scene const &scene, GeometryT const &geometry,
+              Boundary<NumericType, D> const &boundary,
               std::shared_ptr<Source<NumericType>> source,
               std::unique_ptr<AbstractParticle<NumericType>> &particle,
               KernelConfig const &config, DataLog<NumericType> &dataLog,
               TraceInfo &traceInfo)
-      : device_(device), geometry_(geometry), boundary_(boundary),
+      : scene_(scene), geometry_(geometry), boundary_(boundary),
         pSource_(source), pParticle_(particle->clone()), config_(config),
         traceInfo_(traceInfo), dataLog_(dataLog) {}
 
   void apply() {
-    // Create Embree scene
-    auto rtcScene = rtcNewScene(device_);
-    rtcSetSceneFlags(rtcScene, RTC_SCENE_FLAG_NONE);
-
-    // Selecting higher build quality results in better rendering performance
-    // but slower scene commit times. The default build quality for a scene is
-    // RTC_BUILD_QUALITY_MEDIUM.
-    rtcSetSceneBuildQuality(rtcScene, RTC_BUILD_QUALITY_HIGH);
-    auto rtcGeometry = geometry_.getRTCGeometry();
-    auto rtcBoundary = boundary_.getRTCGeometry();
-
-    auto const boundaryID = rtcAttachGeometry(rtcScene, rtcBoundary);
-    auto const geometryID = rtcAttachGeometry(rtcScene, rtcGeometry);
-    assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
-           "Embree device error");
-
     size_t geoHits = 0;
     size_t nonGeoHits = 0;
     size_t particleHits = 0;
     size_t totalTraces = 0;
     size_t totalBoundaryHits = 0;
     size_t totalReflections = 0;
+    size_t totalBackfaceHits = 0;
+    size_t totalDiskHits = 0;
     size_t raysTerminated = 0;
-    auto const lambda = pParticle_->getMeanFreePath();
+    const auto lambda = pParticle_->getMeanFreePath();
     const long long numRays =
         config_.numRaysFixed == 0
             ? static_cast<long long>(pSource_->getNumPoints()) *
@@ -86,10 +74,9 @@ public:
 
 #pragma omp parallel reduction(                                                \
         + : geoHits, nonGeoHits, particleHits, totalTraces, totalBoundaryHits, \
-            totalReflections, raysTerminated) shared(threadLocalData)
+            totalReflections, totalBackfaceHits, raysTerminated,               \
+            totalDiskHits) shared(threadLocalData)
     {
-      rtcJoinCommitScene(rtcScene);
-
       alignas(128) auto rayHit =
           RTCRayHit{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -124,23 +111,30 @@ public:
         const NumericType initialRayWeight = pSource_->getInitialRayWeight(idx);
         NumericType rayWeight = initialRayWeight;
         Vec3D<NumericType> rayDirection;
-        unsigned int numReflections = 0;
-        unsigned int boundaryHits = 0;
+        unsigned numReflections = 0;
+        unsigned boundaryHits = 0;
+        unsigned backfaceHits = 0;
+        NumericType freeFlightDistance =
+            std::numeric_limits<NumericType>::max();
 
+        // initialize particle and ray direction
         {
           particle->initNew(rngState);
-          particle->logData(myDataLog);
-          rayDirection = particle->initNewWithDirection(rngState);
 
-          auto originAndDirection =
-              pSource_->getOriginAndDirection(idx, rngState);
-          fillRayPosition(rayHit.ray, originAndDirection[0]);
+          rayDirection = particle->initNewWithDirection(rngState);
           if (isZero(rayDirection)) {
-            rayDirection = std::move(originAndDirection[1]);
+            rayDirection = pSource_->getDirection(idx, rngState);
           }
           assert(IsNormalized(rayDirection));
           fillRayDirection<D>(rayHit.ray, rayDirection);
+
+          auto origin = pSource_->getOrigin(idx, rngState);
+          fillRayPosition(rayHit.ray, origin);
+
+          particle->logData(myDataLog);
         }
+        if (lambda > 0.)
+          freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
 
 #ifdef VIENNARAY_USE_RAY_MASKING
         rayHit.ray.mask = -1;
@@ -151,19 +145,16 @@ public:
         }
 
         bool reflect = false;
-        bool hitFromBack = false;
         do {
           rayHit.ray.tfar = std::numeric_limits<rtcNumericType>::max();
           rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
           rayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-          // rayHit.ray.tnear = 1e-4f; // tnear is also set in the particle
-          // source
 
           // Run the intersection
 #if VIENNARAY_EMBREE_VERSION < 4
-          rtcIntersect1(rtcScene, &rtcContext, &rayHit);
+          rtcIntersect1(scene_.rtcScene, &rtcContext, &rayHit);
 #else
-          rtcIntersect1(rtcScene, &rayHit);
+          rtcIntersect1(scene_.rtcScene, &rayHit);
 #endif
 
           ++totalTraces;
@@ -175,35 +166,31 @@ public:
             break;
           }
 
+          /* -------- Hit -------- */
           // check for scattering event
-          if (lambda > 0.) {
-            std::uniform_real_distribution<NumericType> dist(0., 1.);
-            NumericType scatterProbability =
-                1. - std::exp(-rayHit.ray.tfar / lambda);
-            auto rnd = dist(rngState);
-            if (rnd < scatterProbability) {
+          if (lambda > 0. && freeFlightDistance < rayHit.ray.tfar) {
+            const auto &ray = rayHit.ray;
+            const auto origin = Vec3Df{
+                static_cast<float>(ray.org_x + ray.dir_x * freeFlightDistance),
+                static_cast<float>(ray.org_y + ray.dir_y * freeFlightDistance),
+                static_cast<float>(ray.org_z + ray.dir_z * freeFlightDistance)};
+            rayDirection =
+                rayInternal::pickRandomPointOnUnitSphere<NumericType>(rngState);
 
-              const auto &ray = rayHit.ray;
-              const auto origin =
-                  Vec3Df{static_cast<float>(ray.org_x + ray.dir_x * rnd),
-                         static_cast<float>(ray.org_y + ray.dir_y * rnd),
-                         static_cast<float>(ray.org_z + ray.dir_z * rnd)};
-              rayDirection =
-                  rayInternal::pickRandomPointOnUnitSphere<NumericType>(
-                      rngState);
+            // A scattering event starts a new free flight.
+            freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
+            fillRayPosition(rayHit.ray, origin);
+            fillRayDirection<D>(rayHit.ray, rayDirection);
 
-              // Update ray direction and origin
-              fillRayPosition(rayHit.ray, origin);
-              fillRayDirection<D>(rayHit.ray, rayDirection);
-
-              particleHits++;
-              reflect = true;
-              continue;
-            }
+            ++particleHits;
+            reflect = true;
+            continue;
           }
+          if (lambda > 0.)
+            freeFlightDistance -= rayHit.ray.tfar;
 
           /* -------- Boundary hit -------- */
-          if (rayHit.hit.geomID == boundaryID) {
+          if (rayHit.hit.geomID == scene_.boundaryID) {
             if (++boundaryHits > config_.maxBoundaryHits) {
               // terminate ray if too many boundary hits
               ++raysTerminated;
@@ -221,50 +208,48 @@ public:
           const auto geomNormal = geometry_.getPrimNormal(rayHit.hit.primID);
 
           // Check for backface hit
-          const auto backfaceHit = DotProduct(rayDirection, geomNormal) > 0;
-          if constexpr (geoType == GeometryType::DISK) {
-            if (backfaceHit) {
-              // If the dot product of the ray direction and the surface normal
-              // is greater than zero, then we hit the back face of the disk.
-              if (hitFromBack) {
-                // if hitFromBack == true, then the ray hits the back of a disk
-                // the second time. In this case we discard the ray.
+          // If the dot product of the ray direction and the surface
+          // normal is greater than zero, then we hit the back face of the
+          // disk.
+          if (DotProduct(rayDirection, geomNormal) > 0) {
+            if constexpr (GeometryT::geometryType == GeometryType::DISK) {
+              if (++backfaceHits > config_.maxBackfaceHits) {
                 ++raysTerminated;
                 break;
               }
-              hitFromBack = true;
               // Let ray through, i.e., continue.
               reflect = true;
               fillRayPosition(rayHit.ray, hitPoint);
               // keep ray direction as it is
               continue;
-            }
-          } else {
-            if (backfaceHit) {
+            } else {
               // For triangle geometries, we simply discard backface hits as
               // they are not considered valid geometry hits.
+              ++backfaceHits;
               ++raysTerminated;
               break;
             }
           }
 
           /* -------- Surface hit -------- */
-          assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
+          assert(rayHit.hit.geomID == scene_.geometryID &&
+                 "Geometry hit ID invalid");
           ++geoHits;
 
-          if constexpr (geoType == GeometryType::DISK) {
+          if constexpr (GeometryT::geometryType == GeometryType::DISK) {
             // Disk Geometry - multiple hits possible
-            std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
+            constexpr size_t maxNumDisksHit = D == 2 ? 3 : 8;
+            std::array<unsigned int, maxNumDisksHit> hitDiskIds;
+            size_t numDisksHit = 1;
+            hitDiskIds[0] = rayHit.hit.primID;
 #ifdef VIENNARAY_USE_WDIST
-            std::vector<rtcNumericType>
-                impactDistances; // distances between point of impact and disk
-                                 // origins of hit disks
-            {                    // distance on first disk hit
+            // distances between point of impact and disk origins
+            std::array<rtcNumericType, maxNumDisksHit> impactDistances;
+            { // distance on first disk hit
               const auto &disk = geometry_.getPrimRef(rayHit.hit.primID);
               const auto &diskOrigin = *reinterpret_cast<Vec3Df const *>(&disk);
-              impactDistances.push_back(
-                  Distance(hitPoint, diskOrigin) +
-                  1e-6f); // add eps to avoid division by 0
+              impactDistances[0] = Distance(hitPoint, diskOrigin) +
+                                   1e-6f; // add eps to avoid division by 0
             }
 #endif
             // check for additional intersections
@@ -272,18 +257,26 @@ public:
                  geometry_.getNeighborIndices(rayHit.hit.primID)) {
               rtcNumericType distance;
               if (checkLocalIntersection(ray, id, distance)) {
-                hitDiskIds.push_back(id);
+                // assert(numDisksHit < maxNumDisksHit &&
+                //  "Too many disks intersected by a ray");
+                if (numDisksHit == maxNumDisksHit) {
+                  VIENNACORE_LOG_DEBUG("Too many disks intersected by a ray.");
+                  break;
+                }
+                hitDiskIds[numDisksHit] = id;
 #ifdef VIENNARAY_USE_WDIST
-                impactDistances.push_back(distance + 1e-6f);
+                impactDistances[numDisksHit] = distance + 1e-6f;
 #endif
+                ++numDisksHit;
               }
             }
-            const size_t numDisksHit = hitDiskIds.size();
+
+            totalDiskHits += static_cast<size_t>(numDisksHit);
 
 #ifdef VIENNARAY_USE_WDIST
             rtcNumericType invDistanceWeightSum = 0;
-            for (const auto &d : impactDistances)
-              invDistanceWeightSum += 1 / d;
+            for (size_t diskId = 0; diskId < numDisksHit; ++diskId)
+              invDistanceWeightSum += 1 / impactDistances[diskId];
 #endif
             // for each disk hit
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
@@ -331,24 +324,68 @@ public:
           rayDirection = std::move(stickingDirection.second);
           fillRayPosition(rayHit.ray, hitPoint);
           fillRayDirection<D>(rayHit.ray, rayDirection);
+          if (lambda > 0.)
+            freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
 
         } while (reflect);
         totalBoundaryHits += boundaryHits;
         totalReflections += numReflections;
+        totalBackfaceHits += backfaceHits;
       } // end ray tracing for loop
     } // end parallel section
 
     timer.finish();
 
-    // merge data logs
-    for (int i = 0; i < numThreads; ++i) {
-      dataLog_.merge(threadLocalDataLog[i]);
+    // Merge all thread-local output arrays in one parallel region.
+    // Parallelizing over output elements gives useful work to every thread even
+    // when there is only one data field, which is the common case.
+    auto &localScalarData = pLocalData_->getScalarData();
+    for (const auto &threadData : threadLocalData) {
+      assert(threadData.getScalarDataSize() == localScalarData.size() &&
+             "Size mismatch when merging local data");
+      for (size_t dataIdx = 0; dataIdx < localScalarData.size(); ++dataIdx) {
+        assert(threadData.getScalarData(dataIdx)->size() ==
+                   localScalarData[dataIdx].size() &&
+               "Size mismatch when merging local data array");
+      }
+    }
+    for (const auto &threadLog : threadLocalDataLog) {
+      assert(threadLog.data.size() == dataLog_.data.size() &&
+             "Size mismatch when merging data logs");
+      for (size_t dataIdx = 0; dataIdx < dataLog_.data.size(); ++dataIdx) {
+        assert(threadLog.data[dataIdx].size() ==
+                   dataLog_.data[dataIdx].size() &&
+               "Size mismatch when merging data log array");
+      }
     }
 
-    // merge local data
-    for (int i = 0; i < numThreads; ++i) {
-      pLocalData_->mergeScalarData(threadLocalData[i],
-                                   std::plus<NumericType>());
+#pragma omp parallel
+    {
+      for (size_t dataIdx = 0; dataIdx < dataLog_.data.size(); ++dataIdx) {
+        auto &output = dataLog_.data[dataIdx];
+#pragma omp for schedule(static)
+        for (long long valueIdx = 0;
+             valueIdx < static_cast<long long>(output.size()); ++valueIdx) {
+          NumericType sum = output[valueIdx];
+          for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
+            sum += threadLocalDataLog[threadIdx].data[dataIdx][valueIdx];
+          output[valueIdx] = sum;
+        }
+      }
+
+      for (size_t dataIdx = 0; dataIdx < localScalarData.size(); ++dataIdx) {
+        auto &output = localScalarData[dataIdx];
+#pragma omp for schedule(static)
+        for (long long valueIdx = 0;
+             valueIdx < static_cast<long long>(output.size()); ++valueIdx) {
+          NumericType sum = output[valueIdx];
+          for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx) {
+            sum +=
+                (*threadLocalData[threadIdx].getScalarData(dataIdx))[valueIdx];
+          }
+          output[valueIdx] = sum;
+        }
+      }
     }
 
     traceInfo_.numRays = numRays;
@@ -358,16 +395,17 @@ public:
     traceInfo_.particleHits = particleHits;
     traceInfo_.boundaryHits = totalBoundaryHits;
     traceInfo_.reflections = totalReflections;
+    traceInfo_.backfaceHits = totalBackfaceHits;
+    traceInfo_.averageDiskHits =
+        totalDiskHits / static_cast<double>(geoHits == 0 ? 1 : geoHits);
     traceInfo_.time = static_cast<double>(timer.currentDuration) * 1e-9;
 
     if (raysTerminated > 1000) {
-      VIENNACORE_LOG_DEBUG(
-          "A total of " + std::to_string(raysTerminated) +
-          " rays were terminated early due to excessive boundary hits or "
-          "reflections.");
+      VIENNACORE_LOG_DEBUG("A total of " + std::to_string(raysTerminated) +
+                           " rays were terminated early due to excessive "
+                           "boundary hits, backface hits or "
+                           "reflections.");
     }
-
-    rtcReleaseScene(rtcScene);
   }
 
   void setTracingData(PointData<NumericType> *pLocalData,
@@ -377,6 +415,13 @@ public:
   }
 
 private:
+  static NumericType sampleFreeFlightDistance(const NumericType meanFreePath,
+                                              RNG &rng) {
+    std::exponential_distribution<NumericType> distribution(NumericType(1) /
+                                                            meanFreePath);
+    return distribution(rng);
+  }
+
   static bool rejectionControl(NumericType &rayWeight,
                                const NumericType &initWeight, RNG &rng) {
     // Choosing a good value for the weight lower threshold is important
@@ -406,17 +451,18 @@ private:
 
   bool checkLocalIntersection(RTCRay const &ray, const unsigned int primID,
                               rtcNumericType &impactDistance) const {
-    auto const &rayOrigin =
+    const auto &rayOrigin =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.org_x);
-    auto const &rayDirection =
+    const auto &rayDirection =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&ray.dir_x);
 
-    const auto &normal = geometry_.getNormalRef(primID);
+    const auto &diskNormal = geometry_.getNormalRef(primID);
     const auto &disk = geometry_.getPrimRef(primID);
     const auto &diskOrigin =
         *reinterpret_cast<std::array<rtcNumericType, 3> const *>(&disk);
+    const auto &radius = disk[3];
 
-    auto prodOfDirections = DotProduct(normal, rayDirection);
+    auto prodOfDirections = DotProduct(diskNormal, rayDirection);
     if (prodOfDirections > 0.f) {
       // Disk normal is pointing away from the ray direction,
       // i.e., this might be a hit from the back or no hit at all.
@@ -429,25 +475,21 @@ private:
       return false;
     }
 
-    // TODO: Memoize ddneg (tested: no significant speedup)
-    auto ddneg = DotProduct(diskOrigin, normal);
-    auto tt = (ddneg - DotProduct(normal, rayOrigin)) / prodOfDirections;
+    auto tt = DotProduct(diskOrigin - rayOrigin, diskNormal) / prodOfDirections;
     if (tt <= 0) {
       // Intersection point is behind or exactly on the ray origin.
       return false;
     }
 
-    // copy ray direction
-    auto hitPoint = ScaleAdd(rayDirection, rayOrigin, tt);
-    for (int i = 0; i < 3; ++i) {
-      hitPoint[i] = hitPoint[i] - diskOrigin[i];
-    }
-    auto distance = sqrtf(DotProduct(hitPoint, hitPoint));
-    auto const &radius = disk[3];
-    if (radius > distance) {
-      impactDistance = distance;
+    auto d = ScaleAdd(rayDirection, rayOrigin, tt) - diskOrigin;
+    auto distance2 = DotProduct(d, d);
+    if (distance2 < radius * radius) {
+#ifdef VIENNARAY_USE_WDIST
+      impactDistance = sqrtf(distance2);
+#endif
       return true;
     }
+
     return false;
   }
 
@@ -456,9 +498,8 @@ private:
   }
 
 private:
-  RTCDevice &device_;
-
-  Geometry<NumericType, D> &geometry_;
+  Scene const &scene_;
+  GeometryT const &geometry_;
   Boundary<NumericType, D> const &boundary_;
   std::shared_ptr<Source<NumericType>> const pSource_;
   std::unique_ptr<AbstractParticle<NumericType>> const pParticle_;

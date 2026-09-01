@@ -1,29 +1,51 @@
-#### Set variables
+# Set variables
 set(VIENNARAY_CUDA_KERNELS
     "${PROJECT_SOURCE_DIR}/gpu/kernels/normKernels.cu"
     CACHE STRING "ViennaRay CUDA kernel source files.")
 set(VIENNARAY_PIPELINE_DIR
     "${PROJECT_SOURCE_DIR}/gpu/pipelines"
     CACHE STRING "ViennaRay pipeline directory.")
+set(VIENNARAY_PIPELINE_HEADERS
+    "${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygCallableConfig.hpp"
+    "${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygLaunchParams.hpp"
+    "${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygPerRayData.hpp"
+    "${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygSBTRecords.hpp"
+    "${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygSource.hpp")
+set(VIENNARAY_CALLABLE_HEADERS
+    "${PROJECT_SOURCE_DIR}/include/viennaray/gpu/raygReflection.hpp"
+    "${VIENNARAY_PIPELINE_DIR}/Particle.cuh" ${VIENNARAY_PIPELINE_HEADERS})
 
-# Incldue directories for PTX and optix-ir compilation (force cache to update with new entries)
-if(NOT VIENNARAY_PASSED_FIRST_CONFIGURE)
-  set(VIENNACORE_NVCC_INCLUDE_DIRS
-      ${VIENNACORE_NVCC_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include/viennaray/gpu
-      CACHE STRING "PTX include directories" FORCE)
-  if(VIENNARAY_GPU_DOUBLE_PRECISION)
-    set(VIENNACORE_NVCC_DEFINES
-        ${VIENNACORE_NVCC_DEFINES} "VIENNARAY_GPU_DOUBLE_PRECISION=1"
-        CACHE STRING "PTX compile definitions" FORCE)
-  endif()
+# Include directories and definitions for PTX and optix-ir compilation.
+set(_VIENNARAY_NVCC_INCLUDE_DIRS ${VIENNACORE_NVCC_INCLUDE_DIRS}
+                                 ${PROJECT_SOURCE_DIR}/include/viennaray/gpu)
+list(REMOVE_DUPLICATES _VIENNARAY_NVCC_INCLUDE_DIRS)
+set(VIENNACORE_NVCC_INCLUDE_DIRS
+    ${_VIENNARAY_NVCC_INCLUDE_DIRS}
+    CACHE STRING "PTX include directories" FORCE)
+
+set(_VIENNARAY_NVCC_DEFINES ${VIENNACORE_NVCC_DEFINES})
+list(REMOVE_ITEM _VIENNARAY_NVCC_DEFINES "VIENNARAY_GPU_DOUBLE_PRECISION=1"
+     "VIENNARAY_GPU_DOUBLE_PRECISION" "VIENNARAY_BENCHMARK=1" "VIENNARAY_BENCHMARK")
+if(VIENNARAY_GPU_DOUBLE_PRECISION)
+  list(APPEND _VIENNARAY_NVCC_DEFINES "VIENNARAY_GPU_DOUBLE_PRECISION=1")
 endif()
+if(VIENNARAY_BENCHMARK)
+  list(APPEND _VIENNARAY_NVCC_DEFINES "VIENNARAY_BENCHMARK=1")
+endif()
+list(REMOVE_DUPLICATES _VIENNARAY_NVCC_DEFINES)
+set(VIENNACORE_NVCC_DEFINES
+    ${_VIENNARAY_NVCC_DEFINES}
+    CACHE STRING "PTX compile definitions" FORCE)
 
 # Add the general pipelines and callable wrapper
-viennacore_add_optixir(GeneralPipelineDisk ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu)
-viennacore_add_optixir(GeneralPipelineTriangle ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu)
-viennacore_add_optixir(GeneralPipelineLine ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu)
+viennacore_add_optixir(GeneralPipelineDisk ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineDisk.cu DEPENDS
+                       ${VIENNARAY_PIPELINE_HEADERS})
+viennacore_add_optixir(GeneralPipelineTriangle ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineTriangle.cu
+                       DEPENDS ${VIENNARAY_PIPELINE_HEADERS})
+viennacore_add_optixir(GeneralPipelineLine ${VIENNARAY_PIPELINE_DIR}/GeneralPipelineLine.cu DEPENDS
+                       ${VIENNARAY_PIPELINE_HEADERS})
 viennacore_add_optixir(ViennaRayCallableWrapper ${VIENNARAY_PIPELINE_DIR}/CallableWrapper.cu
-                       DEPENDS "${VIENNARAY_PIPELINE_DIR}/Particle.cuh")
+                       DEPENDS ${VIENNARAY_CALLABLE_HEADERS})
 
 # Add the norm kernels
 viennacore_add_ptx(normKernels ${VIENNARAY_CUDA_KERNELS})

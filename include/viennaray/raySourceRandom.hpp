@@ -22,17 +22,17 @@ public:
         numPoints_(numPoints_), customDirection_(customDirection),
         orthonormalBasis_(orthonormalBasis) {}
 
-  std::array<Vec3D<NumericType>, 2>
-  getOriginAndDirection(const size_t idx, RNG &rngState) const override {
-    auto origin = getOrigin(rngState);
-    Vec3D<NumericType> direction;
-    if (customDirection_) {
-      direction = getCustomDirection(rngState);
-    } else {
-      direction = getDirection(rngState);
-    }
+  Vec3D<NumericType> getOrigin(const size_t idx, RNG &rngState) const override {
+    return getOrigin(rngState);
+  }
 
-    return {origin, direction};
+  Vec3D<NumericType> getDirection(const size_t idx,
+                                  RNG &rngState) const override {
+    if (customDirection_) {
+      return getCustomDirection(rngState);
+    } else {
+      return getDirection(rngState);
+    }
   }
 
   [[nodiscard]] size_t getNumPoints() const override { return numPoints_; }
@@ -125,7 +125,7 @@ private:
   const NumericType ee_;
   const size_t numPoints_;
   const bool customDirection_ = false;
-  const std::array<Vec3D<NumericType>, 3> &orthonormalBasis_;
+  const std::array<Vec3D<NumericType>, 3> orthonormalBasis_;
 };
 
 } // namespace viennaray

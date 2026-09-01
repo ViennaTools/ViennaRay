@@ -9,9 +9,9 @@ namespace viennaray {
 using namespace viennacore;
 
 template <typename NumericType, int D>
-class GeometryDisk : public Geometry<NumericType, D> {
+class GeometryDisk final : public Geometry<NumericType, D> {
 public:
-  GeometryDisk() : Geometry<NumericType, D>(GeometryType::DISK) {}
+  static constexpr GeometryType geometryType = GeometryType::DISK;
 
   template <size_t Dim>
   void initGeometry(RTCDevice &device, const DiskMesh &diskMesh) {
@@ -193,7 +193,7 @@ public:
   }
 
   [[nodiscard]] std::vector<unsigned int> const &
-  getNeighborIndices(const unsigned int idx) const override {
+  getNeighborIndices(const unsigned int idx) const {
     assert(pointNeighborhood_.getDistance() > 0.); // check if initialized
     return pointNeighborhood_.getNeighborIndices(idx);
   }
@@ -219,28 +219,30 @@ public:
     return diskAreas_;
   }
 
-  Vec3D<NumericType> getPrimNormal(const unsigned int primID) const override {
+  Vec3D<NumericType> getPrimNormal(const unsigned int primID) const {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
     auto const &normal = pNormalVecBuffer_[primID];
     return Vec3D<NumericType>{(NumericType)normal.xx, (NumericType)normal.yy,
                               (NumericType)normal.zz};
   }
 
-  std::array<rayInternal::rtcNumericType, 4> &
-  getPrimRef(unsigned int primID) override {
+  std::array<rayInternal::rtcNumericType, 4> const &
+  getPrimRef(unsigned int primID) const {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
-    return *reinterpret_cast<std::array<rayInternal::rtcNumericType, 4> *>(
+    return *reinterpret_cast<
+        const std::array<rayInternal::rtcNumericType, 4> *>(
         &pPointBuffer_[primID]);
   }
 
-  std::array<rayInternal::rtcNumericType, 3> &
-  getNormalRef(unsigned int primID) override {
+  std::array<rayInternal::rtcNumericType, 3> const &
+  getNormalRef(unsigned int primID) const {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
-    return *reinterpret_cast<std::array<rayInternal::rtcNumericType, 3> *>(
+    return *reinterpret_cast<
+        const std::array<rayInternal::rtcNumericType, 3> *>(
         &pNormalVecBuffer_[primID]);
   }
 
-  bool checkGeometryEmpty() const override {
+  bool checkGeometryEmpty() const {
     if (pPointBuffer_ == nullptr || pNormalVecBuffer_ == nullptr ||
         this->pRtcGeometry_ == nullptr) {
       return true;
@@ -248,7 +250,7 @@ public:
     return false;
   }
 
-  void releaseGeometry() override {
+  void releaseGeometry() {
     // Attention:
     // This function must not be called when the RTCGeometry reference count is
     // > 1. Doing so leads to leaked memory buffers

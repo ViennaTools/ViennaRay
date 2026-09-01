@@ -56,8 +56,17 @@ int main() {
   rayInternal::KernelConfig config;
   config.numRaysPerPoint = 1;
   config.numRaysFixed = 0;
-  rayInternal::TraceKernel<NumericType, D, GeometryType::DISK> tracer(
-      device, geometry, boundary, std::move(raySource), cp, config, log, info);
+
+  rayInternal::Scene scene;
+  scene.rtcScene = rtcNewScene(device);
+  scene.boundaryID =
+      rtcAttachGeometry(scene.rtcScene, boundary.getRTCGeometry());
+  scene.geometryID =
+      rtcAttachGeometry(scene.rtcScene, geometry.getRTCGeometry());
+  rtcCommitScene(scene.rtcScene);
+
+  rayInternal::TraceKernel<NumericType, D, GeometryDisk<NumericType, D>> tracer(
+      scene, geometry, boundary, std::move(raySource), cp, config, log, info);
   tracer.setTracingData(&localData, &globalData);
   tracer.apply();
   auto diskAreas = geometry.getDiskAreas();
@@ -97,8 +106,9 @@ int main() {
     VC_TEST_ASSERT_ISCLOSE(diskAreas[idx], wholeDiskArea, eps)
   }
 
-  geometry.releaseGeometry();
+  rtcReleaseScene(scene.rtcScene);
   boundary.releaseGeometry();
+  geometry.releaseGeometry();
   rtcReleaseDevice(device);
   return 0;
 }

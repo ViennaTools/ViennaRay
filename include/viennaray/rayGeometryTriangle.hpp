@@ -7,9 +7,9 @@ namespace viennaray {
 using namespace viennacore;
 
 template <typename NumericType, int D>
-class GeometryTriangle : public Geometry<NumericType, D> {
+class GeometryTriangle final : public Geometry<NumericType, D> {
 public:
-  GeometryTriangle() : Geometry<NumericType, D>(GeometryType::TRIANGLE) {}
+  static constexpr GeometryType geometryType = GeometryType::TRIANGLE;
 
   void initGeometry(RTCDevice &device, const TriangleMesh &mesh) {
 
@@ -195,7 +195,7 @@ public:
                            (NumericType)tri.ww};
   }
 
-  Vec3D<NumericType> getPrimNormal(const unsigned int primID) const override {
+  Vec3D<NumericType> getPrimNormal(const unsigned int primID) const {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
     return Vec3D<NumericType>{static_cast<NumericType>(normals_[primID][0]),
                               static_cast<NumericType>(normals_[primID][1]),
@@ -207,18 +207,18 @@ public:
     return areas_[primID];
   }
 
-  // std::array<float, 3> &getPrimRef(unsigned int primID) override {
+  // std::array<float, 3> &getPrimRef(unsigned int primID)  {
   //   assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of
   //   bounds"); return *reinterpret_cast<std::array<float, 3>
   //   *>(&pPointBuffer_[primID]);
   // }
 
-  std::array<float, 3> &getNormalRef(unsigned int primID) override {
+  std::array<float, 3> const &getNormalRef(unsigned int primID) const {
     assert(primID < this->numPrimitives_ && "Geometry: Prim ID out of bounds");
     return normals_[primID];
   }
 
-  bool checkGeometryEmpty() const override {
+  bool checkGeometryEmpty() const {
     if (pPointBuffer_ == nullptr || pTriangleBuffer_ == nullptr ||
         this->pRtcGeometry_ == nullptr) {
       return true;
@@ -226,7 +226,7 @@ public:
     return false;
   }
 
-  void releaseGeometry() override {
+  void releaseGeometry() {
     // Attention:
     // This function must not be called when the RTCGeometry reference count
     // is > 1. Doing so leads to leaked memory buffers

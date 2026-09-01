@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 project(
   ViennaRay
   LANGUAGES CXX
-  VERSION 4.3.1)
+  VERSION 4.4.0)
 
 # --------------------------------------------------------------------------------------------------------
 # Library switches
@@ -14,6 +14,7 @@ option(EMBREE_RAY_MASK "Enable Embree Ray Masking" OFF)
 option(VIENNARAY_USE_GPU "Enable GPU support" OFF)
 option(VIENNARAY_USE_WDIST "Enable weighted distribution of ray weights" OFF)
 option(VIENNARAY_GPU_DOUBLE_PRECISION "Use double precision on GPU" ON)
+option(VIENNARAY_BENCHMARK "Enable GPU trace-count tracking for benchmarking" OFF)
 
 option(VIENNARAY_BUILD_EXAMPLES "Build examples" OFF)
 option(VIENNARAY_BUILD_TESTS "Build tests" OFF)
@@ -70,6 +71,11 @@ endif()
 if(VIENNARAY_GPU_DOUBLE_PRECISION)
   message(STATUS "[ViennaRay] Using double precision on GPU")
   target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_GPU_DOUBLE_PRECISION)
+endif()
+
+if(VIENNARAY_BENCHMARK)
+  message(STATUS "[ViennaRay] Enabling GPU trace-count tracking")
+  target_compile_definitions(${PROJECT_NAME} INTERFACE VIENNARAY_BENCHMARK)
 endif()
 
 if(VIENNARAY_PRINT_PROGRESS)

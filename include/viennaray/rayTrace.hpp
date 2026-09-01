@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rayBoundary.hpp>
+#include <rayGeometry.hpp>
 #include <raySourceRandom.hpp>
 #include <rayTraceKernel.hpp>
 #include <rayTracingData.hpp>
@@ -26,10 +27,16 @@ public:
   Trace(Trace &&) = delete;
   Trace &operator=(Trace &&) = delete;
 
-  virtual ~Trace() { rtcReleaseDevice(device_); }
+  virtual ~Trace() {
+    releaseScene();
+    rtcReleaseDevice(device_);
+  }
 
   /// Run the ray tracer
   virtual void apply() {}
+
+  /// Build and commit the ray tracing geometry, boundary, and Embree scene.
+  virtual void commitGeometry() = 0;
 
   /// Set the particle type used for ray tracing
   /// The particle is a user defined object that has to interface the
@@ -47,8 +54,13 @@ public:
   /// however the boundary condition in direction of the tracing direction is
   /// ignored.
   void setBoundaryConditions(BoundaryCondition boundaryConditions[D]) {
+    bool changed = false;
     for (size_t i = 0; i < D; ++i) {
+      changed |= boundaryConditions_[i] != boundaryConditions[i];
       boundaryConditions_[i] = boundaryConditions[i];
+    }
+    if (changed) {
+      invalidateScene();
     }
   }
 
@@ -94,9 +106,19 @@ public:
     config_.maxBoundaryHits = maxBoundaryHits;
   }
 
+  // Set the maximum number of backface hits a ray is allowed to perform. Has no
+  // effect when using triangle geometry.
+  void setMaxBackfaceHits(const unsigned maxBackfaceHits) {
+    config_.maxBackfaceHits = maxBackfaceHits;
+  }
+
   /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const TraceDirection direction) {
+    if (sourceDirection_ == direction) {
+      return;
+    }
     sourceDirection_ = direction;
+    invalidateScene();
   }
 
   /// Set the primary direction of the source distribution. This can be used to
@@ -155,6 +177,71 @@ private:
   }
 
 protected:
+  void buildScene(const Geometry<NumericType, D> &geometry,
+                  const NumericType boundaryOffset) {
+    releaseScene();
+
+    committedBoundingBox_ = geometry.getBoundingBox();
+    rayInternal::adjustBoundingBox<NumericType, D>(
+        committedBoundingBox_, sourceDirection_, boundaryOffset);
+    committedTraceSettings_ = rayInternal::getTraceSettings(sourceDirection_);
+
+    pBoundary_ = std::make_unique<Boundary<NumericType, D>>(
+        device_, committedBoundingBox_, boundaryConditions_,
+        committedTraceSettings_);
+
+    scene_.rtcScene = rtcNewScene(device_);
+    rtcSetSceneFlags(scene_.rtcScene, RTC_SCENE_FLAG_NONE);
+    rtcSetSceneBuildQuality(scene_.rtcScene, RTC_BUILD_QUALITY_HIGH);
+    scene_.boundaryID =
+        rtcAttachGeometry(scene_.rtcScene, pBoundary_->getRTCGeometry());
+    scene_.geometryID =
+        rtcAttachGeometry(scene_.rtcScene, geometry.getRTCGeometry());
+    assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
+           "Embree device error while building scene");
+
+    rtcCommitScene(scene_.rtcScene);
+    assert(rtcGetDeviceError(device_) == RTC_ERROR_NONE &&
+           "Embree device error while committing scene");
+  }
+
+  void invalidateScene() { releaseScene(); }
+
+  void releaseScene() {
+    if (scene_.rtcScene != nullptr) {
+      rtcReleaseScene(scene_.rtcScene);
+      scene_ = {};
+    }
+    if (pBoundary_ != nullptr) {
+      pBoundary_->releaseGeometry();
+      pBoundary_.reset();
+    }
+  }
+
+  [[nodiscard]] bool hasCommittedScene() const {
+    return scene_.rtcScene != nullptr && pBoundary_ != nullptr;
+  }
+
+  [[nodiscard]] rayInternal::Scene const &getCommittedScene() const {
+    assert(hasCommittedScene());
+    return scene_;
+  }
+
+  [[nodiscard]] Boundary<NumericType, D> const &getCommittedBoundary() const {
+    assert(hasCommittedScene());
+    return *pBoundary_;
+  }
+
+  [[nodiscard]] auto const &getCommittedBoundingBox() const {
+    assert(hasCommittedScene());
+    return committedBoundingBox_;
+  }
+
+  [[nodiscard]] auto const &getCommittedTraceSettings() const {
+    assert(hasCommittedScene());
+    return committedTraceSettings_;
+  }
+
   void prepareLocalData(unsigned int numPoints) {
     assert(pParticle_ != nullptr &&
            "Particle type must be set before preparing local data");
@@ -214,6 +301,12 @@ protected:
   SmartPointer<PointData<NumericType>> pGlobalData_ = nullptr;
   TraceInfo RTInfo_;
   DataLog<NumericType> dataLog_;
+
+private:
+  rayInternal::Scene scene_;
+  std::unique_ptr<Boundary<NumericType, D>> pBoundary_ = nullptr;
+  std::array<Vec3D<NumericType>, 2> committedBoundingBox_{};
+  std::array<int, 5> committedTraceSettings_{};
 };
 
 } // namespace viennaray

@@ -19,6 +19,10 @@ __device__ __inline__ Vec3Df computeNormal(const void *sbtData,
                                            const unsigned int primID) {
   const HitSBTDataBase *baseData =
       reinterpret_cast<const HitSBTDataBase *>(sbtData);
+  if (baseData->normal != nullptr) {
+    return baseData->normal[primID];
+  }
+
   switch (baseData->geometryType) {
   case 0: {
     // Triangles

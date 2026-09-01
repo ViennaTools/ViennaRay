@@ -70,9 +70,24 @@ struct TraceInfo {
   size_t particleHits = 0;
   size_t boundaryHits = 0;
   size_t reflections = 0;
+  size_t backfaceHits = 0;
+  double averageDiskHits = 0;
   double time = 0.0;
   bool warning = false;
   bool error = false;
+
+  void print() const {
+    std::cout << "Ray tracing statistics:\n";
+    std::cout << "  Total rays traced: " << totalRaysTraced << "\n";
+    std::cout << "  Non-geometry hits: " << nonGeometryHits << "\n";
+    std::cout << "  Geometry hits: " << geometryHits << "\n";
+    std::cout << "  Particle hits: " << particleHits << "\n";
+    std::cout << "  Boundary hits: " << boundaryHits << "\n";
+    std::cout << "  Reflections: " << reflections << "\n";
+    std::cout << "  Backface hits: " << backfaceHits << "\n";
+    std::cout << "  Average disk hits per ray: " << averageDiskHits << "\n";
+    std::cout << "  Time taken (s): " << time << "\n";
+  }
 };
 } // namespace viennaray
 
@@ -85,12 +100,19 @@ struct KernelConfig {
   size_t numRaysFixed = 0;
   unsigned maxReflections = std::numeric_limits<unsigned>::max();
   unsigned maxBoundaryHits = 1000;
+  unsigned maxBackfaceHits = 1;
   unsigned rngSeed = 0;
 
   bool useRandomSeed = true;
   bool printProgress = false;
 
   unsigned runNumber = 1;
+};
+
+struct Scene {
+  RTCScene rtcScene = nullptr;
+  unsigned int geometryID = RTC_INVALID_GEOMETRY_ID;
+  unsigned int boundaryID = RTC_INVALID_GEOMETRY_ID;
 };
 
 // embree uses float internally

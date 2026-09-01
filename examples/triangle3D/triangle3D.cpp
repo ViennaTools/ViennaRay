@@ -28,6 +28,7 @@ int main() {
       stickingProbability, "flux");
   tracer.setParticleType(particle);
   tracer.setNumberOfRaysPerPoint(2000);
+  tracer.commitGeometry();
 
   Timer timer;
   timer.start();

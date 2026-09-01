@@ -2,8 +2,6 @@
 
 #include <omp.h>
 
-// #define COUNT_RAYS
-
 using namespace viennaray;
 
 int main(int argc, char **argv) {
@@ -49,12 +47,8 @@ int main(int argc, char **argv) {
   tracer.insertNextParticle(particle);
   tracer.prepareParticlePrograms();
 
-#ifdef COUNT_RAYS
-  int rayCount = 0;
-  CudaBuffer rayCountBuffer;
-  rayCountBuffer.alloc(sizeof(int));
-  rayCountBuffer.upload(&rayCount, 1);
-  tracer.setParameters(rayCountBuffer.dPointer());
+#ifdef VIENNARAY_BENCHMARK
+  tracer.setTrackNumberOfTraces(true);
 #endif
 
   Timer timer;
@@ -71,9 +65,8 @@ int main(int argc, char **argv) {
   rayInternal::writeVTP<float, D, gpu::ResultType>(
       "trenchTriangles_flux.vtp", mesh.nodes, mesh.triangles, flux);
 
-#ifdef COUNT_RAYS
-  rayCountBuffer.download(&rayCount, 1);
-  std::cout << "Trace count: " << rayCount << std::endl;
+#ifdef VIENNARAY_BENCHMARK
+  std::cout << "Trace count: " << tracer.getNumberOfTraces() << std::endl;
 #endif
 
   // surface source test
