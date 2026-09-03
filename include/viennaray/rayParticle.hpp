@@ -142,7 +142,7 @@ public:
                     const unsigned int primID, const int materialId,
                     const PointData<NumericType> *globalData,
                     RNG &rngState) final {
-    auto direction = ReflectionDiffuse<NumericType, D>(geomNormal, rngState);
+    auto direction = ReflectionDiffuse<NumericType>(geomNormal, rngState);
     return std::pair<NumericType, Vec3D<NumericType>>{stickingProbability_,
                                                       direction};
   }
@@ -183,7 +183,7 @@ public:
                     const unsigned int primID, const int materialId,
                     const PointData<NumericType> *globalData,
                     RNG &rngState) final {
-    auto direction = ReflectionSpecular<NumericType, D>(rayDir, geomNormal);
+    auto direction = ReflectionSpecular<NumericType>(rayDir, geomNormal);
     return std::pair<NumericType, Vec3D<NumericType>>{stickingProbability_,
                                                       direction};
   }

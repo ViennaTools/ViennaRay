@@ -29,27 +29,21 @@ ReflectionSpecular(const Vec3D<NumericType> &rayDir,
 }
 
 // Diffuse reflection
-template <typename NumericType, int D>
+template <typename NumericType, int D = 3>
 [[nodiscard]] Vec3D<NumericType>
 ReflectionDiffuse(const Vec3D<NumericType> &geomNormal, RNG &rngState) {
   assert(IsNormalized(geomNormal) &&
          "Diffuse Reflection: Surface normal is not normalized");
 
   auto randomDirection =
-      rayInternal::pickRandomPointOnUnitSphere<NumericType>(rngState);
-  randomDirection[0] += geomNormal[0];
-  randomDirection[1] += geomNormal[1];
-  if constexpr (D == 3)
-    randomDirection[2] += geomNormal[2];
-  else
-    randomDirection[2] = 0;
-
+      rayInternal::pickRandomPointOnUnitSphere<NumericType>(rngState) +
+      geomNormal;
   Normalize(randomDirection);
 
   return randomDirection;
 }
 
-template <typename NumericType, int D>
+template <typename NumericType, int D = 3>
 [[nodiscard]] Vec3D<NumericType>
 ReflectionConedCosine(const Vec3D<NumericType> &rayDir,
                       const Vec3D<NumericType> &geomNormal, RNG &rng,
@@ -60,7 +54,7 @@ ReflectionConedCosine(const Vec3D<NumericType> &rayDir,
   if (maxConeAngle <= NumericType(0))
     return ReflectionSpecular<NumericType>(rayDir, geomNormal);
   if (maxConeAngle >= M_PI_2)
-    return ReflectionDiffuse<NumericType, D>(geomNormal, rng);
+    return ReflectionDiffuse<NumericType>(geomNormal, rng);
 
   // specular direction (w)
   const auto v = Inv(rayDir);
@@ -110,17 +104,13 @@ ReflectionConedCosine(const Vec3D<NumericType> &rayDir,
   if (dp <= NumericType(0))
     dir = dir - NumericType(2) * dp * geomNormal;
 
-  if constexpr (D == 2) {
-    dir[2] = NumericType(0);
-  }
-
   // small renorm to counter float drift
   Normalize(dir);
   return dir;
 }
 
 // Coned specular reflection
-template <typename NumericType, int D>
+template <typename NumericType, int D = 3>
 [[nodiscard]] Vec3D<NumericType> ReflectionConedCosineOld(
     const Vec3D<NumericType> &rayDir, const Vec3D<NumericType> &geomNormal,
     RNG &rngState,
@@ -135,7 +125,7 @@ template <typename NumericType, int D>
   }
 
   if (maxConeAngle >= M_PI_2) {
-    return ReflectionDiffuse<NumericType, D>(geomNormal, rngState);
+    return ReflectionDiffuse<NumericType>(geomNormal, rngState);
   }
 
   Vec3D<NumericType> direction;
@@ -172,10 +162,7 @@ template <typename NumericType, int D>
 
   } while (DotProduct(direction, geomNormal) <= 0.);
 
-  if constexpr (D == 2) {
-    direction[2] = 0;
-    Normalize(direction);
-  }
+  Normalize(direction);
   assert(IsNormalized(direction) && "Coned cosine reflection not normalized");
 
   return direction;
