@@ -102,15 +102,20 @@ public:
     config_.maxReflections = maxReflections;
   }
 
+  /// Set the maximum number of boundary hits a ray is allowed to perform.
   void setMaxBoundaryHits(const unsigned maxBoundaryHits) {
     config_.maxBoundaryHits = maxBoundaryHits;
   }
 
-  // Set the maximum number of backface hits a ray is allowed to perform. Has no
-  // effect when using triangle geometry.
+  /// Set the maximum number of backface hits a ray is allowed to perform. Has
+  /// no effect when using triangle geometry.
   void setMaxBackfaceHits(const unsigned maxBackfaceHits) {
     config_.maxBackfaceHits = maxBackfaceHits;
   }
+
+  /// Set the minimum distance a ray is allowed to travel before it can hit a
+  /// geometry point. This is used to avoid self-intersections.
+  void setTnear(const float tnear) { config_.tnear = tnear; }
 
   /// Set the source direction, where the rays should be traced from.
   void setSourceDirection(const TraceDirection direction) {
@@ -188,7 +193,7 @@ protected:
 
     pBoundary_ = std::make_unique<Boundary<NumericType, D>>(
         device_, committedBoundingBox_, boundaryConditions_,
-        committedTraceSettings_);
+        committedTraceSettings_, config_.tnear);
 
     scene_.rtcScene = rtcNewScene(device_);
     rtcSetSceneFlags(scene_.rtcScene, RTC_SCENE_FLAG_NONE);

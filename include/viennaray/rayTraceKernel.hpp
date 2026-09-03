@@ -129,7 +129,7 @@ public:
           fillRayDirection<D>(rayHit.ray, rayDirection);
 
           auto origin = pSource_->getOrigin(idx, rngState);
-          fillRayPosition(rayHit.ray, origin);
+          fillRayPosition(rayHit.ray, origin, config_.tnear);
 
           particle->logData(myDataLog);
         }
@@ -179,7 +179,7 @@ public:
 
             // A scattering event starts a new free flight.
             freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);
-            fillRayPosition(rayHit.ray, origin);
+            fillRayPosition(rayHit.ray, origin, config_.tnear);
             fillRayDirection<D>(rayHit.ray, rayDirection);
 
             ++particleHits;
@@ -219,7 +219,7 @@ public:
               }
               // Let ray through, i.e., continue.
               reflect = true;
-              fillRayPosition(rayHit.ray, hitPoint);
+              fillRayPosition(rayHit.ray, hitPoint, config_.tnear);
               // keep ray direction as it is
               continue;
             } else {
@@ -322,7 +322,7 @@ public:
 
           // Update ray direction and origin
           rayDirection = std::move(stickingDirection.second);
-          fillRayPosition(rayHit.ray, hitPoint);
+          fillRayPosition(rayHit.ray, hitPoint, config_.tnear);
           fillRayDirection<D>(rayHit.ray, rayDirection);
           if (lambda > 0.)
             freeFlightDistance = sampleFreeFlightDistance(lambda, rngState);

@@ -19,10 +19,11 @@ template <typename NumericType, int D> class Boundary {
 public:
   Boundary(RTCDevice &device, boundingBoxType const &boundingBox,
            BoundaryCondition boundaryConds[D],
-           const std::array<int, 5> &traceSettings)
+           const std::array<int, 5> &traceSettings, const float tnear = 1e-4f)
       : bdBox_(boundingBox), firstDir_(traceSettings[1]),
         secondDir_(traceSettings[2]),
-        boundaryConds_({boundaryConds[firstDir_], boundaryConds[secondDir_]}) {
+        boundaryConds_({boundaryConds[firstDir_], boundaryConds[secondDir_]}),
+        tnear_(tnear) {
     initBoundary(device);
   }
 
@@ -39,7 +40,7 @@ public:
       // let ray pass through
       reflect = true;
       const auto impactCoords = getNewOrigin(rayHit.ray);
-      rayInternal::fillRayPosition(rayHit.ray, impactCoords);
+      rayInternal::fillRayPosition(rayHit.ray, impactCoords, tnear_);
       return;
     }
 
@@ -60,7 +61,7 @@ public:
           // hit at x/y max boundary -> move to min x/y
           impactCoords[firstDir_] = bdBox_[0][firstDir_];
         }
-        rayInternal::fillRayPosition(rayHit.ray, impactCoords);
+        rayInternal::fillRayPosition(rayHit.ray, impactCoords, tnear_);
         reflect = true;
         return;
       } else {
@@ -88,7 +89,7 @@ public:
             // hit at firstDir max boundary -> move to min firstDir
             impactCoords[firstDir_] = bdBox_[0][firstDir_];
           }
-          rayInternal::fillRayPosition(rayHit.ray, impactCoords);
+          rayInternal::fillRayPosition(rayHit.ray, impactCoords, tnear_);
           reflect = true;
           return;
         } else {
@@ -112,7 +113,7 @@ public:
             // hit at secondDir max boundary -> move to min secondDir
             impactCoords[secondDir_] = bdBox_[0][secondDir_];
           }
-          rayInternal::fillRayPosition(rayHit.ray, impactCoords);
+          rayInternal::fillRayPosition(rayHit.ray, impactCoords, tnear_);
           reflect = true;
           return;
         } else {
@@ -258,7 +259,7 @@ private:
             (NumericType)pVertexBuffer_[tt.v2].zz};
   }
 
-  static void reflectRay(RTCRayHit &rayHit, Vec3D<NumericType> &rayDirection) {
+  void reflectRay(RTCRayHit &rayHit, Vec3D<NumericType> &rayDirection) const {
     auto n = *reinterpret_cast<Vec3D<float> *>(&rayHit.hit.Ng_x);
     Vec3D<NumericType> normal{static_cast<NumericType>(n[0]),
                               static_cast<NumericType>(n[1]),
@@ -267,7 +268,7 @@ private:
     rayDirection = ReflectionSpecular<NumericType>(rayDirection, normal);
     auto const origin = getNewOrigin(rayHit.ray);
     rayInternal::fillRayDirection<D>(rayHit.ray, rayDirection);
-    rayInternal::fillRayPosition(rayHit.ray, origin);
+    rayInternal::fillRayPosition(rayHit.ray, origin, tnear_);
   }
 
   struct vertex_f3_t {
@@ -291,6 +292,7 @@ private:
   const int firstDir_ = 0;
   const int secondDir_ = 1;
   const std::array<BoundaryCondition, 2> boundaryConds_;
+  const float tnear_ = 1e-4f;
   static constexpr size_t numTriangles_ = 8;
   static constexpr size_t numVertices_ = 8;
 };

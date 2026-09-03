@@ -122,7 +122,7 @@ extern "C" __global__ void __raygen__() {
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
                   make_float3(prd.traceDir[0], prd.traceDir[1],
                               prd.traceDir[2]), // direction
-                  1e-4f,                        // tmin
+                  launchParams.tnear,           // tmin
                   1e20f,                        // tmax
                   0.0f,                         // rayTime
                   OptixVisibilityMask(255), OPTIX_RAY_FLAG_DISABLE_ANYHIT,
