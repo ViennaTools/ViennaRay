@@ -29,6 +29,7 @@ struct LaunchParams {
 
   float rayWeightThreshold = 0.1f;
   float tThreshold = 0.5f;
+  float tnear = 1e-4f;
 
   unsigned int seed = 0;
   bool periodicBoundary = false;

@@ -82,6 +82,8 @@ public:
     launchParams_.rayWeightThreshold = threshold;
   }
 
+  void setTnear(float tnear) { config_.tnear = tnear; }
+
   void apply() {
     if (particles_.empty()) {
       VIENNACORE_LOG_ERROR(
@@ -126,6 +128,7 @@ public:
     // Threshold value for neighbor detection in disk-based geometries
     assert(gridDelta_ > 0.0f);
     launchParams_.tThreshold = 1.1 * gridDelta_; // TODO: find the best value
+    launchParams_.tnear = config_.tnear;
 
     launchParams_.maxReflections = config_.maxReflections;
     launchParams_.maxBoundaryHits = config_.maxBoundaryHits;

@@ -70,7 +70,7 @@ extern "C" __global__ void __closesthit__() {
 
   const Vec3Df &normal = sbtData->base.normal[primID];
 
-  // If closest hit was on backside, let it through 
+  // If closest hit was on backside, let it through
   if (DotProduct(prd->traceDir, normal) > 0.0f) {
     if (prd->numBackfaceHits++ > launchParams.maxBackfaceHits) {
       prd->rayWeight = 0.f;
@@ -186,7 +186,7 @@ extern "C" __global__ void __raygen__() {
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
                   make_float3(prd.traceDir[0], prd.traceDir[1],
                               prd.traceDir[2]), // direction
-                  1e-4f,                        // tmin
+                  launchParams.tnear,           // tmin
                   1e20f,                        // tmax
                   0.0f,                         // rayTime
                   OptixVisibilityMask(255),
