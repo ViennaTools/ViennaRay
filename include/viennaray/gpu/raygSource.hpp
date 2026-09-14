@@ -10,6 +10,12 @@ namespace viennaray::gpu {
 
 using namespace viennacore;
 
+__device__ __forceinline__ void normalize2D(float3 &v) {
+  float norm = rsqrtf(v.x * v.x + v.y * v.y);
+  v.x *= norm;
+  v.y *= norm;
+}
+
 __device__ __forceinline__ std::array<Vec3Df, 3>
 getOrthonormalBasis(const Vec3Df &n) {
 
@@ -37,7 +43,6 @@ __device__ __forceinline__ void initializeRayDirection(PerRayData &prd,
   prd.dir[0] = cosPhi * sinTheta;
   prd.dir[1] = sinPhi * sinTheta;
   prd.dir[2] = -cosTheta;
-  prd.traceDir = prd.dir;
 }
 
 __device__ __forceinline__ void
@@ -59,7 +64,6 @@ initializeRayDirection(PerRayData &prd, const float power,
   } while (prd.dir[2] >= 0.f);
 
   viennacore::Normalize(prd.dir);
-  prd.traceDir = prd.dir;
 }
 
 __device__ __forceinline__ void
@@ -77,7 +81,6 @@ initializeRayDirectionFromBasis(PerRayData &prd, const float power,
 
   prd.dir = basis[0] * rx + basis[1] * ry + basis[2] * rz;
   viennacore::Normalize(prd.dir);
-  prd.traceDir = prd.dir;
 }
 
 __device__ __forceinline__ void
@@ -126,7 +129,6 @@ initializeRayPositionAndDirection(PerRayData &prd,
     if (launchParams.D == 2) {
       // fold z into y for 2D
       prd.dir[1] = prd.dir[2];
-      prd.traceDir[1] = prd.traceDir[2];
     }
   }
 }

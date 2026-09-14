@@ -19,7 +19,7 @@ extern "C" __constant__ LaunchParams launchParams;
 extern "C" __global__ void __intersection__() {
   const HitSBTDataDisk *sbtData =
       (const HitSBTDataDisk *)optixGetSbtDataPointer();
-  PerRayData *prd = getPRD();
+  RayDataDisks *rdd = getRayDataDisks();
 
   // Get the index of the AABB box that was hit
   const unsigned int primID = optixGetPrimitiveIndex();
@@ -30,16 +30,18 @@ extern "C" __global__ void __intersection__() {
   const float radius = sbtData->radius;
 
   bool valid = true;
-  float prodOfDirections = DotProduct(normal, prd->traceDir);
+  const auto dir = make_Vec3Df(optixGetWorldRayDirection());
+  const auto pos = make_Vec3Df(optixGetWorldRayOrigin());
+  float prodOfDirections = DotProduct(normal, dir);
 
   // Check if ray is not parallel to the plane
   valid &= fabsf(prodOfDirections) >= 1e-6f;
 
   float ddneg = DotProduct(diskOrigin, normal);
-  float t = (ddneg - DotProduct(normal, prd->pos)) / prodOfDirections;
+  float t = (ddneg - DotProduct(normal, pos)) / prodOfDirections;
   // Avoid negative t or self intersections
   valid &= t > optixGetRayTmin();
-  const Vec3Df intersection = prd->pos + prd->traceDir * t;
+  const Vec3Df intersection = pos + dir * t;
 
   // Check if within disk radius
   const Vec3Df diff = intersection - diskOrigin;
@@ -48,10 +50,10 @@ extern "C" __global__ void __intersection__() {
 
   if (valid) {
     // Collect all intersections and filter neighbors in CH shader
-    if (!sbtData->base.isBoundary && prd->totalCount < MAX_NEIGHBORS) {
-      prd->tValues[prd->totalCount] = t;
-      prd->primIDs[prd->totalCount] = primID;
-      prd->totalCount++;
+    if (!sbtData->base.isBoundary && rdd->totalCount < MAX_NEIGHBORS) {
+      rdd->tValues[rdd->totalCount] = t;
+      rdd->primIDs[rdd->totalCount] = primID;
+      ++rdd->totalCount;
     }
 
     // Has to pass a dummy t value so later intersections are not ignored
@@ -63,43 +65,42 @@ extern "C" __global__ void __closesthit__() {
   const HitSBTDataDisk *sbtData =
       (const HitSBTDataDisk *)optixGetSbtDataPointer();
   PerRayData *prd = getPRD();
+  RayDataDisks *rdd = getRayDataDisks();
 
-  const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
-  prd->primID = primID;
+  auto tMax = optixGetRayTmax() - launchParams.tThreshold;
+  auto primID = optixGetPrimitiveIndex();
 
   const Vec3Df &normal = sbtData->base.normal[primID];
+  const auto dir = make_Vec3Df(optixGetWorldRayDirection());
+
+  // update ray position to hit point
+  prd->pos = prd->pos + dir * tMax;
 
   // If closest hit was on backside, let it through
-  if (DotProduct(prd->traceDir, normal) > 0.0f) {
+  if (DotProduct(dir, normal) > 0.0f) {
     if (prd->numBackfaceHits++ > launchParams.maxBackfaceHits) {
       prd->rayWeight = 0.f;
       return;
     }
-    prd->pos = prd->pos + prd->tMin * prd->traceDir;
     return;
   }
 
-  // ------------- NEIGHBOR FILTERING --------------- //
-  // Keep only hits close to tMin
-  prd->ISCount = 0;
-  for (int i = 0; i < prd->totalCount; ++i) {
-    if (fabsf(prd->tValues[i] - prd->tMin) < launchParams.tThreshold &&
-        prd->ISCount < MAX_NEIGHBORS) {
-      prd->primIDs[prd->ISCount++] = prd->primIDs[i];
+  // ------------- SURFACE COLLISION --------------- //
+  // Call the collision function for all neighbors that are within the
+  // tThreshold
+  unsigned callIdx =
+      callableIndex(launchParams.particleType, CallableSlot::COLLISION);
+  for (int i = 0; i < rdd->totalCount; ++i) {
+    if (fabsf(rdd->tValues[i] - tMax) < launchParams.tThreshold) {
+      optixDirectCall<void, const HitSBTDataDisk *, PerRayData *, unsigned int>(
+          callIdx, sbtData, prd, rdd->primIDs[i]);
     }
   }
 
-  // ------------- SURFACE COLLISION --------------- //
-  unsigned callIdx =
-      callableIndex(launchParams.particleType, CallableSlot::COLLISION);
-  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, sbtData,
-                                                              prd);
-
   // ------------- REFLECTION --------------- //
   callIdx = callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
-  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, sbtData,
-                                                              prd);
+  optixDirectCall<void, const HitSBTDataDisk *, PerRayData *, unsigned int>(
+      callIdx, sbtData, prd, primID);
 
   prd->numReflections++;
 }
@@ -110,14 +111,16 @@ extern "C" __global__ void __closesthit__boundary__() {
   PerRayData *prd = getPRD();
 
   const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax() - launchParams.tThreshold;
-  prd->primID = primID;
+  const float tMax = optixGetRayTmax() - launchParams.tThreshold;
 
   const Vec3Df &normal = sbtData->base.normal[primID];
+  auto dir = make_Vec3Df(optixGetWorldRayDirection());
+
+  // update ray position to hit point
+  prd->pos = prd->pos + dir * tMax;
 
   // If closest hit was on backside of boundary, let it through
-  if (DotProduct(prd->traceDir, normal) > 0.0f) {
-    prd->pos = prd->pos + prd->tMin * prd->traceDir;
+  if (DotProduct(dir, normal) > 0.0f) {
     return;
   }
 
@@ -132,9 +135,6 @@ extern "C" __global__ void __closesthit__boundary__() {
     prd->rayWeight = 0.0f;
     return;
   }
-
-  // update ray position to hit point
-  prd->pos = prd->pos + prd->traceDir * prd->tMin;
 
   unsigned axis = primID / 2;
   if (launchParams.periodicBoundary) {
@@ -169,37 +169,43 @@ extern "C" __global__ void __raygen__() {
   optixDirectCall<void, const HitSBTDataDisk *, PerRayData *>(callIdx, nullptr,
                                                               &prd);
 
+  // additional data for neighbor intersections (overlapping disks and lines)
+  RayDataDisks rdd;
+
   // the values we store the PRD pointer in:
   uint32_t u0, u1;
   packPointer((void *)&prd, u0, u1);
+
+  uint32_t u2, u3;
+  packPointer((void *)&rdd, u2, u3);
+
 #ifdef VIENNARAY_BENCHMARK
   const bool trackTraceCount = launchParams.traceCountBuffer != nullptr;
   unsigned long long traceCount = 0;
 #endif
 
   while (continueRay(launchParams, prd, initialRayWeight)) {
+    float3 traceDir = make_float3(prd.dir[0], prd.dir[1], prd.dir[2]);
     if (launchParams.D == 2) {
-      prd.traceDir[2] = 0.f;
-      viennacore::Normalize(prd.traceDir);
+      traceDir.z = 0.f;
+      normalize2D(traceDir);
     }
     optixTraverse(launchParams.traversable, // traversable GAS
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
-                  make_float3(prd.traceDir[0], prd.traceDir[1],
-                              prd.traceDir[2]), // direction
-                  launchParams.tnear,           // tmin
-                  1e20f,                        // tmax
-                  0.0f,                         // rayTime
+                  traceDir,                                        // direction
+                  launchParams.tnear,                              // tmin
+                  1e20f,                                           // tmax
+                  0.0f,                                            // rayTime
                   OptixVisibilityMask(255),
                   OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
                   0,                             // SBT offset
                   1,                             // SBT stride
                   0,                             // missSBTIndex
-                  u0, u1);                       // Payload
+                  u0, u1, u2, u3);               // Payload
     unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, 2);
-    optixInvoke(u0, u1);
-    prd.totalCount = 0;     // Reset PerRayData
-    prd.traceDir = prd.dir; // Update traceDir for the next iteration
+    optixInvoke(u0, u1, u2, u3); // invoke the closest hit shader
+    rdd.totalCount = 0;          // Reset the neighbor intersection count
 #ifdef VIENNARAY_BENCHMARK
     if (trackTraceCount) {
       traceCount++;

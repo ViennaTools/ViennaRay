@@ -21,21 +21,19 @@ extern "C" __device__ void __direct_callable__noop(void *, void *) {
 // --- Particle pipeline
 //
 
-extern "C" __device__ void
-__direct_callable__particleCollision(const void *sbtData,
-                                     viennaray::gpu::PerRayData *prd) {
-  particleCollision(prd);
+extern "C" __device__ void __direct_callable__particleCollision(
+    const void *sbtData, viennaray::gpu::PerRayData *prd, unsigned int primID) {
+  particleCollision(prd, primID);
 }
 
-extern "C" __device__ void
-__direct_callable__particleReflection(const void *sbtData,
-                                      viennaray::gpu::PerRayData *prd) {
-  particleReflection(sbtData, prd);
+extern "C" __device__ void __direct_callable__particleReflection(
+    const void *sbtData, viennaray::gpu::PerRayData *prd, unsigned int primID) {
+  particleReflection(sbtData, prd, primID);
 }
 
 extern "C" __device__ void __direct_callable__particleReflectionConstSticking(
-    const void *sbtData, viennaray::gpu::PerRayData *prd) {
-  particleReflectionConstSticking(sbtData, prd);
+    const void *sbtData, viennaray::gpu::PerRayData *prd, unsigned int primID) {
+  particleReflectionConstSticking(sbtData, prd, primID);
 }
 
 extern "C" __device__ void

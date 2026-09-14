@@ -37,7 +37,7 @@ int main() {
   std::vector<gpu::CallableConfig> cMap = {
       {0, gpu::CallableSlot::COLLISION, "__direct_callable__particleCollision"},
       {0, gpu::CallableSlot::REFLECTION,
-       "__direct_callable__particleReflection"}};
+       "__direct_callable__particleReflectionConstSticking"}};
 
   gpu::TraceDisk<NumericType, D> tracer(context);
   tracer.setGeometry(mesh);

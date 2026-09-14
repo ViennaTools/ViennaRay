@@ -14,29 +14,26 @@ using namespace viennacore;
 // Per-ray data structure associated with each ray. Should be kept small to
 // optimize memory usage and performance.
 struct PerRayData {
+  // RNG
+  CudaRNG RNGstate;
+
   // Position and direction
   Vec3Df pos;
-  Vec3Df dir;
-  Vec3Df traceDir; // direction for calculating the intersection, which can be
-                   // different in 2D from the actual ray direction
+  Vec3Df dir; // direction of the ray (always 3D)
 
   // Simulation specific data
   float rayWeight = 1.f;
   float energy = 0.f;
   float load = 0.f;
 
-  // RNG
-  CudaRNG RNGstate;
-
   // Hit data
   unsigned int numBoundaryHits = 0;
   unsigned int numReflections = 0;
   unsigned int numBackfaceHits = 0;
-  unsigned int primID = 0; // primID of closest hit
-  float tMin = 1e20f;      // distance to closest hit
+};
 
+struct RayDataDisks {
   // Variables for neighbor intersections (overlapping disks and lines)
-  uint8_t ISCount = 0;                 // Number of hits starting from 1
   uint8_t totalCount = 0;              // total intersections recorded
   float tValues[MAX_NEIGHBORS];        // all intersection distances
   unsigned int primIDs[MAX_NEIGHBORS]; // their primitive IDs
@@ -64,6 +61,12 @@ static __device__ __forceinline__ PerRayData *getPRD() {
   const uint32_t u0 = optixGetPayload_0();
   const uint32_t u1 = optixGetPayload_1();
   return reinterpret_cast<PerRayData *>(unpackPointer(u0, u1));
+}
+
+static __device__ __forceinline__ RayDataDisks *getRayDataDisks() {
+  const uint32_t u0 = optixGetPayload_2();
+  const uint32_t u1 = optixGetPayload_3();
+  return reinterpret_cast<RayDataDisks *>(unpackPointer(u0, u1));
 }
 
 static __device__ __forceinline__ void

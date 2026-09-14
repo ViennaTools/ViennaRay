@@ -19,7 +19,7 @@ extern "C" __constant__ LaunchParams launchParams;
 extern "C" __global__ void __intersection__() {
   const HitSBTDataLine *sbtData =
       (const HitSBTDataLine *)optixGetSbtDataPointer();
-  PerRayData *prd = getPRD();
+  auto pos = make_Vec3Df(optixGetWorldRayOrigin());
 
   // Get the index of the AABB box that was hit
   const unsigned int primID = optixGetPrimitiveIndex();
@@ -30,17 +30,16 @@ extern "C" __global__ void __intersection__() {
   const Vec3Df &p1 = sbtData->nodes[idx[1]];
 
   Vec3Df lineDir = p1 - p0;
-  float d =
-      1.f / (prd->traceDir[0] * lineDir[1] - prd->traceDir[1] * lineDir[0]);
+  auto dir = optixGetWorldRayDirection();
+  float d = 1.f / (dir.x * lineDir[1] - dir.y * lineDir[0]);
 
   bool valid = true;
 
-  const Vec3Df p0ToRayOrigin = p0 - prd->pos;
+  const Vec3Df p0ToRayOrigin = p0 - pos;
   float t = d * (p0ToRayOrigin[0] * lineDir[1] - p0ToRayOrigin[1] * lineDir[0]);
   valid &= t > optixGetRayTmin();
 
-  float s = d * (p0ToRayOrigin[0] * prd->traceDir[1] -
-                 p0ToRayOrigin[1] * prd->traceDir[0]);
+  float s = d * (p0ToRayOrigin[0] * dir.y - p0ToRayOrigin[1] * dir.x);
   valid &= s > 1e-5f && s < 1.0f - 1e-5f;
 
   if (valid) {
@@ -54,22 +53,24 @@ extern "C" __global__ void __closesthit__() {
   PerRayData *prd = getPRD();
 
   const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax();
-  prd->primID = primID;
 
-  prd->ISCount = 1;
-  prd->primIDs[0] = primID;
+  // update ray position to hit point
+  auto dir = optixGetWorldRayDirection();
+  float tMax = optixGetRayTmax();
+  prd->pos[0] += dir.x * tMax;
+  prd->pos[1] += dir.y * tMax;
+  prd->pos[2] += dir.z * tMax;
 
   // ------------- SURFACE COLLISION --------------- //
   unsigned callIdx =
       callableIndex(launchParams.particleType, CallableSlot::COLLISION);
-  optixDirectCall<void, const HitSBTDataLine *, PerRayData *>(callIdx, sbtData,
-                                                              prd);
+  optixDirectCall<void, const HitSBTDataLine *, PerRayData *, unsigned int>(
+      callIdx, sbtData, prd, primID);
 
   // ------------- REFLECTION --------------- //
   callIdx = callableIndex(launchParams.particleType, CallableSlot::REFLECTION);
-  optixDirectCall<void, const HitSBTDataLine *, PerRayData *>(callIdx, sbtData,
-                                                              prd);
+  optixDirectCall<void, const HitSBTDataLine *, PerRayData *, unsigned int>(
+      callIdx, sbtData, prd, primID);
 
   prd->numReflections++;
 }
@@ -78,9 +79,10 @@ extern "C" __global__ void __closesthit__boundary__() {
   const HitSBTDataLine *sbtData =
       (const HitSBTDataLine *)optixGetSbtDataPointer();
   PerRayData *prd = getPRD();
+  auto dir = make_Vec3Df(optixGetWorldRayDirection());
 
   // update ray position to hit point
-  prd->pos = prd->pos + prd->traceDir * optixGetRayTmax();
+  prd->pos = prd->pos + dir * optixGetRayTmax();
 
   const unsigned int primID = optixGetPrimitiveIndex();
   if (launchParams.periodicBoundary) {
@@ -123,17 +125,17 @@ extern "C" __global__ void __raygen__() {
 #endif
 
   while (continueRay(launchParams, prd, initialRayWeight)) {
+    float3 traceDir = make_float3(prd.dir[0], prd.dir[1], prd.dir[2]);
     if (launchParams.D == 2) {
-      prd.traceDir[2] = 0.f;
-      viennacore::Normalize(prd.traceDir);
+      traceDir.z = 0.f;
+      normalize2D(traceDir);
     }
     optixTraverse(launchParams.traversable, // traversable GAS
                   make_float3(prd.pos[0], prd.pos[1], prd.pos[2]), // origin
-                  make_float3(prd.traceDir[0], prd.traceDir[1],
-                              prd.traceDir[2]), // direction
-                  launchParams.tnear,           // tmin
-                  1e20f,                        // tmax
-                  0.0f,                         // rayTime
+                  traceDir,                                        // direction
+                  launchParams.tnear,                              // tmin
+                  1e20f,                                           // tmax
+                  0.0f,                                            // rayTime
                   OptixVisibilityMask(255),
                   OPTIX_RAY_FLAG_DISABLE_ANYHIT, // OPTIX_RAY_FLAG_NONE,
                   0,                             // SBT offset
@@ -143,7 +145,6 @@ extern "C" __global__ void __raygen__() {
     unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, 2);
     optixInvoke(u0, u1);
-    prd.traceDir = prd.dir; // Update traceDir for the next iteration
 #ifdef VIENNARAY_BENCHMARK
     if (trackTraceCount) {
       traceCount++;

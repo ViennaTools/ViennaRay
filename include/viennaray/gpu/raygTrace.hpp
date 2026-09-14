@@ -687,6 +687,8 @@ private:
         OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
     pipelineCompileOptions_.usesMotionBlur = false;
     pipelineCompileOptions_.numPayloadValues = 2;
+    if (geometryType_ == "Disk")
+      pipelineCompileOptions_.numPayloadValues = 4;
     pipelineCompileOptions_.numAttributeValues = 0;
     pipelineCompileOptions_.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
     pipelineCompileOptions_.pipelineLaunchParamsVariableName =
