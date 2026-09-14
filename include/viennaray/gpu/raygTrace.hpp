@@ -751,20 +751,21 @@ private:
   /// does all setup for the hitgroup program
   void createHitgroupPrograms() {
     std::string entryFunctionNameIS = "__intersection__";
-    std::string entryFunctionNameCH = "__closesthit__";
+    std::string entryFunctionNameCH = "__closesthit__surface";
     OptixProgramGroupOptions pgOptions = {};
     OptixProgramGroupDesc pgDesc = {};
     pgDesc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
     pgDesc.hitgroup.moduleCH = module_;
     pgDesc.hitgroup.entryFunctionNameCH = entryFunctionNameCH.c_str();
 
-    if (geometryType_ != "Triangle") {
+    if (geometryType_ !=
+        "Triangle") { // Triangle uses built-in intersection program
       pgDesc.hitgroup.moduleIS = module_;
       pgDesc.hitgroup.entryFunctionNameIS = entryFunctionNameIS.c_str();
     }
     createProgramGroup(&pgDesc, &pgOptions, &hitgroupPG_);
 
-    std::string entryFunctionNameCHBound = "__closesthit__boundary__";
+    std::string entryFunctionNameCHBound = "__closesthit__boundary";
     OptixProgramGroupDesc pgDescBound = {};
     pgDescBound.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
     pgDescBound.hitgroup.moduleCH = module_;

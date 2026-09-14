@@ -16,7 +16,7 @@ using namespace viennaray::gpu;
 
 extern "C" __constant__ LaunchParams launchParams;
 
-extern "C" __global__ void __closesthit__() {
+extern "C" __global__ void __closesthit__surface() {
   PerRayData *prd = getPRD();
 
   if (optixIsTriangleBackFaceHit()) {
@@ -49,7 +49,7 @@ extern "C" __global__ void __closesthit__() {
   ++prd->numReflections;
 }
 
-extern "C" __global__ void __closesthit__boundary__() {
+extern "C" __global__ void __closesthit__boundary() {
   const HitSBTDataTriangle *sbtData =
       (const HitSBTDataTriangle *)optixGetSbtDataPointer();
   PerRayData *prd = getPRD();

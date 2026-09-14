@@ -47,7 +47,7 @@ extern "C" __global__ void __intersection__() {
   }
 }
 
-extern "C" __global__ void __closesthit__() {
+extern "C" __global__ void __closesthit__surface() {
   const HitSBTDataLine *sbtData =
       (const HitSBTDataLine *)optixGetSbtDataPointer();
   PerRayData *prd = getPRD();
@@ -75,7 +75,7 @@ extern "C" __global__ void __closesthit__() {
   prd->numReflections++;
 }
 
-extern "C" __global__ void __closesthit__boundary__() {
+extern "C" __global__ void __closesthit__boundary() {
   const HitSBTDataLine *sbtData =
       (const HitSBTDataLine *)optixGetSbtDataPointer();
   PerRayData *prd = getPRD();
