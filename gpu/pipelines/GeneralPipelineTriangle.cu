@@ -28,16 +28,15 @@ extern "C" __global__ void __closesthit__() {
   const HitSBTDataTriangle *sbtData =
       (const HitSBTDataTriangle *)optixGetSbtDataPointer();
 
-  const unsigned int primID = optixGetPrimitiveIndex();
-  float tMax = optixGetRayTmax();
-
   // update ray position to hit point
   const auto dir = optixGetWorldRayDirection();
+  const float tMax = optixGetRayTmax();
   prd->pos[0] += dir.x * tMax;
   prd->pos[1] += dir.y * tMax;
   prd->pos[2] += dir.z * tMax;
 
   // ------------- SURFACE COLLISION --------------- //
+  const unsigned primID = optixGetPrimitiveIndex();
   unsigned callIdx;
   callIdx = callableIndex(launchParams.particleType, CallableSlot::COLLISION);
   optixDirectCall<void, const HitSBTDataTriangle *, PerRayData *, unsigned int>(
