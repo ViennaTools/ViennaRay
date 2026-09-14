@@ -70,21 +70,18 @@ struct LaunchParams {
 
 #ifdef __CUDACC__
 __device__ __forceinline__ unsigned int
-getIdx(int dataIdx, const LaunchParams &launchParams) {
+getIdxOffset(int dataIdx, const LaunchParams &launchParams,
+             unsigned int primitiveIdx = 0) {
   unsigned int offset = 0;
   for (unsigned int i = 0; i < launchParams.particleIdx; i++)
     offset += launchParams.dataPerParticle[i];
   offset = (offset + dataIdx) * launchParams.numElements;
-  return offset + optixGetPrimitiveIndex();
+  return offset + primitiveIdx;
 }
 
 __device__ __forceinline__ unsigned int
-getIdxOffset(int dataIdx, const LaunchParams &launchParams) {
-  unsigned int offset = 0;
-  for (unsigned int i = 0; i < launchParams.particleIdx; i++)
-    offset += launchParams.dataPerParticle[i];
-  offset = (offset + dataIdx) * launchParams.numElements;
-  return offset;
+getIdx(int dataIdx, const LaunchParams &launchParams) {
+  return getIdxOffset(dataIdx, launchParams) + optixGetPrimitiveIndex();
 }
 
 __device__ __forceinline__ bool continueRay(const LaunchParams &launchParams,
