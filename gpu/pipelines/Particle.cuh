@@ -13,28 +13,26 @@ extern "C" __constant__ viennaray::gpu::LaunchParams launchParams;
 //
 
 __forceinline__ __device__ void
-particleCollision(viennaray::gpu::PerRayData *prd) {
-  for (int i = 0; i < prd->ISCount; ++i) {
-    atomicAdd(&launchParams
-                   .resultBuffer[viennaray::gpu::getIdxOffset(0, launchParams) +
-                                 prd->primIDs[i]],
-              static_cast<viennaray::gpu::ResultType>(prd->rayWeight));
-  }
+particleCollision(viennaray::gpu::PerRayData *prd, unsigned int primID) {
+  atomicAdd(
+      &launchParams.resultBuffer[viennaray::gpu::getIdxOffset(0, launchParams) +
+                                 primID],
+      static_cast<viennaray::gpu::ResultType>(prd->rayWeight));
 }
 
 __forceinline__ __device__ void
-particleReflection(const void *sbtData, viennaray::gpu::PerRayData *prd) {
-  int materialId = launchParams.materialIds[prd->primID];
+particleReflection(const void *sbtData, viennaray::gpu::PerRayData *prd,
+                   unsigned int primID) {
+  int materialId = launchParams.materialIds[primID];
   prd->rayWeight -= prd->rayWeight * launchParams.materialSticking[materialId];
-  auto geoNormal = viennaray::gpu::computeNormal(sbtData, prd->primID);
+  auto geoNormal = viennaray::gpu::computeNormal(sbtData, primID);
   viennaray::gpu::diffuseReflection(prd, geoNormal);
 }
 
-__forceinline__ __device__ void
-particleReflectionConstSticking(const void *sbtData,
-                                viennaray::gpu::PerRayData *prd) {
+__forceinline__ __device__ void particleReflectionConstSticking(
+    const void *sbtData, viennaray::gpu::PerRayData *prd, unsigned int primID) {
   prd->rayWeight -= prd->rayWeight * launchParams.sticking;
-  auto geoNormal = viennaray::gpu::computeNormal(sbtData, prd->primID);
+  auto geoNormal = viennaray::gpu::computeNormal(sbtData, primID);
   viennaray::gpu::diffuseReflection(prd, geoNormal);
 }
 

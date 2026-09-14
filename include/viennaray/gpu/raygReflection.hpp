@@ -63,9 +63,6 @@ __device__ __forceinline__ Vec3Df getNormal(const void *sbtData,
 
 static __device__ __forceinline__ void
 specularReflection(PerRayData *prd, const Vec3Df &geoNormal) {
-#ifndef VIENNARAY_TEST
-  prd->pos = prd->pos + prd->tMin * prd->traceDir;
-#endif
   prd->dir = prd->dir - (2 * DotProduct(prd->dir, geoNormal)) * geoNormal;
 }
 
@@ -82,9 +79,6 @@ static __device__ Vec3Df PickRandomPointOnUnitSphere(CudaRNG *state) {
 
 static __device__ void diffuseReflection(PerRayData *prd,
                                          const Vec3Df &geoNormal) {
-#ifndef VIENNARAY_TEST
-  prd->pos = prd->pos + prd->tMin * prd->traceDir;
-#endif
   const Vec3Df randomDirection = PickRandomPointOnUnitSphere(&prd->RNGstate);
   prd->dir = geoNormal + randomDirection;
   Normalize(prd->dir);
