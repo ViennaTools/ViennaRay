@@ -26,10 +26,10 @@ extern "C" __global__ void __closesthit__() {
   PerRayData *prd = getPRD();
 
   const unsigned int primID = optixGetPrimitiveIndex();
-  prd->tMin = optixGetRayTmax();
-  prd->primID = primID;
+  // prd->tMin = optixGetRayTmax();
+  // prd->primID = primID;
 
-  atomicAdd(&launchParams.resultBuffer[prd->primID], prd->rayWeight);
+  atomicAdd(&launchParams.resultBuffer[primID], prd->rayWeight);
   prd->rayWeight = 0.f;
   prd->load = 0.f;
 }
@@ -40,8 +40,8 @@ extern "C" __global__ void __closesthit__boundary__() {
   PerRayData *prd = getPRD();
 
   // update ray position to hit point
-  prd->tMin = optixGetRayTmax();
-  prd->pos = prd->pos + prd->dir * prd->tMin;
+  auto tMin = optixGetRayTmax();
+  prd->pos = prd->pos + prd->dir * tMin;
 
   const unsigned int primID = optixGetPrimitiveIndex();
   // 0-3: X axis (dim 0), 4-7: Y axis (dim 1)
@@ -63,7 +63,7 @@ extern "C" __global__ void __closesthit__boundary__() {
     prd->dir[dim] = -prd->dir[dim];
   }
 
-  prd->primID = primID;
+  // prd->primID = primID;
   prd->numBoundaryHits += 1;
   prd->load = 1.f;
 }
@@ -149,12 +149,14 @@ extern "C" __global__ void __raygen__() {
                1,                             // SBT stride
                0,                             // missSBTIndex
                u0, u1);                       // Payload
-    if (prd.load > 0.f) {
-      printf("Ray %u hit BOUNDARY primID %u with tMin %f\n", linearLaunchIndex,
-             prd.primID, prd.tMin);
-    } else {
-      printf("Ray %u hit SURFACE primID %u with tMin %f\n", linearLaunchIndex,
-             prd.primID, prd.tMin);
-    }
+    // if (prd.load > 0.f) {
+    //   printf("Ray %u hit BOUNDARY primID %u with tMin %f\n",
+    //   linearLaunchIndex,
+    //          prd.primID, prd.tMin);
+    // } else {
+    //   printf("Ray %u hit SURFACE primID %u with tMin %f\n",
+    //   linearLaunchIndex,
+    //          prd.primID, prd.tMin);
+    // }
   }
 }
