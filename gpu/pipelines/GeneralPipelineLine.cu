@@ -40,7 +40,9 @@ extern "C" __global__ void __intersection__() {
   valid &= t > optixGetRayTmin();
 
   float s = d * (p0ToRayOrigin[0] * dir.y - p0ToRayOrigin[1] * dir.x);
-  valid &= s > 1e-5f && s < 1.0f - 1e-5f;
+  // the segments overlap slightly at their joints, so a ray cannot pass
+  // between two neighbouring segments
+  valid &= s > -1e-5f && s < 1.0f + 1e-5f;
 
   if (valid) {
     optixReportIntersection(t, 0);
