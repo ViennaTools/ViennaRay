@@ -45,9 +45,11 @@ __device__ __forceinline__ void initializeRayDirection(PerRayData &prd,
   prd.dir[2] = -cosTheta;
 }
 
+// a direction about basis[0], redrawn until it heads toward the geometry along
+// the source axis (y in 2D, z in 3D)
 __device__ __forceinline__ void
 initializeRayDirection(PerRayData &prd, const float power,
-                       const std::array<Vec3Df, 3> &basis) {
+                       const std::array<Vec3Df, 3> &basis, const int axis) {
   // source direction
   do {
     const float4 u = curand_uniform4(&prd.RNGstate); // (0,1]
@@ -61,7 +63,7 @@ initializeRayDirection(PerRayData &prd, const float power,
     float rz = sinPhi * sinTheta;
 
     prd.dir = basis[0] * rx + basis[1] * ry + basis[2] * rz;
-  } while (prd.dir[2] >= 0.f);
+  } while (prd.dir[axis] >= 0.f);
 
   viennacore::Normalize(prd.dir);
 }
@@ -123,12 +125,16 @@ initializeRayPositionAndDirection(PerRayData &prd,
   initializeRayPosition(prd, launchParams.source, launchParams.D);
   if (launchParams.source.customDirectionBasis) {
     initializeRayDirection(prd, launchParams.cosineExponent,
-                           launchParams.source.directionBasis);
+                           launchParams.source.directionBasis,
+                           launchParams.D - 1);
   } else {
     initializeRayDirection(prd, launchParams.cosineExponent);
     if (launchParams.D == 2) {
-      // fold z into y for 2D
+      // the source axis of 2D geometries is y: swap y and z, so that the
+      // direction stays a unit vector
+      const float dirY = prd.dir[1];
       prd.dir[1] = prd.dir[2];
+      prd.dir[2] = dirY;
     }
   }
 }
