@@ -59,6 +59,27 @@ public:
     CUdeviceptr d_data = this->resultBuffer_.dPointer();
     CUdeviceptr d_vertex = triangleGeometry_.geometryVertexBuffer.dPointer();
     CUdeviceptr d_index = triangleGeometry_.geometryIndexBuffer.dPointer();
+    // TEST (LS_ION_RAYS, 2026-10-31): the fluxes of each particle with its own
+    // number of rays; the fluxes lie in the result buffer particle by particle.
+    if (this->numRaysParticle_.size() == this->particles_.size()) {
+      size_t offset = 0;
+      for (size_t i = 0; i < this->particles_.size(); i++) {
+        unsigned int numData = this->particles_[i].dataLabels.size();
+        if (numData == 0)
+          continue;
+        CUdeviceptr d_part = d_data + offset * launchParams_.numElements *
+                                          sizeof(ResultType);
+        size_t numRays = this->numRaysParticle_[i];
+        void *kernel_args[] = {&d_part,     &d_vertex,
+                               &d_index,    &launchParams_.numElements,
+                               &sourceArea, &numRays,
+                               &numData};
+        LaunchKernel::launch(this->normModuleName_, this->normKernelName_,
+                             kernel_args, *context_);
+        offset += numData;
+      }
+      return;
+    }
     void *kernel_args[] = {&d_data,          &d_vertex,
                            &d_index,         &launchParams_.numElements,
                            &sourceArea,      &this->numRays_,

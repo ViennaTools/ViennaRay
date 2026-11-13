@@ -160,6 +160,23 @@ public:
     }
     VIENNACORE_LOG_DEBUG("Number of rays: " + util::prettyDouble(numRays_));
 
+    // TEST (LS_ION_RAYS, 2026-10-31): launch width and number of rays of each
+    // particle, raysFactor times the common ones, within the same launch cap.
+    std::vector<unsigned int> launchDimXParticle(particles_.size(), launchDimX);
+    numRaysParticle_.assign(particles_.size(), numRays_);
+    for (size_t i = 0; i < particles_.size(); i++) {
+      const size_t sourcePoints = static_cast<size_t>(launchDimY) * launchDimZ;
+      size_t dimX = static_cast<size_t>(launchDimX) *
+                    std::max(1u, particles_[i].raysFactor);
+      if (dimX * sourcePoints > (1 << 29)) {
+        VIENNACORE_LOG_WARNING("Too many rays for particle " +
+                               particles_[i].name + ", rays factor capped");
+        dimX = std::max<size_t>(launchDimX, (1 << 29) / sourcePoints);
+      }
+      launchDimXParticle[i] = static_cast<unsigned int>(dimX);
+      numRaysParticle_[i] = dimX * sourcePoints;
+    }
+
     // set up material specific sticking probabilities
     materialStickingBuffer_.resize(particles_.size());
     for (size_t i = 0; i < particles_.size(); i++) {
@@ -233,7 +250,7 @@ public:
                               launchParamsBuffers_[i].sizeInBytes,
                               &shaderBindingTable_,
                               /*! dimensions of the launch: */
-                              launchDimX, launchDimY, launchDimZ));
+                              launchDimXParticle[i], launchDimY, launchDimZ));
     }
 #else // Launch on multiple streams in release mode
     for (size_t i = 0; i < particles_.size(); i++) {
@@ -243,7 +260,7 @@ public:
                               launchParamsBuffers_[i].sizeInBytes,
                               &shaderBindingTable_,
                               /*! dimensions of the launch: */
-                              launchDimX, launchDimY, launchDimZ));
+                              launchDimXParticle[i], launchDimY, launchDimZ));
     }
 #endif
 
@@ -898,6 +915,7 @@ protected:
   bool isSynced_ = false;
 
   size_t numRays_ = 0;
+  std::vector<size_t> numRaysParticle_; // TEST (LS_ION_RAYS): per particle
   unsigned numCellData_ = 0;
   unsigned int surfaceSourcePositionsCount_ = 0;
   float surfaceSourceArea_ = 0.f;

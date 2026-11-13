@@ -217,6 +217,11 @@ template <typename T> struct Particle {
 
   bool useCustomDirection = false;
   Vec3D<T> direction = {0., 0., -1.0};
+
+  // TEST (LS_ION_RAYS, 2026-10-31): rays per point of this particle as a
+  // multiple of the tracer's rays per point; its fluxes are normalised with
+  // its own number of rays.
+  unsigned raysFactor = 1;
 };
 } // namespace gpu
 #endif

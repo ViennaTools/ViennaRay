@@ -98,6 +98,22 @@ extern "C" __global__ void __raygen__() {
 
   // initialize ray position and direction
   initializeRayPositionAndDirection(prd, launchParams);
+  // TEST (2D GPU directions, 2026-10-31): in 2D the source above folds the
+  // vertical component into y but leaves it in z as well, so prd.dir is not a
+  // unit vector and its out-of-plane part is the vertical one. The callables
+  // read prd.dir for incidence angles and reflections. Draw the direction as
+  // the CPU source does (raySourceRandom::getDirection): x lateral, y
+  // vertical, z the out-of-plane part, a unit vector.
+  if (launchParams.D == 2 && !launchParams.useSurfaceSource &&
+      !launchParams.source.customDirectionBasis) {
+    const float4 u = curand_uniform4(&prd.RNGstate); // (0,1]
+    const float cosTheta = powf(u.w, 1.f / (launchParams.cosineExponent + 1.f));
+    const float sinTheta = sqrtf(fmaxf(0.f, 1.f - cosTheta * cosTheta));
+    float sinPhi, cosPhi;
+    __sincosf(2.f * M_PIf * u.x, &sinPhi, &cosPhi);
+    prd.dir = Vec3Df{cosPhi * sinTheta, -cosTheta, sinPhi * sinTheta};
+    prd.traceDir = prd.dir;
+  }
   const float initialRayWeight = prd.rayWeight;
 
   unsigned callIdx =
@@ -129,6 +145,19 @@ extern "C" __global__ void __raygen__() {
     unsigned int hint = getCoherenceHint(prd, launchParams);
     optixReorder(hint, 2 /*hint bit length*/);
     optixInvoke(u0, u1);
+    // TEST (2D GPU directions, 2026-10-31): after a hit, project the new
+    // direction onto the plane and renormalise it, as the CPU reflections do
+    // for D == 2 (rayReflection.hpp), so that every later incidence angle is
+    // the in-plane one
+    if (launchParams.D == 2) {
+      const float l2 = prd.dir[0] * prd.dir[0] + prd.dir[1] * prd.dir[1];
+      if (l2 > 1e-12f) {
+        const float inv = rsqrtf(l2);
+        prd.dir[0] *= inv;
+        prd.dir[1] *= inv;
+        prd.dir[2] = 0.f;
+      }
+    }
     prd.traceDir = prd.dir; // Update traceDir for the next iteration
   }
 }
